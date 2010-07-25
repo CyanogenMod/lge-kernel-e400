@@ -68,6 +68,16 @@ struct inet_request_sock {
 	__be32			loc_addr;
 	__be32			rmt_addr;
 	__be16			rmt_port;
+#ifdef __SPLINT__
+	u16			snd_wscale : 4,
+				rcv_wscale : 4,
+				tstamp_ok  : 1,
+				sack_ok	   : 1,
+				wscale_ok  : 1,
+				ecn_ok	   : 1,
+				acked	   : 1,
+				no_srccheck: 1;
+#else
 	kmemcheck_bitfield_begin(flags);
 	u16			snd_wscale : 4,
 				rcv_wscale : 4,
@@ -78,6 +88,7 @@ struct inet_request_sock {
 				acked	   : 1,
 				no_srccheck: 1;
 	kmemcheck_bitfield_end(flags);
+#endif
 	struct ip_options	*opt;
 };
 

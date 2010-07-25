@@ -297,6 +297,13 @@ struct sock {
 	atomic_t		sk_omem_alloc;
 	int			sk_sndbuf;
 	struct sk_buff_head	sk_write_queue;
+#ifdef __SPLINT__
+	unsigned int		sk_shutdown  : 2,
+				sk_no_check  : 2,
+				sk_userlocks : 4,
+				sk_protocol  : 8,
+				sk_type      : 16;
+#else
 	kmemcheck_bitfield_begin(flags);
 	unsigned int		sk_shutdown  : 2,
 				sk_no_check  : 2,
@@ -304,6 +311,7 @@ struct sock {
 				sk_protocol  : 8,
 				sk_type      : 16;
 	kmemcheck_bitfield_end(flags);
+#endif
 	int			sk_wmem_queued;
 	gfp_t			sk_allocation;
 	int			sk_route_caps;
