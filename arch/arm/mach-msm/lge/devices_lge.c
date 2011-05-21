@@ -281,3 +281,7 @@ __WEAK void __init lge_add_mmc_devices(void)
 {
 }
 
+__WEAK void __init lge_add_sound_devices(void)
+{
+}
+

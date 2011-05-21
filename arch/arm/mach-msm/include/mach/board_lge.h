@@ -41,5 +41,6 @@ int __init lge_init_gpio_i2c_pin(struct i2c_gpio_platform_data *i2c_adap_pdata,
 void __init lge_add_input_devices(void);
 void __init lge_add_misc_devices(void);
 void __init lge_add_mmc_devices(void);
+void __init lge_add_sound_devices(void);
 
 #endif
