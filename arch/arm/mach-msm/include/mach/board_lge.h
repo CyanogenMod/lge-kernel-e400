@@ -17,4 +17,7 @@
 void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 
+/* lge common functions to add devices */
+void __init lge_add_input_devices(void);
+
 #endif

@@ -213,3 +213,8 @@ void __init msm7x27a_reserve(void)
 	msm_reserve();
 }
 
+/* lge common functions to add devices */
+__WEAK void __init lge_add_input_devices(void)
+{
+}
+
