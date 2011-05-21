@@ -38,10 +38,8 @@
 #include <linux/gpio.h>
 #include <linux/mfd/marimba.h>
 #include <mach/vreg.h>
-#include <linux/power_supply.h>
 #include <mach/rpc_pmapp.h>
 
-#include <mach/msm_battery.h>
 #include <linux/smsc911x.h>
 #include <linux/atmel_maxtouch.h>
 #include "devices.h"
@@ -1771,31 +1769,6 @@ static struct platform_device msm_device_adspdec = {
 	},
 };
 
-static u32 msm_calculate_batt_capacity(u32 current_voltage);
-
-static struct msm_psy_batt_pdata msm_psy_batt_data = {
-	.voltage_min_design     = 2800,
-	.voltage_max_design     = 4300,
-	.avail_chg_sources      = AC_CHG | USB_CHG ,
-	.batt_technology        = POWER_SUPPLY_TECHNOLOGY_LION,
-	.calculate_capacity     = &msm_calculate_batt_capacity,
-};
-
-static u32 msm_calculate_batt_capacity(u32 current_voltage)
-{
-	u32 low_voltage	 = msm_psy_batt_data.voltage_min_design;
-	u32 high_voltage = msm_psy_batt_data.voltage_max_design;
-
-	return (current_voltage - low_voltage) * 100
-			/ (high_voltage - low_voltage);
-}
-
-static struct platform_device msm_batt_device = {
-	.name               = "msm-battery",
-	.id                 = -1,
-	.dev.platform_data  = &msm_psy_batt_data,
-};
-
 static struct smsc911x_platform_config smsc911x_config = {
 	.irq_polarity	= SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,
 	.irq_type	= SMSC911X_IRQ_TYPE_PUSH_PULL,
@@ -2261,7 +2234,6 @@ static struct platform_device *surf_ffa_devices[] __initdata = {
 	&msm_device_snd,
 	&msm_device_adspdec,
 	&lcdc_toshiba_panel_device,
-	&msm_batt_device,
 	&smsc911x_device,
 #ifdef CONFIG_S5K4E1
 	&msm_camera_sensor_s5k4e1,

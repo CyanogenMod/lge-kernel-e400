@@ -273,3 +273,7 @@ __WEAK void __init lge_add_input_devices(void)
 {
 }
 
+__WEAK void __init lge_add_misc_devices(void)
+{
+}
+
