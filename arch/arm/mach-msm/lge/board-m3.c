@@ -1284,6 +1284,16 @@ static void __init msm7x2x_init(void)
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	bt_power_init();
 #endif
+
+	lge_add_input_devices();
+	lge_add_misc_devices();
+	lge_add_mmc_devices();
+	lge_add_sound_devices();
+	lge_add_lcd_devices();
+	lge_add_camera_devices();
+
+	/* gpio i2c devices should be registered at latest point */
+	lge_add_gpio_i2c_devices();
 }
 
 #ifdef CONFIG_CACHE_L2X0

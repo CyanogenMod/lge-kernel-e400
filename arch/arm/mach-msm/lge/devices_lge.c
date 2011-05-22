@@ -285,3 +285,11 @@ __WEAK void __init lge_add_sound_devices(void)
 {
 }
 
+__WEAK void __init lge_add_lcd_devices(void)
+{
+}
+
+__WEAK void __init lge_add_camera_devices(void)
+{
+}
+
