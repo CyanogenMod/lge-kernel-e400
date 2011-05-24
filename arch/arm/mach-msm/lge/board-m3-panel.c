@@ -229,7 +229,7 @@ static int mipi_dsi_panel_power(int on)
 		if (pmapp_disp_backlight_set_brightness(100))
 			pr_err("display backlight set brightness failed\n");
 
-		if (machine_is_msm7x27a_surf()) {
+		if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3()) {
 			rc = gpio_request(GPIO_DISPLAY_PWR_EN, "gpio_disp_pwr");
 			if (rc < 0) {
 				pr_err("failed to request gpio_disp_pwr\n");
