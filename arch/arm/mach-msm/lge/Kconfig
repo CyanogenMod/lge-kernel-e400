@@ -15,4 +15,13 @@ config MACH_MSM7X27A_M3
 
 endmenu
 
+menu "LGE Specific Patches"
+config LGE_H9DA4VH4JJMMCR_NAND_PATCH
+	bool "LGE Hynix H9DA4VH4JJMMCR nand probe patch"
+	help
+	  This patch is used for Hynix H9DAVH4JJMMCR nand probing.
+	  Because Read ID 4th(page & block size) are not match with QCT code,
+	  Put directly to parameter tables for device id 0xBC.
+endmenu
+
 endmenu

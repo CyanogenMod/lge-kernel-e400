@@ -100,7 +100,11 @@ struct nand_flash_dev nand_flash_ids[] = {
 	/* 4 Gigabit */
 	{"NAND 512MiB 1,8V 8-bit",	0xAC, 0, 512, 0, LP_OPTIONS},
 	{"NAND 512MiB 3,3V 8-bit",	0xDC, 0, 512, 0, LP_OPTIONS},
+#ifdef CONFIG_LGE_H9DA4VH4JJMMCR_NAND_PATCH
+	{"NAND 512MiB 1,8V 16-bit",	0xBC, 4096, 512, 0x40000, LP_OPTIONS16},
+#else
 	{"NAND 512MiB 1,8V 16-bit",	0xBC, 0, 512, 0, LP_OPTIONS16},
+#endif
 	{"NAND 512MiB 3,3V 16-bit",	0xCC, 0, 512, 0, LP_OPTIONS16},
 
 	/* 8 Gigabit */
