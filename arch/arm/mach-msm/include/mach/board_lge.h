@@ -25,6 +25,18 @@ struct gpio_i2c_pin {
 	unsigned int irq_pin;
 };
 
+/* touch screen platform data */
+struct touch_platform_data {
+	int ts_x_min;
+	int ts_x_max;
+	int ts_y_min;
+	int ts_y_max;
+	int (*power)(unsigned char onoff);
+	int irq;
+	int scl;
+	int sda;
+};
+
 void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 
@@ -44,5 +56,7 @@ void __init lge_add_mmc_devices(void);
 void __init lge_add_sound_devices(void);
 void __init lge_add_lcd_devices(void);
 void __init lge_add_camera_devices(void);
+
+void __init lge_add_gpio_i2c_device(gpio_i2c_init_func_t *init_func);
 
 #endif

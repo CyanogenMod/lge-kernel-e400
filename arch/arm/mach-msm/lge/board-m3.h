@@ -62,5 +62,15 @@ enum {
 	GPIO_FFA_LED_DRV_EN2,
 };
 
+/* touch-screen macros */
+#define TS_X_MIN		0
+#define TS_X_MAX		240
+#define TS_Y_MIN		0
+#define TS_Y_MAX		320
+#define TS_GPIO_I2C_SDA		17
+#define TS_GPIO_I2C_SCL		4
+#define TS_GPIO_IRQ		39
+#define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */ 
+
 #endif
 
