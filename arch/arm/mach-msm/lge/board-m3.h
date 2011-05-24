@@ -70,7 +70,7 @@ enum {
 #define TS_GPIO_I2C_SDA		17
 #define TS_GPIO_I2C_SCL		4
 #define TS_GPIO_IRQ		39
-#define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */ 
+#define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */
 
 #endif
 

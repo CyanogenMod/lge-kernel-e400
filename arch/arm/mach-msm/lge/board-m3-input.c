@@ -126,7 +126,7 @@ static struct platform_device ts_i2c_device = {
 	.dev.platform_data = &ts_i2c_pdata,
 };
 
-/* TODO check vreg pin name "synt"   */ 
+/* TODO check vreg pin name "synt"   */
 static int ts_set_vreg(unsigned char onoff)
 {
 	struct vreg *vreg_touch;
@@ -217,6 +217,5 @@ void __init lge_add_input_devices(void)
 {
 	platform_add_devices(m3_input_devices, ARRAY_SIZE(m3_input_devices));
 	platform_add_devices(m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
-	
 	lge_add_gpio_i2c_device(m3_init_i2c_touch);
 }
