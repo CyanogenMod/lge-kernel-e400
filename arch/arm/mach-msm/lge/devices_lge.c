@@ -62,7 +62,7 @@ static int msm_fb_detect_panel(const char *name)
 {
 	int ret = -EPERM;
 
-	if (machine_is_msm7x27a_surf()) {
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3()) {
 		if (!strncmp(name, "lcdc_toshiba_fwvga_pt", 21))
 			ret = 0;
 	} else {

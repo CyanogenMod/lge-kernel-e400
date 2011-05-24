@@ -464,7 +464,7 @@ static unsigned int msm_bahama_setup_power(void)
 		       __func__, rc);
 		goto vreg_fail;
 	}
-	if (machine_is_msm7x27a_surf()) {
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3()) {
 		/*setup Bahama_sys_reset_n*/
 		rc = gpio_request(GPIO_BT_SYS_REST_EN, "bahama sys_rst_n");
 		if (rc < 0) {
@@ -495,7 +495,7 @@ static unsigned int msm_bahama_setup_power(void)
 	return rc;
 
 gpio_fail:
-	if (machine_is_msm7x27a_surf())
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
 		gpio_free(GPIO_BT_SYS_REST_EN);
 	else if (machine_is_msm7x27a_ffa())
 		gpio_free(GPIO_FFA_BT_SYS_REST_EN);
@@ -717,7 +717,7 @@ static struct i2c_board_info bahama_devices[] = {
 #if defined(CONFIG_I2C) && defined(CONFIG_GPIO_SX150X)
 static void __init register_i2c_devices(void)
 {
-	if (machine_is_msm7x27a_surf()) {
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3()) {
 		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 				surf_core_exp_i2c_info,
 				ARRAY_SIZE(surf_core_exp_i2c_info));
@@ -936,7 +936,7 @@ static int  msm_hsusb_vbus_init(int on)
 	int rc = 0;
 	unsigned gpio;
 
-	if (machine_is_msm7x27a_surf())
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
 		gpio = GPIO_HOST_VBUS_EN;
 	else
 		gpio = GPIO_FFA_5V_BOOST_EN;
@@ -957,7 +957,7 @@ static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 {
 	unsigned gpio;
 
-	if (machine_is_msm7x27a_surf())
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
 		gpio = GPIO_HOST_VBUS_EN;
 	else
 		gpio = GPIO_FFA_5V_BOOST_EN;
@@ -1153,6 +1153,26 @@ static void msm7x27a_cfg_smsc911x(void)
 	gpio_set_value(ETH_FIFO_SEL_GPIO, 0);
 }
 
+static struct resource resources_uart3[] = {
+	{
+		.start	= INT_UART3,
+		.end	= INT_UART3,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= MSM_UART3_PHYS,
+		.end	= MSM_UART3_PHYS + MSM_UART3_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm_device_uart3 = {
+	.name	= "msm_serial",
+	.id	= 2,
+	.num_resources	= ARRAY_SIZE(resources_uart3),
+	.resource	= resources_uart3,
+};
+
 static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.acpu_switch_time_us = 50,
 	.max_speed_delta_khz = 400000,
@@ -1212,7 +1232,7 @@ static void __init msm7x27a_init_ebi2(void)
 		return;
 
 	ebi2_cfg = readl(ebi2_cfg_ptr);
-	if (machine_is_msm7x27a_rumi3() || machine_is_msm7x27a_surf())
+	if (machine_is_msm7x27a_rumi3() || machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
 		ebi2_cfg |= (1 << 4); /* CS2 */
 
 	writel(ebi2_cfg, ebi2_cfg_ptr);
@@ -1225,7 +1245,7 @@ static void __init msm7x27a_init_ebi2(void)
 		return;
 
 	ebi2_cfg = readl(ebi2_cfg_ptr);
-	if (machine_is_msm7x27a_surf())
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
 		ebi2_cfg |= (1 << 31);
 
 	writel(ebi2_cfg, ebi2_cfg_ptr);
@@ -1260,7 +1280,7 @@ static void __init msm7x2x_init(void)
 		platform_add_devices(rumi_sim_devices,
 				ARRAY_SIZE(rumi_sim_devices));
 	}
-	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_ffa()) {
+	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_ffa() || machine_is_msm7x27a_m3()) {
 #ifdef CONFIG_USB_MSM_OTG_72K
 		msm_otg_pdata.swfi_latency =
 			msm7x27a_pm_data
@@ -1284,6 +1304,8 @@ static void __init msm7x2x_init(void)
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	bt_power_init();
 #endif
+
+	platform_device_register(&msm_device_uart3);
 
 	lge_add_input_devices();
 	lge_add_misc_devices();

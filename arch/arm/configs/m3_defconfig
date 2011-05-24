@@ -2,6 +2,7 @@
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38.2 Kernel Configuration
 # Tue May 24 19:56:15 2011
+# Tue May 24 15:38:53 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -305,6 +306,11 @@ CONFIG_MACH_LGE=y
 # LGE Board Selection
 #
 CONFIG_MACH_MSM7X27A_M3=y
+
+#
+# LGE Specific Patches
+#
+CONFIG_LGE_H9DA4VH4JJMMCR_NAND_PATCH=y
 # CONFIG_MSM_STACKED_MEMORY is not set
 CONFIG_PHYS_OFFSET=0x00200000
 CONFIG_MSM_AMSS_VERSION=6225
