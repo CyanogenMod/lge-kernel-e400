@@ -37,6 +37,16 @@ struct touch_platform_data {
 	int sda;
 };
 
+/* backlight platform data*/
+struct lge_backlight_platform_data {
+	void (*platform_init)(void);
+	int gpio;
+	unsigned int mode;		     /* initial mode */
+	int max_current;			 /* led max current(0-7F) */
+	int initialized;			 /* flag which initialize on system boot */
+	int version;				 /* Chip version number */
+};
+
 void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 
@@ -48,6 +58,12 @@ void __init lge_add_gpio_i2c_devices(void);
 int __init lge_init_gpio_i2c_pin(struct i2c_gpio_platform_data *i2c_adap_pdata,
 		struct gpio_i2c_pin gpio_i2c_pin,
 		struct i2c_board_info *i2c_board_info_data);
+int __init lge_init_gpio_i2c_pin_pullup(struct i2c_gpio_platform_data *i2c_adap_pdata,
+		struct gpio_i2c_pin gpio_i2c_pin,
+		struct i2c_board_info *i2c_board_info_data);
+
+void __init msm_add_fb_device(void);
+void __init msm_add_pmem_devices(void);
 
 /* lge common functions to add devices */
 void __init lge_add_input_devices(void);

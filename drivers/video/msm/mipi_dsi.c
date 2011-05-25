@@ -814,8 +814,10 @@ static int mipi_dsi_on(struct platform_device *pdev)
 		mipi_dsi_configure_serdes();
 #endif
 
+/* TODO: lge: workaround solution for do not trigger mipi_isr */
+#ifndef CONFIG_MACH_LGE
 	mipi_dsi_cmd_bta_sw_trigger(); /* clean up ack_err_status */
-
+#endif
 	ret = panel_next_on(pdev);
 
 	mipi_dsi_op_mode_config(mipi->mode);

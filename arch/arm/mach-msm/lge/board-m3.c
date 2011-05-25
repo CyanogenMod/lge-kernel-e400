@@ -1288,6 +1288,10 @@ static void __init msm7x2x_init(void)
 		msm_device_otg.dev.platform_data = &msm_otg_pdata;
 #endif
 		msm7x27a_cfg_smsc911x();
+
+		msm_add_pmem_devices();
+		msm_add_fb_device();
+
 		platform_add_devices(surf_ffa_devices,
 				ARRAY_SIZE(surf_ffa_devices));
 #ifdef CONFIG_USB_EHCI_MSM_72K
