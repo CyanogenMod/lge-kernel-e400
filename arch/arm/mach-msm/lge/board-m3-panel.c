@@ -145,8 +145,11 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("MIPI v18 Enable Failed\n");
 		}
 
+#if defined (CONFIG_FB_MSM_MIPI_R61529_VIDEO_HVGA_PT)
 		gpio_direction_output(129, 1); /* IFMODE1=1 setting is DSI Video mode */
-
+#else
+		gpio_direction_output(129, 1); /* IFMODE1=1 setting is DSI CMD mode */
+#endif
 		printk("seongjae : mipi_dsi_panel_power FINISHED\n");
 #ifndef CONFIG_MACH_LGE
 		if (machine_is_msm7x27a_surf()) {
