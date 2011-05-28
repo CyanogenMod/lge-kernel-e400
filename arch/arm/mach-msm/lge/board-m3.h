@@ -64,9 +64,9 @@ enum {
 
 /* touch-screen macros */
 #define TS_X_MIN		0
-#define TS_X_MAX		240
+#define TS_X_MAX		320
 #define TS_Y_MIN		0
-#define TS_Y_MAX		320
+#define TS_Y_MAX		480
 #define TS_GPIO_I2C_SDA		17
 #define TS_GPIO_I2C_SCL		4
 #define TS_GPIO_IRQ		39

@@ -26,6 +26,7 @@ struct gpio_i2c_pin {
 };
 
 /* touch screen platform data */
+#if defined(CONFIG_TOUCHSCREEN_MCS8000)
 struct touch_platform_data {
 	int ts_x_min;
 	int ts_x_max;
@@ -36,6 +37,25 @@ struct touch_platform_data {
 	int scl;
 	int sda;
 };
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_MXT140)
+struct touch_platform_data {
+	int ts_x_min;
+	int ts_x_max;
+	int ts_y_min;
+	int ts_y_max;
+	int ts_y_start;
+	int ts_y_scrn_max;
+	int (*power)(unsigned char onoff);
+	int irq;
+	int gpio_int;
+	int hw_i2c;
+	int scl;
+	int sda;
+	int ce;
+};
+#endif
 
 /* backlight platform data*/
 struct lge_backlight_platform_data {

@@ -9,6 +9,7 @@
 #include <mach/pmic.h>
 #include <mach/board_lge.h>
 
+#include "devices-msm7x2xa.h"
 #include "board-m3.h"
 
 /* handset device */
@@ -106,6 +107,7 @@ static struct platform_device *m3_gpio_input_devices[] __initdata = {
 };
 
 /* Melfas MCS8000 Touch (mms-128)*/
+#if defined(CONFIG_TOUCH_MCS8000)
 static struct gpio_i2c_pin ts_i2c_pin[] = {
 	[0] = {
 		.sda_pin	= TS_GPIO_I2C_SDA,
@@ -126,7 +128,6 @@ static struct platform_device ts_i2c_device = {
 	.dev.platform_data = &ts_i2c_pdata,
 };
 
-/* TODO check vreg pin name "synt"   */
 static int ts_set_vreg(unsigned char onoff)
 {
 	struct vreg *vreg_touch;
@@ -134,7 +135,7 @@ static int ts_set_vreg(unsigned char onoff)
 
 	printk("[Touch] %s() onoff:%d\n",__FUNCTION__, onoff);
 
-	vreg_touch = vreg_get(0, "synt");
+	vreg_touch = vreg_get(0, "bt");
 
 	if(IS_ERR(vreg_touch)) {
 		printk("[Touch] vreg_get fail : touch\n");
@@ -212,6 +213,88 @@ static void __init m3_init_i2c_touch(int bus_num)
 	i2c_register_board_info(bus_num, &ts_i2c_bdinfo[0], 1);
 	platform_device_register(&ts_i2c_device);
 }
+#endif /* CONFIG_TOUCH_MCS8000 */
+
+/* Atmel Touch for M3 EVB */
+#if defined(CONFIG_TOUCHSCREEN_MXT140)
+
+static struct gpio_i2c_pin ts_i2c_pin = {
+	.sda_pin = TS_GPIO_I2C_SDA,
+	.scl_pin = TS_GPIO_I2C_SCL,
+};
+
+static struct i2c_gpio_platform_data ts_i2c_pdata = {
+	.sda_is_open_drain	= 0,
+	.scl_is_open_drain	= 0,
+	.udelay			= 1,
+};
+
+static struct platform_device ts_i2c_device = {
+	.name	= "i2c-gpio",
+	.dev.platform_data = &ts_i2c_pdata,
+};
+
+static int ts_set_vreg(unsigned char onoff)
+{
+	struct vreg *vreg_touch;
+	int rc;
+
+	printk("[Touch] %s() onoff:%d\n",__FUNCTION__, onoff);
+
+	vreg_touch = vreg_get(0, "bt");
+
+	if(IS_ERR(vreg_touch)) {
+		printk("[Touch] vreg_get fail : touch\n");
+		return -1;
+	}
+
+	if (onoff) {
+		rc = vreg_set_level(vreg_touch, 3000);
+		if (rc != 0) {
+			printk("[Touch] vreg_set_level failed\n");
+			return -1;
+		}
+		vreg_enable(vreg_touch);
+	} else {
+		vreg_disable(vreg_touch);
+	}
+
+	return 0;
+}
+
+static struct touch_platform_data ts_pdata = {
+	.ts_x_min   = TS_X_MIN,
+	.ts_x_max   = TS_X_MAX,
+	.ts_y_min   = TS_Y_MIN,
+	.ts_y_max   = TS_Y_MAX,
+	.ts_y_start = 0,
+	.ts_y_scrn_max = 480,
+	.power      = ts_set_vreg,
+	.gpio_int   = TS_GPIO_IRQ,
+	.irq 	  = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
+	.scl      = TS_GPIO_I2C_SCL,
+	.sda      = TS_GPIO_I2C_SDA,
+	.hw_i2c     = 0,
+};
+
+static struct i2c_board_info ts_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("qt602240_ts", 0x4A),
+		.type = "qt602240_ts",
+		.platform_data = &ts_pdata,
+	},
+};
+
+static void __init m3_init_i2c_touch(int bus_num)
+{
+	ts_i2c_device.id = bus_num;
+	/* workaround for HDK rev_a no pullup */
+	lge_init_gpio_i2c_pin(&ts_i2c_pdata, ts_i2c_pin, &ts_i2c_bdinfo[0]);
+	i2c_register_board_info(bus_num, &ts_i2c_bdinfo[0], 1);
+	platform_device_register(&ts_i2c_device);
+}
+#endif /* CONFIG_TOUCH_mxt_140 */
+
 /* common function */
 void __init lge_add_input_devices(void)
 {
