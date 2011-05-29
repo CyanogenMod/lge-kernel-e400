@@ -7,6 +7,8 @@
 #include <mach/vreg.h>
 #include <mach/board.h>
 
+#include "board-m3.h"
+
 #if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC3_SUPPORT)\
@@ -28,6 +30,21 @@ struct sdcc_gpio {
 	uint32_t size;
 	struct msm_gpio *sleep_cfg_data;
 };
+static void sdcc_gpio_init(void)
+{
+#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
+	int rc = 0;
+
+	if (gpio_request(GPIO_SD_DETECT_N, "sdc1_status_irq"))
+		pr_err("failed to request gpio sdc1_status_irq\n");
+
+	rc = gpio_tlmm_config(GPIO_CFG(GPIO_SD_DETECT_N, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
+									GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	if (rc)
+		printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
+					__func__, rc);
+#endif
+}
 
 static struct msm_gpio sdc1_cfg_data[] = {
 	{GPIO_CFG(51, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
@@ -192,6 +209,7 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 {
 	int rc = 0;
 	struct platform_device *pdev;
+	static int first_setup = 1;
 
 	pdev = container_of(dv, struct platform_device, dev);
 
@@ -200,16 +218,27 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 		goto out;
 
 	rc = msm_sdcc_setup_vreg(pdev->id, !!vdd);
+
+			/* if first called related to sdcc1, irq should be registered as wakeup source
+	 *      * cleaneye.kim@lge.com, 2010-02-19
+	 *           */
+	if(vdd && first_setup)
+	{
+		struct mmc_platform_data *pdata = pdev->dev.platform_data;
+		if (pdev->id == 1) {
+			first_setup = 0;
+			set_irq_wake(pdata->status_irq, 1);
+		}
+	}
 out:
 	return rc;
 }
-
-#define GPIO_SDC1_HW_DET 85
 
 #if defined(CONFIG_MMC_MSM_SDC1_SUPPORT) \
 	&& defined(CONFIG_MMC_MSM_CARD_HW_DETECTION)
 static unsigned int msm7x2xa_sdcc_slot_status(struct device *dev)
 {
+/* FIXME : temporary disable function 
 	int status;
 
 	status = gpio_tlmm_config(GPIO_CFG(GPIO_SDC1_HW_DET, 2, GPIO_CFG_INPUT,
@@ -229,6 +258,8 @@ static unsigned int msm7x2xa_sdcc_slot_status(struct device *dev)
 		gpio_free(GPIO_SDC1_HW_DET);
 	}
 	return status;
+*/
+	return !gpio_get_value(GPIO_SD_DETECT_N);
 }
 #endif
 
@@ -242,13 +273,14 @@ static struct mmc_platform_data sdc1_plat_data = {
 	.msmsdcc_fmax	= 49152000,
 #ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
 	.status      = msm7x2xa_sdcc_slot_status,
-	.status_irq  = MSM_GPIO_TO_INT(GPIO_SDC1_HW_DET),
+	.status_irq  = MSM_GPIO_TO_INT(GPIO_SD_DETECT_N),
 	.irq_flags   = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 #endif
 };
 #endif
 
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
+/* FIXME : M3 evb GPIO 66 WLAN SDIO PIN */
 static struct mmc_platform_data sdc2_plat_data = {
 	.ocr_mask	= MMC_VDD_28_29,
 	.translate_vdd  = msm_sdcc_setup_power,
@@ -310,10 +342,12 @@ static void __init msm7x27a_init_mmc(void)
 		return;
 	}
 
+	sdcc_gpio_init();
+
 	/* Micro-SD slot */
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
 	sdcc_vreg_data[0].vreg_data = vreg_mmc;
-	sdcc_vreg_data[0].level = 2850;
+	sdcc_vreg_data[0].level = VREG_SD_LEVEL;
 	msm_add_sdcc(1, &sdc1_plat_data);
 #endif
 	/* SDIO WLAN slot */

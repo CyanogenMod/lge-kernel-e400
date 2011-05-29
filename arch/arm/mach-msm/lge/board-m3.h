@@ -72,5 +72,20 @@ enum {
 #define TS_GPIO_IRQ		39
 #define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */
 
+
+/* sdcard related macros */
+#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
+#define GPIO_SD_DETECT_N    40
+//#define VREG_SD_LEVEL       3000
+#define VREG_SD_LEVEL       2850
+
+#define GPIO_SD_DATA_3      51
+#define GPIO_SD_DATA_2      52
+#define GPIO_SD_DATA_1      53
+#define GPIO_SD_DATA_0      54
+#define GPIO_SD_CMD         55
+#define GPIO_SD_CLK         56
+#endif
+
 #endif
 
