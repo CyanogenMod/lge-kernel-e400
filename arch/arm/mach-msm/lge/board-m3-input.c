@@ -362,6 +362,70 @@ static void __init m3_init_i2c_acceleration(int bus_num)
 	platform_device_register(&accel_i2c_device);
 }
 
+/* ecompass */
+static int ecom_power_set(unsigned char onoff)
+{
+	int ret = 0;
+	/* need to be fixed - vreg for PMIC */
+	struct vreg *rfrx1_vreg = vreg_get(0, "rfrx1");
+
+	if (onoff) {
+		printk(KERN_INFO "ecom_power_on\n");
+		vreg_set_level(rfrx1_vreg, 3000);
+		vreg_enable(rfrx1_vreg);
+	} else {
+		printk(KERN_INFO "ecom_power_off\n");
+		vreg_disable(rfrx1_vreg);
+	}
+
+	return ret;
+}
+
+static struct ecom_platform_data ecom_pdata = {
+	.pin_int        	= ECOM_GPIO_INT,
+	.pin_rst		= 0,
+	.power          	= ecom_power_set,
+};
+
+static struct i2c_board_info ecom_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
+		.type = "akm8975",
+		.platform_data = &ecom_pdata,
+	},
+};
+
+static struct gpio_i2c_pin ecom_i2c_pin[] = {
+	[0] = {
+		.sda_pin	= ECOM_GPIO_I2C_SDA,
+		.scl_pin	= ECOM_GPIO_I2C_SCL,
+		.reset_pin	= 0,
+		.irq_pin	= ECOM_GPIO_INT,
+	},
+};
+
+static struct i2c_gpio_platform_data ecom_i2c_pdata = {
+	.sda_is_open_drain = 0,
+	.scl_is_open_drain = 0,
+	.udelay = 2,
+};
+
+static struct platform_device ecom_i2c_device = {
+        .name = "i2c-gpio",
+        .dev.platform_data = &ecom_i2c_pdata,
+};
+
+
+static void __init m3_init_i2c_ecom(int bus_num)
+{
+	ecom_i2c_device.id = bus_num;
+
+	lge_init_gpio_i2c_pin(&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[0]);
+
+	i2c_register_board_info(bus_num, &ecom_i2c_bdinfo[0], 1);
+	platform_device_register(&ecom_i2c_device);
+}
+
 /* common function */
 void __init lge_add_input_devices(void)
 {
@@ -369,4 +433,5 @@ void __init lge_add_input_devices(void)
 	platform_add_devices(m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
 	lge_add_gpio_i2c_device(m3_init_i2c_touch);
 	lge_add_gpio_i2c_device(m3_init_i2c_acceleration);
+	lge_add_gpio_i2c_device(m3_init_i2c_ecom);
 }
