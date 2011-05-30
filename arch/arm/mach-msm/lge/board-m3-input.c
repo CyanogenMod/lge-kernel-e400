@@ -295,10 +295,78 @@ static void __init m3_init_i2c_touch(int bus_num)
 }
 #endif /* CONFIG_TOUCH_mxt_140 */
 
+/** accelerometer **/
+static int accel_power(unsigned char onoff)
+{
+	int ret = 0;
+	/* need to be fixed - vreg for PMIC */
+	struct vreg *gp3_vreg = vreg_get(0, "gp3");
+	
+	if (onoff) {
+		printk(KERN_INFO "accel_power_on\n");
+		
+		ret = vreg_set_level(gp3_vreg, 3000);
+		if (ret != 0) {
+			printk("[Accel] vreg_set_level failed\n");
+			return ret;
+		}
+		vreg_enable(gp3_vreg);
+	} else {
+		printk(KERN_INFO "accel_power_off\n");
+		vreg_disable(gp3_vreg);
+	}
+
+	return ret;
+}
+
+struct acceleration_platform_data bma222 = {
+	.power = accel_power,
+};
+
+static struct gpio_i2c_pin accel_i2c_pin[] = {
+	[0] = {
+		.sda_pin	= ACCEL_GPIO_I2C_SDA,
+		.scl_pin	= ACCEL_GPIO_I2C_SCL,
+		.reset_pin	= 0,
+		.irq_pin	= ACCEL_GPIO_INT,
+	},
+};
+
+static struct i2c_gpio_platform_data accel_i2c_pdata = {
+	.sda_is_open_drain = 0,
+	.scl_is_open_drain = 0,
+	.udelay = 2,
+};
+
+static struct platform_device accel_i2c_device = {
+	.name = "i2c-gpio",
+	.dev.platform_data = &accel_i2c_pdata,
+};
+
+static struct i2c_board_info accel_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("bma222", ACCEL_I2C_ADDRESS),
+		.type = "bma222",
+		.platform_data = &bma222,
+	},
+};
+
+static void __init m3_init_i2c_acceleration(int bus_num)
+{
+	accel_i2c_device.id = bus_num;
+
+	lge_init_gpio_i2c_pin(&accel_i2c_pdata, accel_i2c_pin[0], &accel_i2c_bdinfo[0]);
+
+	i2c_register_board_info(bus_num, &accel_i2c_bdinfo[0], 1);
+
+	platform_device_register(&accel_i2c_device);
+}
+
 /* common function */
 void __init lge_add_input_devices(void)
 {
 	platform_add_devices(m3_input_devices, ARRAY_SIZE(m3_input_devices));
 	platform_add_devices(m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
 	lge_add_gpio_i2c_device(m3_init_i2c_touch);
+	lge_add_gpio_i2c_device(m3_init_i2c_acceleration);
 }

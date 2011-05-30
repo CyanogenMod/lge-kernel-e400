@@ -57,6 +57,12 @@ struct touch_platform_data {
 };
 #endif
 
+/* acceleration platform data */
+struct acceleration_platform_data {
+	int irq_num;
+	int (*power)(unsigned char onoff);
+};
+
 /* backlight platform data*/
 struct lge_backlight_platform_data {
 	void (*platform_init)(void);

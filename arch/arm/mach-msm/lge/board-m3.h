@@ -72,6 +72,11 @@ enum {
 #define TS_GPIO_IRQ		39
 #define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */
 
+/* accelerometer */
+#define ACCEL_GPIO_INT	 		114
+#define ACCEL_GPIO_I2C_SCL  	116
+#define ACCEL_GPIO_I2C_SDA  	115
+#define ACCEL_I2C_ADDRESS		0x08 /* slave address 7bit - BMA222 */
 
 /* sdcard related macros */
 #ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
