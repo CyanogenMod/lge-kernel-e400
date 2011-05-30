@@ -80,6 +80,15 @@ struct ecom_platform_data {
 	s16 *a_layout;
 };
 
+/* proximity platform data */
+struct proximity_platform_data {
+	int irq_num;
+	int (*power)(unsigned char onoff);
+	int methods;
+	int operation_mode;
+	int debounce;
+	u8 cycle;
+};
 
 /* backlight platform data*/
 struct lge_backlight_platform_data {
