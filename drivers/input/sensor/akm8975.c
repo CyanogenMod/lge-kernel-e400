@@ -35,6 +35,7 @@
 
 #include <mach/board_lge.h> /* platform data */
 
+#define LGE_DEBUG 0
 #define AKM8975_DEBUG		1
 #define AKM8975_DEBUG_MSG	1
 #define AKM8975_DEBUG_FUNC	1
@@ -93,10 +94,13 @@ static atomic_t suspend_flag = ATOMIC_INIT(0);
 /* static struct akm8975_platform_data *pdata; */
 
 /* LGE_CHANGE_S for debugging */
+#ifdef LGE_DEBUG
 static short yaw, pitch, roll;
+#endif
 /* LGE_CHANGE_E */
 
 /* LGE_CHANGE_S */
+#ifdef LGE_DEBUG
 static ssize_t y_show(struct device *dev, struct device_attribute *attr, char *buf)
 {	
 	return sprintf(buf, "%d\n", yaw);
@@ -117,6 +121,7 @@ static ssize_t r_show(struct device *dev, struct device_attribute *attr, char *b
 }
 
 static DEVICE_ATTR(get_roll, S_IRUGO, r_show, NULL);
+#endif
 /* LGE_CHANGE_E */
 
 static int AKI2C_RxData(char *rxData, int length)
@@ -379,11 +384,13 @@ static void AKECS_SetYPR(short *rbuf)
 
 	if (rbuf[0] != 0) {
 		input_sync(data->input_dev);
-		/* LGE_CHANGE_S for debugging */
+/* LGE_CHANGE_S for debugging */
+#ifdef LGE_DEBUG
 		yaw = rbuf[9];
 		pitch = rbuf[10]; 
 		roll = rbuf[11];
-		/* LGE_CHANGE_E */
+#endif
+/* LGE_CHANGE_E */
 	}
 }
 
@@ -539,11 +546,13 @@ akm_aot_ioctl(struct file *file,
 static int akmd_open(struct inode *inode, struct file *file)
 {
 /* LGE_CHANGE_S, for debugging */
+#ifdef LGE_DEBUG 
 	int err;
 	err = AKECS_CheckDevice();
 	if (err < 0) {
 		printk(KERN_ERR "AKM8975 akm8975_debugging: check device error\n");
 	}
+#endif
 /* LGE_CHANGE_E */
 	AKMFUNC("akmd_open");
 	return nonseekable_open(inode, file);
@@ -964,6 +973,7 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	AKMDBG("successfully probed.");
 
 /* LGE_CHANGE_S for debugging */
+#ifdef LGE_DEBUG
 	err = device_create_file(&client->dev, &dev_attr_get_yaw);
 	if (err) {
 		printk( KERN_DEBUG "LG_FW : dev_attr_get_yaw create fail\n");
@@ -982,6 +992,7 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		device_remove_file(&client->dev, &dev_attr_get_roll);
 		return err;
 	}
+#endif
 /* LGE_CHANGE_E */
 
 	return 0;
