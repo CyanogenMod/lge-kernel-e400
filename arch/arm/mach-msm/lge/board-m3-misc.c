@@ -29,6 +29,12 @@ static struct platform_device msm_batt_device = {
 	.dev.platform_data  = &msm_psy_batt_data,
 };
 
+/* LED platform data */
+static struct platform_device msm_device_pmic_leds = {
+	.name = "pmic-leds",
+	.id = -1,
+};
+
 /* misc platform devices */
 static struct platform_device *m3_misc_devices[] __initdata = {
 	&msm_batt_device,
@@ -38,5 +44,6 @@ static struct platform_device *m3_misc_devices[] __initdata = {
 void __init lge_add_misc_devices(void)
 {
 	platform_add_devices(m3_misc_devices, ARRAY_SIZE(m3_misc_devices));
+	platform_device_register(&msm_device_pmic_leds);
 }
 
