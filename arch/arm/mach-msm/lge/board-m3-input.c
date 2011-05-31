@@ -30,7 +30,7 @@ static unsigned int keypad_row_gpios[] = {
 	36, 37
 };
 
-static unsigned int keypad_col_gpios[] = {35};
+static unsigned int keypad_col_gpios[] = {33};
 
 #define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
 
@@ -107,7 +107,7 @@ static struct platform_device *m3_gpio_input_devices[] __initdata = {
 };
 
 /* Melfas MCS8000 Touch (mms-128)*/
-#if defined(CONFIG_TOUCH_MCS8000)
+#if defined(CONFIG_TOUCHSCREEN_MCS8000)
 static struct gpio_i2c_pin ts_i2c_pin[] = {
 	[0] = {
 		.sda_pin	= TS_GPIO_I2C_SDA,
@@ -143,7 +143,7 @@ static int ts_set_vreg(unsigned char onoff)
 	}
 
 	if (onoff) {
-		rc = vreg_set_level(vreg_touch, 3000);
+		rc = vreg_set_level(vreg_touch, 2850);
 		if (rc != 0) {
 			printk("[Touch] vreg_set_level failed\n");
 			return -1;
