@@ -299,21 +299,20 @@ static void __init m3_init_i2c_touch(int bus_num)
 static int accel_power(unsigned char onoff)
 {
 	int ret = 0;
-	/* need to be fixed - vreg for PMIC */
-	struct vreg *gp3_vreg = vreg_get(0, "gp3");
+	struct vreg *rfrx1_vreg = vreg_get(0, "rfrx1");
 	
 	if (onoff) {
 		printk(KERN_INFO "accel_power_on\n");
 		
-		ret = vreg_set_level(gp3_vreg, 3000);
+		ret = vreg_set_level(rfrx1_vreg, 3000);
 		if (ret != 0) {
 			printk("[Accel] vreg_set_level failed\n");
 			return ret;
 		}
-		vreg_enable(gp3_vreg);
+		vreg_enable(rfrx1_vreg);
 	} else {
 		printk(KERN_INFO "accel_power_off\n");
-		vreg_disable(gp3_vreg);
+		vreg_disable(rfrx1_vreg);
 	}
 
 	return ret;
@@ -366,7 +365,6 @@ static void __init m3_init_i2c_acceleration(int bus_num)
 static int ecom_power_set(unsigned char onoff)
 {
 	int ret = 0;
-	/* need to be fixed - vreg for PMIC */
 	struct vreg *rfrx1_vreg = vreg_get(0, "rfrx1");
 
 	if (onoff) {
