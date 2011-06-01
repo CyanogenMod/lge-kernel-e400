@@ -316,7 +316,9 @@ enum  VFE_STATE {
 #define V32_OPERATION_CFG_LEN     32
 
 #define V32_AXI_OUT_OFF           0x00000038
-#define V32_AXI_OUT_LEN           188
+#define V32_AXI_OUT_LEN           212
+#define V32_AXI_CH_INF_LEN        24
+#define V32_AXI_CFG_LEN           47
 
 #define V32_FRAME_SKIP_OFF        0x00000504
 #define V32_FRAME_SKIP_LEN        32
@@ -1027,7 +1029,6 @@ struct vfe32_ctrl_type {
 	spinlock_t  awb_ack_lock;
 	spinlock_t  af_ack_lock;
 
-	struct msm_vfe_callback *resp;
 	uint32_t extlen;
 	void *extdata;
 
@@ -1067,6 +1068,9 @@ struct vfe32_ctrl_type {
 	struct vfe_stats_control ihistStatsControl;
 	struct vfe_stats_control rsStatsControl;
 	struct vfe_stats_control csStatsControl;
+
+	/* v4l2 subdev */
+	struct v4l2_subdev *subdev;
 };
 
 #define statsAeNum      0

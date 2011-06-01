@@ -29,13 +29,17 @@
 #include <linux/smp_lock.h>
 #include <linux/completion.h>
 #include <linux/workqueue.h>
+#include <linux/clk.h>
 #include <asm/mach-types.h>
 #include <asm/uaccess.h>
 #include <mach/mdm.h>
 #include <mach/restart.h>
+#include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
 #include <linux/msm_charm.h>
 #include "msm_watchdog.h"
+#include "devices.h"
+#include "clock.h"
 
 #define CHARM_MODEM_TIMEOUT	2000
 #define CHARM_MODEM_DELTA	100
@@ -173,8 +177,9 @@ static long charm_modem_ioctl(struct file *filp, unsigned int cmd,
 	case WAIT_FOR_RESTART:
 		CHARM_DBG("%s: wait for charm to need images reloaded\n",
 				__func__);
-		wait_for_completion(&charm_needs_reload);
-		put_user(boot_type, (unsigned long __user *) arg);
+		ret = wait_for_completion_interruptible(&charm_needs_reload);
+		if (!ret)
+			put_user(boot_type, (unsigned long __user *) arg);
 		INIT_COMPLETION(charm_needs_reload);
 		break;
 	default:
@@ -274,6 +279,27 @@ static int charm_debugfs_init(void)
 	return 0;
 }
 
+static int gsbi9_uart_notifier_cb(struct notifier_block *this,
+					unsigned long code, void *_cmd)
+{
+	struct clk *uart_clk;
+
+	switch (code) {
+	case SUBSYS_AFTER_SHUTDOWN:
+		uart_clk = clk_get(&msm_device_uart_gsbi9.dev, "gsbi_uart_clk");
+		clk_set_rate(uart_clk, 0);
+		clk_set_rate(uart_clk, 1843200);
+		clk_put(uart_clk);
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block gsbi9_nb = {
+	.notifier_call = gsbi9_uart_notifier_cb,
+};
+
 static int __init charm_modem_probe(struct platform_device *pdev)
 {
 	int ret, irq;
@@ -350,6 +376,8 @@ errfatal_err:
 	charm_status_irq = irq;
 
 status_err:
+	subsys_notif_register_notifier("external_modem", &gsbi9_nb);
+
 	pr_info("%s: Registering charm modem\n", __func__);
 
 	return misc_register(&charm_modem_misc);

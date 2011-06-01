@@ -41,8 +41,13 @@
 #include "mipi_dsi.h"
 
 uint32 mdp4_extn_disp;
+
 static struct clk *mdp_clk;
 static struct clk *mdp_pclk;
+static struct clk *mdp_axi_clk;
+static struct clk *mdp_lut_clk;
+int mdp_rev;
+
 struct regulator *footswitch;
 
 struct completion mdp_ppp_comp;
@@ -664,6 +669,10 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 					clk_disable(mdp_pclk);
 					MSM_FB_DEBUG("MDP PCLK OFF\n");
 				}
+				if (mdp_axi_clk != NULL)
+					clk_disable(mdp_axi_clk);
+				if (mdp_lut_clk != NULL)
+					clk_disable(mdp_lut_clk);
 			} else {
 				/* send workqueue to turn off mdp power */
 				queue_delayed_work(mdp_pipe_ctrl_wq,
@@ -694,6 +703,10 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 				clk_enable(mdp_pclk);
 				MSM_FB_DEBUG("MDP PCLK ON\n");
 			}
+			if (mdp_axi_clk != NULL)
+				clk_enable(mdp_axi_clk);
+			if (mdp_lut_clk != NULL)
+				clk_enable(mdp_lut_clk);
 			mdp_vsync_clk_enable();
 		}
 		up(&mdp_pipe_ctrl_mutex);
@@ -1193,6 +1206,29 @@ static int mdp_irq_clk_setup(void)
 	if (IS_ERR(mdp_pclk))
 		mdp_pclk = NULL;
 
+	if (mdp_rev == MDP_REV_42) {
+		mdp_axi_clk = clk_get(NULL, "mdp_axi_clk");
+		if (IS_ERR(mdp_axi_clk)) {
+			ret = PTR_ERR(mdp_axi_clk);
+			clk_put(mdp_clk);
+			pr_err("can't get mdp_axi_clk error:%d!\n", ret);
+			return ret;
+		}
+
+		mdp_lut_clk = clk_get(NULL, "lut_mdp");
+		if (IS_ERR(mdp_lut_clk)) {
+			ret = PTR_ERR(mdp_lut_clk);
+			pr_err("can't get mdp_clk error:%d!\n", ret);
+			clk_put(mdp_clk);
+			clk_put(mdp_axi_clk);
+			free_irq(mdp_irq, 0);
+			return ret;
+		}
+	} else {
+		mdp_axi_clk = NULL;
+		mdp_lut_clk = NULL;
+	}
+
 #ifdef CONFIG_FB_MSM_MDP40
 	/*
 	 * mdp_clk should greater than mdp_pclk always
@@ -1200,11 +1236,12 @@ static int mdp_irq_clk_setup(void)
 	if (mdp_pdata && mdp_pdata->mdp_core_clk_rate) {
 		mutex_lock(&mdp_clk_lock);
 		clk_set_rate(mdp_clk, mdp_pdata->mdp_core_clk_rate);
+		if (mdp_lut_clk != NULL)
+			clk_set_rate(mdp_lut_clk, mdp_pdata->mdp_core_clk_rate);
 		mutex_unlock(&mdp_clk_lock);
 	}
 	MSM_FB_DEBUG("mdp_clk: mdp_clk=%d\n", (int)clk_get_rate(mdp_clk));
 #endif
-
 	return 0;
 }
 
@@ -1242,6 +1279,7 @@ static int mdp_probe(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 
+		mdp_rev = mdp_pdata->mdp_rev;
 		rc = mdp_irq_clk_setup();
 
 		if (rc)
@@ -1382,6 +1420,7 @@ static int mdp_probe(struct platform_device *pdev)
 		pdata->off = mdp_dsi_video_off;
 		mfd->hw_refresh = TRUE;
 		mfd->dma_fnc = mdp_dsi_video_update;
+		mfd->do_histogram = mdp_do_histogram;
 		if (mfd->panel_info.pdest == DISPLAY_1)
 			mfd->dma = &dma2_data;
 		else {
@@ -1411,6 +1450,7 @@ static int mdp_probe(struct platform_device *pdev)
 		mdp4_display_intf_sel(if_no, DSI_CMD_INTF);
 #else
 		mfd->dma_fnc = mdp_dma2_update;
+		mfd->do_histogram = mdp_do_histogram;
 		if (mfd->panel_info.pdest == DISPLAY_1)
 			mfd->dma = &dma2_data;
 		else {

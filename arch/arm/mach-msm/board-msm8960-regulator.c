@@ -12,6 +12,7 @@
  */
 
 #include <linux/regulator/pm8921-regulator.h>
+#include <linux/regulator/gpio-regulator.h>
 
 #include "board-msm8960.h"
 
@@ -28,6 +29,9 @@ VREG_CONSUMERS(L1) = {
 };
 VREG_CONSUMERS(L2) = {
 	REGULATOR_SUPPLY("8921_l2",		NULL),
+	REGULATOR_SUPPLY("dsi_vdda", "mipi_dsi.1"),
+	REGULATOR_SUPPLY("mipi_csi_vdd",		"msm_camera_imx074.0"),
+	REGULATOR_SUPPLY("mipi_csi_vdd",		"msm_camera_ov2720.0"),
 };
 VREG_CONSUMERS(L3) = {
 	REGULATOR_SUPPLY("8921_l3",		NULL),
@@ -36,6 +40,7 @@ VREG_CONSUMERS(L3) = {
 VREG_CONSUMERS(L4) = {
 	REGULATOR_SUPPLY("8921_l4",		NULL),
 	REGULATOR_SUPPLY("HSUSB_1p8",		"msm_otg"),
+	REGULATOR_SUPPLY("8921_l4",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(L5) = {
 	REGULATOR_SUPPLY("8921_l5",		NULL),
@@ -51,18 +56,26 @@ VREG_CONSUMERS(L7) = {
 };
 VREG_CONSUMERS(L8) = {
 	REGULATOR_SUPPLY("8921_l8",		NULL),
+	REGULATOR_SUPPLY("dsi_vdc",	"mipi_dsi.1"),
 };
 VREG_CONSUMERS(L9) = {
 	REGULATOR_SUPPLY("8921_l9",		NULL),
+	REGULATOR_SUPPLY("vdd",			"3-0024"),
 };
 VREG_CONSUMERS(L10) = {
 	REGULATOR_SUPPLY("8921_l10",		NULL),
+	REGULATOR_SUPPLY("8921_l10",		"wcnss_wlan.0"),
+
 };
 VREG_CONSUMERS(L11) = {
 	REGULATOR_SUPPLY("8921_l11",		NULL),
+	REGULATOR_SUPPLY("cam_vana",		"msm_camera_imx074.0"),
+	REGULATOR_SUPPLY("cam_vana",		"msm_camera_ov2720.0"),
 };
 VREG_CONSUMERS(L12) = {
 	REGULATOR_SUPPLY("8921_l12",		NULL),
+	REGULATOR_SUPPLY("cam_vdig",		"msm_camera_imx074.0"),
+	REGULATOR_SUPPLY("cam_vdig",		"msm_camera_ov2720.0"),
 };
 VREG_CONSUMERS(L14) = {
 	REGULATOR_SUPPLY("8921_l14",		NULL),
@@ -87,9 +100,11 @@ VREG_CONSUMERS(L22) = {
 };
 VREG_CONSUMERS(L23) = {
 	REGULATOR_SUPPLY("8921_l23",		NULL),
+	REGULATOR_SUPPLY("dsi_vddio",	"mipi_dsi.1"),
 };
 VREG_CONSUMERS(L24) = {
 	REGULATOR_SUPPLY("8921_l24",		NULL),
+	REGULATOR_SUPPLY("8921_l24",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(L25) = {
 	REGULATOR_SUPPLY("8921_l25",		NULL),
@@ -114,14 +129,18 @@ VREG_CONSUMERS(S1) = {
 };
 VREG_CONSUMERS(S2) = {
 	REGULATOR_SUPPLY("8921_s2",		NULL),
+	REGULATOR_SUPPLY("8921_s2",		"wcnss_wlan.0"),
+
 };
 VREG_CONSUMERS(S3) = {
 	REGULATOR_SUPPLY("8921_s3",		NULL),
 	REGULATOR_SUPPLY("HSUSB_VDDCX",		"msm_otg"),
+	REGULATOR_SUPPLY("8921_s3",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(S4) = {
 	REGULATOR_SUPPLY("8921_s4",		NULL),
 	REGULATOR_SUPPLY("sdc_vccq",		"msm_sdcc.1"),
+	REGULATOR_SUPPLY("8921_s4",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(S5) = {
 	REGULATOR_SUPPLY("8921_s5",		NULL),
@@ -138,21 +157,27 @@ VREG_CONSUMERS(S8) = {
 VREG_CONSUMERS(LVS1) = {
 	REGULATOR_SUPPLY("8921_lvs1",		NULL),
 	REGULATOR_SUPPLY("sdc_vdd",		"msm_sdcc.4"),
+	REGULATOR_SUPPLY("8921_lvs1",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(LVS2) = {
 	REGULATOR_SUPPLY("8921_lvs2",		NULL),
+	REGULATOR_SUPPLY("8921_lvs2",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(LVS3) = {
 	REGULATOR_SUPPLY("8921_lvs3",		NULL),
 };
 VREG_CONSUMERS(LVS4) = {
 	REGULATOR_SUPPLY("8921_lvs4",		NULL),
+	REGULATOR_SUPPLY("vcc_i2c",		"3-0024"),
 };
 VREG_CONSUMERS(LVS5) = {
 	REGULATOR_SUPPLY("8921_lvs5",		NULL),
+	REGULATOR_SUPPLY("cam_vio",		"msm_camera_imx074.0"),
+	REGULATOR_SUPPLY("cam_vio",		"msm_camera_ov2720.0"),
 };
 VREG_CONSUMERS(LVS6) = {
 	REGULATOR_SUPPLY("8921_lvs6",		NULL),
+	REGULATOR_SUPPLY("vdd_io",		"spi0.0"),
 };
 VREG_CONSUMERS(LVS7) = {
 	REGULATOR_SUPPLY("8921_lvs7",		NULL),
@@ -166,6 +191,13 @@ VREG_CONSUMERS(HDMI_MVS) = {
 };
 VREG_CONSUMERS(NCP) = {
 	REGULATOR_SUPPLY("8921_ncp",		NULL),
+};
+VREG_CONSUMERS(EXT_5V) = {
+	REGULATOR_SUPPLY("ext_5v",		NULL),
+};
+VREG_CONSUMERS(EXT_L2) = {
+	REGULATOR_SUPPLY("ext_l2",		NULL),
+	REGULATOR_SUPPLY("vdd_phy",		"spi0.0"),
 };
 
 #define PM8921_VREG_INIT(_id, _min_uV, _max_uV, _modes, _ops, _apply_uV, \
@@ -254,6 +286,26 @@ VREG_CONSUMERS(NCP) = {
 		.pin_ctrl = _pin_ctrl, \
 	}
 
+#define GPIO_VREG_INIT(_id, _reg_name, _gpio_label, _gpio) \
+	[GPIO_VREG_ID_##_id] = { \
+		.init_data = { \
+			.constraints = { \
+				.valid_ops_mask	= REGULATOR_CHANGE_STATUS, \
+			}, \
+			.num_consumer_supplies	= \
+					ARRAY_SIZE(vreg_consumers_##_id), \
+			.consumer_supplies	= vreg_consumers_##_id, \
+		}, \
+		.regulator_name = _reg_name, \
+		.gpio_label	= _gpio_label, \
+		.gpio		= _gpio, \
+	}
+
+struct gpio_regulator_platform_data msm_gpio_regulator_pdata[] __devinitdata = {
+	GPIO_VREG_INIT(EXT_5V, "ext_5v", "ext_5v_en", PM8921_MPP_PM_TO_SYS(7)),
+	GPIO_VREG_INIT(EXT_L2, "ext_l2", "ext_l2_en", 91),
+};
+
 /* Regulator constraints */
 struct pm8921_regulator_platform_data
 msm_pm8921_regulator_pdata[] __devinitdata = {
@@ -273,7 +325,7 @@ msm_pm8921_regulator_pdata[] __devinitdata = {
 	PM8921_VREG_INIT_LDO(L4,	 0, 1, 1800000, 1800000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L5,	 0, 1, 2950000, 2950000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L6,	 0, 1, 2950000, 2950000, NULL, 0),
-	PM8921_VREG_INIT_LDO(L7,	 1, 1, 2950000, 2950000, NULL, 0),
+	PM8921_VREG_INIT_LDO(L7,	 1, 1, 1850000, 2950000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L8,	 0, 1, 2800000, 3000000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L9,	 0, 1, 2850000, 2850000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L10,	 0, 1, 2900000, 2900000, NULL, 0),
@@ -303,8 +355,8 @@ msm_pm8921_regulator_pdata[] __devinitdata = {
 	PM8921_VREG_INIT_VS(LVS6,	 0, 1,			 "8921_s4"),
 	PM8921_VREG_INIT_VS(LVS7,	 0, 1,			 "8921_s4"),
 
-	PM8921_VREG_INIT_VS300(USB_OTG,  0, 1,			 NULL),
-	PM8921_VREG_INIT_VS300(HDMI_MVS, 0, 1,			 NULL),
+	PM8921_VREG_INIT_VS300(USB_OTG,  0, 1,			 "ext_5v"),
+	PM8921_VREG_INIT_VS300(HDMI_MVS, 0, 1,			 "ext_5v"),
 
 	PM8921_VREG_INIT_NCP(NCP,	 0,    1800000, 1800000, "8921_l6"),
 };

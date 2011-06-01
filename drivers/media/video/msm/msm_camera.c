@@ -509,7 +509,7 @@ static unsigned long msm_pmem_stats_ptov_lookup(struct msm_sync *sync,
 		}
 	}
 	/* After lookup failure, dump all the list entries... */
-	pr_err("%s, for paddr 0x%lx\n",
+	pr_err("%s, lookup failure, for paddr 0x%lx\n",
 			__func__, addr);
 	hlist_for_each_entry_safe(region, node, n, &sync->pmem_stats, list) {
 		pr_err("listed paddr 0x%lx, active = %d",
@@ -580,7 +580,7 @@ static unsigned long msm_pmem_stats_vtop_lookup(
 		}
 	}
 	/* After lookup failure, dump all the list entries... */
-	pr_err("%s, for vaddr %ld\n",
+	pr_err("%s,look up error for vaddr %ld\n",
 			__func__, buffer);
 	hlist_for_each_entry_safe(region, node, n, &sync->pmem_stats, list) {
 		pr_err("listed vaddr 0x%p, active = %d",
@@ -1252,18 +1252,120 @@ static int msm_get_stats(struct msm_sync *sync, void __user *arg)
 			se.stats_event.len,
 			se.stats_event.msg_id);
 
-		if ((data->type >= VFE_MSG_STATS_AEC) &&
-		    (data->type <=  VFE_MSG_STATS_WE)) {
+		if (data->type == VFE_MSG_COMMON) {
+			stats.status_bits = data->stats_msg.status_bits;
+			if (data->stats_msg.aec_buff) {
+				stats.aec.buff =
+				msm_pmem_stats_ptov_lookup(sync,
+						data->stats_msg.aec_buff,
+						&(stats.aec.fd));
+				if (!stats.aec.buff) {
+					pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
+						__func__);
+					rc = -EINVAL;
+					goto failure;
+				}
+
+			} else {
+				stats.aec.buff = 0;
+			}
+			if (data->stats_msg.awb_buff) {
+				stats.awb.buff =
+				msm_pmem_stats_ptov_lookup(sync,
+						data->stats_msg.awb_buff,
+						&(stats.awb.fd));
+				if (!stats.awb.buff) {
+					pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
+						__func__);
+					rc = -EINVAL;
+					goto failure;
+				}
+
+			} else {
+				stats.awb.buff = 0;
+			}
+			if (data->stats_msg.af_buff) {
+				stats.af.buff =
+				msm_pmem_stats_ptov_lookup(sync,
+						data->stats_msg.af_buff,
+						&(stats.af.fd));
+				if (!stats.af.buff) {
+					pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
+						__func__);
+					rc = -EINVAL;
+					goto failure;
+				}
+
+			} else {
+				stats.af.buff = 0;
+			}
+			if (data->stats_msg.ihist_buff) {
+				stats.ihist.buff =
+				msm_pmem_stats_ptov_lookup(sync,
+						data->stats_msg.ihist_buff,
+						&(stats.ihist.fd));
+				if (!stats.ihist.buff) {
+					pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
+						__func__);
+					rc = -EINVAL;
+					goto failure;
+				}
+
+			} else {
+				stats.ihist.buff = 0;
+			}
+
+			if (data->stats_msg.rs_buff) {
+				stats.rs.buff =
+				msm_pmem_stats_ptov_lookup(sync,
+						data->stats_msg.rs_buff,
+						&(stats.rs.fd));
+				if (!stats.rs.buff) {
+					pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
+						__func__);
+					rc = -EINVAL;
+					goto failure;
+				}
+
+			} else {
+				stats.rs.buff = 0;
+			}
+
+			if (data->stats_msg.cs_buff) {
+				stats.cs.buff =
+				msm_pmem_stats_ptov_lookup(sync,
+						data->stats_msg.cs_buff,
+						&(stats.cs.fd));
+				if (!stats.cs.buff) {
+					pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
+						__func__);
+					rc = -EINVAL;
+					goto failure;
+				}
+			} else {
+				stats.cs.buff = 0;
+			}
+
+			se.stats_event.frame_id = data->phy.frame_id;
+			if (copy_to_user((void *)(se.stats_event.data),
+					&stats,
+					sizeof(struct msm_stats_buf))) {
+				ERR_COPY_TO_USER();
+				rc = -EFAULT;
+				goto failure;
+			}
+		} else if ((data->type >= VFE_MSG_STATS_AEC) &&
+			(data->type <=  VFE_MSG_STATS_WE)) {
 			/* the check above includes all stats type. */
 			stats.buffer =
-			msm_pmem_stats_ptov_lookup(sync,
-					data->phy.sbuf_phy,
-					&(stats.fd));
+				msm_pmem_stats_ptov_lookup(sync,
+						data->phy.sbuf_phy,
+						&(stats.fd));
 			if (!stats.buffer) {
-				pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
-					__func__);
-				rc = -EINVAL;
-				goto failure;
+					pr_err("%s: msm_pmem_stats_ptov_lookup error\n",
+						__func__);
+					rc = -EINVAL;
+					goto failure;
 			}
 			se.stats_event.frame_id = data->phy.frame_id;
 			if (copy_to_user((void *)(se.stats_event.data),
@@ -2950,6 +3052,7 @@ static int __msm_release(struct msm_sync *sync)
 			kfree(region);
 		}
 		msm_queue_drain(&sync->pict_q, list_pict);
+		msm_queue_drain(&sync->event_q, list_config);
 
 		wake_unlock(&sync->wake_lock);
 		sync->apps_id = NULL;
@@ -3143,7 +3246,7 @@ static void *msm_vfe_sync_alloc(int size,
 			gfp_t gfp)
 {
 	struct msm_queue_cmd *qcmd =
-		kmalloc(sizeof(struct msm_queue_cmd) + size, gfp);
+		kzalloc(sizeof(struct msm_queue_cmd) + size, gfp);
 	if (qcmd) {
 		atomic_set(&qcmd->on_heap, 1);
 		return qcmd + 1;
@@ -3453,31 +3556,10 @@ static void msm_vfe_sync(struct msm_vfe_resp *vdata,
 		}
 		break;
 
-	case VFE_MSG_STATS_AWB:
-		CDBG("%s: qtype %d, AWB stats, enqueue event_q.\n",
+	case VFE_MSG_COMMON:
+		CDBG("%s: qtype %d, comp stats, enqueue event_q.\n",
 			__func__, vdata->type);
 		break;
-
-	case VFE_MSG_STATS_AEC:
-		CDBG("%s: qtype %d, AEC stats, enqueue event_q.\n",
-			__func__, vdata->type);
-		break;
-
-	case VFE_MSG_STATS_IHIST:
-		CDBG("%s: qtype %d, ihist stats, enqueue event_q.\n",
-			__func__, vdata->type);
-		break;
-
-	case VFE_MSG_STATS_RS:
-		CDBG("%s: qtype %d, rs stats, enqueue event_q.\n",
-			__func__, vdata->type);
-		break;
-
-	case VFE_MSG_STATS_CS:
-		CDBG("%s: qtype %d, cs stats, enqueue event_q.\n",
-			__func__, vdata->type);
-		break;
-
 
 	case VFE_MSG_GENERAL:
 		CDBG("%s: qtype %d, general msg, enqueue event_q.\n",
@@ -3639,6 +3721,7 @@ static int __msm_open(struct msm_sync *sync, const char *const apps_id,
 			if (rc < 0) {
 				pr_err("%s: sensor init failed: %d\n",
 					__func__, rc);
+				msm_camio_sensor_clk_off(sync->pdev);
 				goto msm_open_done;
 			}
 			rc = sync->vfefn.vfe_init(&msm_vfe_s,
@@ -3646,6 +3729,8 @@ static int __msm_open(struct msm_sync *sync, const char *const apps_id,
 			if (rc < 0) {
 				pr_err("%s: vfe_init failed at %d\n",
 					__func__, rc);
+				sync->sctrl.s_release();
+				msm_camio_sensor_clk_off(sync->pdev);
 				goto msm_open_done;
 			}
 		} else {

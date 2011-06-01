@@ -57,6 +57,8 @@ struct tabla {
 	u8 irq_masks_cache[TABLA_NUM_IRQ_REGS];
 	u8 irq_level[TABLA_NUM_IRQ_REGS];
 
+	int reset_gpio;
+
 	int (*read_dev)(struct tabla *tabla, unsigned short reg,
 			int bytes, void *dest, bool interface_reg);
 	int (*write_dev)(struct tabla *tabla, unsigned short reg,
@@ -72,6 +74,7 @@ int tabla_bulk_write(struct tabla *tabla, unsigned short reg,
 			int count, u8 *buf);
 int tabla_irq_init(struct tabla *tabla);
 void tabla_irq_exit(struct tabla *tabla);
+int tabla_get_logical_addresses(u8 *pgd_la, u8 *inf_la);
 
 static inline int tabla_request_irq(struct tabla *tabla, int irq,
 				     irq_handler_t handler, const char *name,
@@ -88,6 +91,18 @@ static inline void tabla_free_irq(struct tabla *tabla, int irq, void *data)
 	if (!tabla->irq_base)
 		return;
 	free_irq(tabla->irq_base + irq, data);
+}
+static inline void tabla_enable_irq(struct tabla *tabla, int irq)
+{
+	if (!tabla->irq_base)
+		return;
+	enable_irq(tabla->irq_base + irq);
+}
+static inline void tabla_disable_irq(struct tabla *tabla, int irq)
+{
+	if (!tabla->irq_base)
+		return;
+	disable_irq(tabla->irq_base + irq);
 }
 
 #endif

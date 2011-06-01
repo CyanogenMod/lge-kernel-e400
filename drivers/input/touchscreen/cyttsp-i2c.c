@@ -42,6 +42,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/firmware.h>
 #include <linux/mutex.h>
+#include <linux/regulator/consumer.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif /* CONFIG_HAS_EARLYSUSPEND */
@@ -71,6 +72,7 @@ struct cyttsp {
 	bool cyttsp_update_fw;
 	bool cyttsp_fwloader_mode;
 	bool is_suspended;
+	struct regulator **vdd;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif /* CONFIG_HAS_EARLYSUSPEND */
@@ -2298,6 +2300,88 @@ bypass:
 	return retval;
 }
 
+static int cyttsp_power_device(struct cyttsp *ts, bool on)
+{
+	int rc = 0, i;
+	const struct cyttsp_regulator *reg_info =
+				ts->platform_data->regulator_info;
+	u8 num_reg = ts->platform_data->num_regulators;
+
+	if (!reg_info) {
+		pr_err("regulator pdata not specified\n");
+		return -EINVAL;
+	}
+
+	if (on == false) /* Turn off the regulators */
+		goto ts_reg_disable;
+
+	ts->vdd = kzalloc(num_reg * sizeof(struct regulator *), GFP_KERNEL);
+	if (!ts->vdd) {
+		pr_err("unable to allocate memory\n");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < num_reg; i++) {
+		ts->vdd[i] = regulator_get(&ts->client->dev, reg_info[i].name);
+		if (IS_ERR(ts->vdd[i])) {
+			rc = PTR_ERR(ts->vdd[i]);
+			pr_err("%s:regulator get failed rc=%d\n",
+							__func__, rc);
+			goto error_vdd;
+		}
+
+		if (regulator_count_voltages(ts->vdd[i]) > 0) {
+			rc = regulator_set_voltage(ts->vdd[i],
+				reg_info[i].min_uV, reg_info[i].max_uV);
+			if (rc) {
+				pr_err("%s: regulator_set_voltage"
+					"failed rc =%d\n", __func__, rc);
+				regulator_put(ts->vdd[i]);
+				goto error_vdd;
+			}
+		}
+
+		rc = regulator_set_optimum_mode(ts->vdd[i],
+						reg_info[i].load_uA);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_optimum_mode failed rc=%d\n",
+								__func__, rc);
+
+			regulator_set_voltage(ts->vdd[i], 0,
+						reg_info[i].max_uV);
+			regulator_put(ts->vdd[i]);
+			goto error_vdd;
+		}
+
+		rc = regulator_enable(ts->vdd[i]);
+		if (rc) {
+			pr_err("%s: regulator_enable failed rc =%d\n",
+								__func__, rc);
+			regulator_set_optimum_mode(ts->vdd[i], 0);
+			regulator_set_voltage(ts->vdd[i], 0,
+						reg_info[i].max_uV);
+			regulator_put(ts->vdd[i]);
+			goto error_vdd;
+		}
+	}
+
+	return rc;
+
+ts_reg_disable:
+	i = ts->platform_data->num_regulators;
+error_vdd:
+	while (--i >= 0) {
+		if (regulator_count_voltages(ts->vdd[i]) > 0)
+			regulator_set_voltage(ts->vdd[i], 0,
+						reg_info[i].max_uV);
+		regulator_set_optimum_mode(ts->vdd[i], 0);
+		regulator_disable(ts->vdd[i]);
+		regulator_put(ts->vdd[i]);
+	}
+	kfree(ts->vdd);
+	return rc;
+}
+
 /* cyttsp_initialize: Driver Initialization. This function takes
  * care of the following tasks:
  * 1. Create and register an input device with input layer
@@ -2407,16 +2491,94 @@ static int cyttsp_initialize(struct i2c_client *client, struct cyttsp *ts)
 	/* Prepare our worker structure prior to setting up the timer/ISR */
 	INIT_WORK(&ts->work, cyttsp_xy_worker);
 
+	if (gpio_is_valid(ts->platform_data->resout_gpio)) {
+		/* configure touchscreen reset out gpio */
+		retval = gpio_request(ts->platform_data->resout_gpio,
+						"cyttsp_resout_gpio");
+		if (retval) {
+			pr_err("%s: unable to request reset gpio %d\n",
+				__func__, ts->platform_data->resout_gpio);
+			goto error_free_device;
+		}
+
+		retval = gpio_direction_output(
+					ts->platform_data->resout_gpio, 1);
+		if (retval) {
+			pr_err("%s: unable to set direction for gpio %d\n",
+				__func__, ts->platform_data->resout_gpio);
+			goto error_resout_gpio_dir;
+		}
+	}
+
+	if (gpio_is_valid(ts->platform_data->sleep_gpio)) {
+		/* configure touchscreen reset out gpio */
+		retval = gpio_request(ts->platform_data->sleep_gpio,
+						"cy8c_sleep_gpio");
+		if (retval) {
+			pr_err("%s: unable to request sleep gpio %d\n",
+				__func__, ts->platform_data->sleep_gpio);
+			goto error_sleep_gpio_req;
+		}
+
+		retval = gpio_direction_output(
+					ts->platform_data->sleep_gpio, 0);
+		if (retval) {
+			pr_err("%s: unable to set direction for gpio %d\n",
+			__func__, ts->platform_data->resout_gpio);
+			goto error_sleep_gpio_dir;
+		}
+	}
+
+	if (gpio_is_valid(ts->platform_data->irq_gpio)) {
+		/* configure touchscreen irq gpio */
+		retval = gpio_request(ts->platform_data->irq_gpio,
+							"ts_irq_gpio");
+		if (retval) {
+			pr_err("%s: unable to request gpio [%d]\n", __func__,
+						ts->platform_data->irq_gpio);
+			goto error_irq_gpio_req;
+		}
+		retval = gpio_direction_input(ts->platform_data->irq_gpio);
+		if (retval) {
+			pr_err("%s: unable to set_direction for gpio [%d]\n",
+					__func__, ts->platform_data->irq_gpio);
+			goto error_irq_gpio_dir;
+		}
+	}
+
+	if (ts->platform_data->regulator_info) {
+		retval = cyttsp_power_device(ts, true);
+		if (retval) {
+			pr_err("%s: Unable to power device %d\n",
+						 __func__, retval);
+			goto error_irq_gpio_dir;
+		}
+	}
+
 	/* Power on the chip and make sure that I/Os are set as specified
 	 * in the platform */
-	if (ts->platform_data->init)
+	if (ts->platform_data->init) {
 		retval = ts->platform_data->init(client);
+		if (retval) {
+			pr_err("%s: ts init failed\n", __func__);
+			goto error_power_device;
+		}
+	}
 
-	if (!(retval < CY_OK))
-		retval = cyttsp_power_on(ts);
+	msleep(100);
 
-	if (retval < 0)
-		goto error_free_device;
+	/* check this device active by reading first byte/register */
+	retval = i2c_smbus_read_byte_data(ts->client, 0x01);
+	if (retval < 0) {
+		pr_err("%s: i2c sanity check failed\n", __func__);
+		goto error_power_device;
+	}
+
+	retval = cyttsp_power_on(ts);
+	if (retval < 0) {
+		pr_err("%s: cyttsp_power_on failed\n", __func__);
+		goto error_power_device;
+	}
 
 	/* Timer or Interrupt setup */
 	if (ts->client->irq == 0) {
@@ -2432,7 +2594,7 @@ static int cyttsp_initialize(struct i2c_client *client, struct cyttsp *ts)
 		if (error) {
 			cyttsp_alert("error: could not request irq\n");
 			retval = error;
-			goto error_free_irq;
+			goto error_power_device;
 		}
 	}
 
@@ -2472,6 +2634,7 @@ static int cyttsp_initialize(struct i2c_client *client, struct cyttsp *ts)
 			printk(KERN_INFO "Please update touchscreen firmware\n");
 	}
 	cyttsp_info("%s: Successful registration\n", CY_I2C_NAME);
+
 	goto success;
 
 error_rm_dev_file_update_fw:
@@ -2481,9 +2644,26 @@ error_rm_dev_file_fw_ver:
 error_rm_dev_file_irq_en:
 	device_remove_file(&client->dev, &dev_attr_irq_enable);
 error_free_irq:
-	cyttsp_alert("Error: Failed to register IRQ handler\n");
-	free_irq(client->irq, ts);
-
+	if (ts->client->irq)
+		free_irq(client->irq, ts);
+error_power_device:
+	if (ts->platform_data->regulator_info)
+		cyttsp_power_device(ts, false);
+error_irq_gpio_dir:
+	if (gpio_is_valid(ts->platform_data->irq_gpio))
+		gpio_free(ts->platform_data->irq_gpio);
+error_irq_gpio_req:
+	if (gpio_is_valid(ts->platform_data->sleep_gpio))
+		gpio_direction_output(ts->platform_data->sleep_gpio, 1);
+error_sleep_gpio_dir:
+	if (gpio_is_valid(ts->platform_data->sleep_gpio))
+		gpio_free(ts->platform_data->sleep_gpio);
+error_sleep_gpio_req:
+	if (gpio_is_valid(ts->platform_data->resout_gpio))
+		gpio_direction_output(ts->platform_data->resout_gpio, 0);
+error_resout_gpio_dir:
+	if (gpio_is_valid(ts->platform_data->resout_gpio))
+		gpio_free(ts->platform_data->resout_gpio);
 error_free_device:
 	if (input_device)
 		input_free_device(input_device);
@@ -2692,7 +2872,8 @@ static int cyttsp_suspend(struct device *dev)
 /* registered in driver struct */
 static int __devexit cyttsp_remove(struct i2c_client *client)
 {
-	struct cyttsp *ts;
+	/* clientdata registered on probe */
+	struct cyttsp *ts = i2c_get_clientdata(client);
 	int err;
 
 	cyttsp_alert("Unregister\n");
@@ -2701,8 +2882,6 @@ static int __devexit cyttsp_remove(struct i2c_client *client)
 	pm_runtime_disable(&client->dev);
 
 	device_init_wakeup(&client->dev, 0);
-	/* clientdata registered on probe */
-	ts = i2c_get_clientdata(client);
 	device_remove_file(&ts->client->dev, &dev_attr_irq_enable);
 	device_remove_file(&client->dev, &dev_attr_cyttsp_fw_ver);
 	device_remove_file(&client->dev, &dev_attr_cyttsp_update_fw);
@@ -2720,11 +2899,28 @@ static int __devexit cyttsp_remove(struct i2c_client *client)
 	} else
 		free_irq(client->irq, ts);
 
+	if (ts->platform_data->regulator_info)
+		cyttsp_power_device(ts, false);
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&ts->early_suspend);
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 
 	mutex_destroy(&ts->mutex);
+
+	if (gpio_is_valid(ts->platform_data->sleep_gpio)) {
+		gpio_direction_output(ts->platform_data->sleep_gpio, 1);
+		gpio_free(ts->platform_data->sleep_gpio);
+	}
+
+	if (gpio_is_valid(ts->platform_data->resout_gpio)) {
+		gpio_direction_output(ts->platform_data->resout_gpio, 0);
+		gpio_free(ts->platform_data->resout_gpio);
+	}
+
+	if (gpio_is_valid(ts->platform_data->irq_gpio))
+		gpio_free(ts->platform_data->irq_gpio);
+
 	/* housekeeping */
 	if (ts != NULL)
 		kfree(ts);

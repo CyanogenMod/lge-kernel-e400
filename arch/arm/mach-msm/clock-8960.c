@@ -34,7 +34,8 @@
 #define REG_LPA(off)	(MSM_LPASS_CLK_CTL_BASE + (off))
 
 /* Peripheral clock registers. */
-#define CE2_HCLK_CTL_REG			REG(0x2740)
+#define CE1_HCLK_CTL_REG			REG(0x2720)
+#define CE1_CORE_CLK_CTL_REG			REG(0x2724)
 #define DMA_BAM_HCLK_CTL			REG(0x25C0)
 #define CLK_HALT_CFPB_STATEA_REG		REG(0x2FCC)
 #define CLK_HALT_CFPB_STATEB_REG		REG(0x2FD0)
@@ -67,7 +68,6 @@
 #define BB_MMC_PLL2_N_VAL_REG			REG(0x316C)
 #define PLLTEST_PAD_CFG_REG			REG(0x2FA4)
 #define PMEM_ACLK_CTL_REG			REG(0x25A0)
-#define PPSS_HCLK_CTL_REG			REG(0x2580)
 #define PRNG_CLK_NS_REG				REG(0x2E80)
 #define RINGOSC_NS_REG				REG(0x2DC0)
 #define RINGOSC_STATUS_REG			REG(0x2DCC)
@@ -461,23 +461,23 @@ int soc_set_pwr_rail(struct clk *clk, int enable)
 static uint32_t run_measurement(unsigned ticks)
 {
 	/* Stop counters and set the XO4 counter start value. */
-	writel(0x0, RINGOSC_TCXO_CTL_REG);
-	writel(ticks, RINGOSC_TCXO_CTL_REG);
+	writel_relaxed(0x0, RINGOSC_TCXO_CTL_REG);
+	writel_relaxed(ticks, RINGOSC_TCXO_CTL_REG);
 
 	/* Wait for timer to become ready. */
-	while ((readl(RINGOSC_STATUS_REG) & BIT(25)) != 0)
+	while ((readl_relaxed(RINGOSC_STATUS_REG) & BIT(25)) != 0)
 		cpu_relax();
 
 	/* Run measurement and wait for completion. */
-	writel(BIT(20)|ticks, RINGOSC_TCXO_CTL_REG);
-	while ((readl(RINGOSC_STATUS_REG) & BIT(25)) == 0)
+	writel_relaxed(BIT(20)|ticks, RINGOSC_TCXO_CTL_REG);
+	while ((readl_relaxed(RINGOSC_STATUS_REG) & BIT(25)) == 0)
 		cpu_relax();
 
 	/* Stop counters. */
-	writel(0x0, RINGOSC_TCXO_CTL_REG);
+	writel_relaxed(0x0, RINGOSC_TCXO_CTL_REG);
 
 	/* Return measured ticks. */
-	return readl(RINGOSC_STATUS_REG) & BM(24, 0);
+	return readl_relaxed(RINGOSC_STATUS_REG) & BM(24, 0);
 }
 
 /* Perform a hardware rate measurement for a given clock.
@@ -495,33 +495,36 @@ static int __soc_clk_measure_rate(u32 test_vector)
 	clk_sel = test_vector & TEST_CLK_SEL_MASK;
 	switch (test_vector >> TEST_TYPE_SHIFT) {
 	case TEST_TYPE_PER_LS:
-		writel(0x4030D00|BVAL(7, 0, clk_sel), CLK_TEST_REG);
+		writel_relaxed(0x4030D00|BVAL(7, 0, clk_sel), CLK_TEST_REG);
 		break;
 	case TEST_TYPE_PER_HS:
-		writel(0x4020000|BVAL(16, 10, clk_sel), CLK_TEST_REG);
+		writel_relaxed(0x4020000|BVAL(16, 10, clk_sel), CLK_TEST_REG);
 		break;
 	case TEST_TYPE_MM_LS:
-		writel(0x4030D97, CLK_TEST_REG);
-		writel(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_LS_REG);
+		writel_relaxed(0x4030D97, CLK_TEST_REG);
+		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_LS_REG);
 		break;
 	case TEST_TYPE_MM_HS:
-		writel(0x402B800, CLK_TEST_REG);
-		writel(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_HS_REG);
+		writel_relaxed(0x402B800, CLK_TEST_REG);
+		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_HS_REG);
 		break;
 	case TEST_TYPE_LPA:
-		writel(0x4030D98, CLK_TEST_REG);
-		writel(BVAL(6, 1, clk_sel)|BIT(0), LCC_CLK_LS_DEBUG_CFG_REG);
+		writel_relaxed(0x4030D98, CLK_TEST_REG);
+		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0),
+			       LCC_CLK_LS_DEBUG_CFG_REG);
 		break;
 	default:
 		ret = -EPERM;
 		goto err;
 	}
+	/* Make sure test vector is set before starting measurements. */
+	dsb();
 
 	/* Enable CXO/4 and RINGOSC branch and root. */
-	pdm_reg_backup = readl(PDM_CLK_NS_REG);
-	ringosc_reg_backup = readl(RINGOSC_NS_REG);
-	writel(0x2898, PDM_CLK_NS_REG);
-	writel(0xA00, RINGOSC_NS_REG);
+	pdm_reg_backup = readl_relaxed(PDM_CLK_NS_REG);
+	ringosc_reg_backup = readl_relaxed(RINGOSC_NS_REG);
+	writel_relaxed(0x2898, PDM_CLK_NS_REG);
+	writel_relaxed(0xA00, RINGOSC_NS_REG);
 
 	/*
 	 * The ring oscillator counter will not reset if the measured clock
@@ -535,8 +538,8 @@ static int __soc_clk_measure_rate(u32 test_vector)
 	/* Run a full measurement. (~14 ms) */
 	raw_count_full = run_measurement(0x10000);
 
-	writel(ringosc_reg_backup, RINGOSC_NS_REG);
-	writel(pdm_reg_backup, PDM_CLK_NS_REG);
+	writel_relaxed(ringosc_reg_backup, RINGOSC_NS_REG);
+	writel_relaxed(pdm_reg_backup, PDM_CLK_NS_REG);
 
 	/* Return 0 if the clock is off. */
 	if (raw_count_full == raw_count_short)
@@ -549,7 +552,7 @@ static int __soc_clk_measure_rate(u32 test_vector)
 	}
 
 	/* Route dbg_hs_clk to PLLTEST.  300mV single-ended amplitude. */
-	writel(0x3CF8, PLLTEST_PAD_CFG_REG);
+	writel_relaxed(0x3CF8, PLLTEST_PAD_CFG_REG);
 err:
 	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
 
@@ -599,7 +602,6 @@ static struct clk_ops clk_ops_branch = {
 	.enable = branch_clk_enable,
 	.disable = branch_clk_disable,
 	.auto_off = branch_clk_auto_off,
-	.get_rate = branch_clk_get_rate,
 	.is_enabled = branch_clk_is_enabled,
 	.reset = branch_clk_reset,
 	.set_flags = soc_clk_set_flags,
@@ -610,7 +612,6 @@ static struct clk_ops clk_ops_branch = {
 };
 
 static struct clk_ops clk_ops_reset = {
-	.get_rate = reset_clk_get_rate,
 	.reset = branch_clk_reset,
 	.is_local = local_clk_is_local,
 };
@@ -1742,20 +1743,36 @@ static struct branch_clk usb_fs2_sys_clk = {
 };
 
 /* Fast Peripheral Bus Clocks */
-static struct branch_clk ce2_p_clk = {
+static struct branch_clk ce1_core_clk = {
 	.b = {
-		.en_reg = CE2_HCLK_CTL_REG,
+		.en_reg = CE1_CORE_CLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_check = HALT,
-		.halt_bit = 0,
-		.test_vector = TEST_PER_LS(0x93),
+		.halt_bit = 27,
+		.test_vector = TEST_PER_LS(0xA4),
 	},
 	.c = {
-		.dbg_name = "ce2_p_clk",
+		.dbg_name = "ce1_core_clk",
 		.ops = &clk_ops_branch,
 		.flags = CLKFLAG_AUTO_OFF,
-		CLK_INIT(ce2_p_clk.c),
+		CLK_INIT(ce1_core_clk.c),
+	},
+};
+static struct branch_clk ce1_p_clk = {
+	.b = {
+		.en_reg = CE1_HCLK_CTL_REG,
+		.en_mask = BIT(4),
+		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
+		.halt_check = HALT,
+		.halt_bit = 1,
+		.test_vector = TEST_PER_LS(0x92),
+	},
+	.c = {
+		.dbg_name = "ce1_p_clk",
+		.ops = &clk_ops_branch,
+		.flags = CLKFLAG_AUTO_OFF,
+		CLK_INIT(ce1_p_clk.c),
 	},
 };
 
@@ -1977,23 +1994,6 @@ static struct branch_clk gsbi12_p_clk = {
 		.ops = &clk_ops_branch,
 		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi12_p_clk.c),
-	},
-};
-
-static struct branch_clk ppss_p_clk = {
-	.b = {
-		.en_reg = PPSS_HCLK_CTL_REG,
-		.en_mask = BIT(4),
-		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
-		.halt_bit = 19,
-		.test_vector = TEST_PER_LS(0x2B),
-	},
-	.c = {
-		.dbg_name = "ppss_p_clk",
-		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
-		CLK_INIT(ppss_p_clk.c),
 	},
 };
 
@@ -3843,14 +3843,14 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("gsbi_uart_clk",	gsbi12_uart_clk.c,	NULL),
 	CLK_LOOKUP("spi_clk",		gsbi1_qup_clk.c,	"spi_qsd.0"),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi2_qup_clk.c,	NULL),
-	CLK_LOOKUP("gsbi_qup_clk",	gsbi3_qup_clk.c,	NULL),
+	CLK_LOOKUP("gsbi_qup_clk",	gsbi3_qup_clk.c,	"qup_i2c.3"),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi4_qup_clk.c,	"qup_i2c.4"),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi5_qup_clk.c,	NULL),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi6_qup_clk.c,	NULL),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi7_qup_clk.c,	NULL),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi8_qup_clk.c,	NULL),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi9_qup_clk.c,	NULL),
-	CLK_LOOKUP("gsbi_qup_clk",	gsbi10_qup_clk.c,	NULL),
+	CLK_LOOKUP("gsbi_qup_clk",	gsbi10_qup_clk.c,	"qup_i2c.10"),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi11_qup_clk.c,	NULL),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi12_qup_clk.c,	NULL),
 	CLK_LOOKUP("pdm_clk",		pdm_clk.c,		NULL),
@@ -3872,21 +3872,21 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("usb_fs_clk",	usb_fs2_xcvr_clk.c,	NULL),
 	CLK_LOOKUP("usb_fs_sys_clk",	usb_fs2_sys_clk.c,	NULL),
 	CLK_LOOKUP("usb_fs_src_clk",	usb_fs2_src_clk.c,	NULL),
-	CLK_LOOKUP("ce_clk",		ce2_p_clk.c,		NULL),
+	CLK_LOOKUP("ce_pclk",		ce1_p_clk.c,		NULL),
+	CLK_LOOKUP("ce_clk",		ce1_core_clk.c,		NULL),
 	CLK_LOOKUP("dma_bam_pclk",	dma_bam_p_clk.c,	NULL),
 	CLK_LOOKUP("spi_pclk",		gsbi1_p_clk.c,		"spi_qsd.0"),
 	CLK_LOOKUP("gsbi_pclk",		gsbi2_p_clk.c,		NULL),
-	CLK_LOOKUP("gsbi_pclk",		gsbi3_p_clk.c,		NULL),
+	CLK_LOOKUP("gsbi_pclk",		gsbi3_p_clk.c,		"qup_i2c.3"),
 	CLK_LOOKUP("gsbi_pclk",		gsbi4_p_clk.c, "qup_i2c.4"),
 	CLK_LOOKUP("gsbi_pclk",		gsbi5_p_clk.c,	"msm_serial_hsl.0"),
 	CLK_LOOKUP("uartdm_pclk",	gsbi6_p_clk.c,		NULL),
 	CLK_LOOKUP("gsbi_pclk",		gsbi7_p_clk.c,		NULL),
 	CLK_LOOKUP("gsbi_pclk",		gsbi8_p_clk.c,		NULL),
 	CLK_LOOKUP("gsbi_pclk",		gsbi9_p_clk.c,		NULL),
-	CLK_LOOKUP("gsbi_pclk",		gsbi10_p_clk.c,		NULL),
+	CLK_LOOKUP("gsbi_pclk",		gsbi10_p_clk.c,		"qup_i2c.10"),
 	CLK_LOOKUP("gsbi_pclk",		gsbi11_p_clk.c,		NULL),
 	CLK_LOOKUP("gsbi_pclk",		gsbi12_p_clk.c,		NULL),
-	CLK_LOOKUP("ppss_pclk",		ppss_p_clk.c,		NULL),
 	CLK_LOOKUP("tsif_pclk",		tsif_p_clk.c,		NULL),
 	CLK_LOOKUP("usb_fs_pclk",	usb_fs1_p_clk.c,	NULL),
 	CLK_LOOKUP("usb_fs_pclk",	usb_fs2_p_clk.c,	NULL),
@@ -3905,12 +3905,20 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("amp_clk",		amp_clk.c,		NULL),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,		NULL),
 	CLK_LOOKUP("cam_clk",		cam1_clk.c,		NULL),
+	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"msm_camera_imx074.0"),
+	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"msm_camera_ov2720.0"),
 	CLK_LOOKUP("csi_src_clk",	csi0_src_clk.c,		NULL),
 	CLK_LOOKUP("csi_src_clk",	csi1_src_clk.c,		NULL),
+	CLK_LOOKUP("csi_src_clk",	csi0_src_clk.c,	"msm_camera_imx074.0"),
+	CLK_LOOKUP("csi_src_clk",	csi1_src_clk.c,	"msm_camera_ov2720.0"),
 	CLK_LOOKUP("csi_clk",		csi0_clk.c,		NULL),
 	CLK_LOOKUP("csi_clk",		csi1_clk.c,		NULL),
+	CLK_LOOKUP("csi_clk",		csi0_clk.c,	"msm_camera_imx074.0"),
+	CLK_LOOKUP("csi_clk",		csi1_clk.c,	"msm_camera_ov2720.0"),
 	CLK_LOOKUP("csi_phy_clk",	csi0_phy_clk.c,		NULL),
 	CLK_LOOKUP("csi_phy_clk",	csi1_phy_clk.c,		NULL),
+	CLK_LOOKUP("csi_phy_clk",	csi0_phy_clk.c,	"msm_camera_imx074.0"),
+	CLK_LOOKUP("csi_phy_clk",	csi1_phy_clk.c,	"msm_camera_ov2720.0"),
 	CLK_LOOKUP("csi_pix_clk",	csi_pix_clk.c,		NULL),
 	CLK_LOOKUP("csi_rdi_clk",	csi_rdi_clk.c,		NULL),
 	CLK_LOOKUP("csiphy_timer_src_clk", csiphy_timer_src_clk.c, NULL),
@@ -3925,6 +3933,7 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("gfx3d_clk",		gfx3d_clk.c,		NULL),
 	CLK_LOOKUP("ijpeg_axi_clk",	ijpeg_axi_clk.c,	NULL),
 	CLK_LOOKUP("imem_axi_clk",	imem_axi_clk.c,		NULL),
+	CLK_LOOKUP("ijpeg_clk",         ijpeg_clk.c,            NULL),
 	CLK_LOOKUP("jpegd_clk",		jpegd_clk.c,		NULL),
 	CLK_LOOKUP("mdp_clk",		mdp_clk.c,		NULL),
 	CLK_LOOKUP("mdp_vsync_clk",	mdp_vsync_clk.c,	NULL),
@@ -4012,10 +4021,10 @@ unsigned msm_num_clocks_8960 = ARRAY_SIZE(msm_clocks_8960);
 /* Read, modify, then write-back a register. */
 static void rmwreg(uint32_t val, void *reg, uint32_t mask)
 {
-	uint32_t regval = readl(reg);
+	uint32_t regval = readl_relaxed(reg);
 	regval &= ~mask;
 	regval |= val;
-	writel(regval, reg);
+	writel_relaxed(regval, reg);
 }
 
 static void reg_init(void)
@@ -4049,7 +4058,7 @@ static void reg_init(void)
 	writel_relaxed(0x1, LCC_PRI_PLL_CLK_CTL_REG); /* Select PLL4 */
 
 	/* Deassert MM SW_RESET_ALL signal. */
-	writel(0, SW_RESET_ALL_REG);
+	writel_relaxed(0, SW_RESET_ALL_REG);
 
 	/* Initialize MM AHB registers: Enable the FPB clock and disable HW
 	 * gating for all clocks. Also set VFE_AHB's FORCE_CORE_ON bit to
@@ -4074,48 +4083,55 @@ static void reg_init(void)
 	/* Initialize MM CC registers: Set MM FORCE_CORE_ON bits so that core
 	 * memories retain state even when not clocked. Also, set sleep and
 	 * wake-up delays to safe values. */
-	writel(0x00000000, CSI0_CC_REG);
-	writel(0x00000000, CSI1_CC_REG);
+	writel_relaxed(0x00000000, CSI0_CC_REG);
+	writel_relaxed(0x00000000, CSI1_CC_REG);
 	rmwreg(0x80FF0000, DSI1_BYTE_CC_REG, BM(31, 29) | BM(23, 16));
 	rmwreg(0x80FF0000, DSI2_BYTE_CC_REG, BM(31, 29) | BM(23, 16));
 	rmwreg(0x80FF0000, DSI_PIXEL_CC_REG, BM(31, 29) | BM(23, 16));
 	rmwreg(0x80FF0000, DSI2_PIXEL_CC_REG, BM(31, 29) | BM(23, 16));
-	writel(0x80FF0000, GFX2D0_CC_REG);
-	writel(0x80FF0000, GFX2D1_CC_REG);
-	writel(0x80FF0000, GFX3D_CC_REG);
-	writel(0x80FF0000, IJPEG_CC_REG);
-	writel(0x80FF0000, JPEGD_CC_REG);
+	writel_relaxed(0x80FF0000, GFX2D0_CC_REG);
+	writel_relaxed(0x80FF0000, GFX2D1_CC_REG);
+	writel_relaxed(0x80FF0000, GFX3D_CC_REG);
+	writel_relaxed(0x80FF0000, IJPEG_CC_REG);
+	writel_relaxed(0x80FF0000, JPEGD_CC_REG);
 	/* MDP clocks may be running at boot, don't turn them off. */
 	rmwreg(0x80FF0000, MDP_CC_REG,   BM(31, 29) | BM(23, 16));
 	rmwreg(0x80FF0000, MDP_LUT_CC_REG,  BM(31, 29) | BM(23, 16));
-	writel(0x80FF0000, ROT_CC_REG);
-	writel(0x80FF0000, TV_CC_REG);
-	writel(0x000004FF, TV_CC2_REG);
-	writel(0xC0FF0000, VCODEC_CC_REG);
-	writel(0x80FF0000, VFE_CC_REG);
-	writel(0x80FF0000, VPE_CC_REG);
+	writel_relaxed(0x80FF0000, ROT_CC_REG);
+	writel_relaxed(0x80FF0000, TV_CC_REG);
+	writel_relaxed(0x000004FF, TV_CC2_REG);
+	writel_relaxed(0xC0FF0000, VCODEC_CC_REG);
+	writel_relaxed(0x80FF0000, VFE_CC_REG);
+	writel_relaxed(0x80FF0000, VPE_CC_REG);
 
 	/* De-assert MM AXI resets to all hardware blocks. */
-	writel(0, SW_RESET_AXI_REG);
+	writel_relaxed(0, SW_RESET_AXI_REG);
 
 	/* Deassert all MM core resets. */
-	writel(0, SW_RESET_CORE_REG);
+	writel_relaxed(0, SW_RESET_CORE_REG);
 
 	/* Reset 3D core once more, with its clock enabled. This can
 	 * eventually be done as part of the GDFS footswitch driver. */
 	clk_set_rate(&gfx3d_clk.c, 27000000);
 	clk_enable(&gfx3d_clk.c);
-	writel(BIT(12), SW_RESET_CORE_REG);
+	writel_relaxed(BIT(12), SW_RESET_CORE_REG);
+	dsb();
 	udelay(5);
-	writel(0, SW_RESET_CORE_REG);
+	writel_relaxed(0, SW_RESET_CORE_REG);
+	/* Make sure reset is de-asserted before clock is disabled. */
+	mb();
 	clk_disable(&gfx3d_clk.c);
 
 	/* Enable TSSC and PDM PXO sources. */
-	writel(BIT(11), TSSC_CLK_CTL_REG);
-	writel(BIT(15), PDM_CLK_NS_REG);
+	writel_relaxed(BIT(11), TSSC_CLK_CTL_REG);
+	writel_relaxed(BIT(15), PDM_CLK_NS_REG);
 
 	/* Source SLIMBus xo src from slimbus reference clock */
 	writel_relaxed(0x3, SLIMBUS_XO_SRC_CLK_CTL_REG);
+
+	/* Source the dsi_byte_clks from the DSI PHY PLLs */
+	rmwreg(0x1, DSI1_BYTE_NS_REG, 0x7);
+	rmwreg(0x2, DSI2_BYTE_NS_REG, 0x7);
 }
 
 static int dummy_pll_clk_enable(struct clk *clk)

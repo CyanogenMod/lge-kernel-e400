@@ -294,7 +294,7 @@ struct clk_lookup msm_clocks_7x27a[] = {
 	CLK_LOOKUP("uart_clk",		uart3_clk.c,	"msm_serial.2"),
 #endif
 	CLK_LOOKUP("uartdm_clk",	uart1dm_clk.c,	"msm_serial_hs.0"),
-	CLK_LOOKUP("uartdm_clk",	uart2dm_clk.c,	"msm_serial_hs.1"),
+	CLK_LOOKUP("uartdm_clk",	uart2dm_clk.c,	"msm_serial_hsl.0"),
 	CLK_LOOKUP("usb_hs_core_clk",	usb_hs_core_clk.c, NULL),
 	CLK_LOOKUP("usb_hs2_clk",	usb_hs2_clk.c, NULL),
 	CLK_LOOKUP("usb_hs_clk",	usb_hs_clk.c,	NULL),

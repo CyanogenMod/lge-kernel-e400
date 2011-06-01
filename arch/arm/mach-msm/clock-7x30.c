@@ -2440,6 +2440,7 @@ static struct branch_clk lpa_core_clk = {
 static DEFINE_CLK_PCOM(adsp_clk, ADSP_CLK, 0);
 static DEFINE_CLK_PCOM(codec_ssbi_clk,	CODEC_SSBI_CLK, 0);
 static DEFINE_CLK_PCOM(ebi1_clk, EBI1_CLK, CLK_MIN);
+static DEFINE_CLK_PCOM(ebi1_fixed_clk, EBI1_FIXED_CLK, CLK_MIN);
 static DEFINE_CLK_PCOM(ecodec_clk, ECODEC_CLK, 0);
 static DEFINE_CLK_PCOM(gp_clk, GP_CLK, 0);
 static DEFINE_CLK_PCOM(uart3_clk, UART3_CLK, CLKFLAG_AUTO_OFF);
@@ -2526,23 +2527,13 @@ static DEFINE_CLK_PCOM(p_axi_rotator_clk, AXI_ROTATOR_CLK, 0);
 static DEFINE_CLK_PCOM(p_rotator_imem_clk, ROTATOR_IMEM_CLK, CLKFLAG_AUTO_OFF);
 static DEFINE_CLK_PCOM(p_rotator_p_clk, ROTATOR_P_CLK, CLKFLAG_AUTO_OFF);
 
-static struct pcom_clk pbus_clk = {
-	.id = P_PBUS_CLK,
-	.c = {
-		.ops = &clk_ops_pcom_div2,
-		.flags = CLKFLAG_MIN,
-		.dbg_name = "pbus_clk",
-		CLK_INIT(pbus_clk.c),
-	},
-};
-
-static DEFINE_CLK_VOTER(ebi_dtv_clk, &pbus_clk.c);
-static DEFINE_CLK_VOTER(ebi_kgsl_clk, &pbus_clk.c);
-static DEFINE_CLK_VOTER(ebi_lcdc_clk, &pbus_clk.c);
-static DEFINE_CLK_VOTER(ebi_mddi_clk, &pbus_clk.c);
-static DEFINE_CLK_VOTER(ebi_tv_clk, &pbus_clk.c);
-static DEFINE_CLK_VOTER(ebi_vcd_clk, &pbus_clk.c);
-static DEFINE_CLK_VOTER(ebi_vfe_clk, &pbus_clk.c);
+static DEFINE_CLK_VOTER(ebi_dtv_clk, &ebi1_fixed_clk.c);
+static DEFINE_CLK_VOTER(ebi_kgsl_clk, &ebi1_fixed_clk.c);
+static DEFINE_CLK_VOTER(ebi_lcdc_clk, &ebi1_fixed_clk.c);
+static DEFINE_CLK_VOTER(ebi_mddi_clk, &ebi1_fixed_clk.c);
+static DEFINE_CLK_VOTER(ebi_tv_clk, &ebi1_fixed_clk.c);
+static DEFINE_CLK_VOTER(ebi_vcd_clk, &ebi1_fixed_clk.c);
+static DEFINE_CLK_VOTER(ebi_vfe_clk, &ebi1_fixed_clk.c);
 
 /*
  * SoC-specific functions required by clock-local driver
@@ -2599,22 +2590,22 @@ int soc_set_pwr_rail(struct clk *clk, int enable)
 static uint32_t run_measurement(unsigned tcxo4_ticks)
 {
 	/* TCXO4_CNT_EN and RINGOSC_CNT_EN register values. */
-	uint32_t reg_val_enable = readl(MISC_CLK_CTL_BASE_REG) | 0x3;
+	uint32_t reg_val_enable = readl_relaxed(MISC_CLK_CTL_BASE_REG) | 0x3;
 	uint32_t reg_val_disable = reg_val_enable & ~0x3;
 
 	/* Stop counters and set the TCXO4 counter start value. */
-	writel(reg_val_disable, MISC_CLK_CTL_BASE_REG);
-	writel(tcxo4_ticks, TCXO_CNT_BASE_REG);
+	writel_relaxed(reg_val_disable, MISC_CLK_CTL_BASE_REG);
+	writel_relaxed(tcxo4_ticks, TCXO_CNT_BASE_REG);
 
 	/* Run measurement and wait for completion. */
-	writel(reg_val_enable, MISC_CLK_CTL_BASE_REG);
-	while (readl(TCXO_CNT_DONE_BASE_REG) == 0)
+	writel_relaxed(reg_val_enable, MISC_CLK_CTL_BASE_REG);
+	while (readl_relaxed(TCXO_CNT_DONE_BASE_REG) == 0)
 		cpu_relax();
 
 	/* Stop counters. */
-	writel(reg_val_disable, MISC_CLK_CTL_BASE_REG);
+	writel_relaxed(reg_val_disable, MISC_CLK_CTL_BASE_REG);
 
-	return readl(RINGOSC_CNT_BASE_REG);
+	return readl_relaxed(RINGOSC_CNT_BASE_REG);
 }
 
 /* Perform a hardware rate measurement for a given clock.
@@ -2634,16 +2625,16 @@ static signed __soc_clk_measure_rate(u32 test_vector)
 	/* Program test vector. */
 	if (test_vector <= 0xFF) {
 		/* Select CLK_TEST_2 */
-		writel(0x4D40, CLK_TEST_BASE_REG);
-		writel(test_vector, CLK_TEST_2_BASE_REG);
+		writel_relaxed(0x4D40, CLK_TEST_BASE_REG);
+		writel_relaxed(test_vector, CLK_TEST_2_BASE_REG);
 	} else
-		writel(test_vector, CLK_TEST_BASE_REG);
+		writel_relaxed(test_vector, CLK_TEST_BASE_REG);
 
 	/* Enable TCXO4 clock branch and root. */
-	prph_web_reg_old = readl(PRPH_WEB_NS_BASE_REG);
+	prph_web_reg_old = readl_relaxed(PRPH_WEB_NS_BASE_REG);
 	regval = prph_web_reg_old | BIT(9) | BIT(11);
 	clk_enable(&tcxo_clk.c);
-	writel(regval, PRPH_WEB_NS_BASE_REG);
+	writel_relaxed(regval, PRPH_WEB_NS_BASE_REG);
 
 	/*
 	 * The ring oscillator counter will not reset if the measured clock
@@ -2658,7 +2649,7 @@ static signed __soc_clk_measure_rate(u32 test_vector)
 	raw_count_full = run_measurement(0x10000);
 
 	/* Disable TCXO4 clock branch and root. */
-	writel(prph_web_reg_old, PRPH_WEB_NS_BASE_REG);
+	writel_relaxed(prph_web_reg_old, PRPH_WEB_NS_BASE_REG);
 	clk_disable(&tcxo_clk.c);
 
 	/* Return 0 if the clock is off. */
@@ -2695,7 +2686,7 @@ int soc_clk_set_flags(struct clk *clk, unsigned clk_flags)
 	spin_lock_irqsave(&local_clock_reg_lock, flags);
 
 	if (clk == &vfe_clk.c) {
-		regval = readl(CAM_VFE_NS_REG);
+		regval = readl_relaxed(CAM_VFE_NS_REG);
 		/* Flag values chosen for backward compatibility
 		 * with proc_comm remote clock control. */
 		if (clk_flags == 0x00000100) {
@@ -2707,7 +2698,9 @@ int soc_clk_set_flags(struct clk *clk, unsigned clk_flags)
 		} else
 			ret = -EINVAL;
 
-		writel(regval, CAM_VFE_NS_REG);
+		writel_relaxed(regval, CAM_VFE_NS_REG);
+		/* Make sure write is issued before returning. */
+		dsb();
 	} else
 		ret = -EPERM;
 
@@ -2746,12 +2739,12 @@ static __initdata uint32_t ownership_regs[NUM_OWNERSHIP];
 
 static void __init cache_ownership(void)
 {
-	ownership_regs[SH2_OWN_GLBL]  = readl(SH2_OWN_GLBL_BASE_REG);
-	ownership_regs[SH2_OWN_APPS1] = readl(SH2_OWN_APPS1_BASE_REG);
-	ownership_regs[SH2_OWN_APPS2] = readl(SH2_OWN_APPS2_BASE_REG);
-	ownership_regs[SH2_OWN_ROW1]  = readl(SH2_OWN_ROW1_BASE_REG);
-	ownership_regs[SH2_OWN_ROW2]  = readl(SH2_OWN_ROW2_BASE_REG);
-	ownership_regs[SH2_OWN_APPS3] = readl(SH2_OWN_APPS3_BASE_REG);
+	ownership_regs[SH2_OWN_GLBL]  = readl_relaxed(SH2_OWN_GLBL_BASE_REG);
+	ownership_regs[SH2_OWN_APPS1] = readl_relaxed(SH2_OWN_APPS1_BASE_REG);
+	ownership_regs[SH2_OWN_APPS2] = readl_relaxed(SH2_OWN_APPS2_BASE_REG);
+	ownership_regs[SH2_OWN_ROW1]  = readl_relaxed(SH2_OWN_ROW1_BASE_REG);
+	ownership_regs[SH2_OWN_ROW2]  = readl_relaxed(SH2_OWN_ROW2_BASE_REG);
+	ownership_regs[SH2_OWN_APPS3] = readl_relaxed(SH2_OWN_APPS3_BASE_REG);
 }
 
 static void __init print_ownership(void)
@@ -2788,12 +2781,12 @@ static struct clk_local_ownership {
 	{ CLK_LOOKUP("adsp_clk",	adsp_clk.c,	NULL) },
 	{ CLK_LOOKUP("codec_ssbi_clk",	codec_ssbi_clk.c,	NULL) },
 	{ CLK_LOOKUP("ebi1_clk",	ebi1_clk.c,	NULL) },
+	{ CLK_LOOKUP("ebi1_fixed_clk",	ebi1_fixed_clk.c,	NULL) },
 	{ CLK_LOOKUP("ecodec_clk",	ecodec_clk.c,	NULL) },
 	{ CLK_LOOKUP("gp_clk",		gp_clk.c,	NULL) },
 	{ CLK_LOOKUP("uart_clk",	uart3_clk.c,	"msm_serial.2") },
 	{ CLK_LOOKUP("usb_phy_clk",	usb_phy_clk.c,	NULL) },
 	{ CLK_LOOKUP("vdc_clk",		vdc_clk.c,	NULL) },
-	{ CLK_LOOKUP("pbus_clk",	pbus_clk.c,	NULL) },
 
 	/* Voters */
 	{ CLK_LOOKUP("ebi1_dtv_clk",	ebi_dtv_clk.c,	NULL) },
@@ -2988,10 +2981,10 @@ void __init msm_clk_soc_init(void)
 	clk_set_rate(&usb_hs_src_clk.c, clk_tbl_usb[1].freq_hz);
 
 	for (i = 0; i < ARRAY_SIZE(ri_list); i++) {
-		val = readl(ri_list[i].reg);
+		val = readl_relaxed(ri_list[i].reg);
 		val &= ~ri_list[i].mask;
 		val |= ri_list[i].val;
-		writel(val, ri_list[i].reg);
+		writel_relaxed(val, ri_list[i].reg);
 	}
 
 	clk_set_rate(&i2c_clk.c, 19200000);
@@ -3035,7 +3028,6 @@ static struct clk_ops clk_ops_branch = {
 	.enable = branch_clk_enable,
 	.disable = branch_clk_disable,
 	.auto_off = branch_clk_auto_off,
-	.get_rate = branch_clk_get_rate,
 	.is_enabled = branch_clk_is_enabled,
 	.reset = soc_branch_clk_reset,
 	.set_flags = soc_clk_set_flags,

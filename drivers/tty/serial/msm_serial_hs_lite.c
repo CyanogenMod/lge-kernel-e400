@@ -100,6 +100,13 @@ static int clk_en(struct uart_port *port, int enable)
 	int ret = 0;
 
 	if (enable) {
+		/* Set up the MREG/NREG/DREG/MNDREG */
+		ret = clk_set_rate(msm_hsl_port->clk, 1843200);
+		if (ret) {
+			printk(KERN_WARNING "Error setting UART clock rate\n");
+			return ret;
+		}
+
 		ret = clk_enable(msm_hsl_port->clk);
 		if (ret)
 			goto err;
@@ -525,6 +532,8 @@ static void msm_hsl_deinit_clock(struct uart_port *port)
 static int msm_hsl_startup(struct uart_port *port)
 {
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
+	struct platform_device *pdev = to_platform_device(port->dev);
+	struct msm_serial_hslite_platform_data *pdata = pdev->dev.platform_data;
 	unsigned int data, rfr_level;
 	int ret;
 	unsigned long flags;
@@ -532,6 +541,35 @@ static int msm_hsl_startup(struct uart_port *port)
 	snprintf(msm_hsl_port->name, sizeof(msm_hsl_port->name),
 		 "msm_serial_hsl%d", port->line);
 
+	if (!(is_console(port)) || (!port->cons) ||
+		(port->cons && (!(port->cons->flags & CON_ENABLED)))) {
+
+		if (msm_serial_hsl_has_gsbi())
+			if ((ioread32(msm_hsl_port->mapped_gsbi +
+				GSBI_CONTROL_ADDR) & GSBI_PROTOCOL_I2C_UART)
+					!= GSBI_PROTOCOL_I2C_UART)
+				iowrite32(GSBI_PROTOCOL_I2C_UART,
+					msm_hsl_port->mapped_gsbi +
+						GSBI_CONTROL_ADDR);
+
+		if (pdata && pdata->config_gpio) {
+			ret = gpio_request(pdata->uart_tx_gpio,
+						"UART_TX_GPIO");
+			if (unlikely(ret)) {
+				pr_err("%s: gpio request failed for:%d\n",
+						__func__, pdata->uart_tx_gpio);
+				return ret;
+			}
+
+			ret = gpio_request(pdata->uart_rx_gpio, "UART_RX_GPIO");
+			if (unlikely(ret)) {
+				pr_err("%s: gpio request failed for:%d\n",
+						__func__, pdata->uart_rx_gpio);
+				gpio_free(pdata->uart_tx_gpio);
+				return ret;
+			}
+		}
+	}
 #ifndef CONFIG_PM_RUNTIME
 	msm_hsl_init_clock(port);
 #endif
@@ -596,6 +634,8 @@ static int msm_hsl_startup(struct uart_port *port)
 static void msm_hsl_shutdown(struct uart_port *port)
 {
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
+	struct platform_device *pdev = to_platform_device(port->dev);
+	struct msm_serial_hslite_platform_data *pdata = pdev->dev.platform_data;
 
 	clk_en(port, 1);
 
@@ -610,6 +650,13 @@ static void msm_hsl_shutdown(struct uart_port *port)
 	msm_hsl_deinit_clock(port);
 #endif
 	pm_runtime_put_sync(port->dev);
+	if (!(is_console(port)) || (!port->cons) ||
+		(port->cons && (!(port->cons->flags & CON_ENABLED)))) {
+		if (pdata && pdata->config_gpio) {
+			gpio_free(pdata->uart_tx_gpio);
+			gpio_free(pdata->uart_rx_gpio);
+		}
+	}
 }
 
 static void msm_hsl_set_termios(struct uart_port *port,
@@ -1007,7 +1054,6 @@ static int __init msm_serial_hsl_probe(struct platform_device *pdev)
 	struct resource *uart_resource;
 	struct resource *gsbi_resource;
 	struct uart_port *port;
-	struct msm_serial_hslite_platform_data *pdata = pdev->dev.platform_data;
 	int ret;
 
 	if (unlikely(pdev->id < 0 || pdev->id >= UART_NR))
@@ -1018,23 +1064,6 @@ static int __init msm_serial_hsl_probe(struct platform_device *pdev)
 	port = get_port_from_line(pdev->id);
 	port->dev = &pdev->dev;
 	msm_hsl_port = UART_TO_MSM(port);
-
-	if (pdata && pdata->config_gpio) {
-		ret = gpio_request(pdata->uart_tx_gpio, "UART_TX_GPIO");
-		if (unlikely(ret)) {
-			printk(KERN_ERR "%s: gpio request failed for:"
-					"%d\n", __func__, pdata->uart_tx_gpio);
-			return ret;
-		}
-
-		ret = gpio_request(pdata->uart_rx_gpio, "UART_RX_GPIO");
-		if (unlikely(ret)) {
-			printk(KERN_ERR "%s: gpio request failed for:"
-					"%d\n", __func__, pdata->uart_rx_gpio);
-			gpio_free(pdata->uart_tx_gpio);
-			return ret;
-		}
-	}
 
 	if (msm_serial_hsl_has_gsbi()) {
 		gsbi_resource =
@@ -1059,12 +1088,6 @@ static int __init msm_serial_hsl_probe(struct platform_device *pdev)
 		return PTR_ERR(msm_hsl_port->pclk);
 	}
 
-	/* Set up the MREG/NREG/DREG/MNDREG */
-	ret = clk_set_rate(msm_hsl_port->clk, 1843200);
-	if (ret) {
-		printk(KERN_WARNING "Error setting clock rate on UART\n");
-		return ret;
-	}
 
 	uart_resource = platform_get_resource_byname(pdev,
 						     IORESOURCE_MEM,
@@ -1092,12 +1115,6 @@ static int __init msm_serial_hsl_probe(struct platform_device *pdev)
 static int __devexit msm_serial_hsl_remove(struct platform_device *pdev)
 {
 	struct msm_hsl_port *msm_hsl_port = platform_get_drvdata(pdev);
-	struct msm_serial_hslite_platform_data *pdata = pdev->dev.platform_data;
-
-	if (pdata && pdata->config_gpio) {
-		gpio_free(pdata->uart_tx_gpio);
-		gpio_free(pdata->uart_rx_gpio);
-	}
 
 	pm_runtime_put_sync(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);

@@ -11,6 +11,7 @@
  *
  */
 #include <linux/vmalloc.h>
+#include <linux/memory_alloc.h>
 #include <asm/cacheflush.h>
 
 #include "kgsl.h"
@@ -40,134 +41,51 @@ _get_priv_from_kobj(struct kobject *kobj)
 /* sharedmem / memory sysfs files */
 
 static ssize_t
-process_show_vmalloc(struct kobject *kobj,
-		   struct kobj_attribute *attr,
-		   char *buf)
+process_show(struct kobject *kobj,
+	     struct kobj_attribute *attr,
+	     char *buf)
 {
-
 	struct kgsl_process_private *priv;
-	int ret = 0;
+	unsigned int val = 0;
 
 	mutex_lock(&kgsl_driver.process_mutex);
 	priv = _get_priv_from_kobj(kobj);
 
-	if (priv)
-		ret += sprintf(buf, "%d\n", priv->stats.vmalloc);
+	if (priv == NULL) {
+		mutex_unlock(&kgsl_driver.process_mutex);
+		return 0;
+	}
+
+	if (!strncmp(attr->attr.name, "user", 4))
+		val = priv->stats.user;
+	if (!strncmp(attr->attr.name, "user_max", 8))
+		val = priv->stats.user_max;
+	if (!strncmp(attr->attr.name, "mapped", 6))
+		val = priv->stats.mapped;
+	if (!strncmp(attr->attr.name, "mapped_max", 10))
+		val = priv->stats.mapped_max;
+	if (!strncmp(attr->attr.name, "flushes", 7))
+		val = priv->stats.flushes;
 
 	mutex_unlock(&kgsl_driver.process_mutex);
-	return ret;
+	return snprintf(buf, PAGE_SIZE, "%u\n", val);
 }
 
-static ssize_t
-process_show_vmalloc_max(struct kobject *kobj,
-		       struct kobj_attribute *attr,
-		       char *buf)
-{
+#define KGSL_MEMSTAT_ATTR(_name, _show) \
+	static struct kobj_attribute attr_##_name = \
+	__ATTR(_name, 0444, _show, NULL)
 
-	struct kgsl_process_private *priv;
-	int ret = 0;
-
-	mutex_lock(&kgsl_driver.process_mutex);
-	priv = _get_priv_from_kobj(kobj);
-
-	if (priv)
-		ret += sprintf(buf, "%d\n", priv->stats.vmalloc_max);
-
-	mutex_unlock(&kgsl_driver.process_mutex);
-	return ret;
-}
-
-static ssize_t
-process_show_exmem(struct kobject *kobj,
-		 struct kobj_attribute *attr,
-		 char *buf)
-{
-
-	struct kgsl_process_private *priv;
-	int ret = 0;
-
-	mutex_lock(&kgsl_driver.process_mutex);
-	priv = _get_priv_from_kobj(kobj);
-
-	if (priv)
-		ret += sprintf(buf, "%d\n", priv->stats.exmem);
-
-	mutex_unlock(&kgsl_driver.process_mutex);
-	return ret;
-}
-
-static ssize_t
-process_show_exmem_max(struct kobject *kobj,
-		     struct kobj_attribute *attr,
-		     char *buf)
-{
-
-	struct kgsl_process_private *priv;
-	int ret = 0;
-
-	mutex_lock(&kgsl_driver.process_mutex);
-	priv = _get_priv_from_kobj(kobj);
-
-	if (priv)
-		ret += sprintf(buf, "%d\n", priv->stats.exmem_max);
-
-	mutex_unlock(&kgsl_driver.process_mutex);
-	return ret;
-}
-
-static ssize_t
-process_show_flushes(struct kobject *kobj,
-		   struct kobj_attribute *attr,
-		   char *buf)
-{
-	struct kgsl_process_private *priv;
-	int ret = 0;
-
-	mutex_lock(&kgsl_driver.process_mutex);
-	priv = _get_priv_from_kobj(kobj);
-
-	if (priv)
-		ret += sprintf(buf, "%d\n", priv->stats.flushes);
-
-	mutex_unlock(&kgsl_driver.process_mutex);
-	return ret;
-}
-
-static struct kobj_attribute attr_vmalloc = {
-	.attr = { .name = "vmalloc", .mode = 0444 },
-	.show = process_show_vmalloc,
-	.store = NULL,
-};
-
-static struct kobj_attribute attr_vmalloc_max = {
-	.attr = { .name = "vmalloc_max", .mode = 0444 },
-	.show = process_show_vmalloc_max,
-	.store = NULL,
-};
-
-static struct kobj_attribute attr_exmem = {
-	.attr = { .name = "exmem", .mode = 0444 },
-	.show = process_show_exmem,
-	.store = NULL,
-};
-
-static struct kobj_attribute attr_exmem_max = {
-	.attr = { .name = "exmem_max", .mode = 0444 },
-	.show = process_show_exmem_max,
-	.store = NULL,
-};
-
-static struct kobj_attribute attr_flushes = {
-	.attr = { .name = "flushes", .mode = 0444 },
-	.show = process_show_flushes,
-	.store = NULL,
-};
+KGSL_MEMSTAT_ATTR(user, process_show);
+KGSL_MEMSTAT_ATTR(user_max, process_show);
+KGSL_MEMSTAT_ATTR(mapped, process_show);
+KGSL_MEMSTAT_ATTR(mapped_max, process_show);
+KGSL_MEMSTAT_ATTR(flushes, process_show);
 
 static struct attribute *process_attrs[] = {
-	&attr_vmalloc.attr,
-	&attr_vmalloc_max.attr,
-	&attr_exmem.attr,
-	&attr_exmem_max.attr,
+	&attr_user.attr,
+	&attr_user_max.attr,
+	&attr_mapped.attr,
+	&attr_mapped_max.attr,
 	&attr_flushes.attr,
 	NULL
 };
@@ -204,32 +122,26 @@ kgsl_process_init_sysfs(struct kgsl_process_private *private)
 	}
 }
 
-static int kgsl_drv_vmalloc_show(struct device *dev,
+static int kgsl_drv_memstat_show(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
 {
-	return sprintf(buf, "%d\n", kgsl_driver.stats.vmalloc);
-}
+	unsigned int val = 0;
 
-static int kgsl_drv_vmalloc_max_show(struct device *dev,
-				     struct device_attribute *attr,
-				     char *buf)
-{
-	return sprintf(buf, "%d\n", kgsl_driver.stats.vmalloc_max);
-}
+	if (!strncmp(attr->attr.name, "vmalloc", 7))
+		val = kgsl_driver.stats.vmalloc;
+	else if (!strncmp(attr->attr.name, "vmalloc_max", 11))
+		val = kgsl_driver.stats.vmalloc_max;
+	else if (!strncmp(attr->attr.name, "coherent", 8))
+		val = kgsl_driver.stats.coherent;
+	else if (!strncmp(attr->attr.name, "coherent_max", 12))
+		val = kgsl_driver.stats.coherent_max;
+	else if (!strncmp(attr->attr.name, "mapped", 6))
+		val = kgsl_driver.stats.mapped;
+	else if (!strncmp(attr->attr.name, "mapped_max", 10))
+		val = kgsl_driver.stats.mapped_max;
 
-static int kgsl_drv_coherent_show(struct device *dev,
-				  struct device_attribute *attr,
-				  char *buf)
-{
-	return sprintf(buf, "%d\n", kgsl_driver.stats.coherent);
-}
-
-static int kgsl_drv_coherent_max_show(struct device *dev,
-				      struct device_attribute *attr,
-				      char *buf)
-{
-	return sprintf(buf, "%d\n", kgsl_driver.stats.coherent_max);
+	return snprintf(buf, PAGE_SIZE, "%u\n", val);
 }
 
 static int kgsl_drv_histogram_show(struct device *dev,
@@ -247,61 +159,40 @@ static int kgsl_drv_histogram_show(struct device *dev,
 	return len;
 }
 
-static struct device_attribute drv_vmalloc_attr = {
-	.attr = { .name = "vmalloc", .mode = 0444, },
-	.show = kgsl_drv_vmalloc_show,
-	.store = NULL,
-};
+DEVICE_ATTR(vmalloc, 0444, kgsl_drv_memstat_show, NULL);
+DEVICE_ATTR(vmalloc_max, 0444, kgsl_drv_memstat_show, NULL);
+DEVICE_ATTR(coherent, 0444, kgsl_drv_memstat_show, NULL);
+DEVICE_ATTR(coherent_max, 0444, kgsl_drv_memstat_show, NULL);
+DEVICE_ATTR(mapped, 0444, kgsl_drv_memstat_show, NULL);
+DEVICE_ATTR(mapped_max, 0444, kgsl_drv_memstat_show, NULL);
+DEVICE_ATTR(histogram, 0444, kgsl_drv_histogram_show, NULL);
 
-static struct device_attribute drv_vmalloc_max_attr = {
-	.attr = { .name = "vmalloc_max", .mode = 0444, },
-	.show = kgsl_drv_vmalloc_max_show,
-	.store = NULL,
-};
-
-static struct device_attribute drv_coherent_attr = {
-	.attr = { .name = "coherent", .mode = 0444, },
-	.show = kgsl_drv_coherent_show,
-	.store = NULL,
-};
-
-static struct device_attribute drv_coherent_max_attr = {
-	.attr = { .name = "coherent_max", .mode = 0444, },
-	.show = kgsl_drv_coherent_max_show,
-	.store = NULL,
-};
-
-static struct device_attribute drv_histogram_attr = {
-	.attr = { .name = "histogram", .mode = 0444, },
-	.show = kgsl_drv_histogram_show,
-	.store = NULL,
+static const struct device_attribute *drv_attr_list[] = {
+	&dev_attr_vmalloc,
+	&dev_attr_vmalloc_max,
+	&dev_attr_coherent,
+	&dev_attr_coherent_max,
+	&dev_attr_mapped,
+	&dev_attr_mapped_max,
+	&dev_attr_histogram,
 };
 
 void
 kgsl_sharedmem_uninit_sysfs(void)
 {
-	device_remove_file(&kgsl_driver.virtdev, &drv_vmalloc_attr);
-	device_remove_file(&kgsl_driver.virtdev, &drv_vmalloc_max_attr);
-	device_remove_file(&kgsl_driver.virtdev, &drv_coherent_attr);
-	device_remove_file(&kgsl_driver.virtdev, &drv_coherent_max_attr);
-	device_remove_file(&kgsl_driver.virtdev, &drv_histogram_attr);
+	int i;
+	for (i = 0; i < ARRAY_SIZE(drv_attr_list); i++)
+		device_remove_file(&kgsl_driver.virtdev, drv_attr_list[i]);
 }
 
 int
 kgsl_sharedmem_init_sysfs(void)
 {
-	int ret;
+	int ret = 0, i;
 
-	ret  = device_create_file(&kgsl_driver.virtdev,
-				  &drv_vmalloc_attr);
-	ret |= device_create_file(&kgsl_driver.virtdev,
-				  &drv_vmalloc_max_attr);
-	ret |= device_create_file(&kgsl_driver.virtdev,
-				  &drv_coherent_attr);
-	ret |= device_create_file(&kgsl_driver.virtdev,
-				  &drv_coherent_max_attr);
-	ret |= device_create_file(&kgsl_driver.virtdev,
-				  &drv_histogram_attr);
+	for (i = 0; i < ARRAY_SIZE(drv_attr_list); i++)
+		ret |= device_create_file(&kgsl_driver.virtdev,
+			drv_attr_list[i]);
 
 	return ret;
 }
@@ -320,8 +211,6 @@ static void _outer_cache_range_op(int op, unsigned long addr, size_t size)
 		outer_inv_range(addr, addr + size);
 		break;
 	}
-
-	mb();
 }
 #endif
 
@@ -379,6 +268,42 @@ static void kgsl_vmalloc_free(struct kgsl_memdesc *memdesc)
 	vfree(memdesc->hostptr);
 }
 
+static int kgsl_contiguous_vmflags(struct kgsl_memdesc *memdesc)
+{
+	return VM_RESERVED | VM_IO | VM_PFNMAP | VM_DONTEXPAND;
+}
+
+static int kgsl_contiguous_vmfault(struct kgsl_memdesc *memdesc,
+				struct vm_area_struct *vma,
+				struct vm_fault *vmf)
+{
+	unsigned long offset, pfn;
+	int ret;
+
+	offset = ((unsigned long) vmf->virtual_address - vma->vm_start) >>
+		PAGE_SHIFT;
+
+	pfn = (memdesc->physaddr >> PAGE_SHIFT) + offset;
+	ret = vm_insert_pfn(vma, (unsigned long) vmf->virtual_address, pfn);
+
+	if (ret == -ENOMEM || ret == -EAGAIN)
+		return VM_FAULT_OOM;
+	else if (ret == -EFAULT)
+		return VM_FAULT_SIGBUS;
+
+	return VM_FAULT_NOPAGE;
+}
+
+static void kgsl_ebimem_free(struct kgsl_memdesc *memdesc)
+
+{
+	kgsl_driver.stats.coherent -= memdesc->size;
+	if (memdesc->hostptr)
+		iounmap(memdesc->hostptr);
+
+	free_contiguous_memory_by_paddr(memdesc->physaddr);
+}
+
 static void kgsl_coherent_free(struct kgsl_memdesc *memdesc)
 {
 	kgsl_driver.stats.coherent -= memdesc->size;
@@ -386,8 +311,8 @@ static void kgsl_coherent_free(struct kgsl_memdesc *memdesc)
 			  memdesc->hostptr, memdesc->physaddr);
 }
 
-static unsigned long kgsl_contig_physaddr(struct kgsl_memdesc *memdesc,
-					  unsigned int offset)
+static unsigned long kgsl_contiguous_physaddr(struct kgsl_memdesc *memdesc,
+					unsigned int offset)
 {
 	if (offset > memdesc->size)
 		return 0;
@@ -396,7 +321,7 @@ static unsigned long kgsl_contig_physaddr(struct kgsl_memdesc *memdesc,
 }
 
 #ifdef CONFIG_OUTER_CACHE
-static void kgsl_contig_outer_cache(struct kgsl_memdesc *memdesc, int op)
+static void kgsl_contiguous_outer_cache(struct kgsl_memdesc *memdesc, int op)
 {
 	_outer_cache_range_op(op, memdesc->physaddr, memdesc->size);
 }
@@ -432,22 +357,32 @@ struct kgsl_memdesc_ops kgsl_vmalloc_ops = {
 };
 EXPORT_SYMBOL(kgsl_vmalloc_ops);
 
+static struct kgsl_memdesc_ops kgsl_ebimem_ops = {
+	.physaddr = kgsl_contiguous_physaddr,
+	.free = kgsl_ebimem_free,
+	.vmflags = kgsl_contiguous_vmflags,
+	.vmfault = kgsl_contiguous_vmfault,
+#ifdef CONFIG_OUTER_CACHE
+	.outer_cache = kgsl_contiguous_outer_cache,
+#endif
+};
+
 static struct kgsl_memdesc_ops kgsl_coherent_ops = {
-	.physaddr = kgsl_contig_physaddr,
+	.physaddr = kgsl_contiguous_physaddr,
 	.free = kgsl_coherent_free,
 #ifdef CONFIG_OUTER_CACHE
-	.outer_cache = kgsl_contig_outer_cache,
+	.outer_cache = kgsl_contiguous_outer_cache,
 #endif
 };
 
 /* Global - also used by kgsl.c and kgsl_drm.c */
-struct kgsl_memdesc_ops kgsl_contig_ops = {
-	.physaddr = kgsl_contig_physaddr,
+struct kgsl_memdesc_ops kgsl_contiguous_ops = {
+	.physaddr = kgsl_contiguous_physaddr,
 #ifdef CONFIG_OUTER_CACHE
-	.outer_cache = kgsl_contig_outer_cache
+	.outer_cache = kgsl_contiguous_outer_cache
 #endif
 };
-EXPORT_SYMBOL(kgsl_contig_ops);
+EXPORT_SYMBOL(kgsl_contiguous_ops);
 
 /* Global - also used by kgsl.c */
 struct kgsl_memdesc_ops kgsl_userptr_ops = {
@@ -600,6 +535,69 @@ void kgsl_sharedmem_free(struct kgsl_memdesc *memdesc)
 }
 EXPORT_SYMBOL(kgsl_sharedmem_free);
 
+static int
+_kgsl_sharedmem_ebimem(struct kgsl_memdesc *memdesc,
+			struct kgsl_pagetable *pagetable, size_t size)
+{
+	int result;
+
+	memdesc->physaddr = allocate_contiguous_ebi_nomap(size, SZ_8K);
+
+	if (memdesc->physaddr == 0) {
+		KGSL_CORE_ERR("allocate_contiguous_ebi_nomap(%d) failed\n",
+			size);
+		return -ENOMEM;
+	}
+
+	memdesc->size = size;
+	memdesc->pagetable = pagetable;
+	memdesc->ops = &kgsl_ebimem_ops;
+
+	result = kgsl_mmu_map(pagetable, memdesc,
+		GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
+
+	if (result)
+		kgsl_sharedmem_free(memdesc);
+
+	KGSL_STATS_ADD(size, kgsl_driver.stats.coherent,
+		kgsl_driver.stats.coherent_max);
+
+	return result;
+}
+
+int
+kgsl_sharedmem_ebimem_user(struct kgsl_memdesc *memdesc,
+			struct kgsl_pagetable *pagetable,
+			size_t size, int flags)
+{
+	size = ALIGN(size, PAGE_SIZE);
+	return _kgsl_sharedmem_ebimem(memdesc, pagetable, size);
+}
+EXPORT_SYMBOL(kgsl_sharedmem_ebimem_user);
+
+int
+kgsl_sharedmem_ebimem(struct kgsl_memdesc *memdesc,
+		struct kgsl_pagetable *pagetable, size_t size)
+{
+	int result;
+	size = ALIGN(size, 8192);
+	result = _kgsl_sharedmem_ebimem(memdesc, pagetable, size);
+
+	if (result)
+		return result;
+
+	memdesc->hostptr = ioremap(memdesc->physaddr, size);
+
+	if (memdesc->hostptr == NULL) {
+		KGSL_CORE_ERR("ioremap failed\n");
+		kgsl_sharedmem_free(memdesc);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(kgsl_sharedmem_ebimem);
+
 int
 kgsl_sharedmem_readl(const struct kgsl_memdesc *memdesc,
 			uint32_t *dst,
@@ -611,7 +609,7 @@ kgsl_sharedmem_readl(const struct kgsl_memdesc *memdesc,
 	if (offsetbytes + sizeof(unsigned int) > memdesc->size)
 		return -ERANGE;
 
-	*dst = readl(memdesc->hostptr + offsetbytes);
+	*dst = readl_relaxed(memdesc->hostptr + offsetbytes);
 	return 0;
 }
 EXPORT_SYMBOL(kgsl_sharedmem_readl);
@@ -626,7 +624,7 @@ kgsl_sharedmem_writel(const struct kgsl_memdesc *memdesc,
 
 	kgsl_cffdump_setmem(memdesc->physaddr + offsetbytes,
 		src, sizeof(uint));
-	writel(src, memdesc->hostptr + offsetbytes);
+	writel_relaxed(src, memdesc->hostptr + offsetbytes);
 	return 0;
 }
 EXPORT_SYMBOL(kgsl_sharedmem_writel);

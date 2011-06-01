@@ -30,6 +30,7 @@
 
 #define QDSP6SS_RST_EVB		0x0
 #define QDSP6SS_RESET		0x04
+#define QDSP6SS_CGC_OVERRIDE	0x18
 #define QDSP6SS_STRAP_TCM	0x1C
 #define QDSP6SS_STRAP_AHB	0x20
 #define QDSP6SS_GFMUX_CTL	0x30
@@ -64,6 +65,7 @@
 
 #define Q6SS_CLK_ENA		BIT(1)
 #define Q6SS_SRC_SWITCH_CLK_OVR	BIT(8)
+#define Q6SS_AXIS_ACLK_EN	BIT(9)
 
 #define MSM_RIVA_PHYS			0x03204000
 #define RIVA_PMU_A2XB_CFG		(msm_riva_base + 0xB8)
@@ -72,7 +74,7 @@
 #define RIVA_PMU_CFG			(msm_riva_base + 0x28)
 #define RIVA_PMU_CFG_WARM_BOOT		BIT(0)
 #define RIVA_PMU_CFG_IRIS_XO_MODE	0x6
-#define RIVA_PMU_CFG_IRIS_XO_MODE_48	(2 << 1)
+#define RIVA_PMU_CFG_IRIS_XO_MODE_48	(3 << 1)
 
 #define RIVA_PMU_OVRD_VAL		(msm_riva_base + 0x30)
 #define RIVA_PMU_OVRD_VAL_CCPU_RESET	BIT(0)
@@ -95,6 +97,7 @@
 #define RIVA_PLL_M_VAL			(MSM_CLK_CTL_BASE + 0x31A8)
 #define RIVA_PLL_N_VAL			(MSM_CLK_CTL_BASE + 0x31Ac)
 #define RIVA_PLL_CONFIG			(MSM_CLK_CTL_BASE + 0x31B4)
+#define RIVA_PLL_STATUS			(MSM_CLK_CTL_BASE + 0x31B8)
 
 #define RIVA_PMU_ROOT_CLK_SEL		(msm_riva_base + 0xC8)
 #define RIVA_PMU_ROOT_CLK_SEL_3		BIT(2)
@@ -109,6 +112,10 @@
 #define RIVA_PMU_CLK_ROOT3_SRC1_DIV_2		(1 << 9)
 #define RIVA_PMU_CLK_ROOT3_SRC1_SEL		0xE000
 #define RIVA_PMU_CLK_ROOT3_SRC1_SEL_RIVA	(1 << 13)
+
+#define PPSS_RESET			(MSM_CLK_CTL_BASE + 0x2594)
+#define PPSS_PROC_CLK_CTL		(MSM_CLK_CTL_BASE + 0x2588)
+#define PPSS_HCLK_CTL			(MSM_CLK_CTL_BASE + 0x2580)
 
 struct q6_data {
 	const unsigned strap_tcm_base;
@@ -222,6 +229,15 @@ static int reset_q6_untrusted(struct q6_data *q6)
 		writel_relaxed(0x7,  mss_enable_reg);
 	}
 
+	/*
+	 * Assert AXIS_ACLK_EN override to allow for correct updating of the
+	 * QDSP6_CORE_STATE status bit. This is mandatory only for the SW Q6
+	 * in 8960v1 and optional elsewhere.
+	 */
+	reg = readl_relaxed(q6->reg_base + QDSP6SS_CGC_OVERRIDE);
+	reg |= Q6SS_AXIS_ACLK_EN;
+	writel_relaxed(reg, q6->reg_base + QDSP6SS_CGC_OVERRIDE);
+
 	/* Deassert Q6SS_SS_ARES */
 	reg = readl_relaxed(q6->reg_base + QDSP6SS_RESET);
 	reg &= ~(Q6SS_SS_ARES);
@@ -270,6 +286,16 @@ static int reset_q6_untrusted(struct q6_data *q6)
 
 	/* Bring Q6 core out of reset and start execution. */
 	writel_relaxed(0x0, q6->reg_base + QDSP6SS_RESET);
+
+	/*
+	 * Re-enable auto-gating of AXIS_ACLK at lease one AXI clock cycle
+	 * after resets are de-asserted.
+	 */
+	dsb();
+	usleep_range(1, 10);
+	reg = readl_relaxed(q6->reg_base + QDSP6SS_CGC_OVERRIDE);
+	reg &= ~Q6SS_AXIS_ACLK_EN;
+	writel_relaxed(reg, q6->reg_base + QDSP6SS_CGC_OVERRIDE);
 
 out:
 	return err;
@@ -361,7 +387,7 @@ static int reset_riva_untrusted(void)
 		writel(0x40000C00 | 50, RIVA_PLL_L_VAL);
 	writel(0, RIVA_PLL_M_VAL);
 	writel(1, RIVA_PLL_N_VAL);
-	writel(0x01485227, RIVA_PLL_CONFIG);
+	writel_relaxed(0x01495227, RIVA_PLL_CONFIG);
 
 	reg = readl(RIVA_PLL_MODE);
 	reg &= ~(PLL_MODE_REF_XO_SEL);
@@ -379,8 +405,8 @@ static int reset_riva_untrusted(void)
 	reg |= PLL_MODE_OUTCTRL;
 	writel(reg, RIVA_PLL_MODE);
 
-	/* TODO: Poll RIVA_PLL_STATUS */
-	msleep(20);
+	/* Wait for PLL to settle */
+	usleep_range(50, 100);
 
 	/* Configure cCPU for 240 MHz */
 	reg = readl(RIVA_PMU_CLK_ROOT3);
@@ -437,6 +463,29 @@ static int shutdown_riva_untrusted(void)
 	return 0;
 }
 
+static int init_image_dsps_untrusted(const u8 *metadata, size_t size)
+{
+	/* Bring memory and bus interface out of reset */
+	writel_relaxed(0x2, PPSS_RESET);
+	writel_relaxed(0x10, PPSS_HCLK_CTL);
+	return 0;
+}
+
+static int reset_dsps_untrusted(void)
+{
+	writel_relaxed(0x10, PPSS_PROC_CLK_CTL);
+	/* Bring DSPS out of reset */
+	writel_relaxed(0x0, PPSS_RESET);
+	return 0;
+}
+
+static int shutdown_dsps_untrusted(void)
+{
+	writel_relaxed(0x2, PPSS_RESET);
+	writel_relaxed(0x0, PPSS_PROC_CLK_CTL);
+	return 0;
+}
+
 static struct pil_reset_ops pil_modem_fw_q6_ops = {
 	.init_image = init_image_modem_fw_q6_untrusted,
 	.verify_blob = verify_blob,
@@ -465,6 +514,12 @@ static struct pil_reset_ops pil_riva_ops = {
 	.shutdown = shutdown_riva_untrusted,
 };
 
+struct pil_reset_ops pil_dsps_ops = {
+	.init_image = init_image_dsps_untrusted,
+	.verify_blob = verify_blob,
+	.auth_and_reset = reset_dsps_untrusted,
+	.shutdown = shutdown_dsps_untrusted,
+};
 
 static struct pil_device peripherals[] = {
 	{
@@ -500,6 +555,14 @@ static struct pil_device peripherals[] = {
 			.id = -1,
 		},
 		.ops = &pil_riva_ops,
+	},
+	{
+		.name = "dsps",
+		.pdev = {
+			.name = "pil_dsps",
+			.id = -1,
+		},
+		.ops = &pil_dsps_ops,
 	},
 };
 

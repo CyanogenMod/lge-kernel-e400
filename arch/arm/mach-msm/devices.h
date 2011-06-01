@@ -45,9 +45,13 @@ extern struct platform_device msm_device_uart_gsbi9;
 extern struct platform_device msm8960_device_uart_gsbi2;
 extern struct platform_device msm8960_device_uart_gsbi5;
 extern struct platform_device msm8960_device_ssbi_pm8921;
+extern struct platform_device msm8960_device_qup_i2c_gsbi3;
 extern struct platform_device msm8960_device_qup_i2c_gsbi4;
+extern struct platform_device msm8960_device_qup_i2c_gsbi10;
 extern struct platform_device msm8960_device_qup_spi_gsbi1;
 extern struct platform_device msm8960_gemini_device;
+extern struct platform_device msm8960_camera_sensor_imx074;
+extern struct platform_device msm8960_camera_sensor_ov2720;
 
 extern struct platform_device msm_device_sdc1;
 extern struct platform_device msm_device_sdc2;
@@ -81,6 +85,7 @@ extern struct platform_device msm_gsbi8_qup_i2c_device;
 extern struct platform_device msm_gsbi9_qup_i2c_device;
 extern struct platform_device msm_gsbi12_qup_i2c_device;
 
+extern struct platform_device msm_slim_ctrl;
 extern struct platform_device msm_device_sps;
 extern struct platform_device msm_device_bam_dmux;
 extern struct platform_device msm_device_smd;
@@ -107,6 +112,15 @@ extern struct platform_device msm_gsbi1_qup_spi_device;
 extern struct platform_device msm_device_wcnss_wlan;
 
 extern struct platform_device msm_device_vidc_720p;
+
+extern struct platform_device msm_pcm;
+extern struct platform_device msm_pcm_routing;
+extern struct platform_device msm_cpudai0;
+extern struct platform_device msm_cpudai1;
+extern struct platform_device msm_cpu_fe;
+extern struct platform_device msm_stub_codec;
+extern struct platform_device msm_voice;
+extern struct platform_device msm_voip;
 
 extern struct platform_device *msm_footswitch_devices[];
 extern unsigned msm_num_footswitch_devices;
@@ -138,13 +152,14 @@ extern struct clk_lookup msm_clocks_8960_dummy[];
 extern unsigned msm_num_clocks_8960_dummy;
 
 extern struct platform_device msm_kgsl_3d0;
-#ifdef CONFIG_MSM_KGSL_2D
 extern struct platform_device msm_kgsl_2d0;
 extern struct platform_device msm_kgsl_2d1;
-#endif
+
+extern struct platform_device msm_mipi_dsi1_device;
 
 void __init msm_fb_register_device(char *name, void *data);
 void __init msm_camera_register_device(void *, uint32_t, void *);
 extern struct platform_device msm_device_touchscreen;
 
+extern struct pil_device peripheral_dsps;
 #endif

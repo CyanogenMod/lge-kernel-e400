@@ -92,6 +92,8 @@ struct msm_rotator_dev {
 	void __iomem *io_base;
 	int irq;
 	struct msm_rotator_img_info *img_info[MAX_SESSIONS];
+	struct clk *core_clk;
+	int pid_list[MAX_SESSIONS];
 	struct clk *pclk;
 	struct clk *axi_clk;
 	int rot_clk_state;
@@ -197,8 +199,12 @@ static void msm_rotator_imem_clk_work_f(struct work_struct *work)
 /* enable clocks needed by rotator block */
 static void enable_rot_clks(void)
 {
-	clk_enable(msm_rotator_dev->pclk);
-	clk_enable(msm_rotator_dev->axi_clk);
+	if (msm_rotator_dev->core_clk != NULL)
+		clk_enable(msm_rotator_dev->core_clk);
+	if (msm_rotator_dev->pclk != NULL)
+		clk_enable(msm_rotator_dev->pclk);
+	if (msm_rotator_dev->axi_clk != NULL)
+		clk_enable(msm_rotator_dev->axi_clk);
 	if (msm_rotator_dev->regulator)
 		regulator_enable(msm_rotator_dev->regulator);
 }
@@ -208,8 +214,12 @@ static void disable_rot_clks(void)
 {
 	if (msm_rotator_dev->regulator)
 		regulator_disable(msm_rotator_dev->regulator);
-	clk_disable(msm_rotator_dev->pclk);
-	clk_disable(msm_rotator_dev->axi_clk);
+	if (msm_rotator_dev->core_clk != NULL)
+		clk_disable(msm_rotator_dev->core_clk);
+	if (msm_rotator_dev->pclk != NULL)
+		clk_disable(msm_rotator_dev->pclk);
+	if (msm_rotator_dev->axi_clk != NULL)
+		clk_disable(msm_rotator_dev->axi_clk);
 }
 
 static void msm_rotator_rot_clk_work_f(struct work_struct *work)
@@ -959,7 +969,7 @@ do_rotate_fail_dst_img:
 	return rc;
 }
 
-static int msm_rotator_start(unsigned long arg)
+static int msm_rotator_start(unsigned long arg, int pid)
 {
 	struct msm_rotator_img_info info;
 	int rc = 0;
@@ -1033,6 +1043,7 @@ static int msm_rotator_start(unsigned long arg)
 			(unsigned int)msm_rotator_dev->img_info[s]
 			)) {
 			*(msm_rotator_dev->img_info[s]) = info;
+			msm_rotator_dev->pid_list[s] = pid;
 
 			if (msm_rotator_dev->last_session_idx == s)
 				msm_rotator_dev->last_session_idx =
@@ -1060,6 +1071,7 @@ static int msm_rotator_start(unsigned long arg)
 		info.session_id = (unsigned int)
 			msm_rotator_dev->img_info[first_free_index];
 		*(msm_rotator_dev->img_info[first_free_index]) = info;
+		msm_rotator_dev->pid_list[first_free_index] = pid;
 
 		if (copy_to_user((void __user *)arg, &info, sizeof(info)))
 			rc = -EFAULT;
@@ -1094,6 +1106,7 @@ static int msm_rotator_finish(unsigned long arg)
 					INVALID_SESSION;
 			kfree(msm_rotator_dev->img_info[s]);
 			msm_rotator_dev->img_info[s] = NULL;
+			msm_rotator_dev->pid_list[s] = 0;
 			break;
 		}
 	}
@@ -1104,15 +1117,67 @@ static int msm_rotator_finish(unsigned long arg)
 	return rc;
 }
 
+static int
+msm_rotator_open(struct inode *inode, struct file *filp)
+{
+	int *id;
+	int i;
+
+	if (filp->private_data)
+		return -EBUSY;
+
+	mutex_lock(&msm_rotator_dev->rotator_lock);
+	id = &msm_rotator_dev->pid_list[0];
+	for (i = 0; i < MAX_SESSIONS; i++, id++) {
+		if (*id == 0)
+			break;
+	}
+	mutex_unlock(&msm_rotator_dev->rotator_lock);
+
+	if (i == MAX_SESSIONS)
+		return -EBUSY;
+
+	filp->private_data = (void *)task_tgid_nr(current);
+
+	return 0;
+}
+
+static int
+msm_rotator_close(struct inode *inode, struct file *filp)
+{
+	int s;
+	int pid;
+
+	pid = (int)filp->private_data;
+	mutex_lock(&msm_rotator_dev->rotator_lock);
+	for (s = 0; s < MAX_SESSIONS; s++) {
+		if (msm_rotator_dev->img_info[s] != NULL &&
+			msm_rotator_dev->pid_list[s] == pid) {
+			kfree(msm_rotator_dev->img_info[s]);
+			msm_rotator_dev->img_info[s] = NULL;
+			if (msm_rotator_dev->last_session_idx == s)
+				msm_rotator_dev->last_session_idx =
+					INVALID_SESSION;
+		}
+	}
+	mutex_unlock(&msm_rotator_dev->rotator_lock);
+
+	return 0;
+}
+
 static long msm_rotator_ioctl(struct file *file, unsigned cmd,
 						 unsigned long arg)
 {
+	int pid;
+
 	if (_IOC_TYPE(cmd) != MSM_ROTATOR_IOCTL_MAGIC)
 		return -ENOTTY;
 
+	pid = (int)file->private_data;
+
 	switch (cmd) {
 	case MSM_ROTATOR_IOCTL_START:
-		return msm_rotator_start(arg);
+		return msm_rotator_start(arg, pid);
 	case MSM_ROTATOR_IOCTL_ROTATE:
 		return msm_rotator_do_rotate(arg);
 	case MSM_ROTATOR_IOCTL_FINISH:
@@ -1127,6 +1192,8 @@ static long msm_rotator_ioctl(struct file *file, unsigned cmd,
 
 static const struct file_operations msm_rotator_fops = {
 	.owner = THIS_MODULE,
+	.open = msm_rotator_open,
+	.release = msm_rotator_close,
 	.unlocked_ioctl = msm_rotator_ioctl,
 };
 
@@ -1158,6 +1225,11 @@ static int __devinit msm_rotator_probe(struct platform_device *pdev)
 			  msm_rotator_imem_clk_work_f);
 	msm_rotator_dev->imem_clk = NULL;
 	msm_rotator_dev->pdev = pdev;
+
+	msm_rotator_dev->core_clk = NULL;
+	msm_rotator_dev->pclk = NULL;
+	msm_rotator_dev->axi_clk = NULL;
+
 	for (i = 0; i < number_of_clks; i++) {
 		if (pdata->rotator_clks[i].clk_type == ROTATOR_IMEM_CLK) {
 			msm_rotator_dev->imem_clk =
@@ -1188,6 +1260,23 @@ static int __devinit msm_rotator_probe(struct platform_device *pdev)
 
 			if (pdata->rotator_clks[i].clk_rate)
 				clk_set_min_rate(msm_rotator_dev->pclk,
+					pdata->rotator_clks[i].clk_rate);
+		}
+
+		if (pdata->rotator_clks[i].clk_type == ROTATOR_CORE_CLK) {
+			msm_rotator_dev->core_clk =
+			clk_get(&msm_rotator_dev->pdev->dev,
+				pdata->rotator_clks[i].clk_name);
+			if (IS_ERR(msm_rotator_dev->core_clk)) {
+				rc = PTR_ERR(msm_rotator_dev->core_clk);
+				msm_rotator_dev->core_clk = NULL;
+				printk(KERN_ERR "%s: cannot get core clk "
+					"rc=%d\n", DRIVER_NAME, rc);
+			goto error_core_clk;
+			}
+
+			if (pdata->rotator_clks[i].clk_rate)
+				clk_set_min_rate(msm_rotator_dev->core_clk,
 					pdata->rotator_clks[i].clk_rate);
 		}
 
@@ -1318,6 +1407,8 @@ error_get_resource:
 		regulator_put(msm_rotator_dev->regulator);
 	clk_put(msm_rotator_dev->axi_clk);
 error_axi_clk:
+	clk_put(msm_rotator_dev->core_clk);
+error_core_clk:
 	clk_put(msm_rotator_dev->pclk);
 error_pclk:
 	if (msm_rotator_dev->imem_clk)
@@ -1347,10 +1438,12 @@ static int __devexit msm_rotator_remove(struct platform_device *plat_dev)
 	}
 	if (msm_rotator_dev->rot_clk_state == CLK_EN)
 		disable_rot_clks();
+	clk_put(msm_rotator_dev->core_clk);
 	clk_put(msm_rotator_dev->pclk);
 	clk_put(msm_rotator_dev->axi_clk);
 	if (msm_rotator_dev->regulator)
 		regulator_put(msm_rotator_dev->regulator);
+	msm_rotator_dev->core_clk = NULL;
 	msm_rotator_dev->pclk = NULL;
 	msm_rotator_dev->axi_clk = NULL;
 	mutex_destroy(&msm_rotator_dev->imem_lock);

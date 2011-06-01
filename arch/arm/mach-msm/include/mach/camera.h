@@ -80,6 +80,7 @@ enum vfe_resp_msg {
 	VFE_MSG_SYNC_TIMER0,
 	VFE_MSG_SYNC_TIMER1,
 	VFE_MSG_SYNC_TIMER2,
+	VFE_MSG_COMMON,
 };
 
 enum vpe_resp_msg {
@@ -154,13 +155,15 @@ struct msm_vpe_phy_info {
 	uint32_t frame_id;
 };
 
-struct msm_camera_csid_lut_params {
-	uint8_t vc;
-	uint8_t dt;
+struct msm_camera_csid_vc_cfg {
 	uint8_t cid;
-	uint8_t rdi_en;
-	uint8_t ispif_en;
+	uint8_t dt;
 	uint8_t decode_format;
+};
+
+struct msm_camera_csid_lut_params {
+	uint8_t num_cid;
+	struct msm_camera_csid_vc_cfg *vc_cfg;
 };
 
 struct msm_camera_csid_params {
@@ -180,6 +183,7 @@ struct msm_camera_csiphy_params {
 #define VFE31_OUTPUT_MODE_P (0x1 << 3)
 #define VFE31_OUTPUT_MODE_T (0x1 << 4)
 
+#define CSI_EMBED_DATA 0x12
 #define CSI_RAW8    0x2A
 #define CSI_RAW10   0x2B
 #define CSI_RAW12   0x2C
@@ -196,6 +200,18 @@ struct msm_vfe_phy_info {
 	uint32_t y_phy;
 	uint32_t cbcr_phy;
 	uint8_t  output_id; /* VFE31_OUTPUT_MODE_PT/S/V */
+	uint32_t frame_id;
+};
+
+struct msm_vfe_stats_msg {
+	uint32_t aec_buff;
+	uint32_t awb_buff;
+	uint32_t af_buff;
+	uint32_t ihist_buff;
+	uint32_t rs_buff;
+	uint32_t cs_buff;
+	uint32_t skin_buff;
+	uint32_t status_bits;
 	uint32_t frame_id;
 };
 
@@ -223,6 +239,7 @@ struct msm_vfe_resp {
 	enum vfe_resp_msg type;
 	struct msm_cam_evt_msg evt_msg;
 	struct msm_vfe_phy_info phy;
+	struct msm_vfe_stats_msg stats_msg;
 	struct msm_vpe_buf_info vpe_bf;
 	void    *extdata;
 	int32_t extlen;
@@ -253,13 +270,19 @@ struct msm_vfe_callback {
 };
 
 struct msm_camvfe_fn {
-	int (*vfe_init)(struct msm_vfe_callback *, struct platform_device *);
+	int (*vfe_init)(struct msm_vfe_callback *,
+			struct platform_device *);
 	int (*vfe_enable)(struct camera_enable_cmd *);
 	int (*vfe_config)(struct msm_vfe_cfg_cmd *, void *);
 	int (*vfe_disable)(struct camera_enable_cmd *,
-		struct platform_device *dev);
+			struct platform_device *dev);
 	void (*vfe_release)(struct platform_device *);
 	void (*vfe_stop)(void);
+};
+
+struct msm_camvfe_params {
+	struct msm_vfe_cfg_cmd *vfe_cfg;
+	void *data;
 };
 
 struct msm_camvpe_fn {
@@ -504,6 +527,11 @@ enum msm_camio_clk_type {
 	CAMIO_JPEG_PCLK,
 	CAMIO_VPE_CLK,
 	CAMIO_VPE_PCLK,
+
+	CAMIO_CSI0_PHY_CLK,
+	CAMIO_CSI1_PHY_CLK,
+	CAMIO_CSIPHY_TIMER_SRC_CLK,
+
 	CAMIO_MAX_CLK
 };
 
@@ -547,6 +575,9 @@ enum msm_bus_perf_setting {
 	S_PREVIEW,
 	S_VIDEO,
 	S_CAPTURE,
+	S_ZSL,
+	S_STEREO_VIDEO,
+	S_STEREO_CAPTURE,
 	S_DEFAULT,
 	S_EXIT
 };
@@ -592,4 +623,9 @@ u32 msm_io_r_mb(void __iomem *addr);
 void msm_io_dump(void __iomem *addr, int size);
 void msm_io_memcpy(void __iomem *dest_addr, void __iomem *src_addr, u32 len);
 void msm_camio_set_perf_lvl(enum msm_bus_perf_setting);
+
+void *msm_isp_sync_alloc(int size,
+	void *syncdata __attribute__((unused)), gfp_t gfp);
+
+void msm_isp_sync_free(void *ptr);
 #endif

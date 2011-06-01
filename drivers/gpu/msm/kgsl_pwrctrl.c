@@ -202,6 +202,43 @@ static int kgsl_pwrctrl_idle_timer_show(struct device *dev,
 	return sprintf(buf, "%d\n", pwr->interval_timeout);
 }
 
+static int kgsl_pwrctrl_scaling_governor_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	char temp[20];
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
+	unsigned int reset = pwr->idle_pass;
+
+	snprintf(temp, sizeof(temp), "%.*s",
+			 (int)min(count, sizeof(temp) - 1), buf);
+	if (strncmp(temp, "ondemand", 8) == 0)
+		reset = 1;
+	else if (strncmp(temp, "performance", 11) == 0)
+		reset = 0;
+
+	mutex_lock(&device->mutex);
+	pwr->idle_pass = reset;
+	if (pwr->idle_pass == 0)
+		kgsl_pwrctrl_pwrlevel_change(device, pwr->thermal_pwrlevel);
+	mutex_unlock(&device->mutex);
+
+	return count;
+}
+
+static int kgsl_pwrctrl_scaling_governor_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
+	if (pwr->idle_pass)
+		return snprintf(buf, 10, "ondemand\n");
+	else
+		return snprintf(buf, 13, "performance\n");
+}
+
 static struct device_attribute gpuclk_attr = {
 	.attr = { .name = "gpuclk", .mode = 0644, },
 	.show = kgsl_pwrctrl_gpuclk_show,
@@ -220,6 +257,12 @@ static struct device_attribute idle_timer_attr = {
 	.store = kgsl_pwrctrl_idle_timer_store,
 };
 
+static struct device_attribute scaling_governor_attr = {
+	.attr = { .name = "scaling_governor", .mode = 0644, },
+	.show = kgsl_pwrctrl_scaling_governor_show,
+	.store = kgsl_pwrctrl_scaling_governor_store,
+};
+
 int kgsl_pwrctrl_init_sysfs(struct kgsl_device *device)
 {
 	int ret = 0;
@@ -228,16 +271,9 @@ int kgsl_pwrctrl_init_sysfs(struct kgsl_device *device)
 		ret = device_create_file(device->dev, &gpuclk_attr);
 	if (ret == 0)
 		ret = device_create_file(device->dev, &idle_timer_attr);
+	if (ret == 0)
+		ret = device_create_file(device->dev, &scaling_governor_attr);
 	return ret;
-}
-
-unsigned long kgsl_get_clkrate(struct clk *clk)
-{
-	if (clk != NULL)  {
-		return clk_get_rate(clk);
-	}  else   {
-		return 0;
-	}
 }
 
 void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device)
@@ -245,6 +281,7 @@ void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device)
 	device_remove_file(device->dev, &gpuclk_attr);
 	device_remove_file(device->dev, &pwrnap_attr);
 	device_remove_file(device->dev, &idle_timer_attr);
+	device_remove_file(device->dev, &scaling_governor_attr);
 }
 
 static void kgsl_pwrctrl_idle_calc(struct kgsl_device *device)
@@ -317,6 +354,7 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, unsigned int pwrflag)
 		return;
 	}
 }
+EXPORT_SYMBOL(kgsl_pwrctrl_clk);
 
 void kgsl_pwrctrl_axi(struct kgsl_device *device, unsigned int pwrflag)
 {
@@ -356,6 +394,7 @@ void kgsl_pwrctrl_axi(struct kgsl_device *device, unsigned int pwrflag)
 		return;
 	}
 }
+EXPORT_SYMBOL(kgsl_pwrctrl_axi);
 
 
 void kgsl_pwrctrl_pwrrail(struct kgsl_device *device, unsigned int pwrflag)
@@ -402,7 +441,7 @@ void kgsl_pwrctrl_pwrrail(struct kgsl_device *device, unsigned int pwrflag)
 		return;
 	}
 }
-
+EXPORT_SYMBOL(kgsl_pwrctrl_pwrrail);
 
 void kgsl_pwrctrl_irq(struct kgsl_device *device, unsigned int pwrflag)
 {
@@ -432,6 +471,7 @@ void kgsl_pwrctrl_irq(struct kgsl_device *device, unsigned int pwrflag)
 		return;
 	}
 }
+EXPORT_SYMBOL(kgsl_pwrctrl_irq);
 
 int kgsl_pwrctrl_init(struct kgsl_device *device)
 {
@@ -592,8 +632,7 @@ void kgsl_idle_check(struct work_struct *work)
 		(device->requested_state != KGSL_STATE_SLEEP))
 		kgsl_pwrctrl_idle_calc(device);
 
-	if (device->state & (KGSL_STATE_ACTIVE | KGSL_STATE_NAP) &&
-		device->pwrctrl.nap_allowed) {
+	if (device->state & (KGSL_STATE_ACTIVE | KGSL_STATE_NAP)) {
 		if (kgsl_pwrctrl_sleep(device) != 0)
 			mod_timer(&device->idle_timer,
 					jiffies +
@@ -624,6 +663,7 @@ void kgsl_pre_hwaccess(struct kgsl_device *device)
 	if (device->state & (KGSL_STATE_SLEEP | KGSL_STATE_NAP))
 		kgsl_pwrctrl_wake(device);
 }
+EXPORT_SYMBOL(kgsl_pre_hwaccess);
 
 void kgsl_check_suspended(struct kgsl_device *device)
 {
@@ -663,9 +703,6 @@ int kgsl_pwrctrl_sleep(struct kgsl_device *device)
 
 sleep:
 	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_IRQ_OFF);
-	/*In 7x27a, do not turn off axi and gpu clocks*/
-	if (cpu_is_msm7x27a())
-		goto end;
 	kgsl_pwrctrl_axi(device, KGSL_PWRFLAGS_AXI_OFF);
 	if (pwr->pwrlevels[0].gpu_freq > 0)
 		clk_set_rate(pwr->grp_clks[0],
@@ -681,7 +718,6 @@ nap:
 clk_off:
 	kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_CLK_OFF);
 
-end:
 	device->state = device->requested_state;
 	device->requested_state = KGSL_STATE_NONE;
 	wake_unlock(&device->idle_wakelock);
@@ -690,7 +726,7 @@ end:
 
 	return 0;
 }
-
+EXPORT_SYMBOL(kgsl_pwrctrl_sleep);
 
 /******************************************************************/
 /* Caller must hold the device mutex. */
@@ -720,4 +756,4 @@ void kgsl_pwrctrl_wake(struct kgsl_device *device)
 	wake_lock(&device->idle_wakelock);
 	KGSL_PWR_INFO(device, "wake return for device %d\n", device->id);
 }
-
+EXPORT_SYMBOL(kgsl_pwrctrl_wake);

@@ -1987,8 +1987,8 @@ static int pmic8058_xoadc_rpm_vreg_config(int on)
 {
 	int rc;
 
-	rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8058_L18,
-				RPM_VREG_VOTER3, (on ? 2200000 : 0), 0);
+	rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8058_L18, RPM_VREG_VOTER3,
+			(on ? 2200000 : 0), 2200000, 0);
 
 	return rc;
 }
@@ -2249,10 +2249,8 @@ static struct platform_device *qt_devices[] __initdata = {
 #endif
 	&msm_fb_device,
 	&msm_kgsl_3d0,
-#ifdef CONFIG_MSM_KGSL_2D
 	&msm_kgsl_2d0,
 	&msm_kgsl_2d1,
-#endif
 	&lcdc_chimei_panel_device,
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 	&hdmi_msm_device,
@@ -5237,9 +5235,7 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	if (socinfo_init() < 0)
 		printk(KERN_ERR "%s: socinfo_init() failed!\n",
 		       __func__);
-#ifdef CONFIG_MSM_KGSL_2D
 	msm8x60_check_2d_hardware();
-#endif
 
 	/* Change SPM handling of core 1 if PMM 8160 is present. */
 	soc_platform_version = socinfo_get_platform_version();

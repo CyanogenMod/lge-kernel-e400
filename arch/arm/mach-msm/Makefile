@@ -104,6 +104,7 @@ obj-$(CONFIG_MSM_RPCSERVER_TIME_REMOTE) += rpc_server_time_remote.o
 obj-$(CONFIG_MSM_DALRPC) += dal.o
 obj-$(CONFIG_MSM_DALRPC_TEST) += dal_remotetest.o
 obj-$(CONFIG_ARCH_MSM7X30) += dal_axi.o
+obj-$(CONFIG_ARCH_MSM7X27A) += dal_axi.o
 obj-$(CONFIG_MSM_ADSP) += qdsp5/
 obj-$(CONFIG_MSM7KV2_AUDIO) += qdsp5v2/
 obj-$(CONFIG_MSM_RPCSERVER_HANDSET) += rpc_server_handset.o
@@ -117,6 +118,7 @@ ifdef CONFIG_PM
 	obj-$(CONFIG_ARCH_QSD8X50) += pm2.o
 	obj-$(CONFIG_ARCH_MSM7X30) += pm2.o
 	obj-$(CONFIG_ARCH_MSM7X27) += pm2.o
+	obj-$(CONFIG_ARCH_MSM7X27A) += pm2.o
 	obj-$(CONFIG_ARCH_MSM7X25) += pm.o
 	obj-$(CONFIG_ARCH_MSM7X01A) += pm.o
 else
@@ -181,7 +183,7 @@ obj-$(CONFIG_MACH_MSM7X25_FFA) += board-msm7x27.o devices-msm7x25.o
 obj-$(CONFIG_ARCH_MSM8960) += clock-local.o clock-8960.o
 obj-$(CONFIG_ARCH_MSM8960) += board-msm8960.o devices-8960.o footswitch-8x60.o
 obj-$(CONFIG_ARCH_MSM8960) += board-msm8960-regulator.o acpuclock-8960.o
-obj-$(CONFIG_ARCH_MSM8960) += spm-v2.o saw-regulator.o
+obj-$(CONFIG_ARCH_MSM8960) += spm-v2.o saw-regulator.o restart.o
 
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
@@ -225,4 +227,6 @@ obj-$(CONFIG_MSM_SLEEP_STATS) += msm_rq_stats.o idle_stats.o
 obj-$(CONFIG_MSM_SHOW_RESUME_IRQ) += msm_show_resume_irq.o
 obj-$(CONFIG_BT_MSM_PINTEST)  += btpintest.o
 obj-$(CONFIG_MSM_FAKE_BATTERY) += fish_battery.o
+obj-$(CONFIG_MSM_RPC_VIBRATOR) += msm_vibrator.o
 obj-$(CONFIG_MACH_LGE) += lge/
+

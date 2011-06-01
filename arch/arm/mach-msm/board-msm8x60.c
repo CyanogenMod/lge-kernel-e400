@@ -98,6 +98,9 @@
 #include "gpiomux.h"
 #include "gpiomux-8x60.h"
 #include "rpm_stats.h"
+#include "peripheral-loader.h"
+#include <linux/platform_data/qcom_crypto_device.h>
+
 #define MSM_SHARED_RAM_PHYS 0x40000000
 
 /* Macros assume PMIC GPIOs start at 0 */
@@ -126,6 +129,9 @@
 #define LCDC_SAMSUNG_WSVGA_PANEL_NAME	"lcdc_samsung_wsvga"
 #define LCDC_SAMSUNG_SPI_DEVICE_NAME	"lcdc_samsung_ams367pe02"
 #define LCDC_AUO_SPI_DEVICE_NAME		"lcdc_auo_nt35582"
+
+#define DSPS_PIL_GENERIC_NAME		"dsps"
+#define DSPS_PIL_FLUID_NAME		"dsps_fluid"
 
 enum {
 	GPIO_EXPANDER_IRQ_BASE  = PM8901_IRQ_BASE + NR_PMIC8901_IRQS,
@@ -992,7 +998,7 @@ __setup("usb_id_pin_rework=", usb_id_pin_rework_setup);
 static void pmic_id_detect(struct work_struct *w)
 {
 	int val = gpio_get_value_cansleep(PM8058_GPIO_PM_TO_SYS(36));
-	pr_info("%s(): gpio_read_value = %d\n", __func__, val);
+	pr_debug("%s(): gpio_read_value = %d\n", __func__, val);
 
 	if (notify_vbus_state_func_ptr)
 		(*notify_vbus_state_func_ptr) (val);
@@ -2139,6 +2145,10 @@ struct resource msm_camera_resources[] = {
 	},
 };
 #ifdef CONFIG_MT9E013
+static struct msm_camera_sensor_platform_info mt9e013_sensor_8660_info = {
+	.mount_angle = 0
+};
+
 static struct msm_camera_sensor_flash_data flash_mt9e013 = {
 	.flash_type			= MSM_CAMERA_FLASH_LED,
 	.flash_src			= &msm_flash_src
@@ -2155,6 +2165,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9e013_data = {
 		.num_resources	= ARRAY_SIZE(msm_camera_resources),
 		.flash_data		= &flash_mt9e013,
 		.strobe_flash_data	= &strobe_flash_xenon,
+		.sensor_platform_info = &mt9e013_sensor_8660_info,
 		.csi_if			= 1
 };
 struct platform_device msm_camera_sensor_mt9e013 = {
@@ -2332,7 +2343,7 @@ static void gsbi_qup_i2c_gpio_config(int adap_id, int config_type)
 }
 
 static struct msm_i2c_platform_data msm_gsbi3_qup_i2c_pdata = {
-	.clk_freq = 100000,
+	.clk_freq = 384000,
 	.src_clk_rate = 24000000,
 	.clk = "gsbi_qup_clk",
 	.pclk = "gsbi_pclk",
@@ -2467,12 +2478,21 @@ static void __init msm8x60_init_dsps(void)
 	 * different IO-Expender (north) than used on surf/ffa.
 	 */
 	if (machine_is_msm8x60_fluid()) {
+		/* fluid has different firmware, gpios */
+		peripheral_dsps.name = DSPS_PIL_FLUID_NAME;
+		pdata->pil_name = DSPS_PIL_FLUID_NAME;
 		pdata->gpios = dsps_fluid_gpios;
 		pdata->gpios_num = ARRAY_SIZE(dsps_fluid_gpios);
 	} else {
+		peripheral_dsps.name = DSPS_PIL_GENERIC_NAME;
+		pdata->pil_name = DSPS_PIL_GENERIC_NAME;
 		pdata->gpios = dsps_surf_gpios;
 		pdata->gpios_num = ARRAY_SIZE(dsps_surf_gpios);
 	}
+
+	msm_pil_add_device(&peripheral_dsps);
+
+	platform_device_register(&msm_dsps_device);
 }
 #endif /* CONFIG_MSM_DSPS */
 
@@ -2970,14 +2990,6 @@ static int cyttsp_fluid_platform_init(struct i2c_client *client)
 		goto reg_s3_disable;
 	}
 
-	/* configure touchscreen interrupt gpio */
-	rc = gpio_request(FLUID_CYTTSP_TS_GPIO_IRQ, "cyttsp_irq_gpio");
-	if (rc) {
-		pr_err("%s: unable to request gpio %d\n",
-			__func__, FLUID_CYTTSP_TS_GPIO_IRQ);
-		goto reg_s3_disable;
-	}
-
 	/* virtual keys */
 	tma300_vkeys_attr.attr.name = "virtualkeys.cyttsp-i2c";
 	properties_kobj = kobject_create_and_add("board_properties",
@@ -3037,6 +3049,9 @@ static struct cyttsp_platform_data cyttsp_fluid_pdata = {
 	 * scanning/processing refresh interval for Operating mode
 	 */
 	.lp_intrvl = CY_LP_INTRVL_DFLT,
+	.sleep_gpio = -1,
+	.resout_gpio = -1,
+	.irq_gpio = FLUID_CYTTSP_TS_GPIO_IRQ,
 	.resume = cyttsp_fluid_platform_resume,
 	.init = cyttsp_fluid_platform_init,
 };
@@ -3679,10 +3694,8 @@ static struct platform_device *rumi_sim_devices[] __initdata = {
 #endif
 	&msm_fb_device,
 	&msm_kgsl_3d0,
-#ifdef CONFIG_MSM_KGSL_2D
 	&msm_kgsl_2d0,
 	&msm_kgsl_2d1,
-#endif
 	&lcdc_samsung_panel_device,
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 	&hdmi_msm_device,
@@ -4447,7 +4460,7 @@ static struct sdio_al_platform_data sdio_al_pdata = {
 	.config_mdm2ap_status = configure_mdm2ap_status,
 	.get_mdm2ap_status = get_mdm2ap_status,
 	.allow_sdioc_version_major_2 = 0,
-	.peer_sdioc_version_minor = 0x0001,
+	.peer_sdioc_version_minor = 0x0101,
 	.peer_sdioc_version_major = 0x0004,
 	.peer_sdioc_boot_version_minor = 0x0001,
 	.peer_sdioc_boot_version_major = 0x0002,
@@ -4481,9 +4494,7 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm_gsbi7_qup_i2c_device,
 	&msm_gsbi8_qup_i2c_device,
 	&msm_gsbi9_qup_i2c_device,
-#ifndef CONFIG_MSM_DSPS
 	&msm_gsbi12_qup_i2c_device,
-#endif
 #endif
 #if defined(CONFIG_SPI_QUP) || defined(CONFIG_SPI_QUP_MODULE)
 	&msm_gsbi1_qup_spi_device,
@@ -4498,10 +4509,6 @@ static struct platform_device *surf_devices[] __initdata = {
 #endif
 #if defined(CONFIG_USB_PEHCI_HCD) || defined(CONFIG_USB_PEHCI_HCD_MODULE)
 	&isp1763_device,
-#endif
-
-#ifdef CONFIG_MSM_DSPS
-	&msm_dsps_device,
 #endif
 
 	&asoc_msm_pcm,
@@ -4546,10 +4553,8 @@ static struct platform_device *surf_devices[] __initdata = {
 #endif
 	&msm_fb_device,
 	&msm_kgsl_3d0,
-#ifdef CONFIG_MSM_KGSL_2D
 	&msm_kgsl_2d0,
 	&msm_kgsl_2d1,
-#endif
 	&lcdc_samsung_panel_device,
 #ifdef CONFIG_FB_MSM_LCDC_SAMSUNG_OLED_PT
 	&lcdc_samsung_oled_panel_device,
@@ -6495,6 +6500,7 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 	.fm_shutdown = fm_radio_shutdown,
 	.irq = PM8058_GPIO_IRQ(PM8058_IRQ_BASE, FM_GPIO),
 	.is_fm_soc_i2s_master = false,
+	.config_i2s_gpio = NULL,
 };
 
 /*
@@ -6757,7 +6763,9 @@ static void __init msm8x60_init_buses(void)
 #ifdef CONFIG_I2C_QUP
 	void *gsbi_mem = ioremap_nocache(0x19C00000, 4);
 	/* Setting protocol code to 0x60 for dual UART/I2C in GSBI12 */
-	writel(0x6 << 4, gsbi_mem);
+	writel_relaxed(0x6 << 4, gsbi_mem);
+	/* Ensure protocol code is written before proceeding further */
+	dsb();
 	iounmap(gsbi_mem);
 
 	msm_gsbi3_qup_i2c_device.dev.platform_data = &msm_gsbi3_qup_i2c_pdata;
@@ -6907,7 +6915,7 @@ static void __init msm8x60_init_ebi2(void)
 
 	ebi2_cfg_ptr = ioremap_nocache(0x1a100000, sizeof(uint32_t));
 	if (ebi2_cfg_ptr != 0) {
-		ebi2_cfg = readl(ebi2_cfg_ptr);
+		ebi2_cfg = readl_relaxed(ebi2_cfg_ptr);
 
 		if (machine_is_msm8x60_surf() || machine_is_msm8x60_ffa() ||
 			machine_is_msm8x60_fluid())
@@ -6917,7 +6925,7 @@ static void __init msm8x60_init_ebi2(void)
 		else if (machine_is_msm8x60_rumi3())
 			ebi2_cfg |= (1 << 5); /* CS3 */
 
-		writel(ebi2_cfg, ebi2_cfg_ptr);
+		writel_relaxed(ebi2_cfg, ebi2_cfg_ptr);
 		iounmap(ebi2_cfg_ptr);
 	}
 
@@ -6926,29 +6934,29 @@ static void __init msm8x60_init_ebi2(void)
 		ebi2_cfg_ptr = ioremap_nocache(0x1a110000, SZ_4K);
 		if (ebi2_cfg_ptr != 0) {
 			/* EBI2_XMEM_CFG:PWRSAVE_MODE off */
-			writel(0UL, ebi2_cfg_ptr);
+			writel_relaxed(0UL, ebi2_cfg_ptr);
 
 			/* CS2: Delay 9 cycles (140ns@64MHz) between SMSC
 			 * LAN9221 Ethernet controller reads and writes.
 			 * The lowest 4 bits are the read delay, the next
 			 * 4 are the write delay. */
-			writel(0x031F1C99, ebi2_cfg_ptr + 0x10);
+			writel_relaxed(0x031F1C99, ebi2_cfg_ptr + 0x10);
 #if defined(CONFIG_USB_PEHCI_HCD) || defined(CONFIG_USB_PEHCI_HCD_MODULE)
 			/*
 			 * RECOVERY=5, HOLD_WR=1
 			 * INIT_LATENCY_WR=1, INIT_LATENCY_RD=1
 			 * WAIT_WR=1, WAIT_RD=2
 			 */
-			writel(0x51010112, ebi2_cfg_ptr + 0x14);
+			writel_relaxed(0x51010112, ebi2_cfg_ptr + 0x14);
 			/*
 			 * HOLD_RD=1
 			 * ADV_OE_RECOVERY=0, ADDR_HOLD_ENA=1
 			 */
-			writel(0x01000020, ebi2_cfg_ptr + 0x34);
+			writel_relaxed(0x01000020, ebi2_cfg_ptr + 0x34);
 #else
 			/* EBI2 CS3 muxed address/data,
 			* two cyc addr enable */
-			writel(0xA3030020, ebi2_cfg_ptr + 0x34);
+			writel_relaxed(0xA3030020, ebi2_cfg_ptr + 0x34);
 
 #endif
 			iounmap(ebi2_cfg_ptr);
@@ -7030,7 +7038,7 @@ static struct msm_sdcc_gpio sdc2_gpio_cfg[] = {
 	{150, "sdc2_dat_7"},
 #endif
 	{151, "sdc2_cmd"},
-	{152, "sdc2_clk"}
+	{152, "sdc2_clk", 1}
 };
 #endif
 
@@ -7795,6 +7803,9 @@ static struct mmc_platform_data msm8x60_sdc2_data = {
 #ifdef CONFIG_MMC_MSM_SDC2_DUMMY52_REQUIRED
 	.dummy52_required = 1,
 #endif
+#ifdef CONFIG_MSM_SDIO_AL
+	.is_sdio_al_client = 1,
+#endif
 };
 #endif
 
@@ -7852,6 +7863,9 @@ static struct mmc_platform_data msm8x60_sdc5_data = {
 	.register_status_notify = sdc5_register_status_notify,
 #ifdef CONFIG_MMC_MSM_SDC5_DUMMY52_REQUIRED
 	.dummy52_required = 1,
+#endif
+#ifdef CONFIG_MSM_SDIO_AL
+	.is_sdio_al_client = 1,
 #endif
 };
 #endif
@@ -8857,6 +8871,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 #endif
+	.mdp_rev = MDP_REV_41,
 };
 
 #ifdef CONFIG_FB_MSM_TVOUT
@@ -9352,9 +9367,7 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	if (socinfo_init() < 0)
 		printk(KERN_ERR "%s: socinfo_init() failed!\n",
 		       __func__);
-#ifdef CONFIG_MSM_KGSL_2D
 	msm8x60_check_2d_hardware();
-#endif
 
 	/* Change SPM handling of core 1 if PMM 8160 is present. */
 	soc_platform_version = socinfo_get_platform_version();
@@ -9420,10 +9433,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	msm8x60_init_uart12dm();
 	msm8x60_init_mmc();
 
-#ifdef CONFIG_MSM_DSPS
-	msm8x60_init_dsps();
-#endif
-
 #if defined(CONFIG_PMIC8058_OTHC) || defined(CONFIG_PMIC8058_OTHC_MODULE)
 	msm8x60_init_pm8058_othc();
 #endif
@@ -9438,6 +9447,11 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 			platform_data = &ffa_keypad_data;
 		pm8058_platform_data.sub_devices[PM8058_SUBDEV_KPD].data_size
 			= sizeof(ffa_keypad_data);
+	}
+
+	/* Disable END_CALL simulation function of powerkey on fluid */
+	if (machine_is_msm8x60_fluid()) {
+		pwrkey_pdata.pwrkey_time_ms = 0;
 	}
 
 #ifdef CONFIG_USB_ANDROID
@@ -9473,6 +9487,14 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 					     msm_num_footswitch_devices);
 		platform_add_devices(surf_devices,
 				     ARRAY_SIZE(surf_devices));
+
+#ifdef CONFIG_MSM_DSPS
+		if (machine_is_msm8x60_fluid()) {
+			platform_device_unregister(&msm_gsbi12_qup_i2c_device);
+			msm8x60_init_dsps();
+		}
+#endif
+
 #ifdef CONFIG_USB_EHCI_MSM_72K
 	/*
 	 * Drive MPP2 pin HIGH for PHY to generate ID interrupts on 8660

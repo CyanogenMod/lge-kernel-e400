@@ -155,22 +155,6 @@ static const int a220_registers[] = {
 	0x12400, 0x12400, 0x12420, 0x12420
 };
 
-static struct {
-	int id;
-	const int *registers;
-	int len;
-} kgsl_registers[] = {
-	{ KGSL_CHIPID_LEIA_REV470, a220_registers,
-	  ARRAY_SIZE(a220_registers) / 2 },
-	{ KGSL_CHIPID_LEIA_REV470_TEMP, a220_registers,
-	  ARRAY_SIZE(a220_registers) / 2 },
-	{ KGSL_CHIPID_YAMATODX_REV21, a200_registers,
-	  ARRAY_SIZE(a200_registers) / 2 },
-	{ KGSL_CHIPID_YAMATODX_REV211, a200_registers,
-	  ARRAY_SIZE(a200_registers) / 2 },
-	{ 0x0, NULL, 0},
-};
-
 static uint32_t adreno_is_pm4_len(uint32_t word)
 {
 	if (word == INVALID_RB_CMD)
@@ -640,30 +624,30 @@ static int adreno_dump(struct kgsl_device *device)
 		"COHER:  SIZE_PM4   = %08X | BASE_PM4 = %08X | STATUS_PM4"
 		" = %08X\n", r1, r2, r3);
 
-	kgsl_regread(device, REG_MH_AXI_ERROR, &r1);
+	kgsl_regread(device, MH_AXI_ERROR, &r1);
 	KGSL_LOG_DUMP(device, "MH:     AXI_ERROR  = %08X\n", r1);
 
-	kgsl_regread(device, REG_MH_MMU_PAGE_FAULT, &r1);
-	kgsl_regread(device, REG_MH_MMU_CONFIG, &r2);
-	kgsl_regread(device, REG_MH_MMU_MPU_BASE, &r3);
+	kgsl_regread(device, MH_MMU_PAGE_FAULT, &r1);
+	kgsl_regread(device, MH_MMU_CONFIG, &r2);
+	kgsl_regread(device, MH_MMU_MPU_BASE, &r3);
 	KGSL_LOG_DUMP(device,
 		"MH_MMU: PAGE_FAULT = %08X | CONFIG   = %08X | MPU_BASE ="
 		" %08X\n", r1, r2, r3);
 
-	kgsl_regread(device, REG_MH_MMU_MPU_END, &r1);
-	kgsl_regread(device, REG_MH_MMU_VA_RANGE, &r2);
-	kgsl_regread(device, REG_MH_MMU_PT_BASE, &pt_base);
+	kgsl_regread(device, MH_MMU_MPU_END, &r1);
+	kgsl_regread(device, MH_MMU_VA_RANGE, &r2);
+	kgsl_regread(device, MH_MMU_PT_BASE, &pt_base);
 	KGSL_LOG_DUMP(device,
 		"        MPU_END    = %08X | VA_RANGE = %08X | PT_BASE  ="
 		" %08X\n", r1, r2, pt_base);
 
 	KGSL_LOG_DUMP(device, "PAGETABLE SIZE: %08X ", KGSL_PAGETABLE_SIZE);
 
-	kgsl_regread(device, REG_MH_MMU_TRAN_ERROR, &r1);
+	kgsl_regread(device, MH_MMU_TRAN_ERROR, &r1);
 	KGSL_LOG_DUMP(device, "        TRAN_ERROR = %08X\n", r1);
 
-	kgsl_regread(device, REG_MH_INTERRUPT_MASK, &r1);
-	kgsl_regread(device, REG_MH_INTERRUPT_STATUS, &r2);
+	kgsl_regread(device, MH_INTERRUPT_MASK, &r1);
+	kgsl_regread(device, MH_INTERRUPT_STATUS, &r2);
 	KGSL_LOG_DUMP(device,
 		"MH_INTERRUPT: MASK = %08X | STATUS   = %08X\n", r1, r2);
 
@@ -769,13 +753,12 @@ static int adreno_dump(struct kgsl_device *device)
 
 	/* Dump the registers if the user asked for it */
 
-	for (i = 0; kgsl_pmregs_enabled() && kgsl_registers[i].id; i++) {
-		if (kgsl_registers[i].id == device->chip_id) {
-			adreno_dump_regs(device, kgsl_registers[i].registers,
-				       kgsl_registers[i].len);
-			break;
-		}
-	}
+	if (adreno_is_a20x(adreno_dev))
+		adreno_dump_regs(device, a200_registers,
+			ARRAY_SIZE(a200_registers) / 2);
+	else if (adreno_is_a22x(adreno_dev))
+		adreno_dump_regs(device, a220_registers,
+			ARRAY_SIZE(a220_registers) / 2);
 
 error_vfree:
 	vfree(rb_copy);

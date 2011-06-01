@@ -33,15 +33,23 @@
 #include <linux/cdev.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
 
 #include <asm/uaccess.h>
 
 #include <linux/atmel_maxtouch.h>
 
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+#include <linux/earlysuspend.h>
+
+/* Early-suspend level */
+#define MXT_SUSPEND_LEVEL 1
+#endif
+
 
 #define DRIVER_VERSION "0.91a_mod"
 
-static int debug = DEBUG_TRACE;
+static int debug = DEBUG_INFO;
 static int comms = 0;
 module_param(debug, int, 0644);
 module_param(comms, int, 0644);
@@ -127,11 +135,14 @@ struct mxt_data {
 	u16                  msg_proc_addr;
 	u8                   message_size;
 
+	u16                  min_x_val;
+	u16                  min_y_val;
 	u16                  max_x_val;
 	u16                  max_y_val;
 
 	int                  (*init_hw)(struct i2c_client *client);
 	int		     (*exit_hw)(struct i2c_client *client);
+	int		     (*power_on)(bool on);
 	u8                   (*valid_interrupt)(void);
 	u8                   (*read_chg)(void);
 
@@ -158,6 +169,9 @@ struct mxt_data {
         /* Put only non-touch messages to buffer if this is set */
 	char                 nontouch_msg_only; 
 	struct mutex         msg_mutex;
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	struct early_suspend		early_suspend;
+#endif
 };
 /*default value, enough to read versioning*/
 #define CONFIG_DATA_SIZE	6
@@ -1074,7 +1088,7 @@ int process_message(u8 *message, u8 object, struct mxt_data *mxt)
 		}
 		if (status & MXT_MSGB_T6_CAL) {
 			/* Calibration in action, no need to react */
-			dev_info(&client->dev,
+			dev_dbg(&client->dev,
 				"maXTouch calibration in progress\n");
 		}
 		if (status & MXT_MSGB_T6_SIGERR) {
@@ -1099,12 +1113,12 @@ int process_message(u8 *message, u8 object, struct mxt_data *mxt)
 		}
 		if (status & MXT_MSGB_T6_RESET) {
 			/* Chip has reseted, no need to react. */
-			dev_info(&client->dev,
+			dev_dbg(&client->dev,
 				"maXTouch chip reset\n");
 		}
 		if (status == 0) {
 			/* Chip status back to normal. */
-			dev_info(&client->dev,
+			dev_dbg(&client->dev,
 				"maXTouch status normal\n");
 			error_cond = 0;
 		}
@@ -1486,7 +1500,7 @@ static int __devinit mxt_identify(struct i2c_client *client,
 		mxt->device_info.minor,
 		mxt->device_info.build
 	);
-	dev_info(
+	dev_dbg(
 		&client->dev,
 		"Atmel maXTouch Configuration "
 		"[X: %d] x [Y: %d]\n",
@@ -1732,6 +1746,84 @@ err_object_table_alloc:
 	return error;
 }
 
+#if defined(CONFIG_PM)
+static int mxt_suspend(struct device *dev)
+{
+	struct mxt_data *mxt = dev_get_drvdata(dev);
+	int error;
+
+	if (device_may_wakeup(dev)) {
+		enable_irq_wake(mxt->irq);
+		return 0;
+	}
+
+	disable_irq(mxt->irq);
+
+	cancel_delayed_work_sync(&mxt->dwork);
+
+	/* power off the device */
+	if (mxt->power_on) {
+		error = mxt->power_on(false);
+		if (error) {
+			dev_err(dev, "power off failed");
+			goto err_pwr_off;
+		}
+	}
+	return 0;
+
+err_pwr_off:
+	enable_irq(mxt->irq);
+	return error;
+}
+
+static int mxt_resume(struct device *dev)
+{
+	struct mxt_data *mxt = dev_get_drvdata(dev);
+	int error;
+
+	if (device_may_wakeup(dev)) {
+		disable_irq_wake(mxt->irq);
+		return 0;
+	}
+
+	/* power on the device */
+	if (mxt->power_on) {
+		error = mxt->power_on(true);
+		if (error) {
+			dev_err(dev, "power on failed");
+			return error;
+		}
+	}
+
+	enable_irq(mxt->irq);
+
+	return 0;
+}
+
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+static void mxt_early_suspend(struct early_suspend *h)
+{
+	struct mxt_data *mxt = container_of(h, struct mxt_data, early_suspend);
+
+	mxt_suspend(&mxt->client->dev);
+}
+
+static void mxt_late_resume(struct early_suspend *h)
+{
+	struct mxt_data *mxt = container_of(h, struct mxt_data, early_suspend);
+
+	mxt_resume(&mxt->client->dev);
+}
+#endif
+
+static const struct dev_pm_ops mxt_pm_ops = {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	.suspend	= mxt_suspend,
+	.resume		= mxt_resume,
+#endif
+};
+#endif
+
 static int __devinit mxt_probe(struct i2c_client *client,
 			       const struct i2c_device_id *id)
 {
@@ -1761,6 +1853,12 @@ static int __devinit mxt_probe(struct i2c_client *client,
 		pr_debug("maXTouch: id == NULL\n");
 		return	-EINVAL;
 	}
+
+	/* Enable runtime PM ops, start in ACTIVE mode */
+	error = pm_runtime_set_active(&client->dev);
+	if (error < 0)
+		dev_dbg(&client->dev, "unable to set runtime pm state\n");
+	pm_runtime_enable(&client->dev);
 
 	mxt_debug(DEBUG_INFO, "maXTouch driver v. %s\n", DRIVER_VERSION);
 	mxt_debug(DEBUG_INFO, "\t \"%s\"\n", client->name);
@@ -1808,12 +1906,24 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	mxt->read_fail_counter = 0;
 	mxt->message_counter   = 0;
+
+	if (pdata->min_x)
+		mxt->min_x_val = pdata->min_x;
+	else
+		mxt->min_x_val = 0;
+
+	if (pdata->min_y)
+		mxt->min_y_val = pdata->min_y;
+	else
+		mxt->min_y_val = 0;
+
 	mxt->max_x_val         = pdata->max_x;
 	mxt->max_y_val         = pdata->max_y;
 
 	/* Get data that is defined in board specific code. */
 	mxt->init_hw = pdata->init_platform_hw;
 	mxt->exit_hw = pdata->exit_platform_hw;
+	mxt->power_on = pdata->power_on;
 	mxt->read_chg = pdata->read_chg;
 
 	if (pdata->valid_interrupt != NULL)
@@ -1821,8 +1931,22 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	else
 		mxt->valid_interrupt = mxt_valid_interrupt_dummy;
 
-	if (mxt->init_hw != NULL)
-		mxt->init_hw(client);
+	if (mxt->init_hw) {
+		error = mxt->init_hw(client);
+		if (error) {
+			dev_err(&client->dev, "hw init failed");
+			goto err_init_hw;
+		}
+	}
+
+	/* power on the device */
+	if (mxt->power_on) {
+		error = mxt->power_on(true);
+		if (error) {
+			dev_err(&client->dev, "power on failed");
+			goto err_pwr_on;
+		}
+	}
 
 	if (debug >= DEBUG_TRACE)
 		printk(KERN_INFO "maXTouch driver identifying chip\n");
@@ -1862,16 +1986,20 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	set_bit(BTN_TOUCH, input->keybit);
 
 	/* Single touch */
-	input_set_abs_params(input, ABS_X, 0, mxt->max_x_val, 0, 0);
-	input_set_abs_params(input, ABS_Y, 0, mxt->max_y_val, 0, 0);
+	input_set_abs_params(input, ABS_X, mxt->min_x_val,
+				mxt->max_x_val, 0, 0);
+	input_set_abs_params(input, ABS_Y, mxt->min_y_val,
+				mxt->max_y_val, 0, 0);
 	input_set_abs_params(input, ABS_PRESSURE, 0, MXT_MAX_REPORTED_PRESSURE,
 			     0, 0);
 	input_set_abs_params(input, ABS_TOOL_WIDTH, 0, MXT_MAX_REPORTED_WIDTH,
 			     0, 0);
 
 	/* Multitouch */
-	input_set_abs_params(input, ABS_MT_POSITION_X, 0, mxt->max_x_val, 0, 0);
-	input_set_abs_params(input, ABS_MT_POSITION_Y, 0, mxt->max_y_val, 0, 0);
+	input_set_abs_params(input, ABS_MT_POSITION_X, mxt->min_x_val,
+				mxt->max_x_val, 0, 0);
+	input_set_abs_params(input, ABS_MT_POSITION_Y, mxt->min_y_val,
+				mxt->max_y_val, 0, 0);
 	input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, MXT_MAX_TOUCH_SIZE,
 			     0, 0);
 	input_set_abs_params(input, ABS_MT_TRACKING_ID, 0, MXT_MAX_NUM_TOUCHES,
@@ -2013,6 +2141,15 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	kfree(t38_data);
 	kfree(id_data);
 
+	device_init_wakeup(&client->dev, pdata->wakeup);
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	mxt->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN +
+						MXT_SUSPEND_LEVEL;
+	mxt->early_suspend.suspend = mxt_early_suspend;
+	mxt->early_suspend.resume = mxt_late_resume;
+	register_early_suspend(&mxt->early_suspend);
+#endif
+
 	return 0;
 
 err_t38:
@@ -2034,8 +2171,12 @@ err_register_device:
 	mutex_destroy(&mxt->debug_mutex);
 	mutex_destroy(&mxt->msg_mutex);
 err_identify:
+	if (mxt->power_on)
+		mxt->power_on(false);
+err_pwr_on:
 	if (mxt->exit_hw != NULL)
 		mxt->exit_hw(client);
+err_init_hw:
 err_pdata:
 	input_free_device(input);
 err_input_dev_alloc:
@@ -2043,6 +2184,8 @@ err_input_dev_alloc:
 err_id_alloc:
 	kfree(mxt);
 err_mxt_alloc:
+	pm_runtime_set_suspended(&client->dev);
+	pm_runtime_disable(&client->dev);
 	return error;
 }
 
@@ -2050,13 +2193,23 @@ static int __devexit mxt_remove(struct i2c_client *client)
 {
 	struct mxt_data *mxt;
 
+	pm_runtime_set_suspended(&client->dev);
+	pm_runtime_disable(&client->dev);
+
 	mxt = i2c_get_clientdata(client);
 
 	/* Remove debug dir entries */
 	debugfs_remove_recursive(mxt->debug_dir);
 
+	device_init_wakeup(&client->dev, 0);
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	unregister_early_suspend(&mxt->early_suspend);
+#endif
+
 	if (mxt != NULL) {
-		
+		if (mxt->power_on)
+			mxt->power_on(false);
+
 		if (mxt->exit_hw != NULL)
 			mxt->exit_hw(client);
 
@@ -2087,31 +2240,6 @@ static int __devexit mxt_remove(struct i2c_client *client)
 	return 0;
 }
 
-#if defined(CONFIG_PM)
-static int mxt_suspend(struct i2c_client *client, pm_message_t mesg)
-{
-	struct mxt_data *mxt = i2c_get_clientdata(client);
-
-	if (device_may_wakeup(&client->dev))
-		enable_irq_wake(mxt->irq);
-
-	return 0;
-}
-
-static int mxt_resume(struct i2c_client *client)
-{
-	struct mxt_data *mxt = i2c_get_clientdata(client);
-
-	if (device_may_wakeup(&client->dev))
-		disable_irq_wake(mxt->irq);
-
-	return 0;
-}
-#else
-#define mxt_suspend NULL
-#define mxt_resume NULL
-#endif
-
 static const struct i2c_device_id mxt_idtable[] = {
 	{"maXTouch", 0,},
 	{ }
@@ -2123,14 +2251,14 @@ static struct i2c_driver mxt_driver = {
 	.driver = {
 		.name	= "maXTouch",
 		.owner  = THIS_MODULE,
+#if defined(CONFIG_PM)
+		.pm = &mxt_pm_ops,
+#endif
 	},
 
 	.id_table	= mxt_idtable,
 	.probe		= mxt_probe,
 	.remove		= __devexit_p(mxt_remove),
-	.suspend	= mxt_suspend,
-	.resume		= mxt_resume,
-
 };
 
 static int __init mxt_init(void)

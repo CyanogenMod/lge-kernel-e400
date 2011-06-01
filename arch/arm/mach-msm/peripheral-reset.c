@@ -18,11 +18,16 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
+#include <linux/timer.h>
+#include <linux/jiffies.h>
 
 #include <mach/scm.h>
 #include <mach/msm_iomap.h>
+#include <mach/msm_xo.h>
 
 #include "peripheral-loader.h"
+
+#define PROXY_VOTE_TIMEOUT		10000
 
 #define MSM_MMS_REGS_BASE		0x10200000
 #define MSM_LPASS_QDSP6SS_BASE		0x28800000
@@ -176,9 +181,35 @@ static int auth_and_reset_trusted(int id)
 	return resp.reset_initiated;
 }
 
+static struct msm_xo_voter *pxo;
+static void remove_modem_proxy_votes(unsigned long data)
+{
+	msm_xo_mode_vote(pxo, MSM_XO_MODE_OFF);
+}
+DEFINE_TIMER(modem_timer, remove_modem_proxy_votes, 0, 0);
+
+static void make_modem_proxy_votes(void)
+{
+	/* Make proxy votes for modem and set up timer to disable it. */
+	msm_xo_mode_vote(pxo, MSM_XO_MODE_ON);
+	mod_timer(&modem_timer, jiffies + msecs_to_jiffies(PROXY_VOTE_TIMEOUT));
+}
+
+static void remove_modem_proxy_votes_now(void)
+{
+	/*
+	 * If the modem proxy vote hasn't been removed yet, them remove the
+	 * votes immediately.
+	 */
+	if (del_timer(&modem_timer))
+		remove_modem_proxy_votes(0);
+}
+
 static int reset_modem_untrusted(void)
 {
 	u32 reg;
+
+	make_modem_proxy_votes();
 
 	/* Put modem AHB0,1,2 clocks into reset */
 	writel(BIT(0) | BIT(1), MAHB0_SFAB_PORT_RESET);
@@ -248,7 +279,15 @@ static int reset_modem_untrusted(void)
 
 static int reset_modem_trusted(void)
 {
-	return auth_and_reset_trusted(PAS_MODEM);
+	int ret;
+
+	make_modem_proxy_votes();
+
+	ret = auth_and_reset_trusted(PAS_MODEM);
+	if (ret)
+		remove_modem_proxy_votes_now();
+
+	return ret;
 }
 
 static int shutdown_trusted(int id)
@@ -269,6 +308,8 @@ static int shutdown_trusted(int id)
 static int shutdown_modem_untrusted(void)
 {
 	u32 reg;
+
+	remove_modem_proxy_votes_now();
 
 	/* Put modem into reset */
 	writel(0x1, MARM_RESET);
@@ -304,6 +345,7 @@ static int shutdown_modem_untrusted(void)
 
 static int shutdown_modem_trusted(void)
 {
+	remove_modem_proxy_votes_now();
 	return shutdown_trusted(PAS_MODEM);
 }
 
@@ -505,14 +547,6 @@ static struct pil_device peripherals[] = {
 		.ops = &pil_q6_ops,
 	},
 	{
-		.name = "dsps",
-		.pdev = {
-			.name = "pil_dsps",
-			.id = -1,
-		},
-		.ops = &pil_dsps_ops,
-	},
-	{
 		.name = "playrdy",
 		.pdev = {
 			.name = "pil_playready",
@@ -522,6 +556,14 @@ static struct pil_device peripherals[] = {
 	},
 };
 
+struct pil_device peripheral_dsps = {
+	.name = "dsps",
+	.pdev = {
+		.name = "pil_dsps",
+		.id = -1,
+	},
+	.ops = &pil_dsps_ops,
+};
 
 #ifdef CONFIG_MSM_SECURE_PIL
 #define SECURE_PIL 1
@@ -540,6 +582,10 @@ static int __init msm_peripheral_reset_init(void)
 	msm_lpass_qdsp6ss_base = ioremap(MSM_LPASS_QDSP6SS_BASE, SZ_256);
 	if (!msm_lpass_qdsp6ss_base)
 		goto err_lpass;
+
+	pxo = msm_xo_get(MSM_XO_PXO, "pil");
+	if (IS_ERR(pxo))
+		goto err_pxo;
 
 	pll4 = clk_get_sys("peripheral-reset", "pll4");
 	if (IS_ERR(pll4))
@@ -565,6 +611,8 @@ static int __init msm_peripheral_reset_init(void)
 	return 0;
 
 err_clk:
+	msm_xo_put(pxo);
+err_pxo:
 	iounmap(msm_lpass_qdsp6ss_base);
 err_lpass:
 	iounmap(msm_mms_regs_base);

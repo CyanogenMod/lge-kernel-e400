@@ -18,10 +18,13 @@
 #include <mach/msm_iomap.h>
 #include <mach/board.h>
 #include <mach/dma.h>
+#include <mach/dal_axi.h>
 #include <asm/mach/flash.h>
+#include <asm/hardware/cache-l2x0.h>
 #include <asm/mach/mmc.h>
 #include <mach/usbdiag.h>
 #include <mach/usb_gadget_fserial.h>
+#include <mach/rpc_hsusb.h>
 
 #include "devices.h"
 #include "devices-msm7x2xa.h"
@@ -183,6 +186,7 @@ int msm_add_host(unsigned int host, struct msm_usb_host_platform_data *plat)
 
 struct usb_diag_platform_data usb_diag_pdata = {
 	.ch_name = DIAG_LEGACY,
+	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
 };
 
 struct platform_device usb_diag_device = {
@@ -284,6 +288,28 @@ struct platform_device msm_device_uart_dm1 = {
 		.dma_mask		= &msm_uart_dm1_dma_mask,
 		.coherent_dma_mask	= DMA_BIT_MASK(32),
 	},
+};
+
+#define MSM_UART2DM_PHYS	0xA0300000
+static struct resource msm_uart2dm_resources[] = {
+	{
+		.start	= MSM_UART2DM_PHYS,
+		.end	= MSM_UART2DM_PHYS + PAGE_SIZE - 1,
+		.name	= "uartdm_resource",
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= INT_UART2DM_IRQ,
+		.end	= INT_UART2DM_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm_device_uart_dm2 = {
+	.name	= "msm_serial_hsl",
+	.id	= 0,
+	.num_resources	= ARRAY_SIZE(msm_uart2dm_resources),
+	.resource	= msm_uart2dm_resources,
 };
 
 #define MSM_NAND_PHYS		0xA0A00000
@@ -468,7 +494,7 @@ static struct resource msm_mipi_dsi_resources[] = {
 
 static struct platform_device msm_mipi_dsi_device = {
 	.name   = "mipi_dsi",
-	.id     = 0,
+	.id     = 1,
 	.num_resources  = ARRAY_SIZE(msm_mipi_dsi_resources),
 	.resource       = msm_mipi_dsi_resources,
 };
@@ -518,13 +544,17 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.pwr_data = {
 		.pwrlevel = {
 			{
-				.gpu_freq = 200000000,
+				.gpu_freq = 245760000,
 				.bus_freq = 200000000,
+			},
+			{
+				.gpu_freq = 133330000,
+				.bus_freq = 0,
 			},
 		},
 		.init_level = 0,
-		.num_levels = 1,
-		.set_grp_async = NULL,
+		.num_levels = 2,
+		.set_grp_async = set_grp_xbar_async,
 		.idle_timeout = HZ/5,
 		.nap_allowed = false,
 	},
@@ -576,3 +606,28 @@ void __init msm_fb_register_device(char *name, void *data)
 	else
 		printk(KERN_ERR "%s: unknown device! %s\n", __func__, name);
 }
+
+#ifdef CONFIG_CACHE_L2X0
+static int __init msm7x27x_cache_init(void)
+{
+	int aux_ctrl = 0;
+
+	/* Way Size 010(0x2) 32KB */
+	aux_ctrl = (0x1 << L2X0_AUX_CTRL_SHARE_OVERRIDE_SHIFT) | \
+		   (0x2 << L2X0_AUX_CTRL_WAY_SIZE_SHIFT) | \
+		   (0x1 << L2X0_AUX_CTRL_EVNT_MON_BUS_EN_SHIFT);
+
+	l2x0_init(MSM_L2CC_BASE, aux_ctrl, L2X0_AUX_CTRL_MASK);
+
+	return 0;
+}
+#else
+static int __init msm_cache_init(void){ return 0; }
+#endif
+
+void __init msm_common_io_init(void)
+{
+	msm_map_common_io();
+	msm7x27x_cache_init();
+}
+

@@ -61,6 +61,8 @@ module_param_named(debug_mask, msm_sdio_xprt_debug_mask,
 #define MAX_SDIO_WRITE_RETRY 5
 #define SDIO_BUF_SIZE (RPCROUTER_MSGSIZE_MAX + sizeof(struct rr_header) - 8)
 #define NUM_SDIO_BUFS 20
+#define MAX_TX_BUFS 10
+#define MAX_RX_BUFS 10
 
 struct sdio_xprt {
 	struct sdio_channel *handle;
@@ -97,6 +99,12 @@ struct sdio_buf_struct {
 static void sdio_xprt_write_data(struct work_struct *work);
 static DECLARE_WORK(work_write_data, sdio_xprt_write_data);
 static wait_queue_head_t write_avail_wait_q;
+static uint32_t num_free_bufs;
+static uint32_t num_tx_bufs;
+static uint32_t num_rx_bufs;
+
+static DEFINE_MUTEX(modem_reset_lock);
+static uint32_t modem_reset;
 
 static void free_sdio_xprt(struct sdio_xprt *chnl)
 {
@@ -115,6 +123,7 @@ static void free_sdio_xprt(struct sdio_xprt *chnl)
 		list_del(&buf->list);
 		kfree(buf);
 	}
+	num_free_bufs = 0;
 	spin_unlock_irqrestore(&chnl->free_list_lock, flags);
 
 	spin_lock_irqsave(&chnl->write_list_lock, flags);
@@ -124,6 +133,7 @@ static void free_sdio_xprt(struct sdio_xprt *chnl)
 		list_del(&buf->list);
 		kfree(buf);
 	}
+	num_tx_bufs = 0;
 	spin_unlock_irqrestore(&chnl->write_list_lock, flags);
 
 	spin_lock_irqsave(&chnl->read_list_lock, flags);
@@ -133,9 +143,8 @@ static void free_sdio_xprt(struct sdio_xprt *chnl)
 		list_del(&buf->list);
 		kfree(buf);
 	}
+	num_rx_bufs = 0;
 	spin_unlock_irqrestore(&chnl->read_list_lock, flags);
-
-	kfree(chnl);
 }
 
 static struct sdio_buf_struct *alloc_from_free_list(struct sdio_xprt *chnl)
@@ -151,6 +160,7 @@ static struct sdio_buf_struct *alloc_from_free_list(struct sdio_xprt *chnl)
 	}
 	buf = list_first_entry(&chnl->free_list, struct sdio_buf_struct, list);
 	list_del(&buf->list);
+	num_free_bufs--;
 	spin_unlock_irqrestore(&chnl->free_list_lock, flags);
 
 	buf->size = 0;
@@ -176,6 +186,7 @@ static void return_to_free_list(struct sdio_xprt *chnl,
 
 	spin_lock_irqsave(&chnl->free_list_lock, flags);
 	list_add_tail(&buf->list, &chnl->free_list);
+	num_free_bufs++;
 	spin_unlock_irqrestore(&chnl->free_list_lock, flags);
 
 }
@@ -228,6 +239,7 @@ static int rpcrouter_sdio_remote_read(void *data, uint32_t len)
 	buf->size -= len;
 	if (buf->size == 0) {
 		list_del(&buf->list);
+		num_rx_bufs--;
 		return_to_free_list(sdio_remote_xprt.channel, buf);
 	}
 	spin_unlock_irqrestore(&sdio_remote_xprt.channel->read_list_lock,
@@ -238,15 +250,12 @@ static int rpcrouter_sdio_remote_read(void *data, uint32_t len)
 static int rpcrouter_sdio_remote_write_avail(void)
 {
 	uint32_t write_avail = 0;
-	struct sdio_buf_struct *buf;
 	unsigned long flags;
 
 	SDIO_XPRT_DBG("sdio_xprt Called %s\n", __func__);
-	spin_lock_irqsave(&sdio_remote_xprt.channel->free_list_lock, flags);
-	list_for_each_entry(buf, &sdio_remote_xprt.channel->free_list, list) {
-		write_avail += SDIO_BUF_SIZE;
-	}
-	spin_unlock_irqrestore(&sdio_remote_xprt.channel->free_list_lock,
+	spin_lock_irqsave(&sdio_remote_xprt.channel->write_list_lock, flags);
+	write_avail = (MAX_TX_BUFS - num_tx_bufs) * SDIO_BUF_SIZE;
+	spin_unlock_irqrestore(&sdio_remote_xprt.channel->write_list_lock,
 				flags);
 	return write_avail;
 }
@@ -260,6 +269,17 @@ static int rpcrouter_sdio_remote_write(void *data, uint32_t len,
 
 	switch (type) {
 	case HEADER:
+		spin_lock_irqsave(&sdio_remote_xprt.channel->write_list_lock,
+				  flags);
+		if (num_tx_bufs == MAX_TX_BUFS) {
+			spin_unlock_irqrestore(
+				&sdio_remote_xprt.channel->write_list_lock,
+				flags);
+			return -ENOMEM;
+		}
+		spin_unlock_irqrestore(
+			&sdio_remote_xprt.channel->write_list_lock, flags);
+
 		SDIO_XPRT_DBG("sdio_xprt WRITE HEADER %s\n", __func__);
 		buf = alloc_from_free_list(sdio_remote_xprt.channel);
 		if (!buf) {
@@ -300,6 +320,7 @@ static int rpcrouter_sdio_remote_write(void *data, uint32_t len,
 				   flags);
 		list_add_tail(&buf->list,
 			      &sdio_remote_xprt.channel->write_list);
+		num_tx_bufs++;
 		spin_unlock_irqrestore(
 			&sdio_remote_xprt.channel->write_list_lock, flags);
 		queue_work(sdio_xprt_read_workqueue, &work_write_data);
@@ -316,6 +337,12 @@ static void sdio_xprt_write_data(struct work_struct *work)
 	unsigned long flags;
 	struct sdio_buf_struct *buf;
 
+	mutex_lock(&modem_reset_lock);
+	if (modem_reset) {
+		mutex_unlock(&modem_reset_lock);
+		return;
+	}
+
 	spin_lock_irqsave(&sdio_remote_xprt.channel->write_list_lock, flags);
 	while (!list_empty(&sdio_remote_xprt.channel->write_list)) {
 		buf = list_first_entry(&sdio_remote_xprt.channel->write_list,
@@ -323,27 +350,42 @@ static void sdio_xprt_write_data(struct work_struct *work)
 		list_del(&buf->list);
 		spin_unlock_irqrestore(
 			&sdio_remote_xprt.channel->write_list_lock, flags);
+		mutex_unlock(&modem_reset_lock);
 
 		wait_event(write_avail_wait_q,
-			   (sdio_write_avail(
+			   (!(modem_reset) && (sdio_write_avail(
 			   sdio_remote_xprt.channel->handle) >=
-			   buf->size));
-		while (((rc = sdio_write(sdio_remote_xprt.channel->handle,
+			   buf->size)));
+
+		mutex_lock(&modem_reset_lock);
+		while (!(modem_reset) &&
+			((rc = sdio_write(sdio_remote_xprt.channel->handle,
 					buf->data, buf->size)) < 0) &&
 			(sdio_write_retry++ < MAX_SDIO_WRITE_RETRY)) {
 			printk(KERN_ERR "sdio_write failed with RC %d\n", rc);
+			mutex_unlock(&modem_reset_lock);
 			msleep(250);
+			mutex_lock(&modem_reset_lock);
 		}
+		if (modem_reset) {
+			mutex_unlock(&modem_reset_lock);
+			kfree(buf);
+			return;
+		} else {
+			return_to_free_list(sdio_remote_xprt.channel, buf);
+		}
+
 		if (!rc)
 			SDIO_XPRT_DBG("sdio_write %d bytes completed\n",
 					buf->size);
 
-		return_to_free_list(sdio_remote_xprt.channel, buf);
 		spin_lock_irqsave(&sdio_remote_xprt.channel->write_list_lock,
 				   flags);
+		num_tx_bufs--;
 	}
 	spin_unlock_irqrestore(&sdio_remote_xprt.channel->write_list_lock,
 				flags);
+	mutex_unlock(&modem_reset_lock);
 }
 
 static int rpcrouter_sdio_remote_close(void)
@@ -362,8 +404,23 @@ static void sdio_xprt_read_data(struct work_struct *work)
 	struct sdio_buf_struct *buf;
 	SDIO_XPRT_DBG("sdio_xprt Called %s\n", __func__);
 
-	while ((read_avail =
-		sdio_read_avail(sdio_remote_xprt.channel->handle))) {
+	mutex_lock(&modem_reset_lock);
+	while (!(modem_reset) &&
+		((read_avail =
+		sdio_read_avail(sdio_remote_xprt.channel->handle)) > 0)) {
+		spin_lock_irqsave(&sdio_remote_xprt.channel->read_list_lock,
+				  flags);
+		if (num_rx_bufs == MAX_RX_BUFS) {
+			spin_unlock_irqrestore(
+				&sdio_remote_xprt.channel->read_list_lock,
+				flags);
+			queue_delayed_work(sdio_xprt_read_workqueue,
+					   &work_read_data,
+					   msecs_to_jiffies(100));
+			break;
+		}
+		spin_unlock_irqrestore(
+			&sdio_remote_xprt.channel->read_list_lock, flags);
 
 		buf = alloc_from_free_list(sdio_remote_xprt.channel);
 		if (!buf) {
@@ -372,7 +429,7 @@ static void sdio_xprt_read_data(struct work_struct *work)
 			queue_delayed_work(sdio_xprt_read_workqueue,
 					   &work_read_data,
 					   msecs_to_jiffies(100));
-			return;
+			break;
 		}
 
 		size = sdio_read(sdio_remote_xprt.channel->handle,
@@ -385,7 +442,7 @@ static void sdio_xprt_read_data(struct work_struct *work)
 			queue_delayed_work(sdio_xprt_read_workqueue,
 					   &work_read_data,
 					   msecs_to_jiffies(100));
-			return;
+			break;
 		}
 
 		if (size == 0)
@@ -397,12 +454,15 @@ static void sdio_xprt_read_data(struct work_struct *work)
 				   flags);
 		list_add_tail(&buf->list,
 			      &sdio_remote_xprt.channel->read_list);
+		num_rx_bufs++;
 		spin_unlock_irqrestore(
 			&sdio_remote_xprt.channel->read_list_lock, flags);
 	}
 
-	msm_rpcrouter_xprt_notify(&sdio_remote_xprt.xprt,
+	if (!modem_reset && !list_empty(&sdio_remote_xprt.channel->read_list))
+		msm_rpcrouter_xprt_notify(&sdio_remote_xprt.xprt,
 				  RPCROUTER_XPRT_EVENT_DATA);
+	mutex_unlock(&modem_reset_lock);
 }
 
 static void rpcrouter_sdio_remote_notify(void *_dev, unsigned event)
@@ -428,19 +488,24 @@ static int allocate_sdio_xprt(struct sdio_xprt **sdio_xprt_chnl)
 	unsigned long flags;
 	int rc = -ENOMEM;
 
-	chnl = kmalloc(sizeof(struct sdio_xprt), GFP_KERNEL);
-	if (!chnl) {
-		printk(KERN_ERR "sdio_xprt channel allocation failed\n");
-		return rc;
+	if (!(*sdio_xprt_chnl)) {
+		chnl = kmalloc(sizeof(struct sdio_xprt), GFP_KERNEL);
+		if (!chnl) {
+			printk(KERN_ERR "sdio_xprt channel"
+					" allocation failed\n");
+			return rc;
+		}
+
+		spin_lock_init(&chnl->write_list_lock);
+		spin_lock_init(&chnl->read_list_lock);
+		spin_lock_init(&chnl->free_list_lock);
+
+		INIT_LIST_HEAD(&chnl->write_list);
+		INIT_LIST_HEAD(&chnl->read_list);
+		INIT_LIST_HEAD(&chnl->free_list);
+	} else {
+		chnl = *sdio_xprt_chnl;
 	}
-
-	spin_lock_init(&chnl->write_list_lock);
-	spin_lock_init(&chnl->read_list_lock);
-	spin_lock_init(&chnl->free_list_lock);
-
-	INIT_LIST_HEAD(&chnl->write_list);
-	INIT_LIST_HEAD(&chnl->read_list);
-	INIT_LIST_HEAD(&chnl->free_list);
 
 	for (i = 0; i < NUM_SDIO_BUFS; i++) {
 		buf = kzalloc(sizeof(struct sdio_buf_struct), GFP_KERNEL);
@@ -452,6 +517,7 @@ static int allocate_sdio_xprt(struct sdio_xprt **sdio_xprt_chnl)
 		list_add_tail(&buf->list, &chnl->free_list);
 		spin_unlock_irqrestore(&chnl->free_list_lock, flags);
 	}
+	num_free_bufs = NUM_SDIO_BUFS;
 
 	*sdio_xprt_chnl = chnl;
 	return 0;
@@ -468,6 +534,7 @@ alloc_failure:
 	spin_unlock_irqrestore(&chnl->free_list_lock, flags);
 
 	kfree(chnl);
+	*sdio_xprt_chnl = NULL;
 	return rc;
 }
 
@@ -476,25 +543,35 @@ static int rpcrouter_sdio_remote_probe(struct platform_device *pdev)
 	int rc;
 
 	SDIO_XPRT_INFO("%s Called\n", __func__);
-	rc = allocate_sdio_xprt(&sdio_remote_xprt.channel);
-	if (rc)
-		return rc;
 
-	sdio_xprt_read_workqueue = create_singlethread_workqueue("sdio_xprt");
-	if (!sdio_xprt_read_workqueue) {
-		free_sdio_xprt(sdio_remote_xprt.channel);
-		return -ENOMEM;
+	mutex_lock(&modem_reset_lock);
+	if (!modem_reset) {
+		sdio_xprt_read_workqueue =
+			create_singlethread_workqueue("sdio_xprt");
+		if (!sdio_xprt_read_workqueue) {
+			mutex_unlock(&modem_reset_lock);
+			return -ENOMEM;
+		}
+
+		sdio_remote_xprt.xprt.name = "rpcrotuer_sdio_xprt";
+		sdio_remote_xprt.xprt.read_avail =
+			rpcrouter_sdio_remote_read_avail;
+		sdio_remote_xprt.xprt.read = rpcrouter_sdio_remote_read;
+		sdio_remote_xprt.xprt.write_avail =
+			rpcrouter_sdio_remote_write_avail;
+		sdio_remote_xprt.xprt.write = rpcrouter_sdio_remote_write;
+		sdio_remote_xprt.xprt.close = rpcrouter_sdio_remote_close;
+		sdio_remote_xprt.xprt.priv = NULL;
+
+		init_waitqueue_head(&write_avail_wait_q);
 	}
+	mutex_unlock(&modem_reset_lock);
 
-	sdio_remote_xprt.xprt.name = "rpcrotuer_sdio_xprt";
-	sdio_remote_xprt.xprt.read_avail = rpcrouter_sdio_remote_read_avail;
-	sdio_remote_xprt.xprt.read = rpcrouter_sdio_remote_read;
-	sdio_remote_xprt.xprt.write_avail = rpcrouter_sdio_remote_write_avail;
-	sdio_remote_xprt.xprt.write = rpcrouter_sdio_remote_write;
-	sdio_remote_xprt.xprt.close = rpcrouter_sdio_remote_close;
-	sdio_remote_xprt.xprt.priv = NULL;
-
-	init_waitqueue_head(&write_avail_wait_q);
+	rc = allocate_sdio_xprt(&sdio_remote_xprt.channel);
+	if (rc) {
+		destroy_workqueue(sdio_xprt_read_workqueue);
+		return rc;
+	}
 
 	/* Open up SDIO channel */
 	rc = sdio_open("SDIO_RPC", &sdio_remote_xprt.channel->handle, NULL,
@@ -506,8 +583,30 @@ static int rpcrouter_sdio_remote_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	mutex_lock(&modem_reset_lock);
+	modem_reset = 0;
+	mutex_unlock(&modem_reset_lock);
+
 	msm_rpcrouter_xprt_notify(&sdio_remote_xprt.xprt,
 				  RPCROUTER_XPRT_EVENT_OPEN);
+
+	SDIO_XPRT_INFO("%s Completed\n", __func__);
+
+	return 0;
+}
+
+static int rpcrouter_sdio_remote_remove(struct platform_device *pdev)
+{
+	SDIO_XPRT_INFO("%s Called\n", __func__);
+
+	mutex_lock(&modem_reset_lock);
+	modem_reset = 1;
+	wake_up(&write_avail_wait_q);
+	free_sdio_xprt(sdio_remote_xprt.channel);
+	mutex_unlock(&modem_reset_lock);
+
+	msm_rpcrouter_xprt_notify(&sdio_remote_xprt.xprt,
+				  RPCROUTER_XPRT_EVENT_CLOSE);
 
 	SDIO_XPRT_INFO("%s Completed\n", __func__);
 
@@ -525,6 +624,7 @@ static struct platform_driver rpcrouter_sdio_remote_driver = {
 
 static struct platform_driver rpcrouter_sdio_driver = {
 	.probe		= rpcrouter_sdio_remote_probe,
+	.remove		= rpcrouter_sdio_remote_remove,
 	.driver		= {
 			.name	= "SDIO_RPC",
 			.owner	= THIS_MODULE,

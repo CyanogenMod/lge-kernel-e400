@@ -66,6 +66,7 @@ struct msm_camera_device_platform_data {
 	void (*camera_gpio_off)(void);
 	struct msm_camera_io_ext ioext;
 	struct msm_camera_io_clk ioclk;
+	uint8_t csid_core;
 };
 enum msm_camera_csi_data_format {
 	CSI_8BIT,
@@ -79,19 +80,6 @@ struct msm_camera_csi_params {
 	uint8_t settle_cnt;
 	uint8_t dpcm_scheme;
 };
-
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-	defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || \
-	defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-	defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
-
-struct msm_ce_hw_support {
-	uint32_t ce_shared;
-	uint32_t shared_ce_resource;
-	uint32_t hw_key_support;
-	uint32_t sha_hmac;
-};
-#endif
 
 #ifdef CONFIG_SENSORS_MT9T013
 struct msm_camera_legacy_device_platform_data {
@@ -250,6 +238,17 @@ struct msm_adspdec_database {
 	struct dec_instance_table *dec_instance_list;
 };
 
+enum msm_mdp_hw_revision {
+	MDP_REV_20 = 1,
+	MDP_REV_22,
+	MDP_REV_30,
+	MDP_REV_303,
+	MDP_REV_31,
+	MDP_REV_40,
+	MDP_REV_41,
+	MDP_REV_42,
+};
+
 struct msm_panel_common_pdata {
 	uintptr_t hw_revision_addr;
 	int gpio;
@@ -265,6 +264,7 @@ struct msm_panel_common_pdata {
 #ifdef CONFIG_MSM_BUS_SCALING
 	struct msm_bus_scale_pdata *mdp_bus_scale_table;
 #endif
+	int mdp_rev;
 };
 
 struct lcdc_platform_data {
@@ -296,9 +296,7 @@ struct mipi_dsi_platform_data {
 #ifdef CONFIG_FB_MSM_MIPI_NOVATEK_3D_PANEL
 	int fpga_config_addr;
 #endif
-#ifdef CONFIG_FB_MSM_MDP303
 	int (*dsi_client_reset)(void);
-#endif
 	int target_type;
 };
 

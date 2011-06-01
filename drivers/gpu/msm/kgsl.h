@@ -37,7 +37,6 @@
 #include <linux/mutex.h>
 #include <linux/cdev.h>
 #include <linux/regulator/consumer.h>
-#include <mach/socinfo.h>
 
 #include "kgsl_device.h"
 #include "kgsl_pwrctrl.h"
@@ -46,8 +45,6 @@
 #include "kgsl_cffdump.h"
 
 #define KGSL_NAME "kgsl"
-
-#define CHIP_REV_251 0x020501
 
 /* Flags to control whether to flush or invalidate a cached memory range */
 #define KGSL_CACHE_INV		0x00000000
@@ -115,8 +112,8 @@ struct kgsl_driver {
 	struct list_head process_list;
 	/* Global list of pagetables */
 	struct list_head pagetable_list;
-	/* Mutex for accessing the pagetable list */
-	struct mutex pt_mutex;
+	/* Spinlock for accessing the pagetable list */
+	spinlock_t ptlock;
 	/* Mutex for accessing the process list */
 	struct mutex process_mutex;
 
@@ -130,14 +127,16 @@ struct kgsl_driver {
 		unsigned int vmalloc_max;
 		unsigned int coherent;
 		unsigned int coherent_max;
+		unsigned int mapped;
+		unsigned int mapped_max;
 		unsigned int histogram[16];
 	} stats;
 };
 
 extern struct kgsl_driver kgsl_driver;
 
-#define KGSL_VMALLOC_MEMORY 0
-#define KGSL_EXTERNAL_MEMORY 1
+#define KGSL_USER_MEMORY 1
+#define KGSL_MAPPED_MEMORY 2
 
 struct kgsl_mem_entry {
 	struct kref refcount;
@@ -163,7 +162,6 @@ uint8_t *kgsl_gpuaddr_to_vaddr(const struct kgsl_memdesc *memdesc,
 struct kgsl_mem_entry *kgsl_sharedmem_find_region(
 	struct kgsl_process_private *private, unsigned int gpuaddr,
 	size_t size);
-int kgsl_setstate(struct kgsl_device *device, uint32_t flags);
 
 static inline void kgsl_regread(struct kgsl_device *device,
 				unsigned int offsetwords,

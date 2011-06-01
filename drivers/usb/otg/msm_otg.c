@@ -411,6 +411,7 @@ static int msm_otg_reset(struct otg_transceiver *otg)
 	u32 val = 0;
 	u32 ulpi_val = 0;
 
+	clk_enable(motg->clk);
 	ret = msm_otg_phy_reset(motg);
 	if (ret) {
 		dev_err(otg->dev, "phy_reset failed\n");
@@ -437,6 +438,9 @@ static int msm_otg_reset(struct otg_transceiver *otg)
 	writel(0x0, USB_AHBBURST);
 	writel(0x00, USB_AHBMODE);
 
+	/* Ensure that RESET operation is completed before turning off clock */
+	dsb();
+	clk_disable(motg->clk);
 	if (pdata->otg_control == OTG_PHY_CONTROL) {
 		val = readl(USB_OTGSC);
 		if (pdata->mode == USB_OTG) {
@@ -528,8 +532,9 @@ static int msm_otg_suspend(struct msm_otg *motg)
 			motg->pdata->otg_control == OTG_PMIC_CONTROL)
 		writel(readl(USB_PHY_CTRL) | PHY_RETEN, USB_PHY_CTRL);
 
+	/* Ensure that above operation is completed before turning off clocks */
+	dsb();
 	clk_disable(motg->pclk);
-	clk_disable(motg->clk);
 	if (motg->core_clk)
 		clk_disable(motg->core_clk);
 
@@ -571,7 +576,6 @@ static int msm_otg_resume(struct msm_otg *motg)
 		clk_enable(motg->pclk_src);
 
 	clk_enable(motg->pclk);
-	clk_enable(motg->clk);
 	if (motg->core_clk)
 		clk_enable(motg->core_clk);
 
@@ -844,6 +848,7 @@ static int msm_otg_set_peripheral(struct otg_transceiver *otg,
 	return 0;
 }
 
+#ifdef CONFIG_USB_MSM_ACA
 static bool msm_chg_aca_detect(struct msm_otg *motg)
 {
 	struct otg_transceiver *otg = &motg->otg;
@@ -944,7 +949,23 @@ static bool msm_chg_check_aca_intr(struct msm_otg *motg)
 	}
 	return ret;
 }
+#else
+static inline bool msm_chg_aca_detect(struct msm_otg *motg)
+{
+	return false;
+}
 
+static inline void msm_chg_enable_aca_det(struct msm_otg *motg)
+{
+}
+static inline void msm_chg_enable_aca_intr(struct msm_otg *motg)
+{
+}
+static inline bool msm_chg_check_aca_intr(struct msm_otg *motg)
+{
+	return false;
+}
+#endif
 static bool msm_chg_check_secondary_det(struct msm_otg *motg)
 {
 	struct otg_transceiver *otg = &motg->otg;
@@ -1480,6 +1501,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 		else
 			clear_bit(ID, &motg->inputs);
 		dev_dbg(otg->dev, "ID set/clear\n");
+		schedule_work(&motg->sm_work);
 		pm_runtime_get_noresume(otg->dev);
 	} else if ((otgsc & OTGSC_BSVIS) && (otgsc & OTGSC_BSVIE)) {
 		if (otgsc & OTGSC_BSV)
@@ -1487,11 +1509,11 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 		else
 			clear_bit(B_SESS_VLD, &motg->inputs);
 		dev_dbg(otg->dev, "BSV set/clear\n");
+		schedule_work(&motg->sm_work);
 		pm_runtime_get_noresume(otg->dev);
 	}
 
 	writel(otgsc, USB_OTGSC);
-	schedule_work(&motg->sm_work);
 	return IRQ_HANDLED;
 }
 
@@ -1746,7 +1768,6 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		goto free_regs;
 	}
 
-	clk_enable(motg->clk);
 	clk_enable(motg->pclk);
 
 	ret = msm_hsusb_init_vddcx(motg, 1);
@@ -1771,6 +1792,8 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	writel(0, USB_USBINTR);
 	writel(0, USB_OTGSC);
+	/* Ensure that above STOREs are completed before enabling interrupts */
+	dsb();
 
 	wake_lock_init(&motg->wlock, WAKE_LOCK_SUSPEND, "msm_otg");
 	INIT_WORK(&motg->sm_work, msm_otg_sm_work);
@@ -1834,7 +1857,6 @@ free_irq:
 destroy_wlock:
 	wake_lock_destroy(&motg->wlock);
 	clk_disable(motg->pclk);
-	clk_disable(motg->clk);
 free_ldo_init:
 	msm_hsusb_ldo_init(motg, 0);
 free_config_vddcx:
@@ -1901,7 +1923,6 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		dev_err(otg->dev, "Unable to suspend PHY\n");
 
 	clk_disable(motg->pclk);
-	clk_disable(motg->clk);
 	if (motg->core_clk)
 		clk_disable(motg->core_clk);
 	if (!IS_ERR(motg->pclk_src)) {

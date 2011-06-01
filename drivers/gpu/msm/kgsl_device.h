@@ -41,10 +41,6 @@
 
 #define FIRST_TIMEOUT (HZ / 2)
 
-#define KGSL_CHIPID_YAMATODX_REV21  0x20100
-#define KGSL_CHIPID_YAMATODX_REV211 0x20101
-#define KGSL_CHIPID_LEIA_REV470_TEMP 0x10001
-#define KGSL_CHIPID_LEIA_REV470 0x2010000
 
 /* KGSL device state is initialized to INIT when platform_probe		*
  * sucessfully initialized the device.  Once a device has been opened	*
@@ -112,7 +108,7 @@ struct kgsl_functable {
 	/* Optional functions - these functions are not mandatory.  The
 	   driver will check that the function pointer is not NULL before
 	   calling the hook */
-	int (*setstate) (struct kgsl_device *device, uint32_t flags);
+	void (*setstate) (struct kgsl_device *device, uint32_t flags);
 	int (*drawctxt_create) (struct kgsl_device *device,
 		struct kgsl_pagetable *pagetable, struct kgsl_context *context,
 		uint32_t flags);
@@ -134,7 +130,6 @@ struct kgsl_device {
 	unsigned int ver_minor;
 	uint32_t flags;
 	enum kgsl_deviceid id;
-	unsigned int chip_id;
 	struct kgsl_memregion regspace;
 	struct kgsl_memdesc memstore;
 	const char *iomemname;
@@ -192,10 +187,10 @@ struct kgsl_process_private {
 	struct kobject *kobj;
 
 	struct {
-		unsigned int vmalloc;
-		unsigned int vmalloc_max;
-		unsigned int exmem;
-		unsigned int exmem_max;
+		unsigned int user;
+		unsigned int user_max;
+		unsigned int mapped;
+		unsigned int mapped_max;
 		unsigned int flushes;
 	} stats;
 };

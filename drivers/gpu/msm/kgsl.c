@@ -59,13 +59,14 @@ kgsl_mem_entry_destroy(struct kref *kref)
 
 	kgsl_sharedmem_free(&entry->memdesc);
 
-	if (entry->memtype == KGSL_VMALLOC_MEMORY)
-		entry->priv->stats.vmalloc -= size;
-	else {
+	if (entry->memtype == KGSL_USER_MEMORY)
+		entry->priv->stats.user -= size;
+	else if (entry->memtype == KGSL_MAPPED_MEMORY) {
 		if (entry->file_ptr)
 			fput(entry->file_ptr);
 
-		entry->priv->stats.exmem -= size;
+		kgsl_driver.stats.mapped -= size;
+		entry->priv->stats.mapped -= size;
 	}
 
 	kfree(entry);
@@ -286,17 +287,6 @@ int kgsl_check_timestamp(struct kgsl_device *device, unsigned int timestamp)
 }
 EXPORT_SYMBOL(kgsl_check_timestamp);
 
-int kgsl_setstate(struct kgsl_device *device, uint32_t flags)
-{
-	int status = 0;
-
-	if (flags && device->ftbl->setstate)
-		status = device->ftbl->setstate(device, flags);
-
-	return status;
-}
-EXPORT_SYMBOL(kgsl_setstate);
-
 static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 {
 	int status = -EINVAL;
@@ -504,9 +494,9 @@ kgsl_put_process_private(struct kgsl_device *device,
 		goto unlock;
 
 	KGSL_MEM_INFO(device,
-			"Memory usage: vmalloc (%d/%d) exmem (%d/%d)\n",
-			private->stats.vmalloc, private->stats.vmalloc_max,
-			private->stats.exmem, private->stats.exmem_max);
+			"Memory usage: user (%d/%d) mapped (%d/%d)\n",
+			private->stats.user, private->stats.user_max,
+			private->stats.mapped, private->stats.mapped_max);
 
 	kgsl_process_uninit_sysfs(private);
 
@@ -1131,13 +1121,13 @@ kgsl_ioctl_sharedmem_from_vmalloc(struct kgsl_device_private *dev_priv,
 
 	param->gpuaddr = entry->memdesc.gpuaddr;
 
-	entry->memtype = KGSL_VMALLOC_MEMORY;
+	entry->memtype = KGSL_USER_MEMORY;
 
 	kgsl_mem_entry_attach_process(entry, private);
 
 	/* Process specific statistics */
-	KGSL_STATS_ADD(len, private->stats.vmalloc,
-		       private->stats.vmalloc_max);
+	KGSL_STATS_ADD(len, private->stats.user,
+		       private->stats.user_max);
 
 	kgsl_check_idle(dev_priv->device);
 	return 0;
@@ -1153,6 +1143,14 @@ error:
 	return result;
 }
 
+static inline int _check_region(unsigned long start, unsigned long size,
+				uint64_t len)
+{
+	uint64_t end = start + size;
+	return (end > len);
+}
+
+#ifdef CONFIG_ANDROID_PMEM
 static int kgsl_get_phys_file(int fd, unsigned long *start, unsigned long *len,
 			      unsigned long *vstart, struct file **filep)
 {
@@ -1189,13 +1187,6 @@ static int kgsl_get_phys_file(int fd, unsigned long *start, unsigned long *len,
 	return ret;
 }
 
-static inline int _check_region(unsigned long start, unsigned long size,
-				uint64_t len)
-{
-	uint64_t end = start + size;
-	return (end > len);
-}
-
 static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
 				struct kgsl_pagetable *pagetable,
 				unsigned int fd, unsigned int offset,
@@ -1228,10 +1219,19 @@ static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
 	entry->memdesc.size = size;
 	entry->memdesc.physaddr = phys + (offset & PAGE_MASK);
 	entry->memdesc.hostptr = (void *) (virt + (offset & PAGE_MASK));
-	entry->memdesc.ops = &kgsl_contig_ops;
+	entry->memdesc.ops = &kgsl_contiguous_ops;
 
 	return 0;
 }
+#else
+static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
+				struct kgsl_pagetable *pagetable,
+				unsigned int fd, unsigned int offset,
+				size_t size)
+{
+	return -EINVAL;
+}
+#endif
 
 static int kgsl_setup_hostptr(struct kgsl_mem_entry *entry,
 			      struct kgsl_pagetable *pagetable,
@@ -1281,6 +1281,7 @@ static int kgsl_setup_hostptr(struct kgsl_mem_entry *entry,
 	return 0;
 }
 
+#ifdef CONFIG_ASHMEM
 static int kgsl_setup_ashmem(struct kgsl_mem_entry *entry,
 			     struct kgsl_pagetable *pagetable,
 			     int fd, void *hostptr, size_t size)
@@ -1331,6 +1332,14 @@ err:
 	put_ashmem_file(filep);
 	return ret;
 }
+#else
+static int kgsl_setup_ashmem(struct kgsl_mem_entry *entry,
+			     struct kgsl_pagetable *pagetable,
+			     int fd, void *hostptr, size_t size)
+{
+	return -EINVAL;
+}
+#endif
 
 static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 				     unsigned int cmd, void *data)
@@ -1405,11 +1414,14 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 
 	param->gpuaddr = entry->memdesc.gpuaddr;
 
-	entry->memtype = KGSL_EXTERNAL_MEMORY;
+	entry->memtype = KGSL_MAPPED_MEMORY;
+
+	KGSL_STATS_ADD(param->len, kgsl_driver.stats.mapped,
+		       kgsl_driver.stats.mapped_max);
 
 	/* Statistics */
-	KGSL_STATS_ADD(param->len, private->stats.exmem,
-		       private->stats.exmem_max);
+	KGSL_STATS_ADD(param->len, private->stats.mapped,
+		       private->stats.mapped_max);
 
 	kgsl_mem_entry_attach_process(entry, private);
 
@@ -1485,8 +1497,12 @@ kgsl_ioctl_gpumem_alloc(struct kgsl_device_private *dev_priv,
 		param->size, param->flags);
 
 	if (result == 0) {
+		entry->memtype = KGSL_USER_MEMORY;
 		kgsl_mem_entry_attach_process(entry, private);
 		param->gpuaddr = entry->memdesc.gpuaddr;
+
+		KGSL_STATS_ADD(entry->memdesc.size, private->stats.user,
+		       private->stats.user_max);
 	} else
 		kfree(entry);
 
@@ -1714,7 +1730,7 @@ static const struct file_operations kgsl_fops = {
 
 struct kgsl_driver kgsl_driver  = {
 	.process_mutex = __MUTEX_INITIALIZER(kgsl_driver.process_mutex),
-	.pt_mutex = __MUTEX_INITIALIZER(kgsl_driver.pt_mutex),
+	.ptlock = __SPIN_LOCK_UNLOCKED(kgsl_driver.ptlock),
 	.devlock = __MUTEX_INITIALIZER(kgsl_driver.devlock),
 };
 EXPORT_SYMBOL(kgsl_driver);
@@ -1820,7 +1836,7 @@ kgsl_register_device(struct kgsl_device *device)
 	if (ret != 0)
 		goto err_dest_work_q;
 
-	ret = kgsl_allocate_contig(&device->memstore,
+	ret = kgsl_allocate_contiguous(&device->memstore,
 		sizeof(struct kgsl_devmemstore));
 
 	if (ret != 0)
@@ -2056,5 +2072,9 @@ err:
 	return result;
 }
 
-device_initcall(kgsl_core_init);
+module_init(kgsl_core_init);
+module_exit(kgsl_core_exit);
 
+MODULE_AUTHOR("Qualcomm Innovation Center, Inc.");
+MODULE_DESCRIPTION("MSM GPU driver");
+MODULE_LICENSE("GPL");

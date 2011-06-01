@@ -79,6 +79,33 @@ config ARCH_MSM8X60
 	select MSM_SECURE_IO
 	select MSM_DALRPC
 	select MSM_QDSP6_APR
+	select ARCH_INLINE_SPIN_TRYLOCK
+	select ARCH_INLINE_SPIN_TRYLOCK_BH
+	select ARCH_INLINE_SPIN_LOCK
+	select ARCH_INLINE_SPIN_LOCK_BH
+	select ARCH_INLINE_SPIN_LOCK_IRQ
+	select ARCH_INLINE_SPIN_LOCK_IRQSAVE
+	select ARCH_INLINE_SPIN_UNLOCK
+	select ARCH_INLINE_SPIN_UNLOCK_BH
+	select ARCH_INLINE_SPIN_UNLOCK_IRQ
+	select ARCH_INLINE_SPIN_UNLOCK_IRQRESTORE
+	select ARCH_INLINE_READ_TRYLOCK
+	select ARCH_INLINE_READ_LOCK
+	select ARCH_INLINE_READ_LOCK_BH
+	select ARCH_INLINE_READ_LOCK_IRQ
+	select ARCH_INLINE_READ_LOCK_IRQSAVE
+	select ARCH_INLINE_READ_UNLOCK
+	select ARCH_INLINE_READ_UNLOCK_BH
+	select ARCH_INLINE_READ_UNLOCK_IRQ
+	select ARCH_INLINE_READ_UNLOCK_IRQRESTORE
+	select ARCH_INLINE_WRITE_TRYLOCK
+	select ARCH_INLINE_WRITE_LOCK
+	select ARCH_INLINE_WRITE_LOCK_BH
+	select ARCH_INLINE_WRITE_LOCK_IRQ
+	select ARCH_INLINE_WRITE_LOCK_IRQSAVE
+	select ARCH_INLINE_WRITE_UNLOCK
+	select ARCH_INLINE_WRITE_UNLOCK_BH
+	select ARCH_INLINE_WRITE_UNLOCK_IRQRESTORE
 
 config ARCH_MSM8960
 	bool "MSM8960"
@@ -127,11 +154,13 @@ config  ARCH_MSM_SCORPIONMP
 	bool
 config  ARCH_MSM_CORTEX_A5
 	bool
+	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
 config ARCH_QSD8X50A
 	bool
 config ARCH_MSM7X27A
 	bool
+	select MSM_DALRPC
 
 config  MSM_VIC
 	bool
@@ -410,6 +439,24 @@ config MACH_MSM8960_RUMI3
 	bool "MSM8960 RUMI3"
 	help
 	  Support for the Qualcomm MSM8960 RUMI3 emulator.
+
+config MACH_MSM8960_CDP
+	depends on ARCH_MSM8960
+	bool "MSM8960 CDP"
+	help
+	  Support for the Qualcomm MSM8960 CDP device.
+
+config MACH_MSM8960_MTP
+	depends on ARCH_MSM8960
+	bool "MSM8960 MTP"
+	help
+	  Support for the Qualcomm MSM8960 MTP device.
+
+config MACH_MSM8960_FLUID
+	depends on ARCH_MSM8960
+	bool "MSM8960 FLUID"
+	help
+	  Support for the Qualcomm MSM8960 FLUID device.
 
 config MACH_MSM8X60_QT
 	depends on ARCH_MSM8X60
@@ -784,6 +831,7 @@ config MSM_SDIO_DMUX
 
 config MSM_BAM_DMUX
 	bool "BAM Data Mux Driver"
+	depends on SPS
 	default n
 	help
 	  Support Muxed Data Channels over BAM interface.
@@ -1139,6 +1187,13 @@ config MSM8X60_RTAC
 	  Enable support for rtac in qdsp6v2. This enables calibration during
 	  audio operation
 
+config MSM7X27A_AUDIO
+	bool "MSM7X27A audio support"
+	depends on ARCH_MSM7X27A && MSM_ADSP
+	default n
+	help
+	  Enable support for 7x27a. This provides audio functionality.
+
 config MSM_VREG_SWITCH_INVERTED
 	bool "Reverse vreg switch polarity"
 	default n
@@ -1390,7 +1445,7 @@ config MSM_WATCHDOG
 
 config MSM_DLOAD_MODE
 	bool "Enable download mode on crashes"
-	depends on ARCH_MSM8X60
+	depends on ARCH_MSM8X60 || ARCH_MSM8960
 	default n
 	help
 		This makes the SoC enter download mode when it resets
@@ -1419,6 +1474,15 @@ config MSM_GSBI9_UART
 	default n
 	help
 	  This enables GSBI9 configured into UART.
+
+config MSM_SHARED_GPIO_FOR_UART2DM
+	bool "Use shared GPIOs into UART mode"
+	depends on (ARCH_MSM7X27A && !MMC_MSM_SDC3_8_BIT_SUPPORT && !MMC_MSM_SDC4_SUPPORT)
+	help
+	  This option configures GPIO muxed with SDC4/MMC3
+	  8-bit mode into UART mode. It is used for serial
+	  console on UART2DM. Say Y if you want to have
+	  serial console on UART2DM.
 
 config MSM_SHOW_RESUME_IRQ
 	bool "Enable logging of interrupts that could have caused resume"
@@ -1464,4 +1528,19 @@ config MSM_AUDIO_QDSP6
           Enable HW audio support in QDSP6.
           QDSP6 can support HW encoder & decoder and audio processing
 
+config MSM_RPC_VIBRATOR
+	bool "RPC based MSM Vibrator Support"
+	depends on MSM_ONCRPCROUTER
+	help
+	  Enable the vibrator support on MSM over RPC. The vibrator
+	  is connected on the PMIC. Say Y if you want to enable this
+	  feature.
+
+config PM8XXX_RPC_VIBRATOR
+	bool "RPC based Vibrator on PM8xxx PMICs"
+	depends on MSM_RPC_VIBRATOR
+	help
+	  Enable the vibrator support on MSM over RPC. The vibrator
+	  is connected on the PM8XXX PMIC. Say Y if you want to enable
+	  this feature.
 endif

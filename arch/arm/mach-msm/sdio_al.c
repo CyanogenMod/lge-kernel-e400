@@ -143,6 +143,8 @@
 
 #define TIME_TO_WAIT_US 500
 
+#define SDIO_TEST_POSTFIX "_TEST"
+
 #define DATA_DEBUG(x...) if (sdio_al->debug.debug_data_on) pr_info(x)
 #define LPM_DEBUG(x...) if (sdio_al->debug.debug_lpm_on) pr_info(x)
 
@@ -399,7 +401,7 @@ struct sdio_al_device {
  * sdio_al.debug_lpm_on=1 to enable the LPM debug messages
  * By default the LPM debug messages are turned off
  */
-static int debug_lpm_on;
+static int debug_lpm_on = 1;
 module_param(debug_lpm_on, int, 0);
 
 /*
@@ -516,6 +518,14 @@ static void sdio_al_debugfs_cleanup(void)
 }
 #endif
 
+static void sdio_al_get_into_err_state(struct sdio_al_device *sdio_al_dev)
+{
+	sdio_al_dev->is_err = true;
+	sdio_al->debug.debug_data_on = 0;
+	sdio_al->debug.debug_lpm_on = 0;
+	sdio_al_print_info();
+}
+
 void sdio_al_register_lpm_cb(void *device_handle,
 				       int(*lpm_callback)(void *, int))
 {
@@ -528,7 +538,11 @@ void sdio_al_register_lpm_cb(void *device_handle,
 		return;
 	}
 
-	sdio_al_dev->lpm_callback = lpm_callback;
+	if (lpm_callback) {
+		sdio_al_dev->lpm_callback = lpm_callback;
+		lpm_callback((void *)sdio_al_dev,
+					   sdio_al_dev->is_ok_to_sleep);
+	}
 	LPM_DEBUG(MODULE_NAME ": %s - device %d registered for wakeup "
 	"callback\n", __func__, sdio_al_dev->card->host->index);
 }
@@ -550,27 +564,27 @@ void sdio_al_unregister_lpm_cb(void *device_handle)
 }
 
 static void sdio_al_vote_for_sleep(struct sdio_al_device *sdio_al_dev,
-				   int is_vote_for_wakeup)
+				   int is_vote_for_sleep)
 {
 	pr_debug(MODULE_NAME ": %s()", __func__);
 
-	if (is_vote_for_wakeup) {
+	if (is_vote_for_sleep) {
+		LPM_DEBUG(MODULE_NAME ": %s - sdio vote for Sleep", __func__);
+		wake_unlock(&sdio_al_dev->wake_lock);
+	} else {
 		LPM_DEBUG(MODULE_NAME ": %s - sdio vote against sleep",
 			  __func__);
 		wake_lock(&sdio_al_dev->wake_lock);
-	} else {
-		LPM_DEBUG(MODULE_NAME ": %s - sdio vote for Sleep", __func__);
-		wake_unlock(&sdio_al_dev->wake_lock);
 	}
 
 	if (sdio_al_dev->lpm_callback != NULL) {
-		LPM_DEBUG(MODULE_NAME ": %s - is_vote_for_wakeup=%d for "
+		LPM_DEBUG(MODULE_NAME ": %s - is_vote_for_sleep=%d for "
 			"card#%d, calling callback...",
 			__func__,
-			is_vote_for_wakeup,
+			is_vote_for_sleep,
 			sdio_al_dev->card->host->index);
 		sdio_al_dev->lpm_callback((void *)sdio_al_dev,
-					   is_vote_for_wakeup);
+					   is_vote_for_sleep);
 	}
 }
 
@@ -698,7 +712,7 @@ static void sdio_al_sleep(struct sdio_al_device *sdio_al_dev,
 			    "Sleep now.\n",
 		sdio_al_dev->card->host->index);
 	/* Release wakelock */
-	sdio_al_vote_for_sleep(sdio_al_dev, 0);
+	sdio_al_vote_for_sleep(sdio_al_dev, 1);
 }
 
 
@@ -769,8 +783,7 @@ static int read_mailbox(struct sdio_al_device *sdio_al_dev, int from_isr)
 		pr_err(MODULE_NAME ":Fail to read Mailbox for card %d,"
 				    " goto error state\n",
 		       sdio_al_dev->card->host->index);
-		sdio_al_dev->is_err = true;
-		sdio_al_print_info();
+		sdio_al_get_into_err_state(sdio_al_dev);
 		/* Stop the timer to stop reading the mailbox */
 		sdio_al_dev->poll_delay_msec = 0;
 		goto exit_err;
@@ -781,6 +794,15 @@ static int read_mailbox(struct sdio_al_device *sdio_al_dev, int from_isr)
 				"overflow=0x%x, underflow=0x%x\n",
 				overflow_pipe, underflow_pipe);
 
+	/* In case of modem reset we would like to read the daya from the modem
+	   to clear the interrupts but do not process it */
+	if (sdio_al_dev->state != CARD_INSERTED) {
+		pr_err(MODULE_NAME ":sdio_al_device (card %d) is in invalid "
+				   "state %d\n",
+				sdio_al_dev->card->host->index,
+				sdio_al_dev->state);
+		return -ENODEV;
+	}
 
 	pr_debug(MODULE_NAME ":card %d: eot=0x%x, thresh=0x%x\n",
 			sdio_al_dev->card->host->index,
@@ -1033,8 +1055,7 @@ static void boot_worker(struct work_struct *work)
 				"for card %d ret=%d\n",
 				sdio_al_dev->card->host->index,
 				ret);
-				sdio_al_dev->is_err = true;
-				sdio_al_print_info();
+				sdio_al_get_into_err_state(sdio_al_dev);
 			}
 			goto done;
 		}
@@ -1043,8 +1064,7 @@ static void boot_worker(struct work_struct *work)
 	}
 	pr_err(MODULE_NAME ":Timeout waiting for user_irq for card %d\n",
 	       sdio_al_dev->card->host->index);
-	sdio_al_dev->is_err = true;
-	sdio_al_print_info();
+	sdio_al_get_into_err_state(sdio_al_dev);
 
 done:
 	pr_debug(MODULE_NAME ":Boot Worker for card %d Exit!\n",
@@ -1419,6 +1439,8 @@ static int read_sdioc_software_header(struct sdio_al_device *sdio_al_dev,
 {
 	int ret;
 	int i;
+	int test_version = 0;
+	int sdioc_test_version = 0;
 
 	pr_debug(MODULE_NAME ":reading sdioc sw header.\n");
 
@@ -1433,6 +1455,14 @@ static int read_sdioc_software_header(struct sdio_al_device *sdio_al_dev,
 		pr_info(MODULE_NAME ":SDIOC SW unittest signature. 0x%x\n",
 			header->signature);
 		sdio_al->unittest_mode = true;
+		/* Verify test code compatibility with the modem */
+		sdioc_test_version = (header->version & 0xFF00) >> 8;
+		test_version = sdio_al->pdata->peer_sdioc_version_minor >> 8;
+		if (test_version != sdioc_test_version)
+			pr_err(MODULE_NAME ":HOST(0x%x) and CLIENT(0x%x) "
+			       "testing VERSION don't match, tests may fail\n",
+			       test_version,
+			       sdioc_test_version);
 	}
 
 	if ((header->signature != (u32) PEER_SDIOC_SW_MAILBOX_SIGNATURE) &&
@@ -1503,8 +1533,7 @@ static int read_sdioc_software_header(struct sdio_al_device *sdio_al_dev,
 	return 0;
 
 exit_err:
-	sdio_al_dev->is_err = true;
-	sdio_al_print_info();
+	sdio_al_get_into_err_state(sdio_al_dev);
 	memset(header, 0, sizeof(*header));
 
 	return -EIO;
@@ -1892,7 +1921,8 @@ static void ask_reading_mailbox(struct sdio_al_device *sdio_al_dev)
  */
 static void start_timer(struct sdio_al_device *sdio_al_dev)
 {
-	if (sdio_al_dev->poll_delay_msec) {
+	if ((sdio_al_dev->poll_delay_msec)  &&
+		(sdio_al_dev->state == CARD_INSERTED)) {
 		sdio_al_dev->timer.expires = jiffies +
 			msecs_to_jiffies(sdio_al_dev->poll_delay_msec);
 		add_timer(&sdio_al_dev->timer);
@@ -1904,12 +1934,63 @@ static void start_timer(struct sdio_al_device *sdio_al_dev)
  */
 static void restart_timer(struct sdio_al_device *sdio_al_dev)
 {
-	if (sdio_al_dev->poll_delay_msec) {
+	if ((sdio_al_dev->poll_delay_msec) &&
+		(sdio_al_dev->state == CARD_INSERTED)) {
 		ulong expires =	jiffies +
 			msecs_to_jiffies(sdio_al_dev->poll_delay_msec);
 		mod_timer(&sdio_al_dev->timer, expires);
 	}
 }
+
+int sdio_al_client_resume(struct mmc_host *host)
+{
+	unsigned long time_to_wait;
+	struct sdio_al_device *sdio_al_dev = NULL;
+	int i = 0;
+	int ret = 0;
+
+	if (!host) {
+		pr_err(MODULE_NAME ": %s - host is NULL",
+		       __func__);
+		return -EIO;
+	}
+
+	for (i = 0 ; i < MAX_NUM_OF_SDIO_DEVICES ; ++i) {
+		if ((!sdio_al) || (!sdio_al->devices[i]) ||
+		    (!sdio_al->devices[i]->card))
+			continue;
+		if (sdio_al->devices[i]->card->host == host) {
+			sdio_al_dev = sdio_al->devices[i];
+			break;
+		}
+	}
+
+	if (sdio_al_dev == NULL) {
+		pr_err(MODULE_NAME ": %s - sdio_al_dev is NULL",
+		       __func__);
+		return -EIO;
+	}
+
+	host->ios.clock = sdio_al_dev->clock;
+	host->ops->set_ios(host, &host->ios);
+	msmsdcc_set_pwrsave(host, 0);
+	/* Poll the GPIO */
+	time_to_wait = jiffies + msecs_to_jiffies(1000);
+	while (time_before(jiffies, time_to_wait)) {
+		if (sdio_al->pdata->get_mdm2ap_status())
+			break;
+		udelay(TIME_TO_WAIT_US);
+	}
+	LPM_DEBUG(MODULE_NAME ": %s - GPIO mdm2ap_status=%d\n",
+		  __func__, sdio_al->pdata->get_mdm2ap_status());
+	if (sdio_al->pdata->get_mdm2ap_status() == 0) {
+		pr_err(MODULE_NAME ": %s - Modem is not out of VDD MIN\n",
+		       __func__);
+		ret = -EIO;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(sdio_al_client_resume);
 
 /**
  *  Do the wakup sequence.
@@ -1938,7 +2019,7 @@ static int sdio_al_wake_up(struct sdio_al_device *sdio_al_dev,
 	}
 
 	/* Wake up sequence */
-	sdio_al_vote_for_sleep(sdio_al_dev, 1);
+	sdio_al_vote_for_sleep(sdio_al_dev, 0);
 	if (not_from_int) {
 		LPM_DEBUG(MODULE_NAME ": Wake up card %d (not by interrupt)",
 			sdio_al_dev->card->host->index);
@@ -2019,11 +2100,10 @@ static int sdio_al_wake_up(struct sdio_al_device *sdio_al_dev,
 
 	return ret;
 error_exit:
-	sdio_al_dev->is_err = true;
-	sdio_al_vote_for_sleep(sdio_al_dev, 0);
+	sdio_al_vote_for_sleep(sdio_al_dev, 1);
 	msmsdcc_set_pwrsave(sdio_al_dev->card->host, 1);
 	WARN_ON(ret);
-	sdio_al_print_info();
+	sdio_al_get_into_err_state(sdio_al_dev);
 	return ret;
 }
 
@@ -2074,6 +2154,11 @@ static void sdio_al_timer_handler(unsigned long data)
 	if (sdio_al_dev == NULL) {
 		pr_err(MODULE_NAME ": NULL sdio_al_dev for data %lu\n",
 				 data);
+		return;
+	}
+	if (sdio_al_dev->state != CARD_INSERTED) {
+		pr_err(MODULE_NAME ": sdio_al_dev is in invalid state %d\n",
+				 sdio_al_dev->state);
 		return;
 	}
 	pr_debug(MODULE_NAME " Timer Expired\n");
@@ -2168,8 +2253,8 @@ static void sdio_al_tear_down(void)
 		sdio_al_dev = sdio_al->devices[i];
 
 		if (sdio_al_dev->is_ready) {
-
 			sdio_al_dev->is_ready = false; /* Flag worker to exit */
+			sdio_al_dev->ask_mbox = false;
 			ask_reading_mailbox(sdio_al_dev); /* Wakeup worker */
 			/* allow gracefully exit of the worker thread */
 			msleep(100);
@@ -2177,7 +2262,7 @@ static void sdio_al_tear_down(void)
 			flush_workqueue(sdio_al_dev->workqueue);
 			destroy_workqueue(sdio_al_dev->workqueue);
 
-			sdio_al_vote_for_sleep(sdio_al_dev, 0);
+			sdio_al_vote_for_sleep(sdio_al_dev, 1);
 
 			if (!sdio_al_dev->func1) {
 				pr_err(MODULE_NAME ": %s: NULL func1\n",
@@ -2822,25 +2907,35 @@ static int init_channels(struct sdio_al_device *sdio_al_dev)
 	if (ret)
 		goto exit;
 
-	if (sdio_al->unittest_mode) {
-		pr_info(MODULE_NAME ":==== SDIO-AL UNIT-TEST ====\n");
-		for (i = 0; i < SDIO_AL_MAX_CHANNELS; i++) {
-			if (!sdio_al_dev->channel[i].is_valid)
-				continue;
+	for (i = 0; i < SDIO_AL_MAX_CHANNELS; i++) {
+		int ch_name_size;
+		if (!sdio_al_dev->channel[i].is_valid)
+			continue;
+		if (sdio_al->unittest_mode) {
 			test_channel_init(sdio_al_dev->channel[i].name);
-		}
-	}
-	else
-		/* Allow clients to probe for this driver */
-		for (i = 0; i < SDIO_AL_MAX_CHANNELS; i++) {
-			if (!sdio_al_dev->channel[i].is_valid)
-				continue;
+			memset(sdio_al_dev->channel[i].ch_test_name, 0,
+				sizeof(sdio_al_dev->channel[i].ch_test_name));
+			ch_name_size = strnlen(sdio_al_dev->channel[i].name,
+				       CHANNEL_NAME_SIZE);
+			strncpy(sdio_al_dev->channel[i].ch_test_name,
+			       sdio_al_dev->channel[i].name,
+			       ch_name_size);
+			strncat(sdio_al_dev->channel[i].ch_test_name +
+			       ch_name_size,
+			       SDIO_TEST_POSTFIX,
+			       SDIO_TEST_POSTFIX_SIZE);
+			sdio_al_dev->channel[i].pdev.name =
+				sdio_al_dev->channel[i].ch_test_name;
+		} else {
 			sdio_al_dev->channel[i].pdev.name =
 				sdio_al_dev->channel[i].name;
-			sdio_al_dev->channel[i].pdev.dev.release =
-				default_sdio_al_release;
-			platform_device_register(&sdio_al_dev->channel[i].pdev);
 		}
+		pr_info(MODULE_NAME ":pdev.name = %s\n",
+			sdio_al_dev->channel[i].pdev.name);
+		sdio_al_dev->channel[i].pdev.dev.release =
+			default_sdio_al_release;
+		platform_device_register(&sdio_al_dev->channel[i].pdev);
+	}
 
 exit:
 	sdio_release_host(sdio_al_dev->func1);
@@ -2997,7 +3092,7 @@ static int sdio_al_card_probe(struct mmc_card *card)
 
 	wake_lock_init(&sdio_al_dev->wake_lock, WAKE_LOCK_SUSPEND, MODULE_NAME);
 	/* Don't allow sleep until all required clients register */
-	sdio_al_vote_for_sleep(sdio_al_dev, 1);
+	sdio_al_vote_for_sleep(sdio_al_dev, 0);
 
 	sdio_claim_host(sdio_al_dev->func1);
 
@@ -3075,7 +3170,7 @@ void sdio_al_card_remove(struct mmc_card *card)
 	pr_info(MODULE_NAME ":%s: ask_reading_mailbox for card %d\n",
 			 __func__, card->host->index);
 	sdio_al_dev->is_ready = false; /* Flag worker to exit */
-	sdio_al_dev->ask_mbox = true;
+	sdio_al_dev->ask_mbox = false;
 	ask_reading_mailbox(sdio_al_dev); /* Wakeup worker */
 
 	if (state != MODEM_RESTART) {
@@ -3095,20 +3190,22 @@ void sdio_al_card_remove(struct mmc_card *card)
 					continue;
 				platform_device_unregister(
 					&sdio_al_dev->channel[i].pdev);
+				sdio_al_dev->channel[i].signature = 0x0;
 			}
 		}
 	}
 	if (card->sdio_func[0])
 		sdio_release_host(card->sdio_func[0]);
 
-	pr_info(MODULE_NAME ":%s: wake_unlock for card %d\n",
+	pr_info(MODULE_NAME ":%s: vote for sleep for card %d\n",
 			 __func__, card->host->index);
-	wake_lock(&sdio_al_dev->wake_lock);
+	sdio_al_vote_for_sleep(sdio_al_dev, 1);
 
 	pr_info(MODULE_NAME ":%s: flush_workqueue for card %d\n",
 			 __func__, card->host->index);
 	flush_workqueue(sdio_al_dev->workqueue);
 	destroy_workqueue(sdio_al_dev->workqueue);
+	wake_lock_destroy(&sdio_al_dev->wake_lock);
 
 	pr_info(MODULE_NAME ":%s: delete data structures for card %d\n",
 			 __func__, card->host->index);
@@ -3554,6 +3651,12 @@ static int sdio_al_subsys_notifier_cb(struct notifier_block *this,
 				__func__, sdio_al_dev->card->host->index);
 			continue;
 		}
+		if (sdio_al_dev->state == MODEM_RESTART) {
+			pr_info(MODULE_NAME ": %s: card %d was already "
+					    "notified for modem reset",
+				__func__, sdio_al_dev->card->host->index);
+			continue;
+		}
 
 		pr_info(MODULE_NAME ": %s: Set the state to MODEM_RESTART"
 			" for card %d",
@@ -3612,7 +3715,7 @@ static int sdio_al_subsys_notifier_cb(struct notifier_block *this,
 
 		pr_debug(MODULE_NAME ": %s: Allows sleep for card %d", __func__,
 			sdio_al_dev->card->host->index);
-		wake_lock(&sdio_al_dev->wake_lock);
+		sdio_al_vote_for_sleep(sdio_al_dev, 1);
 	}
 
 	return NOTIFY_OK;

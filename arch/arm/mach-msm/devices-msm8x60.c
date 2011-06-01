@@ -501,7 +501,6 @@ static struct msm_bus_scale_pdata grp3d_bus_scale_pdata = {
 	.name = "grp3d",
 };
 
-#ifdef CONFIG_MSM_KGSL_2D
 static struct msm_bus_vectors grp2d0_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_GRAPHICS_2D_CORE0,
@@ -571,7 +570,6 @@ static struct msm_bus_scale_pdata grp2d1_bus_scale_pdata = {
 	ARRAY_SIZE(grp2d1_bus_scale_usecases),
 	.name = "grp2d1",
 };
-#endif
 #endif
 
 #ifdef CONFIG_HW_RANDOM_MSM
@@ -659,7 +657,6 @@ struct platform_device msm_kgsl_3d0 = {
 	},
 };
 
-#ifdef CONFIG_MSM_KGSL_2D
 static struct resource kgsl_2d0_resources[] = {
 	{
 		.name = KGSL_2D0_REG_MEMORY,
@@ -790,7 +787,6 @@ void __init msm8x60_check_2d_hardware(void)
 		kgsl_2d1_pdata.clk.name.clk = NULL;
 	}
 }
-#endif
 
 /* Use GSBI3 QUP for /dev/i2c-0 */
 struct platform_device msm_gsbi3_qup_i2c_device = {
@@ -1268,7 +1264,7 @@ static struct resource msm_mipi_dsi_resources[] = {
 
 static struct platform_device msm_mipi_dsi_device = {
 	.name   = "mipi_dsi",
-	.id     = 0,
+	.id     = 1,
 	.num_resources  = ARRAY_SIZE(msm_mipi_dsi_resources),
 	.resource       = msm_mipi_dsi_resources,
 };
@@ -1310,7 +1306,7 @@ static struct resource resources_msm_rotator[] = {
 static struct msm_rot_clocks rotator_clocks[] = {
 	{
 		.clk_name = "rot_clk",
-		.clk_type = ROTATOR_AXI_CLK,
+		.clk_type = ROTATOR_CORE_CLK,
 		.clk_rate = 160 * 1000 * 1000,
 	},
 	{
@@ -1706,6 +1702,228 @@ struct platform_device msm_device_dmov_adm1 = {
 };
 
 /* MSM Video core device */
+#ifdef CONFIG_MSM_BUS_SCALING
+static struct msm_bus_vectors vidc_init_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab = 0,
+		.ib = 0,
+	},
+};
+static struct msm_bus_vectors vidc_venc_vga_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 54525952,
+		.ib  = 436207616,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 72351744,
+		.ib  = 289406976,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 500000,
+		.ib  = 1000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 500000,
+		.ib  = 1000000,
+	},
+};
+static struct msm_bus_vectors vidc_vdec_vga_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 40894464,
+		.ib  = 327155712,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 48234496,
+		.ib  = 192937984,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 500000,
+		.ib  = 2000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 500000,
+		.ib  = 2000000,
+	},
+};
+static struct msm_bus_vectors vidc_venc_720p_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 163577856,
+		.ib  = 1308622848,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 219152384,
+		.ib  = 876609536,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 1750000,
+		.ib  = 3500000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 1750000,
+		.ib  = 3500000,
+	},
+};
+static struct msm_bus_vectors vidc_vdec_720p_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 121634816,
+		.ib  = 973078528,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 155189248,
+		.ib  = 620756992,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 1750000,
+		.ib  = 7000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 1750000,
+		.ib  = 7000000,
+	},
+};
+static struct msm_bus_vectors vidc_venc_1080p_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 372244480,
+		.ib  = 1861222400,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 501219328,
+		.ib  = 2004877312,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 2500000,
+		.ib  = 5000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 2500000,
+		.ib  = 5000000,
+	},
+};
+static struct msm_bus_vectors vidc_vdec_1080p_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 222298112,
+		.ib  = 1778384896,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 330301440,
+		.ib  = 1321205760,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 2500000,
+		.ib  = 700000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 2500000,
+		.ib  = 10000000,
+	},
+};
+
+static struct msm_bus_paths vidc_bus_client_config[] = {
+	{
+		ARRAY_SIZE(vidc_init_vectors),
+		vidc_init_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_venc_vga_vectors),
+		vidc_venc_vga_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_vdec_vga_vectors),
+		vidc_vdec_vga_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_venc_720p_vectors),
+		vidc_venc_720p_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_vdec_720p_vectors),
+		vidc_vdec_720p_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_venc_1080p_vectors),
+		vidc_venc_1080p_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_vdec_1080p_vectors),
+		vidc_vdec_1080p_vectors,
+	},
+};
+
+static struct msm_bus_scale_pdata vidc_bus_client_pdata = {
+	vidc_bus_client_config,
+	ARRAY_SIZE(vidc_bus_client_config),
+	.name = "vidc",
+};
+
+#endif
 
 #define MSM_VIDC_BASE_PHYS 0x04400000
 #define MSM_VIDC_BASE_SIZE 0x00100000
@@ -1728,6 +1946,11 @@ struct platform_device msm_device_vidc = {
 	.id = 0,
 	.num_resources = ARRAY_SIZE(msm_device_vidc_resources),
 	.resource = msm_device_vidc_resources,
+#ifdef CONFIG_MSM_BUS_SCALING
+	.dev = {
+		.platform_data	= &vidc_bus_client_pdata,
+	},
+#endif
 };
 
 #if defined(CONFIG_MSM_RPM_STATS_LOG)

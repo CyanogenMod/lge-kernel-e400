@@ -29,6 +29,8 @@
 	(MH_INTERRUPT_MASK__AXI_READ_ERROR | \
 	 MH_INTERRUPT_MASK__AXI_WRITE_ERROR)
 
+static void pagetable_remove_sysfs_objects(struct kgsl_pagetable *pagetable);
+
 static ssize_t
 sysfs_show_ptpool_entries(struct kobject *kobj,
 			  struct kobj_attribute *attr,
@@ -330,19 +332,65 @@ int kgsl_ptpool_init(struct kgsl_ptpool *pool, int ptsize, int entries)
 	return sysfs_create_group(kgsl_driver.ptkobj, &ptpool_attr_group);
 }
 
-/* pt_mutex needs to be held in this function */
+static int kgsl_cleanup_pt(struct kgsl_pagetable *pt)
+{
+	int i;
+	for (i = 0; i < KGSL_DEVICE_MAX; i++) {
+		struct kgsl_device *device = kgsl_driver.devp[i];
+		if (device)
+			device->ftbl->cleanup_pt(device, pt);
+	}
+	return 0;
+}
+
+static void kgsl_destroy_pagetable(struct kref *kref)
+{
+	struct kgsl_pagetable *pagetable = container_of(kref,
+		struct kgsl_pagetable, refcount);
+	unsigned long flags;
+
+	spin_lock_irqsave(&kgsl_driver.ptlock, flags);
+	list_del(&pagetable->list);
+	spin_unlock_irqrestore(&kgsl_driver.ptlock, flags);
+
+	pagetable_remove_sysfs_objects(pagetable);
+
+	kgsl_cleanup_pt(pagetable);
+
+	kgsl_ptpool_free(&kgsl_driver.ptpool, pagetable->base.hostptr);
+
+	kgsl_driver.stats.coherent -= KGSL_PAGETABLE_SIZE;
+
+	if (pagetable->pool)
+		gen_pool_destroy(pagetable->pool);
+
+	kfree(pagetable->tlbflushfilter.base);
+	kfree(pagetable);
+}
+
+static inline void kgsl_put_pagetable(struct kgsl_pagetable *pagetable)
+{
+	if (pagetable)
+		kref_put(&pagetable->refcount, kgsl_destroy_pagetable);
+}
 
 static struct kgsl_pagetable *
 kgsl_get_pagetable(unsigned long name)
 {
-	struct kgsl_pagetable *pt;
+	struct kgsl_pagetable *pt, *ret = NULL;
+	unsigned long flags;
 
-	list_for_each_entry(pt,	&kgsl_driver.pagetable_list, list) {
-		if (pt->name == name)
-			return pt;
+	spin_lock_irqsave(&kgsl_driver.ptlock, flags);
+	list_for_each_entry(pt, &kgsl_driver.pagetable_list, list) {
+		if (pt->name == name) {
+			ret = pt;
+			kref_get(&ret->refcount);
+			break;
+		}
 	}
 
-	return NULL;
+	spin_unlock_irqrestore(&kgsl_driver.ptlock, flags);
+	return ret;
 }
 
 static struct kgsl_pagetable *
@@ -367,13 +415,12 @@ sysfs_show_entries(struct kobject *kobj,
 	struct kgsl_pagetable *pt;
 	int ret = 0;
 
-	mutex_lock(&kgsl_driver.pt_mutex);
 	pt = _get_pt_from_kobj(kobj);
 
 	if (pt)
 		ret += sprintf(buf, "%d\n", pt->stats.entries);
 
-	mutex_unlock(&kgsl_driver.pt_mutex);
+	kgsl_put_pagetable(pt);
 	return ret;
 }
 
@@ -385,13 +432,12 @@ sysfs_show_mapped(struct kobject *kobj,
 	struct kgsl_pagetable *pt;
 	int ret = 0;
 
-	mutex_lock(&kgsl_driver.pt_mutex);
 	pt = _get_pt_from_kobj(kobj);
 
 	if (pt)
 		ret += sprintf(buf, "%d\n", pt->stats.mapped);
 
-	mutex_unlock(&kgsl_driver.pt_mutex);
+	kgsl_put_pagetable(pt);
 	return ret;
 }
 
@@ -403,13 +449,12 @@ sysfs_show_va_range(struct kobject *kobj,
 	struct kgsl_pagetable *pt;
 	int ret = 0;
 
-	mutex_lock(&kgsl_driver.pt_mutex);
 	pt = _get_pt_from_kobj(kobj);
 
 	if (pt)
 		ret += sprintf(buf, "0x%x\n", pt->va_range);
 
-	mutex_unlock(&kgsl_driver.pt_mutex);
+	kgsl_put_pagetable(pt);
 	return ret;
 }
 
@@ -421,13 +466,12 @@ sysfs_show_max_mapped(struct kobject *kobj,
 	struct kgsl_pagetable *pt;
 	int ret = 0;
 
-	mutex_lock(&kgsl_driver.pt_mutex);
 	pt = _get_pt_from_kobj(kobj);
 
 	if (pt)
 		ret += sprintf(buf, "%d\n", pt->stats.max_mapped);
 
-	mutex_unlock(&kgsl_driver.pt_mutex);
+	kgsl_put_pagetable(pt);
 	return ret;
 }
 
@@ -439,13 +483,12 @@ sysfs_show_max_entries(struct kobject *kobj,
 	struct kgsl_pagetable *pt;
 	int ret = 0;
 
-	mutex_lock(&kgsl_driver.pt_mutex);
 	pt = _get_pt_from_kobj(kobj);
 
 	if (pt)
 		ret += sprintf(buf, "%d\n", pt->stats.max_entries);
 
-	mutex_unlock(&kgsl_driver.pt_mutex);
+	kgsl_put_pagetable(pt);
 	return ret;
 }
 
@@ -554,29 +597,46 @@ void kgsl_mh_intrcallback(struct kgsl_device *device)
 	unsigned int status = 0;
 	unsigned int reg;
 
-	kgsl_regread_isr(device, device->mmu.reg.interrupt_status, &status);
+	kgsl_regread_isr(device, MH_INTERRUPT_STATUS, &status);
+	kgsl_regread_isr(device, MH_AXI_ERROR, &reg);
 
-	if (status & MH_INTERRUPT_MASK__AXI_READ_ERROR) {
-		kgsl_regread_isr(device, device->mmu.reg.axi_error, &reg);
+	if (status & MH_INTERRUPT_MASK__AXI_READ_ERROR)
 		KGSL_MEM_CRIT(device, "axi read error interrupt: %08x\n", reg);
-	} else if (status & MH_INTERRUPT_MASK__AXI_WRITE_ERROR) {
-		kgsl_regread_isr(device, device->mmu.reg.axi_error, &reg);
+	else if (status & MH_INTERRUPT_MASK__AXI_WRITE_ERROR)
 		KGSL_MEM_CRIT(device, "axi write error interrupt: %08x\n", reg);
-	} else if (status & MH_INTERRUPT_MASK__MMU_PAGE_FAULT) {
-		kgsl_regread_isr(device, device->mmu.reg.page_fault, &reg);
-		KGSL_MEM_CRIT(device, "mmu page fault interrupt: %08x\n", reg);
-	} else {
+	else if (status & MH_INTERRUPT_MASK__MMU_PAGE_FAULT) {
+		unsigned int ptbase;
+		struct kgsl_pagetable *pt;
+		int ptid = -1;
+
+		kgsl_regread_isr(device, MH_MMU_PAGE_FAULT, &reg);
+		kgsl_regread_isr(device, MH_MMU_PT_BASE, &ptbase);
+
+		spin_lock(&kgsl_driver.ptlock);
+		list_for_each_entry(pt, &kgsl_driver.pagetable_list, list) {
+			if (ptbase == pt->base.gpuaddr) {
+				ptid = (int) pt->name;
+				break;
+			}
+		}
+		spin_unlock(&kgsl_driver.ptlock);
+
+		KGSL_MEM_CRIT(device,
+			"mmu page fault: page=0x%lx pt=%d op=%s axi=%d\n",
+			reg & ~(PAGE_SIZE - 1), ptid,
+			reg & 0x02 ? "WRITE" : "READ", (reg >> 4) & 0xF);
+	} else
 		KGSL_MEM_WARN(device,
 			"bad bits in REG_MH_INTERRUPT_STATUS %08x\n", status);
-	}
 
-	kgsl_regwrite_isr(device, device->mmu.reg.interrupt_clear, status);
+	kgsl_regwrite_isr(device, MH_INTERRUPT_CLEAR, status);
 
 	/*TODO: figure out how to handle errror interupts.
 	* specifically, page faults should probably nuke the client that
 	* caused them, but we don't have enough info to figure that out yet.
 	*/
 }
+EXPORT_SYMBOL(kgsl_mh_intrcallback);
 
 static int kgsl_setup_pt(struct kgsl_pagetable *pt)
 {
@@ -602,22 +662,12 @@ error_pt:
 	return status;
 }
 
-static int kgsl_cleanup_pt(struct kgsl_pagetable *pt)
-{
-	int i;
-	for (i = 0; i < KGSL_DEVICE_MAX; i++) {
-		struct kgsl_device *device = kgsl_driver.devp[i];
-		if (device)
-			device->ftbl->cleanup_pt(device, pt);
-	}
-	return 0;
-}
-
 static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 				unsigned int name)
 {
 	int status = 0;
 	struct kgsl_pagetable *pagetable = NULL;
+	unsigned long flags;
 
 	pagetable = kzalloc(sizeof(struct kgsl_pagetable), GFP_KERNEL);
 	if (pagetable == NULL) {
@@ -626,7 +676,7 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 		return NULL;
 	}
 
-	pagetable->refcnt = 1;
+	kref_init(&pagetable->refcount);
 
 	spin_lock_init(&pagetable->lock);
 	pagetable->tlb_flags = 0;
@@ -678,7 +728,9 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 	if (status)
 		goto err_free_sharedmem;
 
+	spin_lock_irqsave(&kgsl_driver.ptlock, flags);
 	list_add(&pagetable->list, &kgsl_driver.pagetable_list);
+	spin_unlock_irqrestore(&kgsl_driver.ptlock, flags);
 
 	/* Create the sysfs entries */
 	pagetable_add_sysfs_objects(pagetable);
@@ -697,76 +749,51 @@ err_alloc:
 	return NULL;
 }
 
-static void kgsl_mmu_destroypagetable(struct kgsl_pagetable *pagetable)
-{
-	list_del(&pagetable->list);
-
-	pagetable_remove_sysfs_objects(pagetable);
-
-	kgsl_cleanup_pt(pagetable);
-
-	kgsl_ptpool_free(&kgsl_driver.ptpool, pagetable->base.hostptr);
-
-	kgsl_driver.stats.coherent -= KGSL_PAGETABLE_SIZE;
-
-	if (pagetable->pool) {
-		gen_pool_destroy(pagetable->pool);
-		pagetable->pool = NULL;
-	}
-
-	if (pagetable->tlbflushfilter.base) {
-		pagetable->tlbflushfilter.size = 0;
-		kfree(pagetable->tlbflushfilter.base);
-		pagetable->tlbflushfilter.base = NULL;
-	}
-
-	kfree(pagetable);
-}
-
 struct kgsl_pagetable *kgsl_mmu_getpagetable(unsigned long name)
 {
 	struct kgsl_pagetable *pt;
 
-	mutex_lock(&kgsl_driver.pt_mutex);
-
 	pt = kgsl_get_pagetable(name);
 
-	if (pt) {
-		spin_lock(&pt->lock);
-		pt->refcnt++;
-		spin_unlock(&pt->lock);
-		goto done;
-	}
+	if (pt == NULL)
+		pt = kgsl_mmu_createpagetableobject(name);
 
-	pt = kgsl_mmu_createpagetableobject(name);
-
-done:
-	mutex_unlock(&kgsl_driver.pt_mutex);
 	return pt;
 }
 
 void kgsl_mmu_putpagetable(struct kgsl_pagetable *pagetable)
 {
-	bool dead;
-	if (pagetable == NULL)
-		return;
-
-	mutex_lock(&kgsl_driver.pt_mutex);
-
-	spin_lock(&pagetable->lock);
-	dead = (--pagetable->refcnt) == 0;
-	spin_unlock(&pagetable->lock);
-
-	if (dead)
-		kgsl_mmu_destroypagetable(pagetable);
-
-	mutex_unlock(&kgsl_driver.pt_mutex);
+	kgsl_put_pagetable(pagetable);
 }
 
-int kgsl_mmu_setstate(struct kgsl_device *device,
+void kgsl_default_setstate(struct kgsl_device *device, uint32_t flags)
+{
+	if (!kgsl_mmu_enabled())
+		return;
+
+	if (flags & KGSL_MMUFLAGS_PTUPDATE) {
+		kgsl_idle(device, KGSL_TIMEOUT_DEFAULT);
+		kgsl_regwrite(device, MH_MMU_PT_BASE,
+			device->mmu.hwpagetable->base.gpuaddr);
+	}
+
+	if (flags & KGSL_MMUFLAGS_TLBFLUSH) {
+		/* Invalidate all and tc */
+		kgsl_regwrite(device, MH_MMU_INVALIDATE,  0x00000003);
+	}
+}
+EXPORT_SYMBOL(kgsl_default_setstate);
+
+void kgsl_setstate(struct kgsl_device *device, uint32_t flags)
+{
+	if (device->ftbl->setstate)
+		device->ftbl->setstate(device, flags);
+}
+EXPORT_SYMBOL(kgsl_setstate);
+
+void kgsl_mmu_setstate(struct kgsl_device *device,
 				struct kgsl_pagetable *pagetable)
 {
-	int status = 0;
 	struct kgsl_mmu *mmu = &device->mmu;
 
 	if (mmu->flags & KGSL_FLAGS_STARTED) {
@@ -780,15 +807,12 @@ int kgsl_mmu_setstate(struct kgsl_device *device,
 			spin_unlock(&mmu->hwpagetable->lock);
 
 			/* call device specific set page table */
-			status = kgsl_setstate(mmu->device,
-				KGSL_MMUFLAGS_TLBFLUSH |
+			kgsl_setstate(mmu->device, KGSL_MMUFLAGS_TLBFLUSH |
 				KGSL_MMUFLAGS_PTUPDATE);
-
 		}
 	}
-
-	return status;
 }
+EXPORT_SYMBOL(kgsl_mmu_setstate);
 
 int kgsl_mmu_init(struct kgsl_device *device)
 {
@@ -814,7 +838,7 @@ int kgsl_mmu_init(struct kgsl_device *device)
 		/* allocate memory used for completing r/w operations that
 		 * cannot be mapped by the MMU
 		 */
-		status = kgsl_allocate_contig(&mmu->dummyspace, 64);
+		status = kgsl_allocate_contiguous(&mmu->dummyspace, 64);
 		if (!status)
 			kgsl_sharedmem_set(&mmu->dummyspace, 0, 0,
 					   mmu->dummyspace.size);
@@ -830,7 +854,7 @@ int kgsl_mmu_start(struct kgsl_device *device)
 	 *
 	 * call this with the global lock held
 	 */
-	int status;
+
 	struct kgsl_mmu *mmu = &device->mmu;
 
 	if (mmu->flags & KGSL_FLAGS_STARTED)
@@ -843,22 +867,21 @@ int kgsl_mmu_start(struct kgsl_device *device)
 	mmu->flags |= KGSL_FLAGS_STARTED;
 
 	/* setup MMU and sub-client behavior */
-	kgsl_regwrite(device, device->mmu.reg.config, mmu->config);
+	kgsl_regwrite(device, MH_MMU_CONFIG, mmu->config);
 
 	/* enable axi interrupts */
-	kgsl_regwrite(device, device->mmu.reg.interrupt_mask,
-				GSL_MMU_INT_MASK);
+	kgsl_regwrite(device, MH_INTERRUPT_MASK, GSL_MMU_INT_MASK);
 
 	/* idle device */
 	kgsl_idle(device,  KGSL_TIMEOUT_DEFAULT);
 
 	/* define physical memory range accessible by the core */
-	kgsl_regwrite(device, device->mmu.reg.mpu_base, mmu->mpu_base);
-	kgsl_regwrite(device, device->mmu.reg.mpu_end,
+	kgsl_regwrite(device, MH_MMU_MPU_BASE, mmu->mpu_base);
+	kgsl_regwrite(device, MH_MMU_MPU_END,
 			mmu->mpu_base + mmu->mpu_range);
 
 	/* enable axi interrupts */
-	kgsl_regwrite(device, device->mmu.reg.interrupt_mask,
+	kgsl_regwrite(device, MH_INTERRUPT_MASK,
 			GSL_MMU_INT_MASK | MH_INTERRUPT_MASK__MMU_PAGE_FAULT);
 
 	/* sub-client MMU lookups require address translation */
@@ -872,33 +895,30 @@ int kgsl_mmu_start(struct kgsl_device *device)
 		 * we'll leave the bottom 32 bytes of the dummyspace for other
 		 * purposes (e.g. use it when dummy read cycles are needed
 		 * for other blocks */
-		kgsl_regwrite(device, device->mmu.reg.tran_error,
-						mmu->dummyspace.physaddr + 32);
+		kgsl_regwrite(device, MH_MMU_TRAN_ERROR,
+			mmu->dummyspace.physaddr + 32);
 
 		if (mmu->defaultpagetable == NULL)
 			mmu->defaultpagetable =
 				kgsl_mmu_getpagetable(KGSL_MMU_GLOBAL_PT);
+
+		/* Return error if the default pagetable doesn't exist */
+		if (mmu->defaultpagetable == NULL)
+			return -ENOMEM;
+
 		mmu->hwpagetable = mmu->defaultpagetable;
 
-		kgsl_regwrite(device, device->mmu.reg.pt_page,
+		kgsl_regwrite(device, MH_MMU_PT_BASE,
 			      mmu->hwpagetable->base.gpuaddr);
-		kgsl_regwrite(device, device->mmu.reg.va_range,
+		kgsl_regwrite(device, MH_MMU_VA_RANGE,
 			      (mmu->hwpagetable->va_base |
 			      (mmu->hwpagetable->va_range >> 16)));
-		status = kgsl_setstate(device, KGSL_MMUFLAGS_TLBFLUSH);
-		if (status) {
-			KGSL_MEM_ERR(device, "Failed to setstate TLBFLUSH\n");
-			goto error;
-		}
+		kgsl_setstate(device, KGSL_MMUFLAGS_TLBFLUSH);
 	}
 
 	return 0;
-error:
-	/* disable MMU */
-	kgsl_regwrite(device, device->mmu.reg.interrupt_mask, 0);
-	kgsl_regwrite(device, device->mmu.reg.config, 0x00000000);
-	return status;
 }
+EXPORT_SYMBOL(kgsl_mmu_start);
 
 unsigned int kgsl_virtaddr_to_physaddr(void *virtaddr)
 {
@@ -1061,6 +1081,7 @@ kgsl_mmu_unmap(struct kgsl_pagetable *pagetable,
 
 	return 0;
 }
+EXPORT_SYMBOL(kgsl_mmu_unmap);
 
 int kgsl_mmu_map_global(struct kgsl_pagetable *pagetable,
 			struct kgsl_memdesc *memdesc, unsigned int protflags)
@@ -1092,6 +1113,7 @@ error_unmap:
 error:
 	return result;
 }
+EXPORT_SYMBOL(kgsl_mmu_map_global);
 
 int kgsl_mmu_stop(struct kgsl_device *device)
 {
@@ -1105,14 +1127,15 @@ int kgsl_mmu_stop(struct kgsl_device *device)
 	if (mmu->flags & KGSL_FLAGS_STARTED) {
 		/* disable mh interrupts */
 		/* disable MMU */
-		kgsl_regwrite(device, device->mmu.reg.interrupt_mask, 0);
-		kgsl_regwrite(device, device->mmu.reg.config, 0x00000000);
+		kgsl_regwrite(device, MH_INTERRUPT_MASK, 0);
+		kgsl_regwrite(device, MH_MMU_CONFIG, 0x00000000);
 
 		mmu->flags &= ~KGSL_FLAGS_STARTED;
 	}
 
 	return 0;
 }
+EXPORT_SYMBOL(kgsl_mmu_stop);
 
 int kgsl_mmu_close(struct kgsl_device *device)
 {

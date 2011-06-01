@@ -70,6 +70,8 @@
 #include <asm/mach/mmc.h>
 #include <asm/mach/flash.h>
 #include <mach/vreg.h>
+#include <linux/platform_data/qcom_crypto_device.h>
+
 #include "devices.h"
 #include "timer.h"
 #ifdef CONFIG_USB_ANDROID
@@ -350,13 +352,6 @@ static int cyttsp_platform_init(struct i2c_client *client)
 		goto l8_disable;
 	}
 
-	rc = gpio_request(CYTTSP_TS_GPIO_IRQ, "ts_irq");
-	if (rc) {
-		pr_err("%s: unable to request gpio %d (%d)\n",
-			__func__, CYTTSP_TS_GPIO_IRQ, rc);
-		goto l8_disable;
-	}
-
 	/* virtual keys */
 	tma300_vkeys_attr.attr.name = "virtualkeys.cyttsp-i2c";
 	properties_kobj = kobject_create_and_add("board_properties",
@@ -420,6 +415,9 @@ static struct cyttsp_platform_data cyttsp_data = {
 	.lp_intrvl = CY_LP_INTRVL_DFLT,
 	.resume = cyttsp_platform_resume,
 	.init = cyttsp_platform_init,
+	.sleep_gpio = -1,
+	.resout_gpio = -1,
+	.irq_gpio = CYTTSP_TS_GPIO_IRQ,
 };
 
 static int pm8058_pwm_config(struct pwm_device *pwm, int ch, int on)
@@ -1136,6 +1134,10 @@ static struct platform_device msm_camera_sensor_mt9p012 = {
 #endif
 
 #ifdef CONFIG_MT9E013
+static struct msm_camera_sensor_platform_info mt9e013_sensor_7630_info = {
+	.mount_angle = 0
+};
+
 static struct msm_camera_sensor_flash_data flash_mt9e013 = {
 	.flash_type = MSM_CAMERA_FLASH_LED,
 	.flash_src  = &msm_flash_src_pwm
@@ -1151,6 +1153,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9e013_data = {
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
 	.flash_data     = &flash_mt9e013,
+	.sensor_platform_info = &mt9e013_sensor_7630_info,
 	.csi_if         = 1
 };
 
@@ -2025,6 +2028,7 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 	.vreg_s2 = NULL,
 	.vreg_xo_out = NULL,
 	.is_fm_soc_i2s_master = false,
+	.config_i2s_gpio = NULL,
 };
 
 
@@ -5572,9 +5576,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_bt_power_device,
 #endif
 	&msm_kgsl_3d0,
-#ifdef CONFIG_MSM_KGSL_2D
 	&msm_kgsl_2d0,
-#endif
 #ifdef CONFIG_MT9T013
 	&msm_camera_sensor_mt9t013,
 #endif

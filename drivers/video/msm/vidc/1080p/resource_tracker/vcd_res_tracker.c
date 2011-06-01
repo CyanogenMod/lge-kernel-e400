@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,6 +20,7 @@
 #include <mach/clk.h>
 #include <mach/msm_reqs.h>
 #include <linux/interrupt.h>
+#include <asm/sizes.h>
 #include "vidc.h"
 #include "vcd_res_tracker.h"
 #include "vidc_init.h"
@@ -30,6 +31,7 @@ static unsigned int vidc_clk_table[3] = {
 static struct res_trk_context resource_context;
 
 #define VIDC_FW	"vidc_1080p.fw"
+#define VIDC_FW_SIZE SZ_1M
 
 unsigned char *vidc_video_codec_fw;
 u32 vidc_video_codec_fw_size;
@@ -58,6 +60,20 @@ static u32 res_trk_get_clk()
 						__func__);
 		goto release_vcodec_clk;
 	}
+	resource_context.vcodec_axi_a_clk = clk_get(resource_context.device,
+			"vcodec_axi_a_clk");
+	if (IS_ERR(resource_context.vcodec_axi_a_clk)) {
+		VCDRES_MSG_ERROR("%s(): vcodec_axi_a_clk get failed\n",
+						__func__);
+		resource_context.vcodec_axi_a_clk = NULL;
+	}
+	resource_context.vcodec_axi_b_clk = clk_get(resource_context.device,
+			"vcodec_axi_b_clk");
+	if (IS_ERR(resource_context.vcodec_axi_b_clk)) {
+		VCDRES_MSG_ERROR("%s(): vcodec_axi_b_clk get failed\n",
+						__func__);
+		resource_context.vcodec_axi_b_clk = NULL;
+	}
 	if (clk_set_rate(resource_context.vcodec_clk,
 		vidc_clk_table[0])) {
 		VCDRES_MSG_ERROR("%s(): set rate failed in power up\n",
@@ -66,8 +82,14 @@ static u32 res_trk_get_clk()
 	}
 	return true;
 release_vcodec_pclk:
+	if (resource_context.vcodec_axi_a_clk)
+		clk_put(resource_context.vcodec_axi_a_clk);
+	if (resource_context.vcodec_axi_b_clk)
+		clk_put(resource_context.vcodec_axi_b_clk);
 	clk_put(resource_context.vcodec_pclk);
 	resource_context.vcodec_pclk = NULL;
+	resource_context.vcodec_axi_a_clk = NULL;
+	resource_context.vcodec_axi_b_clk = NULL;
 release_vcodec_clk:
 	clk_put(resource_context.vcodec_clk);
 	resource_context.vcodec_clk = NULL;
@@ -81,6 +103,12 @@ static void res_trk_put_clk()
 		clk_put(resource_context.vcodec_clk);
 	if (resource_context.vcodec_pclk)
 		clk_put(resource_context.vcodec_pclk);
+	if (resource_context.vcodec_axi_a_clk)
+		clk_put(resource_context.vcodec_axi_a_clk);
+	if (resource_context.vcodec_axi_b_clk)
+		clk_put(resource_context.vcodec_axi_b_clk);
+	resource_context.vcodec_axi_b_clk = NULL;
+	resource_context.vcodec_axi_a_clk = NULL;
 	resource_context.vcodec_clk = NULL;
 	resource_context.vcodec_pclk = NULL;
 }
@@ -125,6 +153,16 @@ u32 res_trk_enable_clocks(void)
 				VCDRES_MSG_ERROR("vidc core clk Enable fail\n");
 				goto vidc_disable_pclk;
 			}
+			if (resource_context.vcodec_axi_a_clk &&
+				resource_context.vcodec_axi_b_clk) {
+				if (clk_enable(resource_context.
+					vcodec_axi_a_clk))
+					VCDRES_MSG_ERROR("a_clk Enable fail\n");
+				if (clk_enable(resource_context.
+					vcodec_axi_b_clk))
+					VCDRES_MSG_ERROR("b_clk Enable fail\n");
+			}
+
 			VCDRES_MSG_LOW("%s(): Clocks enabled!\n", __func__);
 		} else {
 		   VCDRES_MSG_ERROR("%s(): Clocks enable failed!\n",
@@ -135,7 +173,6 @@ u32 res_trk_enable_clocks(void)
 	resource_context.clock_enabled = 1;
 	mutex_unlock(&resource_context.lock);
 	return true;
-
 vidc_disable_pclk:
 	clk_disable(resource_context.vcodec_pclk);
 bail_out:
@@ -187,6 +224,10 @@ u32 res_trk_disable_clocks(void)
 			clk_disable(resource_context.vcodec_clk);
 		if (resource_context.vcodec_pclk)
 			clk_disable(resource_context.vcodec_pclk);
+		if (resource_context.vcodec_axi_a_clk)
+			clk_disable(resource_context.vcodec_axi_a_clk);
+		if (resource_context.vcodec_axi_b_clk)
+			clk_disable(resource_context.vcodec_axi_b_clk);
 		status = true;
 	}
 	mutex_unlock(&resource_context.lock);
@@ -226,7 +267,7 @@ u32 res_trk_power_up(void)
 	VCDRES_MSG_LOW("clk_regime_sel_rail_control");
 #ifdef CONFIG_MSM_BUS_SCALING
 	resource_context.pcl = msm_bus_scale_register_client(
-		&vidc_bus_client_pdata);
+		resource_context.vidc_bus_client_pdata);
 	VCDRES_MSG_LOW("%s(), resource_context.pcl = %x", __func__,
 		 resource_context.pcl);
 	if (resource_context.pcl == 0) {
@@ -390,6 +431,7 @@ bail_out:
 
 void res_trk_init(struct device *device, u32 irq)
 {
+	u32 memorytype = PMEM_MEMTYPE;
 	if (resource_context.device || resource_context.irq_num ||
 		!device) {
 		VCDRES_MSG_ERROR("%s() Resource Tracker Init error\n",
@@ -399,10 +441,35 @@ void res_trk_init(struct device *device, u32 irq)
 		mutex_init(&resource_context.lock);
 		resource_context.device = device;
 		resource_context.irq_num = irq;
+#ifdef CONFIG_MSM_BUS_SCALING
+		resource_context.vidc_bus_client_pdata =
+			(struct msm_bus_scale_pdata *)device->platform_data;
+#endif
 		resource_context.core_type = VCD_CORE_1080P;
+		if (memorytype == PMEM_MEMTYPE_EBI1) {
+			resource_context.base_addr =
+				kmalloc(VIDC_FW_SIZE, GFP_KERNEL);
+			if (resource_context.base_addr)
+				resource_context.device_addr = (phys_addr_t)
+				virt_to_phys((void *)
+					resource_context.base_addr);
+		}
 	}
 }
 
 u32 res_trk_get_core_type(void){
 	return resource_context.core_type;
+}
+
+u32 res_trk_get_firmware_addr(struct res_trk_firmware_addr *firm_addr)
+{
+	int status = -1;
+	if (firm_addr && resource_context.base_addr &&
+		resource_context.device_addr) {
+		firm_addr->base_addr = resource_context.base_addr;
+		firm_addr->device_addr = resource_context.device_addr;
+		firm_addr->buf_size = VIDC_FW_SIZE;
+		status = 0;
+	}
+	return status;
 }

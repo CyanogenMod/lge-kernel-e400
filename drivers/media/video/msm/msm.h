@@ -94,6 +94,7 @@ static inline void free_qcmd(struct msm_queue_cmd *qcmd)
 /* message id for v4l2_subdev_notify*/
 enum msm_camera_v4l2_subdev_notify {
 	NOTIFY_CID_CHANGE, /* arg = msm_camera_csid_params */
+	NOTIFY_VFE_MSG_EVT, /* arg = msm_vfe_resp */
 	NOTIFY_INVALID
 };
 
@@ -107,6 +108,7 @@ enum isp_vfe_cmd_id {
 };
 
 struct msm_cam_v4l2_device;
+struct msm_cam_v4l2_dev_inst;
 
 /* buffer for one video frame */
 struct msm_frame_buffer {
@@ -165,10 +167,10 @@ struct msm_cam_media_controller {
 	int (*mctl_notify)(struct msm_cam_media_controller *p_mctl,
 			unsigned int notification, void *arg);
 	int (*mctl_cmd)(struct msm_cam_media_controller *p_mctl,
-				unsigned int cmd, unsigned long arg);
+					unsigned int cmd, unsigned long arg);
 	int (*mctl_release)(struct msm_cam_media_controller *p_mctl);
-	int (*mctl_vidbuf_init)(struct msm_cam_v4l2_device *pcam,
-					struct videobuf_queue *);
+	int (*mctl_vidbuf_init)(struct msm_cam_v4l2_dev_inst *pcam,
+						struct videobuf_queue *);
 	int (*mctl_ufmt_init)(struct msm_cam_media_controller *p_mctl);
 
 	struct v4l2_device v4l2_dev;
@@ -194,20 +196,18 @@ struct msm_isp_ops {
 	char *config_dev_name;
 
 	/*int (*isp_init)(struct msm_cam_v4l2_device *pcam);*/
-	int (*isp_open)(struct msm_sync *sync);
+	int (*isp_open)(struct v4l2_subdev *sd, struct msm_sync *sync);
 	int (*isp_config)(struct msm_cam_media_controller *pmctl,
 		 unsigned int cmd, unsigned long arg);
 	int (*isp_enqueue)(struct msm_cam_media_controller *pcam,
 		struct msm_vfe_resp *data,
 		enum msm_queue qtype);
+	int (*isp_notify)(struct v4l2_subdev *sd, void *arg);
 
-	int (*isp_release)(struct msm_sync *psync);
+	void (*isp_release)(struct msm_sync *psync);
 
 	/* vfe subdevice */
-	struct v4l2_subdev vdev;
-	struct msm_camvfe_fn vfefn; /* native driver fn, to be removed*/
-	/* sensor subdevice: TO BE REMOVED */
-	struct v4l2_subdev *sdev;
+	struct v4l2_subdev sd;
 };
 
 struct msm_isp_buf_info {
@@ -215,7 +215,20 @@ struct msm_isp_buf_info {
 	unsigned long buffer;
 	int fd;
 };
-
+#define MSM_DEV_INST_MAX                    8
+struct msm_cam_v4l2_dev_inst {
+	struct videobuf_queue vid_bufq;
+	spinlock_t vb_irqlock;
+	struct v4l2_format vid_fmt;
+	/* senssor pixel code*/
+	enum v4l2_mbus_pixelcode sensor_pxlcode;
+	struct msm_cam_v4l2_device *pcam;
+	int my_index;
+	int image_mode;
+	int path;
+	int buf_count;
+};
+#define MSM_MAX_IMG_MODE                5
 /* abstract camera device for each sensor successfully probed*/
 struct msm_cam_v4l2_device {
 	/* standard device interfaces */
@@ -225,14 +238,10 @@ struct msm_cam_v4l2_device {
 	struct platform_device *pdev;
 	/* V4l2 device */
 	struct v4l2_device v4l2_dev;
-	struct v4l2_fh  eventHandle;
-	int eventQueueSize;
-
 	/* will be registered as /dev/video*/
 	struct video_device *pvdev;
 	int use_count;
 	/* will be used to init/release HW */
-	struct msm_isp_ops isp; /*to be removed*/
 	struct msm_cam_media_controller mctl;
 	/* sensor subdevice */
 	struct v4l2_subdev sensor_sdev;
@@ -242,21 +251,6 @@ struct msm_cam_v4l2_device {
 	struct device *parent_dev;
 
 	struct mutex vid_lock;
-
-	/* Buffer queue used in video-buf */
-	struct videobuf_queue vid_bufq;
-	/* Current vid buf format */
-	struct v4l2_format vid_fmt;
-	/* senssor pixel code*/
-	enum v4l2_mbus_pixelcode sensor_pxlcode;
-
-	/* Queue of filled frames */
-	/* yyan removed: struct list_head framequeue;*/
-	/* lock for video buffers and queue */
-	spinlock_t vb_irqlock;
-
-	struct msm_frame_buffer *activebuf;
-
 	/* v4l2 format support */
 	struct msm_isp_color_fmt *usr_fmts;
 	int num_fmts;
@@ -264,6 +258,10 @@ struct msm_cam_v4l2_device {
 	u32 mode;
 	u32 memsize;
 
+	int op_mode;
+	int vnode_id;
+	struct msm_cam_v4l2_dev_inst *dev_inst[MSM_DEV_INST_MAX];
+	struct msm_cam_v4l2_dev_inst *dev_inst_map[MSM_MAX_IMG_MODE];
 	/* native config device */
 	struct cdev cdev;
 
@@ -345,6 +343,7 @@ void msm_isp_vfe_dev_init(struct v4l2_subdev *vd);
 int msm_isp_register(struct msm_cam_v4l2_device *pcam);
 */
 int msm_isp_register(struct msm_cam_server_dev *psvr);
+void msm_isp_unregister(struct msm_cam_server_dev *psvr);
 int msm_ispif_register(struct msm_ispif_fns *ispif);
 int msm_sensor_register(struct platform_device *pdev,
 	int (*sensor_probe)(const struct msm_camera_sensor_info *,
@@ -353,7 +352,8 @@ int msm_isp_init_module(int g_num_config_nodes);
 
 int msm_mctl_init_module(struct msm_cam_v4l2_device *pcam);
 int msm_mctl_init_user_formats(struct msm_cam_v4l2_device *pcam);
-
+int msm_mctl_buf_done(struct msm_cam_media_controller *pmctl,
+			int msg_type, uint32_t y_phy);
 /*Memory(PMEM) functions*/
 int msm_register_pmem(struct hlist_head *ptype, void __user *arg);
 int msm_pmem_table_del(struct hlist_head *ptype, void __user *arg);
@@ -363,10 +363,11 @@ uint8_t msm_pmem_region_lookup_2(struct hlist_head *ptype,
 					int pmem_type,
 					struct msm_pmem_region *reg,
 					uint8_t maxcount);
-uint8_t msm_pmem_region_lookup_3(struct msm_cam_v4l2_device *pcam,
+uint8_t msm_pmem_region_lookup_3(struct msm_cam_v4l2_device *pcam, int idx,
 						struct msm_pmem_region *reg,
 						uint8_t start_index,
-						uint8_t stop_index);
+						uint8_t stop_index,
+						int mem_type);
 unsigned long msm_pmem_stats_vtop_lookup(
 				struct msm_sync *sync,
 				unsigned long buffer,
@@ -374,6 +375,12 @@ unsigned long msm_pmem_stats_vtop_lookup(
 unsigned long msm_pmem_stats_ptov_lookup(struct msm_sync *sync,
 						unsigned long addr, int *fd);
 
+int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
+					struct platform_device *pdev);
+void msm_vfe_subdev_release(struct platform_device *pdev);
+
+int msm_isp_subdev_ioctl(struct v4l2_subdev *sd,
+	struct msm_vfe_cfg_cmd *cfgcmd, void *data);
 #endif /* __KERNEL__ */
 
 #endif /* _MSM_H */

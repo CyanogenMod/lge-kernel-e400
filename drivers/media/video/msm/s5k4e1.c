@@ -271,7 +271,7 @@ static uint16_t s5k4e1_get_prev_pixels_pl(void)
 
 static uint16_t s5k4e1_get_pict_lines_pf(void)
 {
-	if (s5k4e1_ctrl->prev_res == QTR_SIZE)
+	if (s5k4e1_ctrl->pict_res == QTR_SIZE)
 		return prev_frame_length_lines;
 	else
 		return snap_frame_length_lines;
@@ -279,7 +279,7 @@ static uint16_t s5k4e1_get_pict_lines_pf(void)
 
 static uint16_t s5k4e1_get_pict_pixels_pl(void)
 {
-	if (s5k4e1_ctrl->prev_res == QTR_SIZE)
+	if (s5k4e1_ctrl->pict_res == QTR_SIZE)
 		return prev_line_length_pck;
 	else
 		return snap_line_length_pck;
@@ -287,10 +287,7 @@ static uint16_t s5k4e1_get_pict_pixels_pl(void)
 
 static uint32_t s5k4e1_get_pict_max_exp_lc(void)
 {
-	if (s5k4e1_ctrl->prev_res == QTR_SIZE)
-		return prev_frame_length_lines;
-	else
-		return snap_frame_length_lines;
+	return snap_frame_length_lines * 24;
 }
 
 static int32_t s5k4e1_set_fps(struct fps_cfg   *fps)
@@ -321,25 +318,57 @@ static int32_t s5k4e1_set_fps(struct fps_cfg   *fps)
 
 static int32_t s5k4e1_write_exp_gain(uint16_t gain, uint32_t line)
 {
+	uint16_t max_legal_gain = 0x0200;
+	uint16_t min_ll_pck = 0x0AB2;
+	uint32_t ll_pck, fl_lines;
+	uint32_t ll_ratio;
 	int32_t rc = 0;
-	uint16_t max_legal_gain  = 0x0200;
 	uint8_t gain_msb, gain_lsb;
 	uint8_t intg_time_msb, intg_time_lsb;
+	uint8_t ll_pck_msb, ll_pck_lsb;
 
-	if (gain > max_legal_gain)
+	if (gain > max_legal_gain) {
+		pr_debug("Max legal gain Line:%d\n", __LINE__);
 		gain = max_legal_gain;
+	}
 
-	/* update gain registers */
+	pr_debug("s5k4e1_write_exp_gain : gain = %d line = %d\n", gain, line);
+	if (s5k4e1_ctrl->sensormode == SENSOR_PREVIEW_MODE) {
+		line = (uint32_t) (line * s5k4e1_ctrl->fps_divider);
+		fl_lines = prev_frame_length_lines;
+		ll_pck = prev_line_length_pck;
+	} else {
+		line = (uint32_t) (line * s5k4e1_ctrl->pict_fps_divider);
+		fl_lines = snap_frame_length_lines;
+		ll_pck = snap_line_length_pck;
+	}
+
+	if (fl_lines < (line / 0x400))
+		ll_ratio = (line / (fl_lines - 8));
+	else
+		ll_ratio = 0x400;
+
+	ll_pck = ll_pck * ll_ratio / 0x400;
+	line = line / ll_ratio;
+	if (ll_pck < min_ll_pck)
+		ll_pck = min_ll_pck;
+
 	gain_msb = (uint8_t) ((gain & 0xFF00) >> 8);
 	gain_lsb = (uint8_t) (gain & 0x00FF);
 
 	intg_time_msb = (uint8_t) ((line & 0xFF00) >> 8);
 	intg_time_lsb = (uint8_t) (line & 0x00FF);
 
+	ll_pck_msb = (uint8_t) ((ll_pck & 0xFF00) >> 8);
+	ll_pck_lsb = (uint8_t) (ll_pck & 0x00FF);
+
 	s5k4e1_group_hold_on();
 
 	s5k4e1_i2c_write_b_sensor(0x0204, gain_msb); /* Analogue Gain */
 	s5k4e1_i2c_write_b_sensor(0x0205, gain_lsb);
+
+	s5k4e1_i2c_write_b_sensor(0x0342, ll_pck_msb);
+	s5k4e1_i2c_write_b_sensor(0x0343, ll_pck_lsb);
 
 	/* Coarse Integration Time */
 	s5k4e1_i2c_write_b_sensor(0x0202, intg_time_msb);
@@ -439,22 +468,12 @@ static int32_t s5k4e1_sensor_setting(int update_type, int rt)
 				s5k4e1_regs.reg_pll_p_size);
 		CSI_CONFIG = 0;
 	} else if (update_type == UPDATE_PERIODIC) {
-		if (rt == RES_PREVIEW) {
+		if (rt == RES_PREVIEW)
 			s5k4e1_i2c_write_b_table(s5k4e1_regs.reg_prev,
 					s5k4e1_regs.reg_prev_size);
-		} else {
-			s5k4e1_reset_sensor();
-			msleep(20);
-			s5k4e1_i2c_write_b_table(s5k4e1_regs.reg_mipi,
-					s5k4e1_regs.reg_mipi_size);
-			s5k4e1_i2c_write_b_table(s5k4e1_regs.rec_settings,
-					s5k4e1_regs.rec_size);
-			s5k4e1_i2c_write_b_table(s5k4e1_regs.reg_pll_s,
-					s5k4e1_regs.reg_pll_s_size);
-			msleep(20);
+		else
 			s5k4e1_i2c_write_b_table(s5k4e1_regs.reg_snap,
 					s5k4e1_regs.reg_snap_size);
-		}
 		msleep(20);
 		if (!CSI_CONFIG) {
 			msm_camio_vfe_clk_rate_set(192000000);
@@ -948,6 +967,13 @@ static int s5k4e1_sensor_release(void)
 	mutex_lock(&s5k4e1_mut);
 	s5k4e1_power_down();
 	msleep(20);
+	gpio_set_value_cansleep(s5k4e1_ctrl->sensordata->sensor_reset, 0);
+	usleep_range(5000, 5100);
+	gpio_free(s5k4e1_ctrl->sensordata->sensor_reset);
+	if (s5k4e1_ctrl->sensordata->vcm_enable) {
+		gpio_direction_output(s5k4e1_ctrl->sensordata->vcm_pwd, 0);
+		gpio_free(s5k4e1_ctrl->sensordata->vcm_pwd);
+	}
 	kfree(s5k4e1_ctrl);
 	s5k4e1_ctrl = NULL;
 	CDBG("s5k4e1_release completed\n");
@@ -984,6 +1010,7 @@ static int s5k4e1_sensor_probe(const struct msm_camera_sensor_info *info,
 	s->s_init = s5k4e1_sensor_open_init;
 	s->s_release = s5k4e1_sensor_release;
 	s->s_config  = s5k4e1_sensor_config;
+	s->s_mount_angle = info->sensor_platform_info->mount_angle;
 	gpio_set_value_cansleep(info->sensor_reset, 0);
 	s5k4e1_probe_init_done(info);
 

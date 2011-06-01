@@ -130,7 +130,7 @@ static ssize_t kgsl_ib_dump_read(
 	if (!ppos || !device || !kgsl_ib_base)
 		return 0;
 
-	kgsl_regread(device, REG_MH_MMU_PT_BASE, &pt_base);
+	kgsl_regread(device, MH_MMU_PT_BASE, &pt_base);
 	base_addr = kgsl_sharedmem_convertaddr(device, pt_base, kgsl_ib_base,
 		&ib_memsize);
 
@@ -218,7 +218,7 @@ static int kgsl_regread_nolock(struct kgsl_device *device,
 
 	reg = (unsigned int *)(device->regspace.mmio_virt_base
 				+ (offsetwords << 2));
-	*value = readl(reg);
+	*value = __raw_readl(reg);
 	return 0;
 }
 

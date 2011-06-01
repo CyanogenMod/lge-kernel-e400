@@ -55,7 +55,7 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
 #define DMOV_SD_AARM 2
 #elif defined(CONFIG_ARCH_MSM8960)
 #define DMOV_SD_SIZE 0x800
-#define DMOV_SD_AARM 0
+#define DMOV_SD_AARM 1
 #elif defined(CONFIG_MSM_ADM3)
 #define DMOV_SD_SIZE 0x800
 #define DMOV_SD_MASTER 1
@@ -186,9 +186,11 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
 #elif defined(CONFIG_ARCH_MSM8960)
 #define DMOV_GP_CHAN           13
 
-#define DMOV_CE_IN_CRCI        4
+#define DMOV_CE_IN_CHAN        0
+#define DMOV_CE_IN_CRCI        2
 
-#define DMOV_CE_OUT_CRCI       5
+#define DMOV_CE_OUT_CHAN       1
+#define DMOV_CE_OUT_CRCI       3
 
 /* SDC doesn't use ADM on 8960. Need these to compile */
 #define DMOV_SDC1_CHAN         13

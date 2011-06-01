@@ -39,6 +39,8 @@
 #include <linux/memory.h>
 #include <linux/pm_runtime.h>
 #include <linux/wakelock.h>
+#include <linux/gpio.h>
+#include <linux/regulator/consumer.h>
 
 #include <asm/cacheflush.h>
 #include <asm/div64.h>
@@ -49,6 +51,7 @@
 #include <mach/clk.h>
 #include <mach/dma.h>
 #include <mach/htc_pwrsink.h>
+#include <mach/sdio_al.h>
 
 #include "msm_sdcc.h"
 #include "msm_sdcc_dml.h"
@@ -162,8 +165,10 @@ static void msmsdcc_soft_reset_and_restore(struct msmsdcc_host *host)
 	 * Reset SDCC controller's DPSM (data path state machine
 	 * and CPSM (command path state machine).
 	 */
+	dsb();
 	writel(0, host->base + MMCICOMMAND);
 	writel(0, host->base + MMCIDATACTRL);
+	dsb();
 
 	pr_debug("%s: Applied soft reset to Controller\n",
 			mmc_hostname(host->mmc));
@@ -196,6 +201,7 @@ static void msmsdcc_reset_and_restore(struct msmsdcc_host *host)
 		mci_clk = readl(host->base + MMCICLOCK);
 		mci_mask0 = readl(host->base + MMCIMASK0);
 
+		dsb();
 		/* Reset the controller */
 		ret = clk_reset(host->clk, CLK_RESET_ASSERT);
 		if (ret)
@@ -212,6 +218,7 @@ static void msmsdcc_reset_and_restore(struct msmsdcc_host *host)
 		pr_debug("%s: Controller has been reinitialized\n",
 				mmc_hostname(host->mmc));
 
+		dsb();
 		/* Restore the contoller state */
 		writel(host->pwr, host->base + MMCIPOWER);
 		writel(mci_clk, host->base + MMCICLOCK);
@@ -221,6 +228,7 @@ static void msmsdcc_reset_and_restore(struct msmsdcc_host *host)
 			pr_err("%s: Failed to set clk rate %u Hz. err %d\n",
 					mmc_hostname(host->mmc),
 					host->clk_rate, ret);
+		dsb();
 	}
 }
 
@@ -266,6 +274,7 @@ static inline uint32_t msmsdcc_fifo_addr(struct msmsdcc_host *host)
 
 static inline void msmsdcc_delay(struct msmsdcc_host *host)
 {
+	dsb();
 	udelay(1 + ((3 * USEC_PER_SEC) /
 		(host->clk_rate ? host->clk_rate : host->plat->msmsdcc_fmin)));
 }
@@ -276,6 +285,7 @@ msmsdcc_start_command_exec(struct msmsdcc_host *host, u32 arg, u32 c)
 	writel(arg, host->base + MMCIARGUMENT);
 	msmsdcc_delay(host);
 	writel(c, host->base + MMCICOMMAND);
+	dsb();
 }
 
 static void
@@ -860,6 +870,7 @@ msmsdcc_start_data(struct msmsdcc_host *host, struct mmc_data *data,
 			if (!msmsdcc_is_dml_busy(host)) {
 				if (!msmsdcc_sps_start_xfer(host, data)) {
 					/* Now kick start DML transfer */
+					dsb();
 					msmsdcc_dml_start_xfer(host, data);
 					datactrl |= MCI_DPSM_DMAENABLE;
 					host->sps.busy = 1;
@@ -1040,6 +1051,7 @@ msmsdcc_pio_write(struct msmsdcc_host *host, char *buffer,
 		if (remain == 0)
 			break;
 	}
+	dsb();
 
 	return ptr - buffer;
 }
@@ -1119,9 +1131,12 @@ msmsdcc_pio_irq(int irq, void *dev_id)
 			writel((readl(host->base + MMCIMASK0) &
 				(~(MCI_IRQ_PIO))) | 0, host->base + MMCIMASK0);
 		}
-	} else if (!host->curr.xfer_remain)
+		dsb();
+	} else if (!host->curr.xfer_remain) {
 		writel((readl(host->base + MMCIMASK0) & (~(MCI_IRQ_PIO))) | 0,
 				host->base + MMCIMASK0);
+		dsb();
+	}
 
 	spin_unlock(&host->lock);
 
@@ -1285,6 +1300,7 @@ msmsdcc_irq(int irq, void *dev_id)
 #endif
 		status &= readl(host->base + MMCIMASK0);
 		writel(status, host->base + MMCICLEAR);
+		dsb();
 #if IRQ_DEBUG
 		msmsdcc_print_status(host, "irq0-p", status);
 #endif
@@ -1479,6 +1495,232 @@ msmsdcc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
+static inline int msmsdcc_vreg_set_voltage(struct msm_mmc_reg_data *vreg,
+					int min_uV, int max_uV)
+{
+	int rc = 0;
+
+	if (vreg->set_voltage_sup) {
+		rc = regulator_set_voltage(vreg->reg, min_uV, max_uV);
+		if (rc) {
+			pr_err("%s: regulator_set_voltage(%s) failed."
+				" min_uV=%d, max_uV=%d, rc=%d\n",
+				__func__, vreg->name, min_uV, max_uV, rc);
+		}
+	}
+
+	return rc;
+}
+
+static inline int msmsdcc_vreg_set_optimum_mode(struct msm_mmc_reg_data *vreg,
+						int uA_load)
+{
+	int rc = 0;
+
+	rc = regulator_set_optimum_mode(vreg->reg, uA_load);
+	if (rc < 0)
+		pr_err("%s: regulator_set_optimum_mode(reg=%s, uA_load=%d)"
+			" failed. rc=%d\n", __func__, vreg->name,
+			uA_load, rc);
+	else
+		/* regulator_set_optimum_mode() can return non zero value
+		 * even for success case.
+		 */
+		rc = 0;
+
+	return rc;
+}
+
+static inline int msmsdcc_vreg_init_reg(struct msm_mmc_reg_data *vreg,
+				struct device *dev)
+{
+	int rc = 0;
+
+	/* check if regulator is already initialized? */
+	if (vreg->reg)
+		goto out;
+
+	/* Get the regulator handle */
+	vreg->reg = regulator_get(dev, vreg->name);
+	if (IS_ERR(vreg->reg)) {
+		rc = PTR_ERR(vreg->reg);
+		pr_err("%s: regulator_get(%s) failed. rc=%d\n",
+			__func__, vreg->name, rc);
+	}
+out:
+	return rc;
+}
+
+static inline void msmsdcc_vreg_deinit_reg(struct msm_mmc_reg_data *vreg)
+{
+	if (vreg->reg)
+		regulator_put(vreg->reg);
+}
+
+/* This init function should be called only once for each SDCC slot */
+static int msmsdcc_vreg_init(struct msmsdcc_host *host, bool is_init)
+{
+	int rc = 0;
+	struct msm_mmc_slot_reg_data *curr_slot;
+	struct msm_mmc_reg_data *curr_vdd_reg, *curr_vccq_reg, *curr_vddp_reg;
+	struct device *dev = mmc_dev(host->mmc);
+
+	curr_slot = host->plat->vreg_data;
+	if (!curr_slot)
+		goto out;
+
+	curr_vdd_reg = curr_slot->vdd_data;
+	curr_vccq_reg = curr_slot->vccq_data;
+	curr_vddp_reg = curr_slot->vddp_data;
+
+	if (is_init) {
+		/*
+		 * Get the regulator handle from voltage regulator framework
+		 * and then try to set the voltage level for the regulator
+		 */
+		if (curr_vdd_reg) {
+			rc = msmsdcc_vreg_init_reg(curr_vdd_reg, dev);
+			if (rc)
+				goto out;
+		}
+		if (curr_vccq_reg) {
+			rc = msmsdcc_vreg_init_reg(curr_vccq_reg, dev);
+			if (rc)
+				goto vdd_reg_deinit;
+		}
+		if (curr_vddp_reg) {
+			rc = msmsdcc_vreg_init_reg(curr_vddp_reg, dev);
+			if (rc)
+				goto vccq_reg_deinit;
+		}
+		goto out;
+	} else {
+		/* Deregister all regulators from regulator framework */
+		goto vddp_reg_deinit;
+	}
+vddp_reg_deinit:
+	if (curr_vddp_reg)
+		msmsdcc_vreg_deinit_reg(curr_vddp_reg);
+vccq_reg_deinit:
+	if (curr_vccq_reg)
+		msmsdcc_vreg_deinit_reg(curr_vccq_reg);
+vdd_reg_deinit:
+	if (curr_vdd_reg)
+		msmsdcc_vreg_deinit_reg(curr_vdd_reg);
+out:
+	return rc;
+}
+
+static int msmsdcc_vreg_enable(struct msm_mmc_reg_data *vreg)
+{
+	int rc = 0;
+
+	if (!vreg->is_enabled) {
+		/* Set voltage level */
+		rc = msmsdcc_vreg_set_voltage(vreg, vreg->level,
+						vreg->level);
+		if (rc)
+			goto out;
+
+		rc = regulator_enable(vreg->reg);
+		if (rc) {
+			pr_err("%s: regulator_enable(%s) failed. rc=%d\n",
+			__func__, vreg->name, rc);
+			goto out;
+		}
+		vreg->is_enabled = true;
+	}
+
+	/* Put regulator in HPM (high power mode) */
+	rc = msmsdcc_vreg_set_optimum_mode(vreg, vreg->hpm_uA);
+	if (rc < 0)
+		goto vreg_disable;
+
+	goto out;
+
+vreg_disable:
+	regulator_disable(vreg->reg);
+	vreg->is_enabled = false;
+out:
+	return rc;
+}
+
+static int msmsdcc_vreg_disable(struct msm_mmc_reg_data *vreg)
+{
+	int rc = 0;
+
+	/* Never disable regulator marked as always_on */
+	if (vreg->is_enabled && !vreg->always_on) {
+		rc = regulator_disable(vreg->reg);
+		if (rc) {
+			pr_err("%s: regulator_disable(%s) failed. rc=%d\n",
+				__func__, vreg->name, rc);
+			goto out;
+		}
+		vreg->is_enabled = false;
+
+		rc = msmsdcc_vreg_set_optimum_mode(vreg, 0);
+		if (rc < 0)
+			goto out;
+
+		/* Set min. voltage level to 0 */
+		rc = msmsdcc_vreg_set_voltage(vreg, 0, vreg->level);
+		if (rc)
+			goto out;
+	} else if (vreg->is_enabled && vreg->always_on && vreg->lpm_sup) {
+		/* Put always_on regulator in LPM (low power mode) */
+		rc = msmsdcc_vreg_set_optimum_mode(vreg, vreg->lpm_uA);
+		if (rc < 0)
+			goto out;
+	}
+out:
+	return rc;
+}
+
+static int msmsdcc_setup_vreg(struct msmsdcc_host *host, bool enable)
+{
+	int rc = 0, i;
+	struct msm_mmc_slot_reg_data *curr_slot;
+	struct msm_mmc_reg_data *curr_vdd_reg, *curr_vccq_reg, *curr_vddp_reg;
+	struct msm_mmc_reg_data *vreg_table[3];
+
+	curr_slot = host->plat->vreg_data;
+	if (!curr_slot)
+		goto out;
+
+	curr_vdd_reg = vreg_table[0] = curr_slot->vdd_data;
+	curr_vccq_reg = vreg_table[1] = curr_slot->vccq_data;
+	curr_vddp_reg = vreg_table[2] = curr_slot->vddp_data;
+
+	for (i = 0; i < ARRAY_SIZE(vreg_table); i++) {
+		if (vreg_table[i]) {
+			if (enable)
+				rc = msmsdcc_vreg_enable(vreg_table[i]);
+			else
+				rc = msmsdcc_vreg_disable(vreg_table[i]);
+			if (rc)
+				goto out;
+		}
+	}
+out:
+	return rc;
+}
+
+static int msmsdcc_tune_vdd_pad_level(struct msmsdcc_host *host, int level)
+{
+	int rc = 0;
+
+	if (host->plat->vreg_data) {
+		struct msm_mmc_reg_data *vddp_reg =
+			host->plat->vreg_data->vddp_data;
+
+		if (vddp_reg && vddp_reg->is_enabled)
+			rc = msmsdcc_vreg_set_voltage(vddp_reg, level, level);
+	}
+
+	return rc;
+}
+
 static inline int msmsdcc_is_pwrsave(struct msmsdcc_host *host)
 {
 	if (host->clk_rate > 400000 && msmsdcc_pwrsave)
@@ -1523,6 +1765,7 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 				if (!host->plat->sdiowakeup_irq) {
 					writel(host->mci_irqenable,
 							host->base + MMCIMASK0);
+					dsb();
 					if (host->plat->cfg_mpm_sdiowakeup &&
 					(mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ))
 						host->plat->cfg_mpm_sdiowakeup(
@@ -1572,6 +1815,10 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	if (host->plat->translate_vdd && !host->sdio_gpio_lpm)
 		pwr |= host->plat->translate_vdd(mmc_dev(mmc), ios->vdd);
+	else if (!host->plat->translate_vdd && !host->sdio_gpio_lpm)
+		pwr |= msmsdcc_setup_vreg(host, !!ios->vdd);
+
+	msmsdcc_tune_vdd_pad_level(host, 2950000);
 
 	switch (ios->power_mode) {
 	case MMC_POWER_OFF:
@@ -1611,12 +1858,12 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		msmsdcc_delay(host);
 	}
 	writel(clk, host->base + MMCICLOCK);
-
-	udelay(50);
+	msmsdcc_delay(host);
 
 	if (host->pwr != pwr) {
 		host->pwr = pwr;
 		writel(pwr, host->base + MMCIPOWER);
+		dsb();
 	}
 	if (!host->clks_on) {
 		/* force the clocks to be off */
@@ -1632,6 +1879,7 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		if (mmc->card && mmc->card->type == MMC_TYPE_SDIO) {
 			if (!host->plat->sdiowakeup_irq) {
 				writel(MCI_SDIOINTMASK, host->base + MMCIMASK0);
+				dsb();
 				WARN_ON(host->sdcc_irq_disabled);
 				if (host->plat->cfg_mpm_sdiowakeup &&
 					(mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ))
@@ -1663,22 +1911,47 @@ int msmsdcc_set_pwrsave(struct mmc_host *mmc, int pwrsave)
 	else
 		clk &= ~MCI_CLK_PWRSAVE;
 	writel(clk, host->base + MMCICLOCK);
+	dsb();
 
 	return 0;
 }
 
 static int msmsdcc_get_ro(struct mmc_host *mmc)
 {
-	int wpswitch_status = -ENOSYS;
+	int status = -ENOSYS;
 	struct msmsdcc_host *host = mmc_priv(mmc);
 
 	if (host->plat->wpswitch) {
-		wpswitch_status = host->plat->wpswitch(mmc_dev(mmc));
-		if (wpswitch_status < 0)
-			wpswitch_status = -ENOSYS;
+		status = host->plat->wpswitch(mmc_dev(mmc));
+	} else if (host->plat->wpswitch_gpio) {
+		status = gpio_request(host->plat->wpswitch_gpio,
+					"SD_WP_Switch");
+		if (status) {
+			pr_err("%s: %s: Failed to request GPIO %d\n",
+				mmc_hostname(mmc), __func__,
+				host->plat->wpswitch_gpio);
+		} else {
+			status = gpio_direction_input(
+					host->plat->wpswitch_gpio);
+			if (!status) {
+				/*
+				 * Wait for atleast 300ms as debounce
+				 * time for GPIO input to stabilize.
+				 */
+				msleep(300);
+				status = gpio_get_value_cansleep(
+						host->plat->wpswitch_gpio);
+				status ^= !host->plat->wpswitch_polarity;
+			}
+			gpio_free(host->plat->wpswitch_gpio);
+		}
 	}
-	pr_debug("%s: Card read-only status %d\n", __func__, wpswitch_status);
-	return wpswitch_status;
+
+	if (status < 0)
+		status = -ENOSYS;
+	pr_debug("%s: Card read-only status %d\n", __func__, status);
+
+	return status;
 }
 
 #ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
@@ -1698,6 +1971,7 @@ static void msmsdcc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 		writel(readl(host->base + MMCIMASK0) & ~MCI_SDIOINTOPERMASK,
 		       host->base + MMCIMASK0);
 	}
+	dsb();
 }
 #endif /* CONFIG_MMC_MSM_SDIO_SUPPORT */
 
@@ -1753,16 +2027,37 @@ static const struct mmc_host_ops msmsdcc_ops = {
 #endif
 };
 
+static unsigned int
+msmsdcc_slot_status(struct msmsdcc_host *host)
+{
+	int status;
+	unsigned int gpio_no = host->plat->status_gpio;
+
+	status = gpio_request(gpio_no, "SD_HW_Detect");
+	if (status) {
+		pr_err("%s: %s: Failed to request GPIO %d\n",
+			mmc_hostname(host->mmc), __func__, gpio_no);
+	} else {
+		status = gpio_direction_input(gpio_no);
+		if (!status)
+			status = !gpio_get_value_cansleep(gpio_no);
+		gpio_free(gpio_no);
+	}
+	return status;
+}
+
 static void
 msmsdcc_check_status(unsigned long data)
 {
 	struct msmsdcc_host *host = (struct msmsdcc_host *)data;
 	unsigned int status;
 
-	if (!host->plat->status) {
-		mmc_detect_change(host->mmc, 0);
-	} else {
-		status = host->plat->status(mmc_dev(host->mmc));
+	if (host->plat->status || host->plat->status_gpio) {
+		if (host->plat->status)
+			status = host->plat->status(mmc_dev(host->mmc));
+		else
+			status = msmsdcc_slot_status(host);
+
 		host->eject = !status;
 		if (status ^ host->oldstat) {
 			pr_info("%s: Slot status change detected (%d -> %d)\n",
@@ -1770,6 +2065,8 @@ msmsdcc_check_status(unsigned long data)
 			mmc_detect_change(host->mmc, 0);
 		}
 		host->oldstat = status;
+	} else {
+		mmc_detect_change(host->mmc, 0);
 	}
 }
 
@@ -2551,12 +2848,19 @@ msmsdcc_probe(struct platform_device *pdev)
 
 	host->clks_on = 1;
 
+	ret = msmsdcc_vreg_init(host, true);
+	if (ret) {
+		pr_err("%s: msmsdcc_vreg_init() failed (%d)\n", __func__, ret);
+		goto clk_disable;
+	}
+
+
 	/* Clocks has to be running before accessing SPS/DML HW blocks */
 	if (host->is_sps_mode) {
 		/* Initialize SPS */
 		ret = msmsdcc_sps_init(host);
 		if (ret)
-			goto clk_disable;
+			goto vreg_deinit;
 		/* Initialize DML */
 		ret = msmsdcc_dml_init(host);
 		if (ret)
@@ -2594,16 +2898,13 @@ msmsdcc_probe(struct platform_device *pdev)
 	/* Delay needed (MMCIMASK0 was just written above) */
 	msmsdcc_delay(host);
 	writel(MCI_IRQENABLE, host->base + MMCIMASK0);
+	dsb();
 	host->mci_irqenable = MCI_IRQENABLE;
 
 	ret = request_irq(core_irqres->start, msmsdcc_irq, IRQF_SHARED,
 			  DRIVER_NAME " (cmd)", host);
-	if (ret) {
-		if (host->is_sps_mode)
-			goto dml_exit;
-		else
-			goto clk_disable;
-	}
+	if (ret)
+		goto dml_exit;
 
 	ret = request_irq(core_irqres->start, msmsdcc_pio_irq, IRQF_SHARED,
 			  DRIVER_NAME " (pio)", host);
@@ -2653,8 +2954,11 @@ msmsdcc_probe(struct platform_device *pdev)
 	 * Setup card detect change
 	 */
 
-	if (plat->status) {
-		host->oldstat = plat->status(mmc_dev(host->mmc));
+	if (plat->status || plat->status_gpio) {
+		if (plat->status)
+			host->oldstat = plat->status(mmc_dev(host->mmc));
+		else
+			host->oldstat = msmsdcc_slot_status(host);
 		host->eject = !host->oldstat;
 	}
 
@@ -2787,6 +3091,8 @@ msmsdcc_probe(struct platform_device *pdev)
  sps_exit:
 	if (host->is_sps_mode)
 		msmsdcc_sps_exit(host);
+ vreg_deinit:
+	msmsdcc_vreg_init(host, false);
  clk_disable:
 	clk_disable(host->clk);
  clk_put:
@@ -2860,6 +3166,8 @@ static int msmsdcc_remove(struct platform_device *pdev)
 		clk_put(host->pclk);
 	if (!IS_ERR_OR_NULL(host->dfab_pclk))
 		clk_put(host->dfab_pclk);
+
+	msmsdcc_vreg_init(host, false);
 
 	if (host->is_dma_mode) {
 		if (host->dmares)
@@ -2986,8 +3294,14 @@ msmsdcc_runtime_resume(struct device *dev)
 		mmc->ios.clock = host->clk_rate;
 		mmc->ops->set_ios(host->mmc, &host->mmc->ios);
 
+#ifdef CONFIG_MSM_SDIO_AL
+		if (host->plat->is_sdio_al_client)
+			sdio_al_client_resume(mmc);
+#endif
+
 		spin_lock_irqsave(&host->lock, flags);
 		writel(host->mci_irqenable, host->base + MMCIMASK0);
+		dsb();
 
 		if (mmc->card && (mmc->card->type == MMC_TYPE_SDIO) &&
 				(mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ) &&
