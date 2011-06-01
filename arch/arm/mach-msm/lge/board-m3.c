@@ -26,7 +26,6 @@
 #include <linux/io.h>
 #include <linux/gpio.h>
 #include <mach/vreg.h>
-#include <asm/hardware/cache-l2x0.h>
 #include <mach/pmic.h>
 #include <mach/socinfo.h>
 #include <linux/mtd/nand.h>
@@ -49,7 +48,7 @@
 
 #include "board-m3.h"
 
-#define PMEM_KERNEL_EBI1_SIZE	0x1C000
+#define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
@@ -57,50 +56,210 @@
 
 #if defined(CONFIG_GPIO_SX150X)
 enum {
-	SX150X_SURF,
-	SX150X_SURF_CAM,
-	SX150X_FFA,
-	SX150X_FFA_CAM,
+	SX150X_CORE,
+	SX150X_CAM,
 };
 
 static struct sx150x_platform_data sx150x_data[] __initdata = {
-	[SX150X_SURF]	= {
-		.gpio_base		= GPIO_SURF_EXPANDER_BASE,
+	[SX150X_CORE]	= {
+		.gpio_base		= GPIO_CORE_EXPANDER_BASE,
 		.oscio_is_gpo		= false,
 		.io_pullup_ena		= 0,
 		.io_pulldn_ena		= 0,
 		.io_open_drain_ena	= 0,
 		.irq_summary		= -1,
 	},
-	[SX150X_SURF_CAM]	= {
-		.gpio_base		= GPIO_SURF_CAM_EXPANDER_BASE,
+	[SX150X_CAM]	= {
+		.gpio_base		= GPIO_CAM_EXPANDER_BASE,
 		.oscio_is_gpo		= false,
 		.io_pullup_ena		= 0,
 		.io_pulldn_ena		= 0,
 		.io_open_drain_ena	= 0,
 		.irq_summary		= -1,
 	},
-	[SX150X_FFA]	= {
-		.gpio_base		= GPIO_FFA_EXPANDER_BASE,
-		.oscio_is_gpo		= false,
-		.io_pullup_ena		= 0,
-		.io_pulldn_ena		= 0,
-		.io_open_drain_ena	= 0,
-		.irq_summary		= -1,
-	},
-	[SX150X_FFA_CAM]	= {
-		.gpio_base		= GPIO_FFA_CAM_EXPANDER_BASE,
-		.oscio_is_gpo		= false,
-		.io_pullup_ena		= 0,
-		.io_pulldn_ena		= 0,
-		.io_open_drain_ena	= 0,
-		.irq_summary		= -1,
-	},
-
 };
 #endif
 
 	/* FM Platform power and shutdown routines */
+#define FPGA_MSM_CNTRL_REG2 0x90008010
+static void config_pcm_i2s_mode(int mode)
+{
+	void __iomem *cfg_ptr;
+	u8 reg2;
+
+	cfg_ptr = ioremap_nocache(FPGA_MSM_CNTRL_REG2, sizeof(char));
+
+	if (!cfg_ptr)
+		return;
+	if (mode) {
+		/*enable the pcm mode in FPGA*/
+		reg2 = readb_relaxed(cfg_ptr);
+		if (reg2 == 0) {
+			reg2 = 1;
+			writeb_relaxed(reg2, cfg_ptr);
+		}
+	} else {
+		/*enable i2s mode in FPGA*/
+		reg2 = readb_relaxed(cfg_ptr);
+		if (reg2 == 1) {
+			reg2 = 0;
+			writeb_relaxed(reg2, cfg_ptr);
+		}
+	}
+	iounmap(cfg_ptr);
+}
+
+static unsigned fm_i2s_config_power_on[] = {
+	/*FM_I2S_SD*/
+	GPIO_CFG(68, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*FM_I2S_WS*/
+	GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*FM_I2S_SCK*/
+	GPIO_CFG(71, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+};
+
+static unsigned fm_i2s_config_power_off[] = {
+	/*FM_I2S_SD*/
+	GPIO_CFG(68, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*FM_I2S_WS*/
+	GPIO_CFG(70, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*FM_I2S_SCK*/
+	GPIO_CFG(71, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+};
+
+static unsigned bt_config_power_on[] = {
+	/*RFR*/
+	GPIO_CFG(43, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*CTS*/
+	GPIO_CFG(44, 2, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*RX*/
+	GPIO_CFG(45, 2, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*TX*/
+	GPIO_CFG(46, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+};
+static unsigned bt_config_pcm_on[] = {
+	/*PCM_DOUT*/
+	GPIO_CFG(68, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*PCM_DIN*/
+	GPIO_CFG(69, 1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*PCM_SYNC*/
+	GPIO_CFG(70, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*PCM_CLK*/
+	GPIO_CFG(71, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+};
+static unsigned bt_config_power_off[] = {
+	/*RFR*/
+	GPIO_CFG(43, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*CTS*/
+	GPIO_CFG(44, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*RX*/
+	GPIO_CFG(45, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*TX*/
+	GPIO_CFG(46, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+};
+static unsigned bt_config_pcm_off[] = {
+	/*PCM_DOUT*/
+	GPIO_CFG(68, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*PCM_DIN*/
+	GPIO_CFG(69, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*PCM_SYNC*/
+	GPIO_CFG(70, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*PCM_CLK*/
+	GPIO_CFG(71, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+};
+
+
+static int config_i2s(int mode)
+{
+	int pin, rc = 0;
+
+	if (mode == FM_I2S_ON) {
+		if (machine_is_msm7x27a_surf())
+			config_pcm_i2s_mode(0);
+		pr_err("%s mode = FM_I2S_ON", __func__);
+		for (pin = 0; pin < ARRAY_SIZE(fm_i2s_config_power_on);
+			pin++) {
+				rc = gpio_tlmm_config(
+					fm_i2s_config_power_on[pin],
+					GPIO_CFG_ENABLE
+					);
+				if (rc < 0)
+					return rc;
+			}
+	} else if (mode == FM_I2S_OFF) {
+		pr_err("%s mode = FM_I2S_OFF", __func__);
+		for (pin = 0; pin < ARRAY_SIZE(fm_i2s_config_power_off);
+			pin++) {
+				rc = gpio_tlmm_config(
+					fm_i2s_config_power_off[pin],
+					GPIO_CFG_ENABLE
+					);
+				if (rc < 0)
+					return rc;
+			}
+	}
+	return rc;
+}
+static int config_pcm(int mode)
+{
+	int pin, rc = 0;
+
+	if (mode == BT_PCM_ON) {
+		if (machine_is_msm7x27a_surf())
+			config_pcm_i2s_mode(1);
+		pr_err("%s mode =BT_PCM_ON", __func__);
+		for (pin = 0; pin < ARRAY_SIZE(bt_config_pcm_on);
+			pin++) {
+				rc = gpio_tlmm_config(bt_config_pcm_on[pin],
+					GPIO_CFG_ENABLE);
+				if (rc < 0)
+					return rc;
+			}
+	} else if (mode == BT_PCM_OFF) {
+		pr_err("%s mode =BT_PCM_OFF", __func__);
+		for (pin = 0; pin < ARRAY_SIZE(bt_config_pcm_off);
+			pin++) {
+				rc = gpio_tlmm_config(bt_config_pcm_off[pin],
+					GPIO_CFG_ENABLE);
+				if (rc < 0)
+					return rc;
+			}
+
+	}
+
+	return rc;
+}
+
+static int msm_bahama_setup_pcm_i2s(int mode)
+{
+	int fm_state = 0, bt_state = 0;
+	int rc = 0;
+	struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
+
+	fm_state = marimba_get_fm_status(&config);
+	bt_state = marimba_get_bt_status(&config);
+
+	switch (mode) {
+	case BT_PCM_ON:
+	case BT_PCM_OFF:
+		if (!fm_state)
+			rc = config_pcm(mode);
+		break;
+	case FM_I2S_ON:
+		rc = config_i2s(mode);
+		break;
+	case FM_I2S_OFF:
+		if (bt_state)
+			rc = config_pcm(BT_PCM_ON);
+		else
+			rc = config_i2s(mode);
+		break;
+	default:
+		rc = -EIO;
+		pr_err("%s:Unsupported mode", __func__);
+	}
+	return rc;
+}
 
 static struct vreg *fm_regulator;
 static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
@@ -158,7 +317,6 @@ static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
 fm_gpio_config_fail:
 	pmapp_clock_vote(id, PMAPP_CLOCK_ID_D1,
 		PMAPP_CLOCK_VOTE_OFF);
-
 fm_clock_vote_fail:
 	vreg_disable(fm_regulator);
 
@@ -166,7 +324,6 @@ fm_vreg_fail:
 	vreg_put(fm_regulator);
 
 	return rc;
-
 };
 
 static void fm_radio_shutdown(struct marimba_fm_platform_data *pdata)
@@ -210,6 +367,7 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 	.vreg_xo_out = NULL,
 	/* Configuring the FM SoC as I2S Master */
 	.is_fm_soc_i2s_master = true,
+	.config_i2s_gpio = msm_bahama_setup_pcm_i2s,
 };
 
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
@@ -227,27 +385,6 @@ static const char * const vregs_bahama_name[] = {
 	"bt",
 };
 static struct vreg *vregs_bahama[ARRAY_SIZE(vregs_bahama_name)];
-
-static unsigned bt_config_power_on[] = {
-	/*RFR*/
-	GPIO_CFG(43, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	/*CTS*/
-	GPIO_CFG(44, 2, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	/*RX*/
-	GPIO_CFG(45, 2, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	/*TX*/
-	GPIO_CFG(46, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-};
-static unsigned bt_config_power_off[] = {
-	/*RFR*/
-	GPIO_CFG(43, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	/*CTS*/
-	GPIO_CFG(44, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	/*RX*/
-	GPIO_CFG(45, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	/*TX*/
-	GPIO_CFG(46, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-};
 
 static int bahama_bt(int on)
 {
@@ -461,44 +598,27 @@ static unsigned int msm_bahama_setup_power(void)
 	rc = vreg_enable(vreg_s3);
 	if (rc < 0) {
 		pr_err("%s: vreg enable failed (%d)\n",
-		       __func__, rc);
+			   __func__, rc);
 		goto vreg_fail;
 	}
-	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3()) {
-		/*setup Bahama_sys_reset_n*/
-		rc = gpio_request(GPIO_BT_SYS_REST_EN, "bahama sys_rst_n");
-		if (rc < 0) {
-			pr_err("%s: gpio_request %d = %d\n", __func__,
-				GPIO_BT_SYS_REST_EN, rc);
-			goto vreg_fail;
-		}
-		rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
-		if (rc < 0) {
-			pr_err("%s: gpio_direction_output %d = %d\n", __func__,
-				GPIO_BT_SYS_REST_EN, rc);
-			goto gpio_fail;
-		}
-	} else if (machine_is_msm7x27a_ffa()) {
-		rc = gpio_request(GPIO_FFA_BT_SYS_REST_EN, "bahama sys_rst_n");
-		if (rc < 0) {
-			pr_err("%s: gpio_request %d = %d\n", __func__,
-				GPIO_FFA_BT_SYS_REST_EN, rc);
-			goto vreg_fail;
-		}
-		rc = gpio_direction_output(GPIO_FFA_BT_SYS_REST_EN, 1);
-		if (rc < 0) {
-			pr_err("%s: gpio_direction_output %d = %d\n", __func__,
-				GPIO_FFA_BT_SYS_REST_EN, rc);
-			goto gpio_fail;
-		}
+
+	/*setup Bahama_sys_reset_n*/
+	rc = gpio_request(GPIO_BT_SYS_REST_EN, "bahama sys_rst_n");
+	if (rc < 0) {
+		pr_err("%s: gpio_request %d = %d\n", __func__,
+			GPIO_BT_SYS_REST_EN, rc);
+		goto vreg_fail;
+	}
+	rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
+	if (rc < 0) {
+		pr_err("%s: gpio_direction_output %d = %d\n", __func__,
+			GPIO_BT_SYS_REST_EN, rc);
+		goto gpio_fail;
 	}
 	return rc;
 
 gpio_fail:
-	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
-		gpio_free(GPIO_BT_SYS_REST_EN);
-	else if (machine_is_msm7x27a_ffa())
-		gpio_free(GPIO_FFA_BT_SYS_REST_EN);
+	gpio_free(GPIO_BT_SYS_REST_EN);
 vreg_fail:
 	vreg_put(vreg_s3);
 	return rc;
@@ -567,6 +687,7 @@ static int bluetooth_power(int on)
 {
 	int pin, rc = 0;
 	const char *id = "BTPW";
+
 	if (on) {
 		/*setup power for BT SOC*/
 		rc = bluetooth_switch_regulators(on);
@@ -575,7 +696,7 @@ static int bluetooth_power(int on)
 					__func__, rc);
 			goto exit;
 		}
-		/*setup BT UART lines*/
+		/*setup BT GPIO lines*/
 		for (pin = 0; pin < ARRAY_SIZE(bt_config_power_on);
 			pin++) {
 			rc = gpio_tlmm_config(bt_config_power_on[pin],
@@ -604,10 +725,19 @@ static int bluetooth_power(int on)
 			goto fail_i2c;
 		}
 		msleep(20);
+
+		/*setup BT PCM lines*/
+		rc = msm_bahama_setup_pcm_i2s(BT_PCM_ON);
+		if (rc < 0) {
+			pr_err("%s: msm_bahama_setup_pcm_i2s , rc =%d\n",
+				__func__, rc);
+				goto fail_power;
+			}
 		rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_D1,
 				  PMAPP_CLOCK_VOTE_PIN_CTRL);
 		if (rc < 0)
-			pr_err("%s:Pin Control Failed, rc = %d", __func__, rc);
+			pr_err("%s:Pin Control Failed, rc = %d",
+					__func__, rc);
 
 	} else {
 		rc = bahama_bt(0);
@@ -628,6 +758,11 @@ fail_clock:
 					__func__, bt_config_power_off[pin], rc);
 				}
 			}
+		rc = msm_bahama_setup_pcm_i2s(BT_PCM_OFF);
+		if (rc < 0) {
+			pr_err("%s: msm_bahama_setup_pcm_i2s, rc =%d\n",
+					__func__, rc);
+				}
 fail_power:
 		rc = bluetooth_switch_regulators(0);
 		if (rc < 0) {
@@ -679,32 +814,20 @@ static struct marimba_platform_data marimba_pdata = {
 #endif
 
 #if defined(CONFIG_I2C) && defined(CONFIG_GPIO_SX150X)
-static struct i2c_board_info surf_core_exp_i2c_info[] __initdata = {
+static struct i2c_board_info core_exp_i2c_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("sx1509q", 0x3e),
-		.platform_data =  &sx150x_data[SX150X_SURF],
+		.platform_data =  &sx150x_data[SX150X_CORE],
 	},
 };
-static struct i2c_board_info surf_cam_exp_i2c_info[] __initdata = {
+static struct i2c_board_info cam_exp_i2c_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("sx1508q", 0x22),
-		.platform_data	= &sx150x_data[SX150X_SURF_CAM],
+		.platform_data	= &sx150x_data[SX150X_CAM],
 	},
-};
-static struct i2c_board_info ffa_core_exp_i2c_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("sx1509q", 0x3e),
-		.platform_data =  &sx150x_data[SX150X_FFA],
-	},
-};
-static struct i2c_board_info ffa_cam_exp_i2c_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("sx1508q", 0x22),
-		.platform_data	= &sx150x_data[SX150X_FFA_CAM],
-	},
-
 };
 #endif
+
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 static struct i2c_board_info bahama_devices[] = {
 {
@@ -717,28 +840,19 @@ static struct i2c_board_info bahama_devices[] = {
 #if defined(CONFIG_I2C) && defined(CONFIG_GPIO_SX150X)
 static void __init register_i2c_devices(void)
 {
-	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3()) {
-		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-				surf_core_exp_i2c_info,
-				ARRAY_SIZE(surf_core_exp_i2c_info));
-		i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
-				surf_cam_exp_i2c_info,
-				ARRAY_SIZE(surf_cam_exp_i2c_info));
-	} else if (machine_is_msm7x27a_ffa()) {
-		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-				ffa_core_exp_i2c_info,
-				ARRAY_SIZE(ffa_core_exp_i2c_info));
-		i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
-				ffa_cam_exp_i2c_info,
-				ARRAY_SIZE(ffa_cam_exp_i2c_info));
-	}
-
+	
+	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
+				cam_exp_i2c_info,
+				ARRAY_SIZE(cam_exp_i2c_info));
+	
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+				core_exp_i2c_info,
+				ARRAY_SIZE(core_exp_i2c_info));
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
-		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 				bahama_devices,
 				ARRAY_SIZE(bahama_devices));
 #endif
-
 }
 #endif
 
@@ -936,10 +1050,8 @@ static int  msm_hsusb_vbus_init(int on)
 	int rc = 0;
 	unsigned gpio;
 
-	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
-		gpio = GPIO_HOST_VBUS_EN;
-	else
-		gpio = GPIO_FFA_5V_BOOST_EN;
+	gpio = GPIO_HOST_VBUS_EN;
+
 	if (on) {
 		rc = gpio_request(gpio, "i2c_host_vbus_en");
 		if (rc < 0) {
@@ -957,10 +1069,7 @@ static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 {
 	unsigned gpio;
 
-	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_m3())
-		gpio = GPIO_HOST_VBUS_EN;
-	else
-		gpio = GPIO_FFA_5V_BOOST_EN;
+	gpio = GPIO_HOST_VBUS_EN;
 
 	gpio_set_value_cansleep(gpio, !!on);
 }
@@ -968,6 +1077,7 @@ static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 static struct msm_usb_host_platform_data msm_usb_host_pdata = {
 	.phy_info       = (USB_PHY_INTEGRATED | USB_PHY_MODEL_45NM),
 	.vbus_init	= msm_hsusb_vbus_init,
+	.vbus_power		= msm_hsusb_vbus_power,
 };
 
 static void __init msm7x2x_init_host(void)
@@ -1153,6 +1263,31 @@ static void msm7x27a_cfg_smsc911x(void)
 	gpio_set_value(ETH_FIFO_SEL_GPIO, 0);
 }
 
+#if defined(CONFIG_SERIAL_MSM_HSL_CONSOLE) \
+		&& defined(CONFIG_MSM_SHARED_GPIO_FOR_UART2DM)
+static struct msm_gpio uart2dm_gpios[] = {
+	{GPIO_CFG(19, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+							"uart2dm_rfr_n" },
+	{GPIO_CFG(20, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+							"uart2dm_cts_n" },
+	{GPIO_CFG(21, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+							"uart2dm_rx"    },
+	{GPIO_CFG(108, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+							"uart2dm_tx"    },
+};
+
+static void msm7x27a_cfg_uart2dm_serial(void)
+{
+	int ret;
+	ret = msm_gpios_request_enable(uart2dm_gpios,
+					ARRAY_SIZE(uart2dm_gpios));
+	if (ret)
+		pr_err("%s: unable to enable gpios for uart2dm\n", __func__);
+}
+#else
+static void msm7x27a_cfg_uart2dm_serial(void) { }
+#endif
+
 static struct resource resources_uart3[] = {
 	{
 		.start	= INT_UART3,
@@ -1196,6 +1331,7 @@ static struct platform_device *surf_ffa_devices[] __initdata = {
 	&msm_device_smd,
 	&msm_device_uart1,
 	&msm_device_uart_dm1,
+	&msm_device_uart_dm2,
 	&msm_device_nand,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
@@ -1252,11 +1388,6 @@ static void __init msm7x27a_init_ebi2(void)
 	iounmap(ebi2_cfg_ptr);
 }
 
-static void __init msm7x2x_init_irq(void)
-{
-	msm_init_irq();
-}
-
 #define UART1DM_RX_GPIO		45
 static void __init msm7x2x_init(void)
 {
@@ -1271,6 +1402,7 @@ static void __init msm7x2x_init(void)
 	msm_device_i2c_init();
 
 	msm7x27a_init_ebi2();
+	msm7x27a_cfg_uart2dm_serial();
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_uart_dm1_pdata.wakeup_irq = gpio_to_irq(UART1DM_RX_GPIO);
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
@@ -1309,6 +1441,11 @@ static void __init msm7x2x_init(void)
 	bt_power_init();
 #endif
 
+#ifdef CONFIG_MSM_RPC_VIBRATOR
+	if (machine_is_msm7x27a_ffa())
+		msm_init_pmic_vibrator();
+#endif
+
 	platform_device_register(&msm_device_uart3);
 
 	lge_add_input_devices();
@@ -1322,42 +1459,16 @@ static void __init msm7x2x_init(void)
 	lge_add_gpio_i2c_devices();
 }
 
-#ifdef CONFIG_CACHE_L2X0
-static void msm7x27x_l2_cache_init(void)
-{
-	int aux_ctrl = 0;
-
-	/* Way Size 010(0x2) 32KB */
-	aux_ctrl = (0x1 << L2X0_AUX_CTRL_SHARE_OVERRIDE_SHIFT) | \
-		   (0x2 << L2X0_AUX_CTRL_WAY_SIZE_SHIFT) | \
-		   (0x1 << L2X0_AUX_CTRL_EVNT_MON_BUS_EN_SHIFT);
-
-	l2x0_init(MSM_L2CC_BASE, aux_ctrl, L2X0_AUX_CTRL_MASK);
-}
-#endif
-
 static void __init msm7x2x_init_early(void)
 {
 	msm_msm7x2x_allocate_memory_regions();
 }
 
-static void __init msm7x2x_map_io(void)
-{
-	msm_map_common_io();
-#ifdef CONFIG_CACHE_L2X0
-	msm7x27x_l2_cache_init();
-#endif
-}
-
 MACHINE_START(MSM7X27A_M3, "LGE MSM7x27a M3")
-#ifdef CONFIG_MSM_DEBUG_UART
-	.phys_io        = MSM_DEBUG_UART_PHYS,
-	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
-#endif
 	.boot_params	= PHYS_OFFSET + 0x100,
-	.map_io		= msm7x2x_map_io,
+	.map_io		= msm_common_io_init,
 	.reserve	= msm7x27a_reserve,
-	.init_irq	= msm7x2x_init_irq,
+	.init_irq	= msm_init_irq,
 	.init_machine	= msm7x2x_init,
 	.timer		= &msm_timer,
 	.init_early     = msm7x2x_init_early,
