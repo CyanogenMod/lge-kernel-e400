@@ -8,7 +8,7 @@
 #define __WEAK __attribute__((weak))
 #endif
 
-#define PMEM_KERNEL_EBI1_SIZE	0x1C000
+#define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 
 #ifdef CONFIG_ARCH_MSM7X27A
