@@ -1067,11 +1067,13 @@ static int  msm_hsusb_vbus_init(int on)
 }
 static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 {
+#if 0
 	unsigned gpio;
 
 	gpio = GPIO_HOST_VBUS_EN;
 
 	gpio_set_value_cansleep(gpio, !!on);
+#endif
 }
 
 static struct msm_usb_host_platform_data msm_usb_host_pdata = {
