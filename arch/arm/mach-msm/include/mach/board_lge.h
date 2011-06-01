@@ -63,6 +63,33 @@ struct acceleration_platform_data {
 	int (*power)(unsigned char onoff);
 };
 
+/* ecompass platform data */
+struct ecom_platform_data {
+	int pin_int;
+	int pin_rst;
+	int (*power)(unsigned char onoff);
+	char accelerator_name[20];
+	int fdata_sign_x;
+        int fdata_sign_y;
+        int fdata_sign_z;
+	int fdata_order0;
+	int fdata_order1;
+	int fdata_order2;
+	int sensitivity1g;
+	s16 *h_layout;
+	s16 *a_layout;
+};
+
+/* proximity platform data */
+struct proximity_platform_data {
+	int irq_num;
+	int (*power)(unsigned char onoff);
+	int methods;
+	int operation_mode;
+	int debounce;
+	u8 cycle;
+};
+
 /* backlight platform data*/
 struct lge_backlight_platform_data {
 	void (*platform_init)(void);

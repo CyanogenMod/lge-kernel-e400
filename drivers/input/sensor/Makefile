@@ -4,6 +4,8 @@
 
 # Each configuration option enables a list of files.
 
+obj-$(CONFIG_SENSOR_GP2AP)	+= gp2ap002.o
+obj-$(CONFIG_SENSOR_AK8975)	+= akm8975.o
 obj-$(CONFIG_SENSOR_BMA222)	+= bma222_driver.o bma222.o 
 
 ifeq ($(CONFIG_SENSOR_BMA222_USE_SMBUS),y)

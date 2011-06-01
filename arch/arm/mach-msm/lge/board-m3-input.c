@@ -30,7 +30,7 @@ static unsigned int keypad_row_gpios[] = {
 	36, 37
 };
 
-static unsigned int keypad_col_gpios[] = {35};
+static unsigned int keypad_col_gpios[] = {33};
 
 #define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
 
@@ -107,7 +107,7 @@ static struct platform_device *m3_gpio_input_devices[] __initdata = {
 };
 
 /* Melfas MCS8000 Touch (mms-128)*/
-#if defined(CONFIG_TOUCH_MCS8000)
+#if defined(CONFIG_TOUCHSCREEN_MCS8000)
 static struct gpio_i2c_pin ts_i2c_pin[] = {
 	[0] = {
 		.sda_pin	= TS_GPIO_I2C_SDA,
@@ -143,7 +143,7 @@ static int ts_set_vreg(unsigned char onoff)
 	}
 
 	if (onoff) {
-		rc = vreg_set_level(vreg_touch, 3000);
+		rc = vreg_set_level(vreg_touch, 2850);
 		if (rc != 0) {
 			printk("[Touch] vreg_set_level failed\n");
 			return -1;
@@ -299,21 +299,20 @@ static void __init m3_init_i2c_touch(int bus_num)
 static int accel_power(unsigned char onoff)
 {
 	int ret = 0;
-	/* need to be fixed - vreg for PMIC */
-	struct vreg *gp3_vreg = vreg_get(0, "gp3");
+	struct vreg *rfrx1_vreg = vreg_get(0, "rfrx1");
 	
 	if (onoff) {
 		printk(KERN_INFO "accel_power_on\n");
 		
-		ret = vreg_set_level(gp3_vreg, 3000);
+		ret = vreg_set_level(rfrx1_vreg, 3000);
 		if (ret != 0) {
 			printk("[Accel] vreg_set_level failed\n");
 			return ret;
 		}
-		vreg_enable(gp3_vreg);
+		vreg_enable(rfrx1_vreg);
 	} else {
 		printk(KERN_INFO "accel_power_off\n");
-		vreg_disable(gp3_vreg);
+		vreg_disable(rfrx1_vreg);
 	}
 
 	return ret;
@@ -362,6 +361,141 @@ static void __init m3_init_i2c_acceleration(int bus_num)
 	platform_device_register(&accel_i2c_device);
 }
 
+/* ecompass */
+static int ecom_power_set(unsigned char onoff)
+{
+	int ret = 0;
+	struct vreg *rfrx1_vreg = vreg_get(0, "rfrx1");
+
+	if (onoff) {
+		printk(KERN_INFO "ecom_power_on\n");
+		vreg_set_level(rfrx1_vreg, 3000);
+		vreg_enable(rfrx1_vreg);
+	} else {
+		printk(KERN_INFO "ecom_power_off\n");
+		vreg_disable(rfrx1_vreg);
+	}
+
+	return ret;
+}
+
+static struct ecom_platform_data ecom_pdata = {
+	.pin_int        	= ECOM_GPIO_INT,
+	.pin_rst		= 0,
+	.power          	= ecom_power_set,
+};
+
+static struct i2c_board_info ecom_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
+		.type = "akm8975",
+		.platform_data = &ecom_pdata,
+	},
+};
+
+static struct gpio_i2c_pin ecom_i2c_pin[] = {
+	[0] = {
+		.sda_pin	= ECOM_GPIO_I2C_SDA,
+		.scl_pin	= ECOM_GPIO_I2C_SCL,
+		.reset_pin	= 0,
+		.irq_pin	= ECOM_GPIO_INT,
+	},
+};
+
+static struct i2c_gpio_platform_data ecom_i2c_pdata = {
+	.sda_is_open_drain = 0,
+	.scl_is_open_drain = 0,
+	.udelay = 2,
+};
+
+static struct platform_device ecom_i2c_device = {
+        .name = "i2c-gpio",
+        .dev.platform_data = &ecom_i2c_pdata,
+};
+
+
+static void __init m3_init_i2c_ecom(int bus_num)
+{
+	ecom_i2c_device.id = bus_num;
+
+	lge_init_gpio_i2c_pin(&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[0]);
+
+	i2c_register_board_info(bus_num, &ecom_i2c_bdinfo[0], 1);
+	platform_device_register(&ecom_i2c_device);
+}
+
+/* proximity */
+static int prox_power_set(unsigned char onoff)
+{
+	static bool init_done = 0;
+	
+	int ret = 0;
+/* need to be fixed  - for vreg using SUB PMIC */
+	struct vreg *temp_vreg = vreg_get(0, "");
+
+	printk("[Proximity] %s() : Power %s\n",__FUNCTION__, onoff ? "On" : "Off");
+	
+	if (init_done == 0 && onoff)
+	{
+		if (onoff) {
+			vreg_set_level(temp_vreg, 2800);
+			vreg_enable(temp_vreg);
+
+			init_done = 1;
+		} else {
+			vreg_disable(temp_vreg);
+		}
+	}
+	return ret;
+}
+
+static struct proximity_platform_data proxi_pdata = {
+	.irq_num	= PROXI_GPIO_DOUT,
+	.power		= prox_power_set,
+	.methods		= 0,
+	.operation_mode		= 2,
+	.debounce	 = 0,
+	.cycle = 2,
+};
+
+static struct i2c_board_info prox_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("proximity_gp2ap", PROXI_I2C_ADDRESS),
+		.type = "proximity_gp2ap",
+		.platform_data = &proxi_pdata,
+	},
+};
+
+static struct gpio_i2c_pin proxi_i2c_pin[] = {
+	[0] = {
+		.sda_pin	= PROXI_GPIO_I2C_SDA,
+		.scl_pin	= PROXI_GPIO_I2C_SCL,
+		.reset_pin	= 0,
+		.irq_pin	= PROXI_GPIO_DOUT,
+	},
+};
+
+static struct i2c_gpio_platform_data proxi_i2c_pdata = {
+	.sda_is_open_drain = 0,
+	.scl_is_open_drain = 0,
+	.udelay = 2,
+};
+
+static struct platform_device proxi_i2c_device = {
+        .name = "i2c-gpio",
+        .dev.platform_data = &proxi_i2c_pdata,
+};
+
+static void __init m3_init_i2c_prox(int bus_num)
+{
+	proxi_i2c_device.id = bus_num;
+
+	lge_init_gpio_i2c_pin(&proxi_i2c_pdata, proxi_i2c_pin[0], &prox_i2c_bdinfo[0]);
+
+	i2c_register_board_info(bus_num, &prox_i2c_bdinfo[0], 1);
+	platform_device_register(&proxi_i2c_device);
+}
+
 /* common function */
 void __init lge_add_input_devices(void)
 {
@@ -369,4 +503,6 @@ void __init lge_add_input_devices(void)
 	platform_add_devices(m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
 	lge_add_gpio_i2c_device(m3_init_i2c_touch);
 	lge_add_gpio_i2c_device(m3_init_i2c_acceleration);
+	lge_add_gpio_i2c_device(m3_init_i2c_ecom);
+	lge_add_gpio_i2c_device(m3_init_i2c_prox);
 }

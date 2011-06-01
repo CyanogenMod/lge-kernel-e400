@@ -50,6 +50,19 @@ enum {
 #define ACCEL_GPIO_I2C_SDA  	115
 #define ACCEL_I2C_ADDRESS		0x08 /* slave address 7bit - BMA222 */
 
+/* Ecompass */
+#define ECOM_GPIO_I2C_SCL		107
+#define ECOM_GPIO_I2C_SDA		109
+#define ECOM_GPIO_INT			18 /* DRDY */
+#define ECOM_I2C_ADDRESS		0x0C /* slave address 7bit - AK8975C */
+
+/* proximity sensor */
+#define PROXI_GPIO_I2C_SCL	16   
+#define PROXI_GPIO_I2C_SDA 	30   
+#define PROXI_GPIO_DOUT		83
+#define PROXI_I2C_ADDRESS	0x44 /* slave address 7bit - GP2AP002 */
+#define PROXI_LDO_NO_VCC	1
+
 /* sdcard related macros */
 #ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
 #define GPIO_SD_DETECT_N    40
