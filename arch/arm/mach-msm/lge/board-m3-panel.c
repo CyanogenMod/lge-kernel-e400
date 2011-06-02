@@ -55,6 +55,7 @@ static struct platform_device *m3_panel_devices[] __initdata = {
 
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = 97,						//LCD_VSYNC_O
+	.mdp_rev = MDP_REV_303,
 };
 
 #ifndef CONFIG_MACH_LGE
