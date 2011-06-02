@@ -427,6 +427,8 @@ static void __init m3_init_i2c_ecom(int bus_num)
 /* proximity */
 static int prox_power_set(unsigned char onoff)
 {
+/* just return 0, later I'll fix it */
+#if 0
 	static bool init_done = 0;
 	
 	int ret = 0;
@@ -447,6 +449,9 @@ static int prox_power_set(unsigned char onoff)
 		}
 	}
 	return ret;
+#endif
+
+	return 0;
 }
 
 static struct proximity_platform_data proxi_pdata = {
