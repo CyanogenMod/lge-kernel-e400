@@ -514,6 +514,12 @@ static void msm_reset(struct uart_port *port)
 	msm_write(port, UART_CR_CMD_RESET_BREAK_INT, UART_CR);
 	msm_write(port, UART_CR_CMD_RESET_CTS, UART_CR);
 	msm_write(port, UART_CR_CMD_SET_RFR, UART_CR);
+
+	/* Disable for the SIM CFG register 
+	 * youngchul.park@lge.com 
+	 * 2011.06.02 */ 
+	msm_write(port, 0x0, UART_SIM_CFG); 
+
 }
 
 static void msm_init_clock(struct uart_port *port)
