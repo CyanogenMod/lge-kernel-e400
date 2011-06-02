@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38.6 Kernel Configuration
-# Wed Jun  1 17:17:14 2011
+# Thu Jun  2 16:16:37 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1062,7 +1062,7 @@ CONFIG_INPUT_GPIO=y
 # CONFIG_INPUT_CMA3000 is not set
 # CONFIG_BOSCH_BMA150 is not set
 CONFIG_INPUT_SENSOR=y
-CONFIG_SENSOR_GP2AP=y
+# CONFIG_SENSOR_GP2AP is not set
 CONFIG_SENSOR_AK8975=y
 CONFIG_SENSOR_BMA222=y
 # CONFIG_SENSOR_BMA222_USE_SMBUS is not set
