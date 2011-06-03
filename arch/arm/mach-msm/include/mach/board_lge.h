@@ -8,6 +8,15 @@
 #define __WEAK __attribute__((weak))
 #endif
 
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+/* allocate 128K * 2 instead of ram_console's original size 128K
+ * this is for storing kernel panic log which is used by lk loader
+ * 2010-03-03, cleaneye.kim@lge.com
+ */
+#define MSM7X27_EBI1_CS0_BASE	PHYS_OFFSET
+#define LGE_RAM_CONSOLE_SIZE    (128 * SZ_1K * 2)
+#endif
+
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 
@@ -127,5 +136,7 @@ void __init lge_add_lcd_devices(void);
 void __init lge_add_camera_devices(void);
 
 void __init lge_add_gpio_i2c_device(gpio_i2c_init_func_t *init_func);
+
+void __init lge_add_ramconsole_devices(void);
 
 #endif

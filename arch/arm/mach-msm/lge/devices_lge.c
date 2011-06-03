@@ -6,6 +6,10 @@
 
 #include <asm/mach-types.h>
 
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+#include <asm/setup.h>
+#endif
+
 #include <mach/msm_memtypes.h>
 #include <mach/board.h>
 #include <mach/board_lge.h>
@@ -213,6 +217,34 @@ void __init msm7x27a_reserve(void)
 	reserve_info = &msm7x27a_reserve_info;
 	msm_reserve();
 }
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct resource ram_console_resource[] = {
+	{
+		.name = "ram_console",
+		.flags = IORESOURCE_MEM,
+	}
+};
+
+static struct platform_device ram_console_device = {
+	.name = "ram_console",
+	.id = -1,
+	.num_resources = ARRAY_SIZE(ram_console_resource),
+	.resource = ram_console_resource,
+};
+
+void __init lge_add_ramconsole_devices(void)
+{
+	struct resource *res = ram_console_resource;
+	struct membank *bank = &meminfo.bank[0];
+	res->start = MSM7X27_EBI1_CS0_BASE + bank->size;
+	res->end = res->start + LGE_RAM_CONSOLE_SIZE - 1;
+	printk("RAM CONSOLE START ADDR : 0x%x\n", res->start);
+	printk("RAM CONSOLE END ADDR   : 0x%x\n", res->end);
+	
+	platform_device_register(&ram_console_device);
+}
+#endif
 
 /* lge gpio i2c device */
 #define MAX_GPIO_I2C_DEV_NUM		10
