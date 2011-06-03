@@ -364,10 +364,11 @@ static struct platform_device *m3_camera_devices[] __initdata = {
 
 void __init lge_add_camera_devices(void)
 {
+#ifdef CONFIG_MSM_CAMERA
 	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
 		i2c_camera_devices,
 		ARRAY_SIZE(i2c_camera_devices));
-
+#endif
 	platform_add_devices(m3_camera_devices, ARRAY_SIZE(m3_camera_devices));
 }
 
