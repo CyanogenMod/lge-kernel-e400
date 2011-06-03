@@ -1148,32 +1148,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 };
 #endif
 
-static struct resource smc91x_resources[] = {
-	[0] = {
-		.start = 0x90000300,
-		.end   = 0x900003ff,
-		.flags = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start = MSM_GPIO_TO_INT(4),
-		.end   = MSM_GPIO_TO_INT(4),
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device smc91x_device = {
-	.name           = "smc91x",
-	.id             = 0,
-	.num_resources  = ARRAY_SIZE(smc91x_resources),
-	.resource       = smc91x_resources,
-};
-
-#ifdef CONFIG_SERIAL_MSM_HS
-static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
-	.inject_rx_on_wakeup	= 1,
-	.rx_to_inject		= 0xFD,
-};
-#endif
 static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
 					.supported = 1,
@@ -1204,66 +1178,6 @@ static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 					.residency = 0,
 	},
 };
-
-static struct smsc911x_platform_config smsc911x_config = {
-	.irq_polarity	= SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,
-	.irq_type	= SMSC911X_IRQ_TYPE_PUSH_PULL,
-	.flags		= SMSC911X_USE_16BIT,
-};
-
-static struct resource smsc911x_resources[] = {
-	[0] = {
-		.start	= 0x90000000,
-		.end	= 0x90007fff,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= MSM_GPIO_TO_INT(48),
-		.end	= MSM_GPIO_TO_INT(48),
-		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-	},
-};
-
-static struct platform_device smsc911x_device = {
-	.name		= "smsc911x",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(smsc911x_resources),
-	.resource	= smsc911x_resources,
-	.dev		= {
-		.platform_data	= &smsc911x_config,
-	},
-};
-
-static struct msm_gpio smsc911x_gpios[] = {
-	{ GPIO_CFG(48, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_6MA),
-							 "smsc911x_irq"  },
-	{ GPIO_CFG(49, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_6MA),
-							 "eth_fifo_sel" },
-};
-
-#define ETH_FIFO_SEL_GPIO	49
-static void msm7x27a_cfg_smsc911x(void)
-{
-	int res;
-
-	res = msm_gpios_request_enable(smsc911x_gpios,
-				 ARRAY_SIZE(smsc911x_gpios));
-	if (res) {
-		pr_err("%s: unable to enable gpios for SMSC911x\n", __func__);
-		return;
-	}
-
-	/* ETH_FIFO_SEL */
-	res = gpio_direction_output(ETH_FIFO_SEL_GPIO, 0);
-	if (res) {
-		pr_err("%s: unable to get direction for gpio %d\n", __func__,
-							 ETH_FIFO_SEL_GPIO);
-		msm_gpios_disable_free(smsc911x_gpios,
-						 ARRAY_SIZE(smsc911x_gpios));
-		return;
-	}
-	gpio_set_value(ETH_FIFO_SEL_GPIO, 0);
-}
 
 #if defined(CONFIG_SERIAL_MSM_HSL_CONSOLE) \
 		&& defined(CONFIG_MSM_SHARED_GPIO_FOR_UART2DM)
@@ -1317,24 +1231,9 @@ static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.max_axi_khz = 200000,
 };
 
-static struct platform_device *rumi_sim_devices[] __initdata = {
+static struct platform_device *m3_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
-	&smc91x_device,
-	&msm_device_uart1,
-	&msm_device_nand,
-	&msm_device_uart_dm1,
-	&msm_gsbi0_qup_i2c_device,
-	&msm_gsbi1_qup_i2c_device,
-};
-
-static struct platform_device *surf_ffa_devices[] __initdata = {
-	&msm_device_dmov,
-	&msm_device_smd,
-	&msm_device_uart1,
-	&msm_device_uart_dm1,
-	&msm_device_uart_dm2,
-	&msm_device_nand,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
 	&msm_device_otg,
@@ -1344,7 +1243,6 @@ static struct platform_device *surf_ffa_devices[] __initdata = {
 	&rndis_device,
 	&usb_diag_device,
 	&usb_gadget_fserial_device,
-	&smsc911x_device,
 	&msm_kgsl_3d0,
 #ifdef CONFIG_BT
 	&msm_bt_power_device,
@@ -1405,33 +1303,22 @@ static void __init msm7x2x_init(void)
 
 	msm7x27a_init_ebi2();
 	msm7x27a_cfg_uart2dm_serial();
-#ifdef CONFIG_SERIAL_MSM_HS
-	msm_uart_dm1_pdata.wakeup_irq = gpio_to_irq(UART1DM_RX_GPIO);
-	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
-#endif
 
-	if (machine_is_msm7x27a_rumi3()) {
-		platform_add_devices(rumi_sim_devices,
-				ARRAY_SIZE(rumi_sim_devices));
-	}
-	if (machine_is_msm7x27a_surf() || machine_is_msm7x27a_ffa() || machine_is_msm7x27a_m3()) {
 #ifdef CONFIG_USB_MSM_OTG_72K
 		msm_otg_pdata.swfi_latency =
 			msm7x27a_pm_data
 		[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency;
 		msm_device_otg.dev.platform_data = &msm_otg_pdata;
 #endif
-		msm7x27a_cfg_smsc911x();
 
 		msm_add_pmem_devices();
 		msm_add_fb_device();
 
-		platform_add_devices(surf_ffa_devices,
-				ARRAY_SIZE(surf_ffa_devices));
+		platform_add_devices(m3_devices,
+				ARRAY_SIZE(m3_devices));
 #ifdef CONFIG_USB_EHCI_MSM_72K
 		msm7x2x_init_host();
 #endif
-	}
 
 	msm_pm_set_platform_data(msm7x27a_pm_data,
 				ARRAY_SIZE(msm7x27a_pm_data));
@@ -1441,11 +1328,6 @@ static void __init msm7x2x_init(void)
 #endif
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	bt_power_init();
-#endif
-
-#ifdef CONFIG_MSM_RPC_VIBRATOR
-	if (machine_is_msm7x27a_ffa())
-		msm_init_pmic_vibrator();
 #endif
 
 	platform_device_register(&msm_device_uart3);
