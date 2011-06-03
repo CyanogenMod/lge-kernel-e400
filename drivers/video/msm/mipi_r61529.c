@@ -139,7 +139,6 @@ static int mipi_r61529_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	struct mipi_panel_info *mipi;
-	int ret = 0;
 	
 	mfd = platform_get_drvdata(pdev);
 	mipi  = &mfd->panel_info.mipi;
@@ -150,26 +149,6 @@ static int mipi_r61529_lcd_on(struct platform_device *pdev)
 		return -EINVAL;
 
 	printk("mipi_r61529_lcd_on START\n");
-
-	// Resetting LCD Panel
-	ret = gpio_request(GPIO_HDK_LCD_RESET, "lcd_reset");
-	if (ret) {
-		pr_err("Requesting lcd_reset GPIO failed!\n");
-		return ret;
-	}
-
-	ret = gpio_direction_output(GPIO_HDK_LCD_RESET, 1);
-	if (ret) {
-		pr_err("Setting lcd_reset GPIO direction failed!\n");
-		gpio_free(GPIO_HDK_LCD_RESET);
-		return ret;
-	}
-	
-	mdelay(10);
-	gpio_set_value(GPIO_HDK_LCD_RESET, 0);
-	mdelay(10);
-	gpio_set_value(GPIO_HDK_LCD_RESET, 1);
-	mdelay(10);
 
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_sleep_out_cmds,
 			ARRAY_SIZE(r61529_sleep_out_cmds));
@@ -198,6 +177,8 @@ static int mipi_r61529_lcd_off(struct platform_device *pdev)
 		return -ENODEV;
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
+
+	printk("mipi_r61529_lcd_off START\n");
 
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_disp_off_cmds,
 			ARRAY_SIZE(r61529_disp_off_cmds));

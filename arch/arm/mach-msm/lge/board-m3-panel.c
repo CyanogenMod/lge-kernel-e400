@@ -100,113 +100,93 @@ gpio_error:
 }
 #endif
 
+#define GPIO_LCD_RESET 125
 static int dsi_gpio_initialized;
 
 static int mipi_dsi_panel_power(int on)
 {
 	int rc = 0;
+	struct vreg *vreg_mipi_dsi_v28, *vreg_mipi_dsi_v18;
 
-	if (!on)
-		return rc;
-
-	/* I2C-controlled GPIO Expander -init of the GPIOs very late */
+	printk("mipi_dsi_panel_power : %d \n",on);
+	
 	if (!dsi_gpio_initialized) {
-		struct vreg *vreg_mipi_dsi_v28, *vreg_mipi_dsi_v18; 
-		printk("seongjae : mipi_dsi_panel_power = on\n");
-		pmapp_disp_backlight_init();
 
-		if (pmapp_disp_backlight_set_brightness(100))
-			pr_err("display backlight set brightness failed\n");
+		// Resetting LCD Panel
+		rc = gpio_request(GPIO_LCD_RESET, "lcd_reset");
+		if (rc) {
+			pr_err("%s: gpio_request GPIO_LCD_RESET failed\n", __func__);
+		}
 
-		vreg_mipi_dsi_v28 = vreg_get(0, "emmc");
-		if (IS_ERR(vreg_mipi_dsi_v28))
-			return PTR_ERR(vreg_mipi_dsi_v28); 
+		dsi_gpio_initialized = 1;
+	}
+ 
+	vreg_mipi_dsi_v28 = vreg_get(0, "emmc");
+	if (IS_ERR(vreg_mipi_dsi_v28)) {
+		pr_err("%s: vreg_get for emmc failed\n", __func__);
+		return PTR_ERR(vreg_mipi_dsi_v28);
+	}
+	
+	vreg_mipi_dsi_v18 = vreg_get(0, "wlan_tcx0");
+	if (IS_ERR(vreg_mipi_dsi_v18)) {
+		pr_err("%s: vreg_get for wlan_tcx0 failed\n", __func__);
+		rc = PTR_ERR(vreg_mipi_dsi_v18);
+		goto vreg_put_dsi_v28;
+	}
 
+
+	if (on) {
 		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800); 
 		if (rc) {
-			pr_err("MIPI v28 Set Failed\n");
+			pr_err("%s: vreg_set_level failed for mipi_dsi_v28\n", __func__);
+			goto vreg_put_dsi_v18;
 		}
 		rc = vreg_enable(vreg_mipi_dsi_v28); 
 		if (rc) {
-			pr_err("MIPI v28 Enable Failed\n");
+			pr_err("%s: vreg_enable failed for mipi_dsi_v28\n", __func__);
+			goto vreg_put_dsi_v18;
+		}
+
+		rc = vreg_set_level(vreg_mipi_dsi_v18, 1800); 
+		if (rc) {
+			pr_err("%s: vreg_set_level failed for mipi_dsi_v18\n", __func__);
+			goto vreg_put_dsi_v18;
+		}
+		rc = vreg_enable(vreg_mipi_dsi_v18);
+		if (rc) {
+			pr_err("%s: vreg_enable failed for mipi_dsi_v18\n", __func__);
+			goto vreg_put_dsi_v18;
+		}
+
+		rc = gpio_direction_output(GPIO_LCD_RESET, 1);
+		if (rc) {
+			pr_err("%s: gpio_direction_output failed for lcd_reset\n", __func__);
+			goto vreg_put_dsi_v18;
 		}
 		
-		vreg_mipi_dsi_v18 = vreg_get(0, "wlan_tcx0");
-		if (IS_ERR(vreg_mipi_dsi_v18))
-			return PTR_ERR(vreg_mipi_dsi_v18); 
-
-		vreg_set_level(vreg_mipi_dsi_v18, 1800); 
+		mdelay(10);
+		gpio_set_value(GPIO_LCD_RESET, 0);
+		mdelay(10);
+		gpio_set_value(GPIO_LCD_RESET, 1);
+		mdelay(10);		
+	} else {
+		rc = vreg_disable(vreg_mipi_dsi_v28);
 		if (rc) {
-			pr_err("MIPI v18 Set Failed\n");
+			pr_err("%s: vreg_disable failed for mipi_dsi_v28\n", __func__);
+			goto vreg_put_dsi_v18;
 		}
-		vreg_enable(vreg_mipi_dsi_v18); 
-
-		rc = gpio_request(129, "MIPI I/F");
+		rc = vreg_disable(vreg_mipi_dsi_v18);
 		if (rc) {
-			pr_err("MIPI v18 Enable Failed\n");
+			pr_err("%s: vreg_disable failed for mipi_dsi_v18\n", __func__);
+			goto vreg_put_dsi_v18;
 		}
-
-#if defined (CONFIG_FB_MSM_MIPI_R61529_VIDEO_HVGA_PT)
-		gpio_direction_output(129, 1); /* IFMODE1=1 setting is DSI Video mode */
-#else
-		gpio_direction_output(129, 0); /* IFMODE1=1 setting is DSI CMD mode */
-#endif
-		printk("seongjae : mipi_dsi_panel_power FINISHED\n");
-#ifndef CONFIG_MACH_LGE
-		if (machine_is_msm7x27a_surf()) {
-			rc = gpio_request(GPIO_DISPLAY_PWR_EN, "gpio_disp_pwr");
-			if (rc < 0) {
-				pr_err("failed to request gpio_disp_pwr\n");
-				return rc;
-			}
-
-			if (gpio_request(GPIO_BACKLIGHT_EN, "gpio_bkl_en")) {
-				pr_err("failed to request gpio_bkl_en\n");
-				goto fail_gpio1;
-			}
-
-			if (!gpio_direction_output(GPIO_DISPLAY_PWR_EN, 1)) {
-				gpio_set_value_cansleep(GPIO_DISPLAY_PWR_EN,
-					on);
-			} else {
-				pr_err("failed to enable display pwr\n");
-				goto fail_gpio2;
-			}
-
-			if (!gpio_direction_output(GPIO_BACKLIGHT_EN, 1)) {
-				gpio_set_value_cansleep(GPIO_BACKLIGHT_EN, on);
-				return rc;
-			} else {
-				pr_err("failed to enable backlight\n");
-				goto fail_gpio2;
-			}
-
-fail_gpio2:
-		gpio_free(GPIO_BACKLIGHT_EN);
-fail_gpio1:
-		gpio_free(GPIO_DISPLAY_PWR_EN);
-
-		} else {
-			rc = gpio_request(GPIO_FFA_LCD_PWR_EN_N,
-				"gpio_disp_pwr");
-			if (rc < 0) {
-				pr_err("failed to request lcd pwr\n");
-				return rc;
-			}
-			if (!gpio_direction_output(GPIO_FFA_LCD_PWR_EN_N,
-				1)) {
-				gpio_set_value_cansleep(GPIO_FFA_LCD_PWR_EN_N,
-					on);
-				return rc;
-			} else {
-				pr_err("failed to enable lcd pwr\n");
-				return rc;
-			}
-
-		}
-#endif
 	}
 
+vreg_put_dsi_v18:
+	vreg_put(vreg_mipi_dsi_v18);
+vreg_put_dsi_v28:
+	vreg_put(vreg_mipi_dsi_v28);
+	
 	return rc;
 }
 
