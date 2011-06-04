@@ -18,7 +18,6 @@
 #define __BUILD_0x0B__
 #define PRINTF_ENABLE
 #define OPTION_WRITE_CONFIG
-#define QT_printf  printk
 #define QT_FIRMUP_ENABLE
 #define QT_STYLUS_ENABLE
 #define FEATUE_QT_INFOBLOCK_STATIC
@@ -28,6 +27,19 @@
 #define _SUPPORT_MULTITOUCH_
 //seokjeong.hong@lge.com 2011-01-25 LAB1_FW : for UNIVA to disable TOUCH KEY.
 //#define LG_FW_TOUCH_SOFT_KEY
+
+
+/* LGE_FW
+ * youngchul.park@lge.com 2011-06-04 
+ * enable or disable debug message
+ * */
+#define DEBUG_TS 0 /* enable is 1, disable is 0 */
+
+#if DEBUG_TS
+#define QT_printf(fmt, args...) printk(KERN_DEBUG fmt, ##args)
+#else
+#define QT_printf(fmt, args...) do{} while(0)
+#endif
 
 //seokjeong.hong@lge.com 2011-03-08 LAB1_FW : To FIX ERRORS being treated as warnings in Froyo version.
 #define NUM_OF_TOUCH_OBJECTS    0
