@@ -243,6 +243,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 #endif
 
 /* TODO: lge: workaround solution for do not trigger mipi_isr */
+/* if the board has no panel, the process is stopped  in surfaceflinger*/
 #ifndef CONFIG_MACH_LGE
 	mipi_dsi_cmd_bta_sw_trigger(); /* clean up ack_err_status */
 #endif
