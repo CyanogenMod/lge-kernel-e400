@@ -61,7 +61,12 @@ config MT9P012
 	default y
 	---help---
 	  MICRON 5M Bayer Sensor with Autofocus
-
+config MT9P017
+	bool "Sensor mt9p017 (BAYER 5M)"
+	depends on MSM_CAMERA && ARCH_MSM7X27A
+	default y
+	---help---
+	  APTINA 5M Bayer Sensor
 choice
 	prompt "AF module"
 	depends on MT9P012 && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
