@@ -559,6 +559,10 @@ static int __devinit rt8053_i2c_probe(struct i2c_client *i2c,
 		goto err_detect;
 	}
 	
+	/* Because RT8053_ENABLE_REG reset value is not 0,
+	 * enable/disalbe control failed, so clear all enable bits */
+	rt8053_reg_write(rt8053, RT8053_ENABLE_REG, 0x80);
+
 	ret = gpio_request(rt8053->enable_gpio, "rt8053_enable");
 	if (ret < 0) {
 		dev_err(&i2c->dev, "failed to gpio_request: %d\n", ret);
