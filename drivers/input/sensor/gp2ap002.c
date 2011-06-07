@@ -804,7 +804,9 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	dummy_state.event = 0;
-	gp2ap_suspend(gp2ap_pdev->client, dummy_state);
+
+/* LGE_CHANGE, FIXME : just blocked for test, when suspend enable, it should be unblocked. */
+	/* gp2ap_suspend(gp2ap_pdev->client, dummy_state); */
 
 	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
 		PROXD("exit\n");
