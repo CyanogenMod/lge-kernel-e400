@@ -58,55 +58,13 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mdp_rev = MDP_REV_303,
 };
 
-#ifndef CONFIG_MACH_LGE
-#define GPIO_LCDC_BRDG_PD	128
-#define GPIO_LCDC_BRDG_RESET_N	129
-static unsigned mipi_dsi_gpio[] = {
-	GPIO_CFG(GPIO_LCDC_BRDG_RESET_N, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-		GPIO_CFG_2MA),       /* LCDC_BRDG_RESET_N */
-};
-
-static int msm_fb_dsi_client_reset(void)
-{
-	int rc = 0;
-
-	rc = gpio_request(GPIO_LCDC_BRDG_RESET_N, "lcdc_brdg_reset_n");
-
-	if (rc < 0) {
-		pr_err("failed to request lcd brdg reset\n");
-		return rc;
-	}
-
-	rc = gpio_tlmm_config(mipi_dsi_gpio[0], GPIO_CFG_ENABLE);
-	if (rc) {
-		pr_err("Failed to enable LCDC Bridge reset enable\n");
-		goto gpio_error;
-	}
-
-	rc = gpio_direction_output(GPIO_LCDC_BRDG_RESET_N, 1);
-	if (!rc) {
-		gpio_set_value_cansleep(GPIO_LCDC_BRDG_RESET_N, 0);
-		msleep(20);
-		gpio_set_value_cansleep(GPIO_LCDC_BRDG_RESET_N, 1);
-		return rc;
-	} else {
-		goto gpio_error;
-	}
-
-gpio_error:
-	pr_err("Failed GPIO bridge reset\n");
-	gpio_free(GPIO_LCDC_BRDG_RESET_N);
-	return rc;
-}
-#endif
-
 #define GPIO_LCD_RESET 125
 static int dsi_gpio_initialized;
 
 static int mipi_dsi_panel_power(int on)
 {
 	int rc = 0;
-	struct vreg *vreg_mipi_dsi_v28, *vreg_mipi_dsi_v18;
+	struct vreg *vreg_mipi_dsi_v28;
 
 	printk("mipi_dsi_panel_power : %d \n",on);
 	
@@ -127,41 +85,22 @@ static int mipi_dsi_panel_power(int on)
 		return PTR_ERR(vreg_mipi_dsi_v28);
 	}
 	
-	vreg_mipi_dsi_v18 = vreg_get(0, "wlan_tcx0");
-	if (IS_ERR(vreg_mipi_dsi_v18)) {
-		pr_err("%s: vreg_get for wlan_tcx0 failed\n", __func__);
-		rc = PTR_ERR(vreg_mipi_dsi_v18);
-		goto vreg_put_dsi_v28;
-	}
-
-
 	if (on) {
 		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800); 
 		if (rc) {
 			pr_err("%s: vreg_set_level failed for mipi_dsi_v28\n", __func__);
-			goto vreg_put_dsi_v18;
+			goto vreg_put_dsi_v28;
 		}
 		rc = vreg_enable(vreg_mipi_dsi_v28); 
 		if (rc) {
 			pr_err("%s: vreg_enable failed for mipi_dsi_v28\n", __func__);
-			goto vreg_put_dsi_v18;
-		}
-
-		rc = vreg_set_level(vreg_mipi_dsi_v18, 1800); 
-		if (rc) {
-			pr_err("%s: vreg_set_level failed for mipi_dsi_v18\n", __func__);
-			goto vreg_put_dsi_v18;
-		}
-		rc = vreg_enable(vreg_mipi_dsi_v18);
-		if (rc) {
-			pr_err("%s: vreg_enable failed for mipi_dsi_v18\n", __func__);
-			goto vreg_put_dsi_v18;
+			goto vreg_put_dsi_v28;
 		}
 
 		rc = gpio_direction_output(GPIO_LCD_RESET, 1);
 		if (rc) {
 			pr_err("%s: gpio_direction_output failed for lcd_reset\n", __func__);
-			goto vreg_put_dsi_v18;
+			goto vreg_put_dsi_v28;
 		}
 		
 		mdelay(10);
@@ -173,17 +112,10 @@ static int mipi_dsi_panel_power(int on)
 		rc = vreg_disable(vreg_mipi_dsi_v28);
 		if (rc) {
 			pr_err("%s: vreg_disable failed for mipi_dsi_v28\n", __func__);
-			goto vreg_put_dsi_v18;
-		}
-		rc = vreg_disable(vreg_mipi_dsi_v18);
-		if (rc) {
-			pr_err("%s: vreg_disable failed for mipi_dsi_v18\n", __func__);
-			goto vreg_put_dsi_v18;
+			goto vreg_put_dsi_v28;
 		}
 	}
 
-vreg_put_dsi_v18:
-	vreg_put(vreg_mipi_dsi_v18);
 vreg_put_dsi_v28:
 	vreg_put(vreg_mipi_dsi_v28);
 	
