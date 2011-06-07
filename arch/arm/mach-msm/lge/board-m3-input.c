@@ -8,6 +8,7 @@
 #include <mach/vreg.h>
 #include <mach/pmic.h>
 #include <mach/board_lge.h>
+#include <linux/regulator/consumer.h>
 
 #include "devices-msm7x2xa.h"
 #include "board-m3.h"
@@ -428,12 +429,45 @@ static void __init m3_init_i2c_ecom(int bus_num)
 static int prox_power_set(unsigned char onoff)
 {
 /* just return 0, later I'll fix it */
-#if 0
 	static bool init_done = 0;
 	
 	int ret = 0;
 /* need to be fixed  - for vreg using SUB PMIC */
-	struct vreg *temp_vreg = vreg_get(0, "");
+
+	struct regulator* ldo5 = NULL;
+
+	ldo5 = regulator_get(NULL, "RT8053_LDO5");
+	if (ldo5 == NULL) {
+		pr_err("%s: regulator_get(ldo5) failed\n", __func__);
+	}
+
+	printk("[Proximity] %s() : Power %s\n",__FUNCTION__, onoff ? "On" : "Off");
+	
+	if (init_done == 0 && onoff)
+	{
+		if (onoff) {
+			printk(KERN_INFO "LDO5 vreg set.\n");
+			ret = regulator_set_voltage(ldo5, 2800000, 2800000);
+			if (ret < 0) {
+				pr_err("%s: regulator_set_voltage(ldo5) failed\n", __func__);
+			}
+			ret = regulator_enable(ldo5);
+			if (ret < 0) {
+                pr_err("%s: regulator_enable(ldo5) failed\n", __func__);
+            }
+			
+			init_done = 1;
+		} else {
+			ret = regulator_disable(ldo5);
+			if (ret < 0) {
+                pr_err("%s: regulator_disable(ldo5) failed\n", __func__);
+            }
+
+		}
+	}
+	return ret;
+
+/*	struct vreg *temp_vreg = vreg_get(0, "");
 
 	printk("[Proximity] %s() : Power %s\n",__FUNCTION__, onoff ? "On" : "Off");
 	
@@ -449,9 +483,8 @@ static int prox_power_set(unsigned char onoff)
 		}
 	}
 	return ret;
-#endif
-
-	return 0;
+*/
+	return ret;
 }
 
 static struct proximity_platform_data proxi_pdata = {
