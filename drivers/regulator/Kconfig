@@ -305,5 +305,11 @@ config REGULATOR_GPIO
 	  enable signal to a physical regulator.  The GPIO enable signal can
 	  be configured to be active high (default) or active low.
 
+config REGULATOR_RT8053
+	tristate "RICHTEK RT8053 voltage regulator"
+	depends on I2C
+	help
+	  This driver controls a RICHTEK RT8053 voltage output 
+	  regulator via I2C bus.
 endif
 

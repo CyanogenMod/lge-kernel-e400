@@ -1,6 +1,8 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
+#include <linux/gpio.h>
+#include <linux/regulator/consumer.h>
 
 #include <asm/mach-types.h>
 
@@ -8,92 +10,100 @@
 #include <mach/vreg.h>
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
+#include <mach/board_lge.h>
 
 #include "devices-msm7x2xa.h"
 #include "board-m3.h"
 
+#define GPIO_CAM_RESET 34
 #ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
-	GPIO_CFG(61, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
 static uint32_t camera_on_gpio_table[] = {
-	GPIO_CFG(61, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	GPIO_CFG(60, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
-#ifdef CONFIG_MSM_CAMERA_FLASH
-static struct msm_camera_sensor_flash_src msm_flash_src = {
-	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
-	._fsrc.current_driver_src.led1 = GPIO_CAM_GP_LED_EN1,
-	._fsrc.current_driver_src.led2 = GPIO_CAM_GP_LED_EN2,
-};
-#endif
-
-static struct vreg *vreg_gp2;
-static struct vreg *vreg_gp3;
 static void msm_camera_vreg_config(int vreg_en)
 {
+	static int gpio_initialzed = 0;
 	int rc;
+	struct regulator* ldo2 = NULL;
+	struct regulator* ldo3 = NULL;
+	struct regulator* ldo4 = NULL;
 
-	if (vreg_gp2 == NULL) {
-		vreg_gp2 = vreg_get(NULL, "gp2");
-		if (IS_ERR(vreg_gp2)) {
-			pr_err("%s: vreg_get(%s) failed (%ld)\n",
-				__func__, "gp2", PTR_ERR(vreg_gp2));
-			return;
-		}
-
-		rc = vreg_set_level(vreg_gp2, 2850);
-		if (rc) {
-			pr_err("%s: GP2 set_level failed (%d)\n",
-				__func__, rc);
-		}
+	/* TODO : error checking */
+	ldo4 = regulator_get(NULL, "RT8053_LDO4");
+	if (ldo4 == NULL) {
+		pr_err("%s: regulator_get(ldo4) failed\n", __func__);
+	}
+	rc = regulator_set_voltage(ldo4, 1800000, 1800000);
+	if (rc < 0) {
+		pr_err("%s: regulator_set_voltage(ldo4) failed\n", __func__);
 	}
 
-	if (vreg_gp3 == NULL) {
-		vreg_gp3 = vreg_get(NULL, "usb2");
-		if (IS_ERR(vreg_gp3)) {
-			pr_err("%s: vreg_get(%s) failed (%ld)\n",
-				__func__, "gp3", PTR_ERR(vreg_gp3));
-			return;
-		}
+	ldo2 = regulator_get(NULL, "RT8053_LDO2");
+	if (ldo2 == NULL) {
+		pr_err("%s: regulator_get(ldo2) failed\n", __func__);
+	}
+	rc = regulator_set_voltage(ldo2, 2800000, 2800000);
+	if (rc < 0) {
+		pr_err("%s: regulator_set_voltage(ldo2) failed\n", __func__);
+	}
 
-		rc = vreg_set_level(vreg_gp3, 1800);
-		if (rc) {
-			pr_err("%s: GP3 set level failed (%d)\n",
-				__func__, rc);
-		}
+	ldo3 = regulator_get(NULL, "RT8053_LDO3");
+	if (ldo3 == NULL) {
+		pr_err("%s: regulator_get(ldo3) failed\n", __func__);
+	}
+	rc = regulator_set_voltage(ldo3, 2800000, 2800000);
+	if (rc < 0) {
+		pr_err("%s: regulator_set_voltage(ldo3) failed\n", __func__);
 	}
 
 	if (vreg_en) {
-		rc = vreg_enable(vreg_gp2);
-		if (rc) {
-			pr_err("%s: GP2 enable failed (%d)\n",
-				__func__, rc);
+		/* TODO : reset sequence rechecking */
+		if (!gpio_initialzed) {
+			gpio_request(GPIO_CAM_RESET, "cam_reset");
+			gpio_initialzed = 1;
+		}
+		gpio_direction_output(GPIO_CAM_RESET, 0);
+
+		rc = regulator_enable(ldo4);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo4) failed\n", __func__);
 		}
 
-		rc = vreg_enable(vreg_gp3);
-		if (rc) {
-			pr_err("%s: GP3 enable failed (%d)\n",
-				__func__, rc);
+		rc = regulator_enable(ldo2);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo2) failed\n", __func__);
 		}
+
+		rc = regulator_enable(ldo3);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo3) failed\n", __func__);
+		}
+
+		gpio_set_value(GPIO_CAM_RESET, 1);
+		mdelay(1);
 	} else {
-		rc = vreg_disable(vreg_gp2);
-		if (rc) {
-			pr_err("%s: GP2 disable failed (%d)\n",
-				__func__, rc);
+		rc = regulator_disable(ldo4);
+		if (rc < 0) {
+			pr_err("%s: regulator_disable(ldo4) failed\n", __func__);
 		}
 
-		rc = vreg_disable(vreg_gp3);
-		if (rc) {
-			pr_err("%s: GP3 disable failed (%d)\n",
-				__func__, rc);
+		rc = regulator_disable(ldo2);
+		if (rc < 0) {
+			pr_err("%s: regulator_disble(ldo2) failed\n", __func__);
+		}
+
+		rc = regulator_disable(ldo3);
+		if (rc < 0) {
+			pr_err("%s: regulator_disable(ldo3) failed\n", __func__);
 		}
 	}
+
+	return;
 }
 
 static int config_gpio_table(uint32_t *table, int len)
@@ -113,14 +123,11 @@ static int config_gpio_table(uint32_t *table, int len)
 	return rc;
 }
 
-static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1_data;
-static struct msm_camera_sensor_info msm_camera_sensor_ov9726_data;
 static int config_camera_on_gpios_rear(void)
 {
 	int rc = 0;
 
-	if (machine_is_msm7x27a_ffa())
-		msm_camera_vreg_config(1);
+	msm_camera_vreg_config(1);
 
 	rc = config_gpio_table(camera_on_gpio_table,
 			ARRAY_SIZE(camera_on_gpio_table));
@@ -135,38 +142,22 @@ static int config_camera_on_gpios_rear(void)
 
 static void config_camera_off_gpios_rear(void)
 {
-	if (machine_is_msm7x27a_ffa())
-		msm_camera_vreg_config(0);
+	msm_camera_vreg_config(0);
 
 	config_gpio_table(camera_off_gpio_table,
 			ARRAY_SIZE(camera_off_gpio_table));
 }
 
-static int config_camera_on_gpios_front(void)
+static int camera_power_on_rear(void)
 {
-	int rc = 0;
-
-	if (machine_is_msm7x27a_ffa())
-		msm_camera_vreg_config(1);
-
-	rc = config_gpio_table(camera_on_gpio_table,
-			ARRAY_SIZE(camera_on_gpio_table));
-	if (rc < 0) {
-		pr_err("%s: CAMSENSOR gpio table request"
-			"failed\n", __func__);
-		return rc;
-	}
-
-	return rc;
+	/* TODO: dummy function */
+	return 0;
 }
 
-static void config_camera_off_gpios_front(void)
+static int camera_power_off_rear(void)
 {
-	if (machine_is_msm7x27a_ffa())
-		msm_camera_vreg_config(0);
-
-	config_gpio_table(camera_off_gpio_table,
-			ARRAY_SIZE(camera_off_gpio_table));
+	/* TODO: dummy function */
+	return 0;
 }
 
 struct msm_camera_device_platform_data msm_camera_device_data_rear = {
@@ -179,187 +170,49 @@ struct msm_camera_device_platform_data msm_camera_device_data_rear = {
 	.ioclk.vfe_clk_rate  = 192000000,
 	.ioext.appphy = MSM_CLK_CTL_PHYS,
 	.ioext.appsz  = MSM_CLK_CTL_SIZE,
+	.camera_power_on   = camera_power_on_rear,
+	.camera_power_off  = camera_power_off_rear,	
 };
 
-struct msm_camera_device_platform_data msm_camera_device_data_front = {
-	.camera_gpio_on  = config_camera_on_gpios_front,
-	.camera_gpio_off = config_camera_off_gpios_front,
-	.ioext.csiphy = 0xA0F00000,
-	.ioext.csisz  = 0x00100000,
-	.ioext.csiirq = INT_CSI_IRQ_0,
-	.ioclk.mclk_clk_rate = 24000000,
-	.ioclk.vfe_clk_rate  = 192000000,
-	.ioext.appphy = MSM_CLK_CTL_PHYS,
-	.ioext.appsz  = MSM_CLK_CTL_SIZE,
+#ifdef CONFIG_MT9P017
+static struct msm_camera_sensor_flash_data flash_none = {
+	.flash_type = MSM_CAMERA_FLASH_NONE,
+	.flash_src  = NULL,
 };
 
-#ifdef CONFIG_S5K4E1
-static struct msm_camera_sensor_platform_info s5k4e1_sensor_7627a_info = {
-	.mount_angle = 90
-};
-
-static struct msm_camera_sensor_flash_data flash_s5k4e1 = {
-	.flash_type             = MSM_CAMERA_FLASH_LED,
-	.flash_src              = &msm_flash_src
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1_data = {
-	.sensor_name    = "s5k4e1",
+static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
+	.sensor_name    = "mt9p017",
 	.sensor_reset_enable = 1,
-	.sensor_reset   = GPIO_CAM_GP_CAMIF_RESET_N,
-	.sensor_pwd             = 85,
-	.vcm_pwd                = GPIO_CAM_GP_CAM_PWDN,
-	.vcm_enable             = 1,
-	.pdata                  = &msm_camera_device_data_rear,
-	.flash_data             = &flash_s5k4e1,
-	.sensor_platform_info   = &s5k4e1_sensor_7627a_info,
-	.csi_if                 = 1
-};
-
-static struct platform_device msm_camera_sensor_s5k4e1 = {
-	.name   = "msm_camera_s5k4e1",
-	.dev    = {
-		.platform_data = &msm_camera_sensor_s5k4e1_data,
-	},
-};
-#endif
-
-#ifdef CONFIG_IMX072
-static struct msm_camera_sensor_platform_info imx072_sensor_7627a_info = {
-	.mount_angle = 90
-};
-
-static struct msm_camera_sensor_flash_data flash_imx072 = {
-	.flash_type             = MSM_CAMERA_FLASH_LED,
-	.flash_src              = &msm_flash_src
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_imx072_data = {
-	.sensor_name    = "imx072",
-	.sensor_reset_enable = 1,
-	.sensor_reset   = GPIO_CAM_GP_CAMIF_RESET_N, /* TODO 106,*/
-	.sensor_pwd             = 85,
-	.vcm_pwd                = GPIO_CAM_GP_CAM_PWDN,
-	.vcm_enable             = 1,
-	.pdata                  = &msm_camera_device_data_rear,
-	.flash_data             = &flash_imx072,
-	.sensor_platform_info = &imx072_sensor_7627a_info,
-	.csi_if                 = 1
-};
-
-static struct platform_device msm_camera_sensor_imx072 = {
-	.name   = "msm_camera_imx072",
-	.dev    = {
-		.platform_data = &msm_camera_sensor_imx072_data,
-	},
-};
-#endif
-
-#ifdef CONFIG_WEBCAM_OV9726
-static struct msm_camera_sensor_platform_info ov9726_sensor_7627a_info = {
-	.mount_angle = 90
-};
-
-static struct msm_camera_sensor_flash_data flash_ov9726 = {
-	.flash_type             = MSM_CAMERA_FLASH_NONE,
-	.flash_src              = &msm_flash_src
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_ov9726_data = {
-	.sensor_name    = "ov9726",
-	.sensor_reset_enable = 0,
-	.sensor_reset   = GPIO_CAM_GP_CAM1MP_XCLR,
-	.sensor_pwd             = 85,
-	.vcm_pwd                = 1,
-	.vcm_enable             = 0,
-	.pdata                  = &msm_camera_device_data_front,
-	.flash_data             = &flash_ov9726,
-	.sensor_platform_info   = &ov9726_sensor_7627a_info,
-	.csi_if                 = 1
-};
-
-static struct platform_device msm_camera_sensor_ov9726 = {
-	.name   = "msm_camera_ov9726",
-	.dev    = {
-		.platform_data = &msm_camera_sensor_ov9726_data,
-	},
-};
-#endif
-
-#ifdef CONFIG_MT9E013
-static struct msm_camera_sensor_platform_info mt9e013_sensor_7627a_info = {
-	.mount_angle = 90
-};
-
-static struct msm_camera_sensor_flash_data flash_mt9e013 = {
-	.flash_type = MSM_CAMERA_FLASH_LED,
-	.flash_src  = &msm_flash_src
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_mt9e013_data = {
-	.sensor_name    = "mt9e013",
-	.sensor_reset   = 0,
-	.sensor_reset_enable = 1,
-	.sensor_pwd     = 85,
-	.vcm_pwd        = 1,
+	.sensor_reset   = GPIO_CAM_RESET,
+	.sensor_pwd     = 0,
+	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
 	.pdata          = &msm_camera_device_data_rear,
-	.flash_data     = &flash_mt9e013,
-	.sensor_platform_info   = &mt9e013_sensor_7627a_info,
+	.flash_data     = &flash_none,
 	.csi_if         = 1
 };
 
-static struct platform_device msm_camera_sensor_mt9e013 = {
-	.name      = "msm_camera_mt9e013",
-	.dev       = {
-		.platform_data = &msm_camera_sensor_mt9e013_data,
-	},
+static struct platform_device msm_camera_sensor_mt9p017 = {
+        .name      = "msm_camera_mt9p017",
+        .dev       = {
+                .platform_data = &msm_camera_sensor_mt9p017_data,
+        },
 };
 #endif
 
 static struct i2c_board_info i2c_camera_devices[] = {
-	#ifdef CONFIG_S5K4E1
+	#ifdef CONFIG_MT9P017
 	{
-		I2C_BOARD_INFO("s5k4e1", 0x36),
-	},
-	{
-		I2C_BOARD_INFO("s5k4e1_af", 0x8c >> 1),
+		I2C_BOARD_INFO("mt9p017", 0x1B),
 	},
 	#endif
-	#ifdef CONFIG_WEBCAM_OV9726
-	{
-		I2C_BOARD_INFO("ov9726", 0x10),
-	},
-	#endif
-	#ifdef CONFIG_IMX072
-	{
-		I2C_BOARD_INFO("imx072", 0x34),
-	},
-	#endif
-	#ifdef CONFIG_MT9E013
-	{
-		I2C_BOARD_INFO("mt9e013", 0x6C >> 2),
-	},
-	#endif
-	{
-		I2C_BOARD_INFO("sc628a", 0x37),
-	},
 };
 #endif
 
 static struct platform_device *m3_camera_devices[] __initdata = {
-#ifdef CONFIG_S5K4E1
-	&msm_camera_sensor_s5k4e1,
-#endif	
-#ifdef CONFIG_IMX072
-	&msm_camera_sensor_imx072,
-#endif	
-#ifdef CONFIG_WEBCAM_OV9726
-	&msm_camera_sensor_ov9726,
+#ifdef CONFIG_MT9P017
+    &msm_camera_sensor_mt9p017,
 #endif
-#ifdef CONFIG_MT9E013
-	&msm_camera_sensor_mt9e013,
-#endif	
 };
 
 void __init lge_add_camera_devices(void)
@@ -371,4 +224,3 @@ void __init lge_add_camera_devices(void)
 #endif
 	platform_add_devices(m3_camera_devices, ARRAY_SIZE(m3_camera_devices));
 }
-

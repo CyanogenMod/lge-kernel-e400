@@ -7,5 +7,6 @@ obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-mmc.o
 obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-sound.o
 obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-panel.o
 obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-camera.o
+obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-pm.o
 
 obj-$(CONFIG_MACH_LGE) += devices_lge.o

@@ -3,6 +3,7 @@
 #include <linux/power_supply.h>
 
 #include <mach/msm_battery.h>
+#include <mach/board_lge.h>
 
 static u32 msm_calculate_batt_capacity(u32 current_voltage);
 

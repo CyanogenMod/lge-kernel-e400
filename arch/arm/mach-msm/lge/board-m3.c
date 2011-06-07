@@ -48,8 +48,6 @@
 
 #include "board-m3.h"
 
-#define PMEM_KERNEL_EBI1_SIZE	0x3A000
-#define MSM_PMEM_AUDIO_SIZE	0x5B000
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
 #define FM_GPIO	83
@@ -1179,31 +1177,6 @@ static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	},
 };
 
-#if defined(CONFIG_SERIAL_MSM_HSL_CONSOLE) \
-		&& defined(CONFIG_MSM_SHARED_GPIO_FOR_UART2DM)
-static struct msm_gpio uart2dm_gpios[] = {
-	{GPIO_CFG(19, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-							"uart2dm_rfr_n" },
-	{GPIO_CFG(20, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-							"uart2dm_cts_n" },
-	{GPIO_CFG(21, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-							"uart2dm_rx"    },
-	{GPIO_CFG(108, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-							"uart2dm_tx"    },
-};
-
-static void msm7x27a_cfg_uart2dm_serial(void)
-{
-	int ret;
-	ret = msm_gpios_request_enable(uart2dm_gpios,
-					ARRAY_SIZE(uart2dm_gpios));
-	if (ret)
-		pr_err("%s: unable to enable gpios for uart2dm\n", __func__);
-}
-#else
-static void msm7x27a_cfg_uart2dm_serial(void) { }
-#endif
-
 static struct resource resources_uart3[] = {
 	{
 		.start	= INT_UART3,
@@ -1288,7 +1261,6 @@ static void __init msm7x27a_init_ebi2(void)
 	iounmap(ebi2_cfg_ptr);
 }
 
-#define UART1DM_RX_GPIO		45
 static void __init msm7x2x_init(void)
 {
 	if (socinfo_init() < 0)
@@ -1302,7 +1274,6 @@ static void __init msm7x2x_init(void)
 	msm_device_i2c_init();
 
 	msm7x27a_init_ebi2();
-	msm7x27a_cfg_uart2dm_serial();
 
 #ifdef CONFIG_USB_MSM_OTG_72K
 		msm_otg_pdata.swfi_latency =
@@ -1338,6 +1309,7 @@ static void __init msm7x2x_init(void)
 	lge_add_sound_devices();
 	lge_add_lcd_devices();
 	lge_add_camera_devices();
+	lge_add_pm_devices();
 
 	/* gpio i2c devices should be registered at latest point */
 	lge_add_gpio_i2c_devices();
