@@ -1309,6 +1309,7 @@ static void __init msm7x2x_init(void)
 	lge_add_sound_devices();
 	lge_add_lcd_devices();
 	lge_add_camera_devices();
+	lge_add_pm_devices();
 
 	/* gpio i2c devices should be registered at latest point */
 	lge_add_gpio_i2c_devices();

@@ -355,3 +355,7 @@ __WEAK void __init lge_add_camera_devices(void)
 {
 }
 
+__WEAK void __init lge_add_pm_devices(void)
+{
+}
+
