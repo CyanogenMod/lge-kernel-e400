@@ -489,7 +489,7 @@ static void lm3530_early_suspend(struct early_suspend * h)
 	struct lm3530_driver_data *drvdata = container_of(h, struct lm3530_driver_data,
 						    early_suspend);
 
-	dprintk("start\n");
+	printk("lm3530_early_suspend ...\n");
 	lm3530_sleep(drvdata);
 
 	return;
@@ -500,7 +500,7 @@ static void lm3530_late_resume(struct early_suspend * h)
 	struct lm3530_driver_data *drvdata = container_of(h, struct lm3530_driver_data,
 						    early_suspend);
 
-	dprintk("start\n");
+	printk("lm3530_late_resume ...\n");
 	lm3530_wakeup(drvdata);
 
 	return;
