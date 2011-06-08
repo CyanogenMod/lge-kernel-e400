@@ -28,50 +28,55 @@ static struct dsi_buf r61529_rx_buf;
 
 static char config_mcap[2] = {0xb0, 0x04};
 static char config_set_tear_on[2] = {0x35, 0x00};
-static char config_set_addr[2] = {0x36, 0x48};
+static char config_set_tear_scanline[3] = {0x44, 0x00, 0x00};
+static char config_set_addr[2] = {0x36, 0x08};
 static char config_pixel_format[2] = {0x3a, 0x77};
 static char config_column_addr[5] = {0x2a, 0x00, 0x00, 0x01, 0x3f};
 static char config_page_addr[5] = {0x2b, 0x00, 0x00, 0x01, 0xdf};
 static char config_frame_mem_if[5] = {0xb3, 0x02, 0x00, 0x00, 0x00};
-static char config_panel_drv[9] = {0xc0, 0x01, 0xdf, 0x40, 0x13, 0x00, 0x01, 0x00, 0x33};
-static char config_display_timing[6] = {0xc1, 0x07, 0x27, 0x08, 0x08, 0x50};
+static char config_panel_drv[9] = {0xc0, 0x01, 0xdf, 0x40, 0x10, 0x00, 0x01, 0x00, 0x33};
+static char config_display_timing[6] = {0xc1, 0x07, 0x27, 0x08, 0x08, 0x10};
 static char config_src_gate_timing[5] = {0xc4, 0x77, 0x00, 0x03, 0x01};
 static char config_dpi_polarity[2] = {0xc6, 0x00};
-static char config_gamma_a[25] = {0xc8, 0x00, 0x07, 0x1F, 0x23, 0x30, 0x48, 0x37, 0x25,
-								  0x1C, 0x16, 0x10, 0x00, 0x00, 0x07, 0x1F, 0x23,
-								  0x30, 0x48, 0x37, 0x25, 0x1C, 0x16, 0x10, 0x00};
-static char config_gamma_b[25] = {0xc9, 0x00, 0x07, 0x1F, 0x23, 0x30, 0x48, 0x37, 0x25,
-								  0x1C, 0x16, 0x10, 0x00, 0x00, 0x07, 0x1F, 0x23,
-								  0x30, 0x48, 0x37, 0x25, 0x1C, 0x16, 0x10, 0x00};
-static char config_gamma_c[25] = {0xca, 0x00, 0x07, 0x1F, 0x23, 0x30, 0x48, 0x37, 0x25,
-								  0x1C, 0x16, 0x10, 0x00, 0x00, 0x07, 0x1F, 0x23,
-								  0x30, 0x48, 0x37, 0x25, 0x1C, 0x16, 0x10, 0x00};
-static char config_power_chg_pump[17] = {0xd0,0x95, 0x0E, 0x08, 0x20, 0x31, 0x04, 0x01, 0x00,
+static char config_gamma_a[25] = {0xc8, 0x00, 0x04, 0x11, 0x1c, 0x2e, 0x46, 0x39, 0x21,
+								  0x15, 0x0a, 0x05, 0x00, 0x00, 0x04, 0x11, 0x1c,
+								  0x2e, 0x46, 0x39, 0x21, 0x15, 0x0a, 0x05, 0x00};
+static char config_gamma_b[25] = {0xc9, 0x00, 0x04, 0x11, 0x1c, 0x2e, 0x46, 0x39, 0x21,
+								  0x15, 0x0a, 0x05, 0x00, 0x00, 0x04, 0x11, 0x1c,
+								  0x2e, 0x46, 0x39, 0x21, 0x15, 0x0a, 0x05, 0x00};
+static char config_gamma_c[25] = {0xca, 0x00, 0x04, 0x11, 0x1c, 0x2e, 0x46, 0x39, 0x21,
+								  0x15, 0x0a, 0x05, 0x00, 0x00, 0x04, 0x11, 0x1c,
+								  0x2e, 0x46, 0x39, 0x21, 0x15, 0x0a, 0x05, 0x00};
+static char config_power_chg_pump[17] = {0xd0,0x95, 0x06, 0x08, 0x20, 0x31, 0x04, 0x01, 0x00,
                                          0x08, 0x01, 0x00, 0x06, 0x01, 0x00, 0x00, 0x20};
 static char config_vcom[5] = {0xd1, 0x02, 0x1f, 0x1f, 0x38};
 static char config_backlight_ctrl1[21] = {0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 		                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static char config_backlight_ctrl2[5] = {0xb9, 0x00, 0x00, 0x00, 0x00};
+static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};
+
 static char config_nvm_access[5] = {0xe0, 0x00, 0x00, 0x00, 0x00};
 static char config_ddb_write[7] = {0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x70};
 static char config_nvm_load[2] = {0xe2, 0x80};
 static char config_write_memory[2] = {0x2c, 0x00};
 
 /*---------------------- display_on ----------------------------*/
-static char disp_sleep_out[5] = {0x11, 0x00, 0x00, 0x00, 0x00};
-static char disp_display_on[5] = {0x29, 0x00, 0x00, 0x00, 0x00};
+static char disp_sleep_out[1] = {0x11};
+static char disp_display_on[1] = {0x29};
 
 /*---------------------- sleep_mode_on ----------------------------*/
-static char sleep_display_off[5] = {0x28, 0x00, 0x00, 0x00, 0x00};
-static char sleep_mode_on[5] = {0x10, 0x00, 0x00, 0x00, 0x00};
-static char sleep_mcap[5] = {0xb0, 0x00, 0x00, 0x00, 0x00};
-static char sleep_low_power_mode[5] = {0xb1, 0x01, 0x00, 0x00, 0x00};
+static char sleep_display_off[1] = {0x28};
+static char sleep_mode_on[1] = {0x10};
+static char sleep_mcap[2] = {0xb0, 0x00};
+static char sleep_low_power_mode[2] = {0xb1, 0x01};
 
 static struct dsi_cmd_desc r61529_init_on_cmds[] = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_WRITE2, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_mcap), config_mcap},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_set_tear_on), config_set_tear_on},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+		sizeof(config_set_tear_scanline), config_set_tear_scanline},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_set_addr), config_set_addr},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, R61529_CMD_DELAY,
@@ -80,58 +85,60 @@ static struct dsi_cmd_desc r61529_init_on_cmds[] = {
 		sizeof(config_column_addr), config_column_addr},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_page_addr), config_page_addr},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_frame_mem_if), config_frame_mem_if},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_panel_drv), config_panel_drv},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_display_timing), config_display_timing},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_src_gate_timing), config_src_gate_timing},
-	{DTYPE_DCS_WRITE1, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_WRITE2, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_dpi_polarity), config_dpi_polarity},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_gamma_a), config_gamma_a},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_gamma_b), config_gamma_b},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_gamma_c), config_gamma_c}, 
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_power_chg_pump), config_power_chg_pump},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_vcom), config_vcom},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_backlight_ctrl1), config_backlight_ctrl1},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_backlight_ctrl2), config_backlight_ctrl2},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_READ1, 1, 0, 0, R61529_CMD_DELAY,
+		sizeof(config_backlight_ctrl3), config_backlight_ctrl3},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_nvm_access), config_nvm_access},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_ddb_write), config_ddb_write},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_WRITE2, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_nvm_load), config_nvm_load},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_write_memory), config_write_memory}
 };
 
 static struct dsi_cmd_desc r61529_disp_on_cmds[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 40,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 40,
 		sizeof(disp_display_on), disp_display_on}
 };
 
 static struct dsi_cmd_desc r61529_disp_off_cmds[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 40,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 40,
 		sizeof(sleep_display_off), sleep_display_off},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_mode_on), sleep_mode_on},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_mcap), sleep_mcap},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 100,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 100,
 		sizeof(sleep_low_power_mode), sleep_low_power_mode}
 };
 
 static struct dsi_cmd_desc r61529_sleep_out_cmds[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 120,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
 		sizeof(disp_sleep_out), disp_sleep_out},
 };
 
