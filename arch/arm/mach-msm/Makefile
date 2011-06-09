@@ -175,6 +175,7 @@ obj-$(CONFIG_ARCH_MSM7X27A) += clock-pcom-lookup.o
 obj-$(CONFIG_MACH_MSM7X27A_RUMI3) += board-msm7x27a.o devices-msm7x27a.o
 obj-$(CONFIG_MACH_MSM7X27A_SURF) += board-msm7x27a.o devices-msm7x27a.o
 obj-$(CONFIG_MACH_MSM7X27A_M3) += devices-msm7x27a.o
+obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += devices-msm7x27a.o
 obj-$(CONFIG_MACH_MSM7X27A_HDK) += devices-msm7x27a.o
 obj-$(CONFIG_MACH_MSM7X27A_FFA) += board-msm7x27a.o devices-msm7x27a.o
 obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30.o devices-msm7x30.o memory_topology.o
