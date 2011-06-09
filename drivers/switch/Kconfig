@@ -12,10 +12,4 @@ config SWITCH_GPIO
 	help
 	  Say Y here to enable GPIO based switch support.
 
-config LGE_SWITCH_GPIO
-	bool "LGE GPIO Swith support"
-	depends on GENERIC_GPIO
-	help
-	  Say Y here to enable LGE GPIO based switch support.
-
 endif # SWITCH

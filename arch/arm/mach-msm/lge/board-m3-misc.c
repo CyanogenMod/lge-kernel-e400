@@ -5,6 +5,8 @@
 #include <mach/msm_battery.h>
 #include <mach/board_lge.h>
 
+#include "devices-msm7x2xa.h"
+
 static u32 msm_calculate_batt_capacity(u32 current_voltage);
 
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
@@ -39,12 +41,15 @@ static struct platform_device msm_device_pmic_leds = {
 /* misc platform devices */
 static struct platform_device *m3_misc_devices[] __initdata = {
 	&msm_batt_device,
+	&msm_device_pmic_leds,
 };
 
 /* main interface */
 void __init lge_add_misc_devices(void)
 {
 	platform_add_devices(m3_misc_devices, ARRAY_SIZE(m3_misc_devices));
-	platform_device_register(&msm_device_pmic_leds);
+
+	/* QCT native Vibrator enable [mach-msm/msm_vibrator.c] */
+	msm_init_pmic_vibrator();
 }
 

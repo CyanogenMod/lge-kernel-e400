@@ -1,11 +1,6 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <linux/gpio.h>
-
 #include <mach/board.h>
-#include <mach/board_lge.h>
-
-#include "board-m3.h"
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
@@ -145,86 +140,10 @@ static struct platform_device msm_device_adspdec = {
 	},
 };
 
-/* ear sense driver */
-static char *ear_state_string[] = {
-	"0",
-	"1",
-};
-
-enum {
-	EAR_STATE_EJECT = 0,
-	EAR_STATE_INJECT = 1, 
-};
-
-enum {
-	EAR_EJECT = 0,
-	EAR_INJECT = 1,
-};
-
-static int m3eu_gpio_earsense_work_func(void)
-{
-	int state;
-	int gpio_value;
-
-	gpio_value = !gpio_get_value(GPIO_EAR_SENSE);
-	printk(KERN_INFO "%s: ear sense detected : %s\n", __func__,
-		gpio_value?"injected":"ejected");
-
-	if (gpio_value == EAR_EJECT)
-		state = EAR_STATE_EJECT;
-	else
-		state = EAR_STATE_INJECT;
-
-	return state;
-}
-
-static char *m3eu_gpio_earsense_print_state(int state)
-{
-	return ear_state_string[state];
-}
-
-static int m3eu_gpio_earsense_sysfs_store(const char *buf, size_t size)
-{
-	int state;
-
-	if (!strncmp(buf, "eject", size - 1))
-		state = EAR_STATE_EJECT;
-	else if (!strncmp(buf, "inject", size - 1))
-		state = EAR_STATE_INJECT;
-	else
-		return -EINVAL;
-
-	return state;
-}
-
-static unsigned m3eu_earsense_gpios[] = {
-	GPIO_EAR_SENSE,
-};
-
-static struct lge_gpio_switch_platform_data m3eu_earsense_data = {
-	.name = "h2w",
-	.gpios = m3eu_earsense_gpios,
-	.num_gpios = ARRAY_SIZE(m3eu_earsense_gpios),
-	.irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-	.wakeup_flag = 1,
-	.work_func = m3eu_gpio_earsense_work_func,
-	.print_state = m3eu_gpio_earsense_print_state,
-	.sysfs_store = m3eu_gpio_earsense_sysfs_store,
-};
-
-static struct platform_device m3eu_earsense_device = {
-	.name	= "lge-switch-gpio",
-	.id		= -1,
-	.dev	= {
-		.platform_data = &m3eu_earsense_data,
-	},
-};
-
 /* input platform device */
 static struct platform_device *m3_sound_devices[] __initdata = {
 	&msm_device_snd,
 	&msm_device_adspdec,
-	&m3eu_earsense_device,
 };
 
 /* common function */
