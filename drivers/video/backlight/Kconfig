@@ -313,6 +313,21 @@ config BACKLIGHT_LM3530
 	default n
 	help
 	  If you have a National Semiconductor LM3530, say Y to enable the backlight driver
+
+config BACKLIGHT_AAT2870
+	tristate "AAT2870 Backlight Driver "
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+	help
+	  If you have a ANALOGIC TECH AAT2870, say y to enable the backlight driver
+
+config SUBPMIC_LP8720
+	tristate "LP8720 LDO Driver "
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+	help
+	  If you have a National Semiconductor LP8720, say y to enable the backlight driver
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT

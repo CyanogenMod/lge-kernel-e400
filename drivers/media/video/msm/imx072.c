@@ -709,6 +709,11 @@ int imx072_sensor_open_init(const struct msm_camera_sensor_info *data)
 
 	if (data)
 		imx072_ctrl->sensordata = data;
+
+/*LGE: kiran.jainapure@lge.com Added */
+	data->pdata->camera_power_on();
+/*LGE: kiran.jainapure@lge.com Added */
+
 	if (rc < 0) {
 		pr_err("Calling imx072_sensor_open_init fail1\n");
 		return rc;
@@ -931,6 +936,11 @@ static int imx072_sensor_release(void)
 {
 	int rc = -EBADF;
 	mutex_lock(&imx072_mut);
+
+/*LGE: kiran.jainapure@lge.com Added */
+	imx072_ctrl->sensordata->pdata->camera_power_off();
+/*LGE: kiran.jainapure@lge.com Added */
+
 	imx072_power_down();
 	gpio_set_value_cansleep(imx072_ctrl->sensordata->sensor_reset, 0);
 	msleep(20);
@@ -953,17 +963,28 @@ static int imx072_sensor_probe(const struct msm_camera_sensor_info *info,
 		pr_err("I2C add driver failed");
 		goto probe_fail;
 	}
+/*LGE: kiran.jainapure@lge.com Commented*/
+/*
 	msm_camio_clk_rate_set(IMX072_MASTER_CLK_RATE);
 	rc = imx072_probe_init_sensor(info);
+
 	if (rc < 0)
 		goto probe_fail;
+*/
+/*LGE: kiran.jainapure@lge.com Commented*/
+
 	s->s_init = imx072_sensor_open_init;
 	s->s_release = imx072_sensor_release;
 	s->s_config  = imx072_sensor_config;
 	s->s_mount_angle = info->sensor_platform_info->mount_angle;
 
+/*LGE: kiran.jainapure@lge.com Commented*/
+/*
 	gpio_set_value_cansleep(info->sensor_reset, 0);
 	imx072_probe_init_done(info);
+*/
+/*LGE: kiran.jainapure@lge.com Commented*/
+
 	pr_info("imx072_sensor_probe : SUCCESS\n");
 	return rc;
 

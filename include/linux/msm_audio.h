@@ -339,6 +339,15 @@ struct msm_audio_eq_stream_config {
 	struct msm_audio_eq_band	eq_bands[AUDIO_MAX_EQ_BANDS];
 } __attribute__ ((packed));
 
+/* LGE_CHANGE_S, [sinjo.mattappallil@lge.com] , 2010-02-28, for hook key*/
+struct msm_snd_set_hook_mode_param {
+	int32_t mode;
+	int get_param;
+};
+
+#define SND_SET_HOOK_MODE _IOWR(SND_IOCTL_MAGIC, 20, struct msm_snd_set_hook_mode_param *)
+/* LGE_CHANGE_S, [sinjo.mattappallil@lge.com] , 2010-02-28, for hook key*/
+
 struct msm_acdb_cmd_device {
 	uint32_t     command_id;
 	uint32_t     device_id;

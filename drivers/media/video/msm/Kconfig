@@ -64,7 +64,7 @@ config MT9P012
 config MT9P017
 	bool "Sensor mt9p017 (BAYER 5M)"
 	depends on MSM_CAMERA && ARCH_MSM7X27A
-	default y
+	default n
 	---help---
 	  APTINA 5M Bayer Sensor
 choice
