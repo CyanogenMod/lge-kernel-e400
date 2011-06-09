@@ -54,7 +54,7 @@ static void mcs8000_early_suspend(struct early_suspend *h);
 static void mcs8000_late_resume(struct early_suspend *h);
 #endif
 
-#if defined (CONFIG_MACH_MSM7X27_JUMP)
+#if defined (CONFIG_MACH_LGE)
 #define SUPPORT_TOUCH_KEY 1
 #else
 #define SUPPORT_TOUCH_KEY 0
@@ -441,17 +441,16 @@ void mcs8000_firmware_info(unsigned char* fw_ver, unsigned char* hw_ver)
 
 	printk(KERN_INFO "MCS7000 H/W Revision [0x%x]\n", data);
 	*hw_ver = data;
-/* working test for touch by younchan.kim */
-
-	for ( try_cnt = 0 ; try_cnt < 0x35; try_cnt ++){
+#if 0
+	/* just touch i2c debug by younchan.kim */
+	for (try_cnt = 0x10 ; try_cnt < 0x15; try_cnt ++){
 		i2c_smbus_write_byte(dev->client, try_cnt);
 		data = i2c_smbus_read_byte(dev->client);
 		
-	//	data = i2c_smbus_read_byte_data(dev->client, try_cnt);
-	//	data = i2c_smbus_read_byte_data(dev->client, MCS7000_TS_FW_VERSION);
 		msleep(100);
 		printk(KERN_INFO "MCS7000 register data add[0x%x],[0x%x]\n",try_cnt,data);
 	}
+#endif
 #endif
 }
 /*
