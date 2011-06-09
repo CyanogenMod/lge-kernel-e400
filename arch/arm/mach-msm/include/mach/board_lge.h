@@ -109,19 +109,6 @@ struct lge_backlight_platform_data {
 	int version;				 /* Chip version number */
 };
 
-/* gpio switch platform data */
-struct lge_gpio_switch_platform_data {
-	const char *name;
-	unsigned *gpios;
-	size_t num_gpios;
-	unsigned long irqflags;
-	unsigned int wakeup_flag;
-	int (*work_func)(void);
-	char *(*print_state)(int state);
-	int (*sysfs_store)(const char *buf, size_t size);
-	int (*additional_init)(void);
-};
-
 void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 

@@ -77,8 +77,5 @@ enum {
 #define GPIO_SD_CLK         56
 #endif
 
-/* ear sense gpio */
-#define GPIO_EAR_SENSE		41
-
 #endif
 
