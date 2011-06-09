@@ -178,6 +178,11 @@ static int m3eu_gpio_earsense_work_func(void)
 	return state;
 }
 
+static char *m3eu_gpio_earsense_print_name(void)
+{
+	return "Headset";
+}
+
 static char *m3eu_gpio_earsense_print_state(int state)
 {
 	return ear_state_string[state];
@@ -202,12 +207,13 @@ static unsigned m3eu_earsense_gpios[] = {
 };
 
 static struct lge_gpio_switch_platform_data m3eu_earsense_data = {
-	.name = "h2w",
+	.name = "h2w_headset",
 	.gpios = m3eu_earsense_gpios,
 	.num_gpios = ARRAY_SIZE(m3eu_earsense_gpios),
 	.irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 	.wakeup_flag = 1,
 	.work_func = m3eu_gpio_earsense_work_func,
+	.print_name = m3eu_gpio_earsense_print_name,
 	.print_state = m3eu_gpio_earsense_print_state,
 	.sysfs_store = m3eu_gpio_earsense_sysfs_store,
 };

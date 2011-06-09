@@ -162,6 +162,7 @@ struct lge_gpio_switch_platform_data {
 	unsigned long irqflags;
 	unsigned int wakeup_flag;
 	int (*work_func)(void);
+	char *(*print_name)(void);
 	char *(*print_state)(int state);
 	int (*sysfs_store)(const char *buf, size_t size);
 	int (*additional_init)(void);
