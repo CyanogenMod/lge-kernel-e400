@@ -37,6 +37,7 @@ struct lge_gpio_switch_data {
 	int *irqs;
 	struct work_struct work;
 	int (*work_func)(void);
+	char *(*print_name)(void);
 	char *(*print_state)(int state);
 	int (*sysfs_store)(const char *buf, size_t size);
 };
@@ -60,6 +61,25 @@ static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
 	
 	schedule_work(&switch_data->work);
 	return IRQ_HANDLED;
+}
+
+static ssize_t switch_gpio_print_name(struct switch_dev *sdev, char *buf)
+{
+	struct lge_gpio_switch_data *switch_data =
+		container_of(sdev, struct lge_gpio_switch_data, sdev);
+	const char *name;
+	int cur_state;
+
+	cur_state = switch_get_state(sdev);
+	if (switch_data->print_name)
+		name = switch_data->print_name();
+	else
+		return -1;
+
+	if (name)
+		return sprintf(buf, "%s\n", name);
+
+	return -1;
 }
 
 static ssize_t switch_gpio_print_state(struct switch_dev *sdev, char *buf)
@@ -148,6 +168,7 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 	switch_data->work_func = pdata->work_func;
 	switch_data->print_state = pdata->print_state;
 	switch_data->sysfs_store = pdata->sysfs_store;
+	switch_data->sdev.print_name = switch_gpio_print_name;
 	switch_data->sdev.print_state = switch_gpio_print_state;
 	switch_data->irqs = kzalloc(sizeof(int) * pdata->num_gpios, GFP_KERNEL);
 
