@@ -325,42 +325,12 @@ struct acceleration_platform_data bma222 = {
 
 static struct gpio_i2c_pin accel_i2c_pin[] = {
 	[0] = {
-		.sda_pin	= ACCEL_GPIO_I2C_SDA,
-		.scl_pin	= ACCEL_GPIO_I2C_SCL,
+		.sda_pin	= SENSOR_GPIO_I2C_SDA,
+		.scl_pin	= SENSOR_GPIO_I2C_SCL,
 		.reset_pin	= 0,
 		.irq_pin	= ACCEL_GPIO_INT,
 	},
 };
-
-static struct i2c_gpio_platform_data accel_i2c_pdata = {
-	.sda_is_open_drain = 0,
-	.scl_is_open_drain = 0,
-	.udelay = 2,
-};
-
-static struct platform_device accel_i2c_device = {
-	.name = "i2c-gpio",
-	.dev.platform_data = &accel_i2c_pdata,
-};
-
-static struct i2c_board_info accel_i2c_bdinfo[] = {
-	[0] = {
-		I2C_BOARD_INFO("bma222", ACCEL_I2C_ADDRESS),
-		.type = "bma222",
-		.platform_data = &bma222,
-	},
-};
-
-static void __init m3_init_i2c_acceleration(int bus_num)
-{
-	accel_i2c_device.id = bus_num;
-
-	lge_init_gpio_i2c_pin(&accel_i2c_pdata, accel_i2c_pin[0], &accel_i2c_bdinfo[0]);
-
-	i2c_register_board_info(bus_num, &accel_i2c_bdinfo[0], 1);
-
-	platform_device_register(&accel_i2c_device);
-}
 
 /* ecompass */
 static int ecom_power_set(unsigned char onoff)
@@ -381,49 +351,19 @@ static int ecom_power_set(unsigned char onoff)
 }
 
 static struct ecom_platform_data ecom_pdata = {
-	.pin_int        	= ECOM_GPIO_INT,
+	.pin_int        = ECOM_GPIO_INT,
 	.pin_rst		= 0,
-	.power          	= ecom_power_set,
-};
-
-static struct i2c_board_info ecom_i2c_bdinfo[] = {
-	[0] = {
-		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
-		.type = "akm8975",
-		.platform_data = &ecom_pdata,
-	},
+	.power          = ecom_power_set,
 };
 
 static struct gpio_i2c_pin ecom_i2c_pin[] = {
 	[0] = {
-		.sda_pin	= ECOM_GPIO_I2C_SDA,
-		.scl_pin	= ECOM_GPIO_I2C_SCL,
+		.sda_pin	= SENSOR_GPIO_I2C_SDA,
+		.scl_pin	= SENSOR_GPIO_I2C_SCL,
 		.reset_pin	= 0,
 		.irq_pin	= ECOM_GPIO_INT,
 	},
 };
-
-static struct i2c_gpio_platform_data ecom_i2c_pdata = {
-	.sda_is_open_drain = 0,
-	.scl_is_open_drain = 0,
-	.udelay = 2,
-};
-
-static struct platform_device ecom_i2c_device = {
-        .name = "i2c-gpio",
-        .dev.platform_data = &ecom_i2c_pdata,
-};
-
-
-static void __init m3_init_i2c_ecom(int bus_num)
-{
-	ecom_i2c_device.id = bus_num;
-
-	lge_init_gpio_i2c_pin(&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[0]);
-
-	i2c_register_board_info(bus_num, &ecom_i2c_bdinfo[0], 1);
-	platform_device_register(&ecom_i2c_device);
-}
 
 /* proximity */
 static int prox_power_set(unsigned char onoff)
@@ -496,42 +436,56 @@ static struct proximity_platform_data proxi_pdata = {
 	.cycle = 2,
 };
 
-static struct i2c_board_info prox_i2c_bdinfo[] = {
+static struct gpio_i2c_pin proxi_i2c_pin[] = {
 	[0] = {
+		.sda_pin	= SENSOR_GPIO_I2C_SDA,
+		.scl_pin	= SENSOR_GPIO_I2C_SCL,
+		.reset_pin	= 0,
+		.irq_pin	= PROXI_GPIO_DOUT,
+	},
+};
+
+/* sensors common */
+static struct i2c_gpio_platform_data sensor_i2c_pdata = {
+	.sda_is_open_drain = 0,
+	.scl_is_open_drain = 0,
+	.udelay = 2,
+};
+
+static struct platform_device sensor_i2c_device = {
+	.name = "i2c-gpio",
+	.dev.platform_data = &sensor_i2c_pdata,
+};
+
+static struct i2c_board_info sensor_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("bma222", ACCEL_I2C_ADDRESS),
+		.type = "bma222",
+		.platform_data = &bma222,
+	},
+	[1] = {
+		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
+		.type = "akm8975",
+		.platform_data = &ecom_pdata,
+	},
+	[2] = {
 		I2C_BOARD_INFO("proximity_gp2ap", PROXI_I2C_ADDRESS),
 		.type = "proximity_gp2ap",
 		.platform_data = &proxi_pdata,
 	},
 };
 
-static struct gpio_i2c_pin proxi_i2c_pin[] = {
-	[0] = {
-		.sda_pin	= PROXI_GPIO_I2C_SDA,
-		.scl_pin	= PROXI_GPIO_I2C_SCL,
-		.reset_pin	= 0,
-		.irq_pin	= PROXI_GPIO_DOUT,
-	},
-};
-
-static struct i2c_gpio_platform_data proxi_i2c_pdata = {
-	.sda_is_open_drain = 0,
-	.scl_is_open_drain = 0,
-	.udelay = 2,
-};
-
-static struct platform_device proxi_i2c_device = {
-        .name = "i2c-gpio",
-        .dev.platform_data = &proxi_i2c_pdata,
-};
-
-static void __init m3_init_i2c_prox(int bus_num)
+static void __init m3_init_i2c_sensor(int bus_num)
 {
-	proxi_i2c_device.id = bus_num;
+	sensor_i2c_device.id = bus_num;
 
-	lge_init_gpio_i2c_pin(&proxi_i2c_pdata, proxi_i2c_pin[0], &prox_i2c_bdinfo[0]);
+	lge_init_gpio_i2c_pin(&sensor_i2c_pdata, accel_i2c_pin[0], &sensor_i2c_bdinfo[0]);
+	lge_init_gpio_i2c_pin(&sensor_i2c_pdata, ecom_i2c_pin[0], &sensor_i2c_bdinfo[1]);
+	lge_init_gpio_i2c_pin(&sensor_i2c_pdata, proxi_i2c_pin[0], &sensor_i2c_bdinfo[2]);
 
-	i2c_register_board_info(bus_num, &prox_i2c_bdinfo[0], 1);
-	platform_device_register(&proxi_i2c_device);
+	i2c_register_board_info(bus_num, sensor_i2c_bdinfo, ARRAY_SIZE(sensor_i2c_bdinfo));
+
+	platform_device_register(&sensor_i2c_device);
 }
 
 /* common function */
@@ -540,7 +494,5 @@ void __init lge_add_input_devices(void)
 	platform_add_devices(m3_input_devices, ARRAY_SIZE(m3_input_devices));
 	platform_add_devices(m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
 	lge_add_gpio_i2c_device(m3_init_i2c_touch);
-	lge_add_gpio_i2c_device(m3_init_i2c_acceleration);
-	lge_add_gpio_i2c_device(m3_init_i2c_ecom);
-	lge_add_gpio_i2c_device(m3_init_i2c_prox);
+	lge_add_gpio_i2c_device(m3_init_i2c_sensor);
 }
