@@ -1,5 +1,5 @@
-#ifndef __ARCH_MSM_BOARD_M3_H
-#define __ARCH_MSM_BOARD_M3_H
+#ifndef __ARCH_MSM_BOARD_MSM7X27A_HDK_H
+#define __ARCH_MSM_BOARD_MSM7X27A_HDK_H
 
 enum {
 	GPIO_EXPANDER_IRQ_BASE	= NR_MSM_IRQS + NR_GPIO_IRQS,
@@ -39,29 +39,34 @@ enum {
 #define TS_X_MAX		320
 #define TS_Y_MIN		0
 #define TS_Y_MAX		480
-#define TS_GPIO_I2C_SDA		17
-#define TS_GPIO_I2C_SCL		4
+#define TS_GPIO_I2C_SDA 132
+#define TS_GPIO_I2C_SCL 131
 #define TS_GPIO_IRQ		39
-#define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */
+#define TS_I2C_SLAVE_ADDR	0x4A	/* slave address 7bit - Atmel qt602240 */
+#define TS_GPIO_LDO_EN  130
 
 /* accelerometer */
 #define ACCEL_GPIO_INT	 		114
 #define ACCEL_GPIO_I2C_SCL  	116
 #define ACCEL_GPIO_I2C_SDA  	115
-#define ACCEL_I2C_ADDRESS		0x08 /* slave address 7bit - BMA222 */
+#define ACCEL_I2C_ADDRESS		0x19 /* slave address 7bit - K3DH */
+#define ACCEL_VREG_2_8V         "gp2"
 
 /* Ecompass */
-#define ECOM_GPIO_I2C_SCL		107
-#define ECOM_GPIO_I2C_SDA		109
-#define ECOM_GPIO_INT			18 /* DRDY */
-#define ECOM_I2C_ADDRESS		0x0C /* slave address 7bit - AK8975C */
+#define ECOM_GPIO_I2C_SCL		60
+#define ECOM_GPIO_I2C_SDA		61
+#define ECOM_GPIO_INT			18   /* DRDY */
+#define ECOM_I2C_ADDRESS		0x0E /* slave address 7bit - AMI306 */
+#define COMP_GPIO_DRDY			18
+#define ECOM_VREG_2_8V          "gp2"
 
 /* proximity sensor */
-#define PROXI_GPIO_I2C_SCL	16   
-#define PROXI_GPIO_I2C_SDA 	30   
-#define PROXI_GPIO_DOUT		83
+#define PROXI_GPIO_I2C_SCL	60
+#define PROXI_GPIO_I2C_SDA 	61 
+#define PROXI_GPIO_DOUT		17
 #define PROXI_I2C_ADDRESS	0x44 /* slave address 7bit - GP2AP002 */
 #define PROXI_LDO_NO_VCC	1
+#define PROXI_VREG_2_8V		"gp2"
 
 /* sdcard related macros */
 #ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
@@ -79,6 +84,6 @@ enum {
 
 /* ear sense gpio */
 #define GPIO_EAR_SENSE		41
+#define GPIO_BUTTON_DETECT  128
 
 #endif
-

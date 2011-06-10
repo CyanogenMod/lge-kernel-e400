@@ -39,27 +39,25 @@ enum {
 #define TS_X_MAX		320
 #define TS_Y_MIN		0
 #define TS_Y_MAX		480
-#define TS_GPIO_I2C_SDA		17
-#define TS_GPIO_I2C_SCL		4
+#define TS_GPIO_I2C_SDA		120
+#define TS_GPIO_I2C_SCL		119
 #define TS_GPIO_IRQ		39
 #define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */
 
+/* common sensor i2c */
+#define SENSOR_GPIO_I2C_SCL  	131
+#define SENSOR_GPIO_I2C_SDA  	132
+
 /* accelerometer */
-#define ACCEL_GPIO_INT	 		114
-#define ACCEL_GPIO_I2C_SCL  	116
-#define ACCEL_GPIO_I2C_SDA  	115
+#define ACCEL_GPIO_INT	 		28
 #define ACCEL_I2C_ADDRESS		0x08 /* slave address 7bit - BMA222 */
 
 /* Ecompass */
-#define ECOM_GPIO_I2C_SCL		107
-#define ECOM_GPIO_I2C_SDA		109
 #define ECOM_GPIO_INT			18 /* DRDY */
 #define ECOM_I2C_ADDRESS		0x0C /* slave address 7bit - AK8975C */
 
 /* proximity sensor */
-#define PROXI_GPIO_I2C_SCL	16   
-#define PROXI_GPIO_I2C_SDA 	30   
-#define PROXI_GPIO_DOUT		83
+#define PROXI_GPIO_DOUT		29
 #define PROXI_I2C_ADDRESS	0x44 /* slave address 7bit - GP2AP002 */
 #define PROXI_LDO_NO_VCC	1
 

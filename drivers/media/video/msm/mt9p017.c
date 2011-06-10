@@ -964,8 +964,8 @@ static int32_t mt9p017_power_down(void)
     mt9p017_i2c_write_b_sensor(REG_VCM_ANALOG_POWER, 0x0000);
     msleep(mt9p017_delay_msecs_stdby);
 
-	if(mt9p017_ctrl)
-		mt9p017_ctrl->sensordata->pdata->camera_power_off();
+    if(mt9p017_ctrl)
+        mt9p017_ctrl->sensordata->pdata->camera_power_off();
 
     CDBG("mt9p017_entering power_down completed\n");
     return 0;
@@ -983,12 +983,13 @@ static int mt9p017_probe_init_sensor(const struct msm_camera_sensor_info *data)
 	rc = mt9p017_i2c_read_w(mt9p017_client->addr, MT9P017_REG_MODEL_ID, &chipid);
 	if (rc < 0)
 		goto init_probe_fail;
-		
+
 	CDBG("mt9p017 model_id = 0x%x\n", chipid);
 
 	/* 4. Compare sensor ID to MT9P017 ID: */
 	if (chipid != MT9P017_MODEL_ID) {
 		rc = -ENODEV;
+		printk(KERN_ERR "mt9p017 model_id = 0x%x\n", chipid);
 		goto init_probe_fail;
 	}
 	
@@ -1025,10 +1026,6 @@ int mt9p017_sensor_open_init(const struct msm_camera_sensor_info *data)
 		mt9p017_ctrl->sensordata = data;
 
 	msm_camio_clk_rate_set(MT9P017_DEFAULT_MASTER_CLK_RATE); 
-
-	printk(KERN_ERR "mt9p017_sensor_open_init: msm_camio_clk_rate_set : %d\n",MT9P017_DEFAULT_MASTER_CLK_RATE); 
-	
-	printk(KERN_ERR "camera_power_on 1"); 
 
 	// power on
 	data->pdata->camera_power_on();
@@ -1292,7 +1289,7 @@ static int mt9p017_sensor_probe(const struct msm_camera_sensor_info *info,
 	s->s_release = mt9p017_sensor_release;
 	s->s_config  = mt9p017_sensor_config;
 	s->s_camera_type = BACK_CAMERA_2D;
-	s->s_mount_angle = 0;
+	s->s_mount_angle = 90;
 
 	CDBG("mt9p017_sensor_probe: SENSOR PROBE completed !\n");
 	return rc;

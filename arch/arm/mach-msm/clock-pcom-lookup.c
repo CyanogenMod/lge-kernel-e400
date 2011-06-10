@@ -290,7 +290,7 @@ struct clk_lookup msm_clocks_7x27a[] = {
 	CLK_LOOKUP("tsif_pclk",		tsif_p_clk.c,	NULL),
 	CLK_LOOKUP("uart_clk",		uart1_clk.c,	"msm_serial.0"),
 	CLK_LOOKUP("uart_clk",		uart2_clk.c,	"msm_serial.1"),
-#if defined (CONFIG_MACH_MSM7X27A_M3)
+#if defined (CONFIG_MACH_MSM7X27A_M3) || defined(CONFIG_MACH_MSM7X27A_HDK)
 	CLK_LOOKUP("uart_clk",		uart3_clk.c,	"msm_serial.2"),
 #endif
 	CLK_LOOKUP("uartdm_clk",	uart1dm_clk.c,	"msm_serial_hs.0"),

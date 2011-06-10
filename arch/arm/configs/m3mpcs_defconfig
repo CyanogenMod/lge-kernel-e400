@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38.6 Kernel Configuration
-# Thu Jun  9 15:17:19 2011
+# Thu Jun  9 20:35:01 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -306,7 +306,8 @@ CONFIG_MACH_LGE=y
 #
 # LGE Board Selection
 #
-CONFIG_MACH_MSM7X27A_M3=y
+# CONFIG_MACH_MSM7X27A_M3 is not set
+CONFIG_MACH_MSM7X27A_M3MPCS=y
 # CONFIG_MACH_MSM7X27A_HDK is not set
 
 #

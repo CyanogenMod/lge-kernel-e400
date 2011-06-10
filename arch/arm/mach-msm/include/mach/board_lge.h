@@ -72,6 +72,35 @@ struct acceleration_platform_data {
 	int (*power)(unsigned char onoff);
 };
 
+#if defined(CONFIG_SENSOR_K3DH)
+/* k3dh acceleration platform data */
+struct k3dh_platform_data {
+	int poll_interval;
+	int min_interval;
+
+	u8 g_range;
+
+	u8 axis_map_x;
+	u8 axis_map_y;
+	u8 axis_map_z;
+
+	u8 negate_x;
+	u8 negate_y;
+	u8 negate_z;
+
+	int (*kr_init)(void);
+	void (*kr_exit)(void);
+	int (*power_on)(void);
+	int (*power_off)(void);
+	int sda_pin;
+	int scl_pin;
+	int pin_int;
+	int (*gpio_config)(int);
+	//int gpio_int;
+	//int irq;
+};
+#endif
+
 /* ecompass platform data */
 struct ecom_platform_data {
 	int pin_int;
@@ -87,6 +116,7 @@ struct ecom_platform_data {
 	int sensitivity1g;
 	s16 *h_layout;
 	s16 *a_layout;
+	int drdy;
 };
 
 /* proximity platform data */
@@ -107,6 +137,35 @@ struct lge_backlight_platform_data {
 	int max_current;			 /* led max current(0-7F) */
 	int initialized;			 /* flag which initialize on system boot */
 	int version;				 /* Chip version number */
+};
+
+/* android vibrator platform data */
+struct android_vibrator_platform_data {
+	int enable_status;
+	int (*power_set)(int enable); 		/* LDO Power Set Function */
+	int (*pwm_set)(int enable, int gain); 		/* PWM Set Function */
+	int (*ic_enable_set)(int enable); 	/* Motor IC Set Function */
+	int (*gpio_request)(void);	/* gpio request */
+	int amp_value;				/* PWM tuning value */
+};
+
+struct gpio_h2w_platform_data {
+	int gpio_detect;
+	int gpio_button_detect;
+};
+
+/* gpio switch platform data */
+struct lge_gpio_switch_platform_data {
+	const char *name;
+	unsigned *gpios;
+	size_t num_gpios;
+	unsigned long irqflags;
+	unsigned int wakeup_flag;
+	int (*work_func)(void);
+	char *(*print_name)(void);
+	char *(*print_state)(int state);
+	int (*sysfs_store)(const char *buf, size_t size);
+	int (*additional_init)(void);
 };
 
 void __init msm_msm7x2x_allocate_memory_regions(void);

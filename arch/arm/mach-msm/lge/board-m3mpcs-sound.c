@@ -5,7 +5,7 @@
 #include <mach/board.h>
 #include <mach/board_lge.h>
 
-#include "board-m3.h"
+#include "board-m3mpcs.h"
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {

@@ -70,7 +70,7 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 }
 #else
 
-staticevoid msm_keypad_bl_led_set(struct led_classdev *led_cdev,
+static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	enum led_brightness value)
 {
 	int ret;

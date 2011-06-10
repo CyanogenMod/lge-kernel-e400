@@ -39,7 +39,7 @@
 
 #include <mach/board_lge.h>
 
-#define PROXIMITY_DEBUG_PRINT	(1)
+#define PROXIMITY_DEBUG_PRINT	(0)
 #define PROXIMITY_ERROR_PRINT	(1)
 
 /* GP2AP002 Debug mask value
@@ -60,9 +60,9 @@ enum {
 };
 
 static unsigned int gp2ap_debug_mask = 
-	GP2AP_DEBUG_DEV_STATUS |									\
+/*	GP2AP_DEBUG_DEV_STATUS |									\
 	GP2AP_DEBUG_DEV_DEBOUNCE |									\
-	GP2AP_DEBUG_FUNC_TRACE |									\
+	GP2AP_DEBUG_FUNC_TRACE |									\*/
 	GP2AP_DEBUG_ERR_CHECK;
 
 module_param_named(debug_mask, gp2ap_debug_mask, int,

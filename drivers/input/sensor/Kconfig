@@ -55,4 +55,30 @@ config SENSOR_BMA222_HAS_EARLYSUSPEND
 	  If you say yes here you get has early suspend and late resume for Bosch Sensortec's 
 	  acceleration sensors BMA222.
 
+config SENSOR_AMI304
+        tristate "AMI304 based compass sensor"
+        help
+          Say Y here if you have a sensor interface using the
+          AMI304 controller, and your board-specific
+          setup code includes i2c devices.
+
+          If unsure, say N (but it's safe to say "Y"). 
+	  
+config SENSOR_AMI306
+        tristate "AMI306 based gyro sensor"
+        help
+          Say Y here if you have a sensor interface using the
+          AMI306 controller, and your board-specific
+          setup code includes i2c devices.
+
+          If unsure, say N (but it's safe to say "Y"). 
+
+config SENSOR_K3DH
+        tristate "K3DH based acceleration sensor"
+        help
+          Say Y here if you have a sensor interface using the
+          K3DH controller, and your board-specific
+          setup code includes i2c devices.
+
+          If unsure, say N (but it's safe to say "Y"). 	  
 endif

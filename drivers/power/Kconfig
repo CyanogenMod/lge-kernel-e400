@@ -212,6 +212,13 @@ config BATTERY_MSM
 	help
 	  Say Y to enable support for the battery in Qualcomm MSM.
 
+config FUELGAUGE_MAXIM17040
+	tristate "MAXIM17040 for test purpose (HDK)"
+	depends on ARCH_MSM
+	default m
+	help
+	  Say Y to enable support for MAXIM17040 fuel gauge test for HDK
+
 config BATTERY_MSM8X60
 	tristate "MSM8X60 battery"
 	depends on (MACH_MSM8X60_SURF|| MACH_MSM8X60_FFA || MACH_TYPE_MSM8X60_FUSION || MACH_MSM8X60_FUSN_FFA)
