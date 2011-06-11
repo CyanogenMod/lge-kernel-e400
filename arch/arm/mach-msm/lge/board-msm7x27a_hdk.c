@@ -1209,6 +1209,7 @@ static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 static struct platform_device *hdk_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
+	&msm_device_nand,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
 	&msm_device_otg,
