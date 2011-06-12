@@ -278,13 +278,32 @@ static int fbcon_get_rotate(struct fb_info *info)
 	return (ops) ? ops->rotate : 0;
 }
 
+/* LGE_CHANGE_S
+ * Change codes to remove console cursor on booting screen. Refered to VS740
+ * 2010-07-31. minjong.gong@lge.com
+ */
+#ifdef CONFIG_LGE_FBCON_INACTIVE_CONSOLE
+extern int msm_fb_get_console_inactive(void);
+#endif
+/* LGE_CHANGE_E, 2010-07-31. minjong.gong@lge.com  */
 static inline int fbcon_is_inactive(struct vc_data *vc, struct fb_info *info)
 {
 	struct fbcon_ops *ops = info->fbcon_par;
 
+/* LGE_CHANGE_S
+ * Change codes to remove console cursor on booting screen. Refered to VS740
+ * 2010-07-31. minjong.gong@lge.com
+ */
+#ifdef CONFIG_LGE_FBCON_INACTIVE_CONSOLE
+	return (info->state != FBINFO_STATE_RUNNING ||
+		vc->vc_mode != KD_TEXT || ops->graphics || msm_fb_get_console_inactive()) &&
+		!vt_force_oops_output(vc);
+#else
 	return (info->state != FBINFO_STATE_RUNNING ||
 		vc->vc_mode != KD_TEXT || ops->graphics) &&
 		!vt_force_oops_output(vc);
+#endif
+/* LGE_CHANGE_E, 2010-07-31. minjong.gong@lge.com  */
 }
 
 static int get_color(struct vc_data *vc, struct fb_info *info,
