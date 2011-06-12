@@ -299,7 +299,7 @@ static ssize_t show_bma222_sensordata(struct device *dev,
 	return sprintf(buf, "%s\n", strbuf);
 }
 
-static DEVICE_ATTR(bma222_enable, S_IRUGO | S_IWUSR, show_bma222_enable, store_bma222_enable);
+static DEVICE_ATTR(bma222_enable, S_IRUGO | /*S_IWUSR*/S_IWUGO, show_bma222_enable, store_bma222_enable);
 static DEVICE_ATTR(bma222_sensordata, S_IRUGO, show_bma222_sensordata, NULL);
 
 static struct attribute *bma222_attributes[] = {
