@@ -28,79 +28,83 @@ static uint32_t camera_on_gpio_table[] = {
 static void msm_camera_vreg_config(int vreg_en)
 {
 	static int gpio_initialzed = 0;
+	static struct regulator* ldo2 = NULL;
+	static struct regulator* ldo3 = NULL;
+	static struct regulator* ldo4 = NULL;
 	int rc;
-	struct regulator* ldo2 = NULL;
-	struct regulator* ldo3 = NULL;
-	struct regulator* ldo4 = NULL;
 
-	/* TODO : error checking */
-	ldo4 = regulator_get(NULL, "RT8053_LDO4");
-	if (ldo4 == NULL) {
-		pr_err("%s: regulator_get(ldo4) failed\n", __func__);
-	}
-	rc = regulator_set_voltage(ldo4, 1800000, 1800000);
-	if (rc < 0) {
-		pr_err("%s: regulator_set_voltage(ldo4) failed\n", __func__);
-	}
-
-	ldo2 = regulator_get(NULL, "RT8053_LDO2");
-	if (ldo2 == NULL) {
-		pr_err("%s: regulator_get(ldo2) failed\n", __func__);
-	}
-	rc = regulator_set_voltage(ldo2, 2800000, 2800000);
-	if (rc < 0) {
-		pr_err("%s: regulator_set_voltage(ldo2) failed\n", __func__);
-	}
-
-	ldo3 = regulator_get(NULL, "RT8053_LDO3");
-	if (ldo3 == NULL) {
-		pr_err("%s: regulator_get(ldo3) failed\n", __func__);
-	}
-	rc = regulator_set_voltage(ldo3, 2800000, 2800000);
-	if (rc < 0) {
-		pr_err("%s: regulator_set_voltage(ldo3) failed\n", __func__);
+	if (!gpio_initialzed) {
+		gpio_request(GPIO_CAM_RESET, "cam_reset");
+		gpio_direction_output(GPIO_CAM_RESET, 0);
+		gpio_initialzed = 1;
 	}
 
 	if (vreg_en) {
-		/* TODO : reset sequence rechecking */
-		if (!gpio_initialzed) {
-			gpio_request(GPIO_CAM_RESET, "cam_reset");
-			gpio_initialzed = 1;
-		}
-		gpio_direction_output(GPIO_CAM_RESET, 0);
+		gpio_set_value(GPIO_CAM_RESET, 1);
+		mdelay(1);
 
+		/* TODO : error checking */
+		ldo4 = regulator_get(NULL, "RT8053_LDO4");
+		if (ldo4 == NULL) {
+			pr_err("%s: regulator_get(ldo4) failed\n", __func__);
+		}
+
+		ldo2 = regulator_get(NULL, "RT8053_LDO2");
+		if (ldo2 == NULL) {
+			pr_err("%s: regulator_get(ldo2) failed\n", __func__);
+		}
+
+		ldo3 = regulator_get(NULL, "RT8053_LDO3");
+		if (ldo3 == NULL) {
+			pr_err("%s: regulator_get(ldo3) failed\n", __func__);
+		}
+
+		rc = regulator_set_voltage(ldo4, 1800000, 1800000);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo4) failed\n", __func__);
+		}
 		rc = regulator_enable(ldo4);
 		if (rc < 0) {
 			pr_err("%s: regulator_enable(ldo4) failed\n", __func__);
 		}
 
+		rc = regulator_set_voltage(ldo2, 2800000, 2800000);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo2) failed\n", __func__);
+		}
 		rc = regulator_enable(ldo2);
 		if (rc < 0) {
 			pr_err("%s: regulator_enable(ldo2) failed\n", __func__);
 		}
 
+		rc = regulator_set_voltage(ldo3, 2800000, 2800000);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo3) failed\n", __func__);
+		}
 		rc = regulator_enable(ldo3);
 		if (rc < 0) {
 			pr_err("%s: regulator_enable(ldo3) failed\n", __func__);
 		}
-
-		gpio_set_value(GPIO_CAM_RESET, 1);
-		mdelay(1);
 	} else {
-		rc = regulator_disable(ldo4);
-		if (rc < 0) {
-			pr_err("%s: regulator_disable(ldo4) failed\n", __func__);
-		}
-
-		rc = regulator_disable(ldo2);
-		if (rc < 0) {
-			pr_err("%s: regulator_disble(ldo2) failed\n", __func__);
-		}
+		gpio_set_value(GPIO_CAM_RESET, 0);
 
 		rc = regulator_disable(ldo3);
 		if (rc < 0) {
 			pr_err("%s: regulator_disable(ldo3) failed\n", __func__);
 		}
+		regulator_put(ldo3);
+
+		rc = regulator_disable(ldo2);
+		if (rc < 0) {
+			pr_err("%s: regulator_disble(ldo2) failed\n", __func__);
+		}
+		regulator_put(ldo2);
+
+		rc = regulator_disable(ldo4);
+		if (rc < 0) {
+			pr_err("%s: regulator_disable(ldo4) failed\n", __func__);
+		}
+		regulator_put(ldo4);
 	}
 
 	return;
@@ -150,7 +154,11 @@ static void config_camera_off_gpios_rear(void)
 
 static int camera_power_on_rear(void)
 {
-	/* TODO: dummy function */
+	/* mt9p017 power on sequence: cam reset after enabling MCLK */
+	gpio_set_value(GPIO_CAM_RESET, 0);
+	mdelay(2);
+	gpio_set_value(GPIO_CAM_RESET, 1);
+	mdelay(2);
 	return 0;
 }
 
