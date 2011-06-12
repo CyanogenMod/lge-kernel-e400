@@ -1,6 +1,7 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/input.h>
 
 #include <mach/board.h>
 #include <mach/board_lge.h>
@@ -168,7 +169,7 @@ static int m3eu_gpio_earsense_work_func(void)
 
 	gpio_value = !gpio_get_value(GPIO_EAR_SENSE);
 	printk(KERN_INFO "%s: ear sense detected : %s\n", __func__,
-		gpio_value?"injected":"ejected");
+		gpio_value ? "injected" : "ejected");
 
 	if (gpio_value == EAR_EJECT)
 		state = EAR_STATE_EJECT;
@@ -206,6 +207,23 @@ static unsigned m3eu_earsense_gpios[] = {
 	GPIO_EAR_SENSE,
 };
 
+/* especially to address gpio key */
+static unsigned m3eu_hook_key_gpios[] = {
+	GPIO_BUTTON_DETECT,
+};
+
+static int m3eu_gpio_hook_key_work_func(int *value)
+{
+	int gpio_value;
+
+	*value = KEY_MEDIA;
+	gpio_value = !gpio_get_value(GPIO_BUTTON_DETECT);
+	printk(KERN_INFO "%s: hook key detected : %s\n", __func__,
+		gpio_value ? "pressed" : "released");
+
+	return gpio_value;
+}
+
 static struct lge_gpio_switch_platform_data m3eu_earsense_data = {
 	.name = "h2w_headset",
 	.gpios = m3eu_earsense_gpios,
@@ -216,6 +234,11 @@ static struct lge_gpio_switch_platform_data m3eu_earsense_data = {
 	.print_name = m3eu_gpio_earsense_print_name,
 	.print_state = m3eu_gpio_earsense_print_state,
 	.sysfs_store = m3eu_gpio_earsense_sysfs_store,
+
+	/* especially to address gpio key */
+	.key_gpios = m3eu_hook_key_gpios,
+	.num_key_gpios = ARRAY_SIZE(m3eu_hook_key_gpios),
+	.key_work_func = m3eu_gpio_hook_key_work_func,
 };
 
 static struct platform_device m3eu_earsense_device = {

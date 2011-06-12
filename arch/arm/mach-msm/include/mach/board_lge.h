@@ -166,6 +166,11 @@ struct lge_gpio_switch_platform_data {
 	char *(*print_state)(int state);
 	int (*sysfs_store)(const char *buf, size_t size);
 	int (*additional_init)(void);
+
+	/* especially to address gpio key */
+	unsigned *key_gpios;
+	size_t num_key_gpios;
+	int (*key_work_func)(int *value);
 };
 
 void __init msm_msm7x2x_allocate_memory_regions(void);

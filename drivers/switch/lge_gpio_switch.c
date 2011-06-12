@@ -17,6 +17,7 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
+#include <linux/input.h>
 #include <linux/switch.h>
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
@@ -34,12 +35,18 @@ struct lge_gpio_switch_data {
 	size_t num_gpios;
 	unsigned long irqflags;
 	unsigned int wakeup_flag;
-	int *irqs;
 	struct work_struct work;
 	int (*work_func)(void);
 	char *(*print_name)(void);
 	char *(*print_state)(int state);
 	int (*sysfs_store)(const char *buf, size_t size);
+
+	/* especially to address gpio key */
+	unsigned *key_gpios;
+	size_t num_key_gpios;
+	struct work_struct key_work;
+	int (*key_work_func)(int *value);
+	struct input_dev *ipdev;
 };
 
 struct lge_gpio_switch_data *lge_switch_data;
@@ -49,9 +56,11 @@ static void gpio_switch_work(struct work_struct *work)
 	int state;
 	struct lge_gpio_switch_data	*data =
 		container_of(work, struct lge_gpio_switch_data, work);
-	
-	state = data->work_func();
-	switch_set_state(&data->sdev, state);
+
+	if (data->work_func) {
+		state = data->work_func();
+		switch_set_state(&data->sdev, state);
+	}
 }
 
 static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
@@ -60,6 +69,31 @@ static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
 	    (struct lge_gpio_switch_data *)dev_id;
 	
 	schedule_work(&switch_data->work);
+	return IRQ_HANDLED;
+}
+
+static void key_gpio_switch_work(struct work_struct *work)
+{
+	int state;
+	int value;
+	struct lge_gpio_switch_data	*data =
+		container_of(work, struct lge_gpio_switch_data, key_work);
+
+	if (data->key_work_func) {
+		state = data->key_work_func(&value);
+		if (value > 0) {
+			input_report_key(data->ipdev, value, state);
+			input_sync(data->ipdev);
+		}
+	}
+}
+
+static irqreturn_t key_gpio_irq_handler(int irq, void *dev_id)
+{
+	struct lge_gpio_switch_data *switch_data =
+	    (struct lge_gpio_switch_data *)dev_id;
+
+	schedule_work(&switch_data->key_work);
 	return IRQ_HANDLED;
 }
 
@@ -170,7 +204,12 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 	switch_data->sysfs_store = pdata->sysfs_store;
 	switch_data->sdev.print_name = switch_gpio_print_name;
 	switch_data->sdev.print_state = switch_gpio_print_state;
-	switch_data->irqs = kzalloc(sizeof(int) * pdata->num_gpios, GFP_KERNEL);
+
+	/* especially to address gpio key */
+	switch_data->key_gpios = pdata->key_gpios;
+	switch_data->num_key_gpios = pdata->num_key_gpios;
+	switch_data->key_work_func = pdata->key_work_func;
+	switch_data->ipdev = input_allocate_device();
 
 	list_add_tail(&switch_data->list, &switchs);
 
@@ -195,21 +234,65 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 	INIT_WORK(&switch_data->work, gpio_switch_work);
 
 	for(index = 0; index < switch_data->num_gpios; index++) {
-		switch_data->irqs[index] = gpio_to_irq(switch_data->gpios[index]);
-		if (switch_data->irqs[index] < 0) {
-			ret = switch_data->irqs[index];
+		if (switch_data->gpios[index] < 0) {
+			ret = switch_data->gpios[index];
 			goto err_request_gpio;
 		}
 
-		ret = request_irq(switch_data->irqs[index], gpio_irq_handler,
+		ret = request_irq(gpio_to_irq(switch_data->gpios[index]),
+				gpio_irq_handler,
 				switch_data->irqflags,
 				pdata->name, switch_data);
 		if (ret < 0)
 			goto err_request_gpio;
-		
+
 		if (switch_data->wakeup_flag)
-			set_irq_wake(switch_data->irqs[index], 1);
-	}	
+			set_irq_wake(gpio_to_irq(switch_data->gpios[index]), 1);
+	}
+
+	/* especially to address gpio key */
+	for(index = 0; index < switch_data->num_key_gpios; index++) {
+		gpio_tlmm_config(GPIO_CFG(switch_data->key_gpios[index], 0,
+					GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+
+		ret = gpio_request(switch_data->key_gpios[index], pdev->name);
+		if (ret < 0)
+			goto err_request_gpio;
+
+		ret = gpio_direction_input(switch_data->key_gpios[index]);
+		if (ret < 0)
+			goto err_request_gpio;
+	}
+
+	INIT_WORK(&switch_data->key_work, key_gpio_switch_work);
+
+	for(index = 0; index < switch_data->num_key_gpios; index++) {
+		if (switch_data->key_gpios[index] < 0) {
+			ret = switch_data->key_gpios[index];
+			goto err_request_gpio;
+		}
+
+		ret = request_irq(gpio_to_irq(switch_data->key_gpios[index]),
+				key_gpio_irq_handler,
+				switch_data->irqflags,
+				pdata->name, switch_data);
+		if (ret < 0)
+			goto err_request_gpio;
+
+		if (switch_data->wakeup_flag)
+			set_irq_wake(gpio_to_irq(switch_data->key_gpios[index]), 1);
+	}
+
+	switch_data->ipdev->name = switch_data->sdev.name;
+	input_set_capability(switch_data->ipdev, EV_KEY, KEY_MEDIA);
+
+	ret = input_register_device(switch_data->ipdev);
+	if (ret) {
+		dev_err(&switch_data->ipdev->dev,
+				"hs_probe: input_register_device rc=%d\n", ret);
+		goto err_request_gpio;
+	}
 
 	if (switch_data->sysfs_store) {
 		ret = device_create_file(&pdev->dev, &dev_attr_report);
