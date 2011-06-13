@@ -171,6 +171,13 @@ struct lge_gpio_switch_platform_data {
 	int (*key_work_func)(int *value);
 };
 
+/* LED flash platform data */
+struct led_flash_platform_data {
+	int gpio_flen;
+	int gpio_en_set;
+	int gpio_inh;
+};
+
 void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 

@@ -347,6 +347,23 @@ static struct i2c_board_info accel_i2c_bdinfo[] = {
 #endif
 };
 
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM2759
+#define LM2759_FLASH_I2C_SLAVE_ADDR 0x53
+static struct led_flash_platform_data lm2759_flash_pdata = {
+	.gpio_flen		= 0,
+	.gpio_en_set	= -1,
+	.gpio_inh		= -1,
+};
+
+static struct i2c_board_info lm2759_i2c_bdinfo[] = {
+	{
+		I2C_BOARD_INFO("lm2759", LM2759_FLASH_I2C_SLAVE_ADDR/*0x53*/),
+		.platform_data = &lm2759_flash_pdata,
+	},
+
+};
+#endif
+
 /* ecompass */
 static int ecom_power_set(unsigned char onoff)
 {
@@ -428,4 +445,11 @@ void __init lge_add_input_devices(void)
 	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
 			prox_i2c_bdinfo,
 			ARRAY_SIZE(prox_i2c_bdinfo));
+
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM2759
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+			lm2759_i2c_bdinfo,
+			ARRAY_SIZE(lm2759_i2c_bdinfo));
+#endif
+
 }

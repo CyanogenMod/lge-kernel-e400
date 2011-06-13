@@ -29,6 +29,12 @@ enum msm_cam_flash_stat{
 	MSM_CAM_FLASH_ON,
 };
 
+//LGE: kiran.jainapure@lge.com LM2759 Camera Flash Added
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM2759
+extern int lm2759_flash_set_led_state(int state);
+#endif
+//LGE: kiran.jainapure@lge.com
+
 #if defined CONFIG_MSM_CAMERA_FLASH_SC628A
 static struct sc628a_work_t *sc628a_flash;
 static struct i2c_client *sc628a_client;
@@ -163,6 +169,43 @@ static int config_flash_gpio_table(enum msm_cam_flash_stat stat,
 	}
 	return rc;
 }
+//LGE: kiran.jainapure@lge.com Camera Flash Added
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM2759
+int msm_camera_flash_lm2759(unsigned led_state)
+{
+	int rc = 0;
+
+	switch (led_state) {
+	case MSM_CAMERA_LED_OFF:
+		rc = lm2759_flash_set_led_state(0);
+		break;
+
+	case MSM_CAMERA_LED_LOW:
+		rc = lm2759_flash_set_led_state(1);
+		break;
+
+	case MSM_CAMERA_LED_HIGH:
+		rc = lm2759_flash_set_led_state(2);
+		break;
+		/*
+	case MSM_CAMERA_LED_AGC_STATE:
+		rc = lm2759_flash_set_led_state(3);
+		break;
+	case MSM_CAMERA_LED_TORCH:
+		rc = lm2759_flash_set_led_state(4);
+		break;
+		*/
+	default:
+		rc = -EFAULT;
+		break;
+	}
+
+	CDBG("flash_set_led_state: return %d\n", rc);
+
+	return rc;
+}
+#endif
+//LGE: kiran.jainapure@lge.com
 
 int msm_camera_flash_current_driver(
 	struct msm_camera_sensor_flash_current_driver *current_driver,
@@ -265,6 +308,13 @@ int msm_camera_flash_current_driver(
 	}
 #endif
 
+//LGE: kiran.jainapure@lge.com Camera Flash Added
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM2759
+	{
+		rc = msm_camera_flash_lm2759(led_state);
+	}
+#endif
+//LGE: kiran.jainapure@lge.com
 	return rc;
 }
 

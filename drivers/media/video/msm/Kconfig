@@ -132,6 +132,16 @@ config MSM_CAMERA_FLASH_SC628A
 	  supports spotlight and flash light modes with
 	  differrent current levels.
 
+config MSM_CAMERA_FLASH_LM2759
+	bool "MSM camera LM2759 flash support"
+	depends on MSM_CAMERA
+	default n
+	---help---
+	  Enable support for LED flash for msm camera.
+	  It is a samtech charge pump flash driver and it
+	  supports spotlight and flash light modes with
+	  differrent current levels.
+
 config IMX072
 	bool "Sensor imx072 (Sony 5M)"
 	default n
