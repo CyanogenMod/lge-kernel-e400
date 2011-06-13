@@ -238,7 +238,7 @@ out:
 	&& defined(CONFIG_MMC_MSM_CARD_HW_DETECTION)
 static unsigned int msm7x2xa_sdcc_slot_status(struct device *dev)
 {
-/* FIXME : temporary disable function 
+/* FIXME : temporary disable function
 	int status;
 
 	status = gpio_tlmm_config(GPIO_CFG(GPIO_SDC1_HW_DET, 2, GPIO_CFG_INPUT,
