@@ -52,32 +52,6 @@
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
 #define FM_GPIO	83
 
-#if defined(CONFIG_GPIO_SX150X)
-enum {
-	SX150X_CORE,
-	SX150X_CAM,
-};
-
-static struct sx150x_platform_data sx150x_data[] __initdata = {
-	[SX150X_CORE]	= {
-		.gpio_base		= GPIO_CORE_EXPANDER_BASE,
-		.oscio_is_gpo		= false,
-		.io_pullup_ena		= 0,
-		.io_pulldn_ena		= 0,
-		.io_open_drain_ena	= 0,
-		.irq_summary		= -1,
-	},
-	[SX150X_CAM]	= {
-		.gpio_base		= GPIO_CAM_EXPANDER_BASE,
-		.oscio_is_gpo		= false,
-		.io_pullup_ena		= 0,
-		.io_pulldn_ena		= 0,
-		.io_open_drain_ena	= 0,
-		.irq_summary		= -1,
-	},
-};
-#endif
-
 	/* FM Platform power and shutdown routines */
 #define FPGA_MSM_CNTRL_REG2 0x90008010
 static void config_pcm_i2s_mode(int mode)
@@ -811,21 +785,6 @@ static struct marimba_platform_data marimba_pdata = {
 
 #endif
 
-#if defined(CONFIG_I2C) && defined(CONFIG_GPIO_SX150X)
-static struct i2c_board_info core_exp_i2c_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("sx1509q", 0x3e),
-		.platform_data =  &sx150x_data[SX150X_CORE],
-	},
-};
-static struct i2c_board_info cam_exp_i2c_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("sx1508q", 0x22),
-		.platform_data	= &sx150x_data[SX150X_CAM],
-	},
-};
-#endif
-
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 static struct i2c_board_info bahama_devices[] = {
 {
@@ -833,25 +792,6 @@ static struct i2c_board_info bahama_devices[] = {
 	.platform_data = &marimba_pdata,
 },
 };
-#endif
-
-#if defined(CONFIG_I2C) && defined(CONFIG_GPIO_SX150X)
-static void __init register_i2c_devices(void)
-{
-	
-	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
-				cam_exp_i2c_info,
-				ARRAY_SIZE(cam_exp_i2c_info));
-	
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-				core_exp_i2c_info,
-				ARRAY_SIZE(core_exp_i2c_info));
-#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-				bahama_devices,
-				ARRAY_SIZE(bahama_devices));
-#endif
-}
 #endif
 
 static struct msm_gpio qup_i2c_gpios_io[] = {
@@ -1294,8 +1234,10 @@ static void __init msm7x2x_init(void)
 	msm_pm_set_platform_data(msm7x27a_pm_data,
 				ARRAY_SIZE(msm7x27a_pm_data));
 
-#if defined(CONFIG_I2C) && defined(CONFIG_GPIO_SX150X)
-	register_i2c_devices();
+#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+				bahama_devices,
+				ARRAY_SIZE(bahama_devices));
 #endif
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	bt_power_init();
