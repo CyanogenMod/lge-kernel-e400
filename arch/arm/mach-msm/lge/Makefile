@@ -9,6 +9,7 @@ obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-panel.o
 obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-camera.o
 obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-pm.o
 obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-connectivity.o
+obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-usb.o
 
 obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += board-m3mpcs.o
 obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += board-m3mpcs-input.o

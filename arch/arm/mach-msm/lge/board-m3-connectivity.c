@@ -9,7 +9,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/gpio_event.h>
 #include <linux/i2c.h>
