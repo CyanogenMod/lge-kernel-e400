@@ -42,7 +42,7 @@ struct early_suspend k3dh_sensor_early_suspend;
 static void k3dh_early_suspend(struct early_suspend *h);
 static void k3dh_late_resume(struct early_suspend *h);
 #endif
-#define USE_WORK_QUEUE        1
+#define USE_WORK_QUEUE        0
 
 /** Maximum polled-device-reported g value */
 #define G_MAX			16000 // 8000
@@ -568,7 +568,6 @@ static void k3dh_input_work_func(struct work_struct *work)
 int k3dh_input_open(struct input_dev *input)
 {
 	struct k3dh_data *kr = input_get_drvdata(input);
-	//printk(KERN_DEBUG "k3dh_input_open called\n");
 	return k3dh_enable(kr);
 }
 
@@ -576,7 +575,6 @@ void k3dh_input_close(struct input_dev *dev)
 {
 	struct k3dh_data *kr = input_get_drvdata(dev);
 	
-	//printk(KERN_DEBUG "k3dh_input_close called\n");
 	k3dh_disable(kr);
 }
 #endif

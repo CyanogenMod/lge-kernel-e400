@@ -96,8 +96,6 @@ struct k3dh_platform_data {
 	int scl_pin;
 	int pin_int;
 	int (*gpio_config)(int);
-	//int gpio_int;
-	//int irq;
 };
 #endif
 
