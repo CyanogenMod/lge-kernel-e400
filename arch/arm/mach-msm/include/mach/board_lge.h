@@ -199,6 +199,7 @@ void __init lge_add_sound_devices(void);
 void __init lge_add_lcd_devices(void);
 void __init lge_add_camera_devices(void);
 void __init lge_add_pm_devices(void);
+void __init lge_add_connectivity_devices(void);
 
 void __init lge_add_gpio_i2c_device(gpio_i2c_init_func_t *init_func);
 

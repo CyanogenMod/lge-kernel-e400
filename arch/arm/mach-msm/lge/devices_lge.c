@@ -359,3 +359,7 @@ __WEAK void __init lge_add_pm_devices(void)
 {
 }
 
+__WEAK void __init lge_add_connectivity_devices(void)
+{
+}
+
