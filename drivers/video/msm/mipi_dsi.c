@@ -237,11 +237,6 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	mipi_dsi_host_init(mipi);
 
-#ifndef CONFIG_FB_MSM_MDP303
-	if (mipi_dsi_pdata && mipi_dsi_pdata->target_type == 1)
-		mipi_dsi_configure_serdes();
-#endif
-
 /* TODO: lge: workaround solution for do not trigger mipi_isr */
 /* if the board has no panel, the process is stopped  in surfaceflinger*/
 #ifndef CONFIG_MACH_LGE
