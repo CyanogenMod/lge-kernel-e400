@@ -366,7 +366,7 @@ static int AMI306_ReadSensorData(char *buf, int bufsize)
 			databuf[0], databuf[1], databuf[2], 
 			databuf[3], databuf[4], databuf[5]);
 
-	printk(KERN_INFO "[jaekyung83..lee]databuf : %s", buf);
+	//printk(KERN_INFO "[jaekyung83..lee]databuf : %s", buf);
 	
 
 	mx = (int)(databuf[0] | (databuf[1] << 8));
@@ -377,7 +377,7 @@ static int AMI306_ReadSensorData(char *buf, int bufsize)
 	if (my>32768)  my = my-65536;
 	if (mz>32768)  mz = mz-65536;
 
-	printk(KERN_INFO "[jaekyung83.lee]Magnetic Raw Data: X=%d, Y=%d, Z=%d\n", mx, my, mz);
+	//printk(KERN_INFO "[jaekyung83.lee]Magnetic Raw Data: X=%d, Y=%d, Z=%d\n", mx, my, mz);
 	
 	if (AMI306_DEBUG_DEV_STATUS & ami306_debug_mask) {
 		int mx, my, mz;
@@ -485,8 +485,6 @@ static int AMI306_Report_Value(int iEnable)
 	struct ami306_i2c_data *data = i2c_get_clientdata(ami306_i2c_client);
 	int report_enable = 0;
 
-	printk(KERN_DEBUG "AMI306_Report_Value iEnable = %d\n", iEnable);
-	
 	if( !iEnable )
 		return -1;
 
@@ -515,11 +513,6 @@ static int AMI306_Report_Value(int iEnable)
 		input_report_abs(data->input_dev, ABS_RZ, ami306mid_data.roll);/* roll */
 		input_report_abs(data->input_dev, ABS_RUDDER, ami306mid_data.status);/* status of orientation sensor */
 		report_enable = 1;
-		
-		printk(KERN_DEBUG "status of orientation sensor ami306mid_data.yaw = %d\n", ami306mid_data.yaw);
-		printk(KERN_DEBUG "status of orientation sensor ami306mid_data.pitch = %d\n", ami306mid_data.pitch);
-		printk(KERN_DEBUG "status of orientation sensor ami306mid_data.roll = %d\n", ami306mid_data.roll);
-		printk(KERN_DEBUG "status of orientation sensor ami306mid_data.status = %d\n", ami306mid_data.status);
 	}
 
 	// LGE_CHANGE [dojip.kim@lge.com] 2010-10-28, not supported
@@ -1095,7 +1088,6 @@ static long ami306daemon_ioctl(struct file *file, unsigned int cmd,
 
 		case AMI306DAE_IOCTL_GET_CONTROL:
 			read_lock(&ami306mid_data.ctrllock);
-			//printk(KERN_DEBUG "in ami306.c ami306mid_data.controldata[0] = %d\n", ami306mid_data.controldata[0]);
 			memcpy(controlbuf, &ami306mid_data.controldata[0], sizeof(controlbuf));
 			read_unlock(&ami306mid_data.ctrllock);
 			data = (void __user *) arg;
@@ -1179,10 +1171,8 @@ static long ami306daemon_ioctl(struct file *file, unsigned int cmd,
 				retval = -EFAULT;
 				goto err_out;
 			}
-			//printk(KERN_DEBUG "user data copied, i2creaddata.0=%c, i2creaddata.1=%c\n", i2creaddata[0], i2creaddata[1]);
 			i2c_read_addr = i2creaddata[0];
 			i2c_read_len = i2creaddata[1];
-			//printk(KERN_DEBUG "user data copied, i2c_read_addr=%c, i2c_read_len=%c\n", i2c_read_addr, i2c_read_len);
 			break;
 
 		case AMI306DAE_IOCTL_GET_I2CDATA:

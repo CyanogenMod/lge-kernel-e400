@@ -48,10 +48,21 @@ extern void lp8720_write_reg(u8 reg, u8 data);
 /*====================================================================================
             Flash
  =====================================================================================*/
+#ifdef CONFIG_MSM_CAMERA_FLASH
+static struct msm_camera_sensor_flash_src msm_flash_src = {
+	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
+};
+
+static struct msm_camera_sensor_flash_data led_flash_data = {
+	.flash_type = MSM_CAMERA_FLASH_LED,
+	.flash_src  = &msm_flash_src,
+};
+#else
 static struct msm_camera_sensor_flash_data flash_none = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
 	.flash_src  = NULL,
 };
+#endif
 
 /*====================================================================================
                                   Camera Sensor  ( Sony - IMX072 , Aptina - MT9P017)
@@ -246,7 +257,11 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx072_data = {
         .vcm_pwd                = 1,
         .vcm_enable             = 1,
         .pdata                  = &msm_main_camera_device_data,
-        .flash_data             = &flash_none,
+#ifdef CONFIG_MSM_CAMERA_FLASH
+	.flash_data             = &led_flash_data,//LM2759 Flash supported
+#else
+	.flash_data		= &flash_none,
+#endif
         .sensor_platform_info = &imx072_sensor_7627a_info,
         .csi_if                 = 1
 };
@@ -267,7 +282,12 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
         .vcm_pwd        = 1,
         .vcm_enable     = 1,
         .pdata          = &msm_main_camera_device_data,
-        .flash_data     = &flash_none,
+#ifdef CONFIG_MSM_CAMERA_FLASH
+	.flash_data             = &led_flash_data,//LM2759 Flash supported
+#else
+	.flash_data		= &flash_none,
+#endif
+
         .csi_if         = 1
 };
 

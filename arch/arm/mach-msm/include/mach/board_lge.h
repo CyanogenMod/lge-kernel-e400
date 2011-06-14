@@ -96,8 +96,6 @@ struct k3dh_platform_data {
 	int scl_pin;
 	int pin_int;
 	int (*gpio_config)(int);
-	//int gpio_int;
-	//int irq;
 };
 #endif
 
@@ -171,6 +169,13 @@ struct lge_gpio_switch_platform_data {
 	unsigned *key_gpios;
 	size_t num_key_gpios;
 	int (*key_work_func)(int *value);
+};
+
+/* LED flash platform data */
+struct led_flash_platform_data {
+	int gpio_flen;
+	int gpio_en_set;
+	int gpio_inh;
 };
 
 void __init msm_msm7x2x_allocate_memory_regions(void);

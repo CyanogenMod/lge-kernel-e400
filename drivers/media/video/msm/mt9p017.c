@@ -742,18 +742,6 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 		if (rt == RES_PREVIEW || rt == RES_CAPTURE) {
 			CDBG("%s: %d\n", __func__, __LINE__);
 
-
-
-			/* stop streaming */
-			CDBG("Sensor setting snap or preview = %d\n", rt);
-			rc =mt9p017_i2c_write_b_sensor(REG_MODE_SELECT,
-				MODE_SELECT_STANDBY_MODE);
-			if(rc < 0)
-				return rc;
-
-			msleep(mt9p017_delay_msecs_stdby);
-
-			
 			/* config mipi csi controller */
 			if (config_csi == 0) {
 			mt9p017_csi_params.lane_cnt = 2;
@@ -766,7 +754,7 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 			rc = msm_camio_csi_config(&mt9p017_csi_params);
 			if (rc < 0)
 				CDBG("config csi controller failed \n");
-			msleep(10);
+			msleep(5);
 			config_csi = 1;
 			}
 			rc = mt9p017_i2c_write_w_sensor(REG_VCM_CONTROL,
@@ -778,7 +766,6 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 			if (rc < 0)
 				return rc;
 
-#if 0
 			/* stop streaming */
 			CDBG("Sensor setting snap or preview = %d\n", rt);
 			rc =mt9p017_i2c_write_b_sensor(REG_MODE_SELECT,
@@ -787,7 +774,6 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 				return rc;
 
 			msleep(mt9p017_delay_msecs_stdby);
-#endif			
 
 			rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
 								GROUPED_PARAMETER_HOLD);
