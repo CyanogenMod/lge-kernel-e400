@@ -80,7 +80,7 @@ void __init msm7x27a_m3_init_i2c_subpm(int bus_num)
 	platform_device_register(&subpm_i2c_device);
 }
 
-/* main interface */
+/* common interface */
 void __init lge_add_pm_devices(void)
 {
 	lge_add_gpio_i2c_device(msm7x27a_m3_init_i2c_subpm);

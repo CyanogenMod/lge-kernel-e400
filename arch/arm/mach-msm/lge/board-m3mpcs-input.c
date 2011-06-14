@@ -300,20 +300,20 @@ static void __init m3_init_i2c_touch(int bus_num)
 static int accel_power(unsigned char onoff)
 {
 	int ret = 0;
-	struct vreg *rfrx1_vreg = vreg_get(0, "rfrx1");
+	struct vreg *wlan4_vreg = vreg_get(0, "wlan4");
 	
 	if (onoff) {
 		printk(KERN_INFO "accel_power_on\n");
 		
-		ret = vreg_set_level(rfrx1_vreg, 3000);
+		ret = vreg_set_level(wlan4_vreg, 3000);
 		if (ret != 0) {
 			printk("[Accel] vreg_set_level failed\n");
 			return ret;
 		}
-		vreg_enable(rfrx1_vreg);
+		vreg_enable(wlan4_vreg);
 	} else {
 		printk(KERN_INFO "accel_power_off\n");
-		vreg_disable(rfrx1_vreg);
+		vreg_disable(wlan4_vreg);
 	}
 
 	return ret;
@@ -336,15 +336,15 @@ static struct gpio_i2c_pin accel_i2c_pin[] = {
 static int ecom_power_set(unsigned char onoff)
 {
 	int ret = 0;
-	struct vreg *rfrx1_vreg = vreg_get(0, "rfrx1");
+	struct vreg *wlan4_vreg = vreg_get(0, "wlan4");
 
 	if (onoff) {
 		printk(KERN_INFO "ecom_power_on\n");
-		vreg_set_level(rfrx1_vreg, 3000);
-		vreg_enable(rfrx1_vreg);
+		vreg_set_level(wlan4_vreg, 3000);
+		vreg_enable(wlan4_vreg);
 	} else {
 		printk(KERN_INFO "ecom_power_off\n");
-		vreg_disable(rfrx1_vreg);
+		vreg_disable(wlan4_vreg);
 	}
 
 	return ret;
