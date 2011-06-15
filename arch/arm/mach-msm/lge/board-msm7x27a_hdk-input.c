@@ -109,6 +109,77 @@ struct platform_device keypad_device_hdk = {
 	},
 };
 
+#ifdef CONFIG_KEYBOARD_PP2106
+/* pp2106 qwerty keyboard device */
+#define PP2106_KEYPAD_ROW 7
+#define PP2106_KEYPAD_COL 7
+
+static unsigned short pp2106_keycode[PP2106_KEYPAD_ROW][PP2106_KEYPAD_COL] = {
+	{KEY_I, KEY_K, KEY_SPACE, KEY_BACK, KEY_D, KEY_S, KEY_LEFTSHIFT },
+	{KEY_SEARCH, KEY_COMPOSE, KEY_SPACE, KEY_R, KEY_E, KEY_W, KEY_A },
+	{KEY_ENTER, KEY_SLASH, KEY_HANGEUL, KEY_T, KEY_MENU, KEY_Z, KEY_Q },
+	{KEY_BACKSPACE, KEY_L, KEY_DOT, KEY_G, KEY_X, KEY_HOME, KEY_N },
+	{KEY_P, KEY_O, KEY_M, KEY_F, KEY_C, KEY_LEFTALT, KEY_J },
+	{KEY_V, KEY_B, KEY_U, KEY_Y, KEY_H, KEY_UNKNOWN, KEY_UNKNOWN },
+	{KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN },
+};
+
+static int pp2106_vreg_set(unsigned char onoff)
+{
+	int rc = 0;
+	struct vreg *vreg_l12 = NULL;
+
+	vreg_l12 = vreg_get(NULL, "gp2");
+	if (IS_ERR(vreg_l12)) {
+		pr_err("%s: vreg_get failed (%ld)\n", __func__, PTR_ERR(vreg_l12));
+		return PTR_ERR(vreg_l12);
+	}
+
+	if (onoff) {
+		rc = vreg_set_level(vreg_l12, 2850);
+		if (rc < 0) {
+			pr_err("%s: vreg_set_level failed (%d)\n", __func__, rc);
+			goto vreg_fail;
+		}
+		rc = vreg_enable(vreg_l12);
+		if (rc < 0) {
+			pr_err("%s: vreg_enable failed (%d)\n", __func__, rc);
+			goto vreg_fail;
+		}
+	} else {
+		rc = vreg_disable(vreg_l12);
+		if (rc < 0) {
+			pr_err("%s: vreg_disable failed (%d)\n", __func__, rc);
+			goto vreg_fail;
+		}
+	}
+
+	return rc;
+
+vreg_fail:
+	vreg_put(vreg_l12);
+	return rc;
+}
+
+static struct pp2106_platform_data pp2106_pdata = {
+	.keypad_row = PP2106_KEYPAD_ROW,
+	.keypad_col = PP2106_KEYPAD_COL,
+	.keycode = (unsigned char *)pp2106_keycode,
+	.reset_pin = 4,
+	.irq_pin = 114,
+	.sda_pin = 115,
+	.scl_pin = 116,
+	.power = pp2106_vreg_set,
+};
+
+static struct platform_device hdk_qwerty_device = {
+	.name = "pp2106-keypad",
+	.id = 0,
+	.dev = {
+		.platform_data = &pp2106_pdata,
+	},
+};
+#endif /* CONFIG_KEYBOARD_PP2106 */
 
 /* input platform device */
 static struct platform_device *hdk_input_devices[] __initdata = {
@@ -117,6 +188,9 @@ static struct platform_device *hdk_input_devices[] __initdata = {
 
 static struct platform_device *hdk_gpio_input_devices[] __initdata = {
 	&keypad_device_hdk,/* the gpio keypad for hdk */
+#ifdef CONFIG_KEYBOARD_PP2106
+	&hdk_qwerty_device,
+#endif
 };
 
 /* Atmel Touch for hdk */
