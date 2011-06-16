@@ -76,6 +76,8 @@ enum {
 	MDP_Y_CBCR_H2V2_TILE,  /* Y and CbCr, pseudo planer tile */
 	MDP_Y_CR_CB_H2V2,  /* Y, Cr and Cb, planar */
 	MDP_Y_CB_CR_H2V2,  /* Y, Cb and Cr, planar */
+	MDP_Y_CRCB_H1V1,  /* Y and CrCb, pseduo planer w/ Cr is in MSB */
+	MDP_Y_CBCR_H1V1,  /* Y and CbCr, pseduo planer w/ Cb is in MSB */
 	MDP_IMGTYPE_LIMIT,
 	MDP_BGR_565 = MDP_IMGTYPE2_START,      /* BGR 565 planer */
 	MDP_FB_FORMAT,    /* framebuffer format */
@@ -207,6 +209,16 @@ struct msmfb_img {
 	uint32_t format;
 };
 
+struct dpp_ctrl {
+	/*
+	 *'sharp_strength' has inputs = -128 <-> 127
+	 *  Increasingly positive values correlate with increasingly sharper
+	 *  picture. Increasingly negative values correlate with increasingly
+	 *  smoothed picture.
+	 */
+	int8_t sharp_strength;
+};
+
 struct mdp_overlay {
 	struct msmfb_img src;
 	struct mdp_rect src_rect;
@@ -218,6 +230,7 @@ struct mdp_overlay {
 	uint32_t flags;
 	uint32_t id;
 	uint32_t user_data[8];
+	struct dpp_ctrl dpp;
 };
 
 struct msmfb_overlay_3d {

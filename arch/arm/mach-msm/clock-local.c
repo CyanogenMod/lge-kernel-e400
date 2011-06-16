@@ -11,6 +11,8 @@
  *
  */
 
+#define pr_fmt(fmt) "%s: " fmt, __func__
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/err.h>
@@ -180,7 +182,7 @@ void set_rate_mnd_banked(struct clk_local *clk, struct clk_freq_tbl *nf)
 		 * Wait at least 6 cycles of slowest bank's clock
 		 * for the glitch-free MUX to fully switch sources.
 		 */
-		dsb();
+		mb();
 		udelay(1);
 
 		/* Disable old bank's MN counter. */
@@ -249,7 +251,7 @@ void set_rate_div_banked(struct clk_local *clk, struct clk_freq_tbl *nf)
 		 * Wait at least 6 cycles of slowest bank's clock
 		 * for the glitch-free MUX to fully switch sources.
 		 */
-		dsb();
+		mb();
 		udelay(1);
 
 		/* Program old bank to a low-power source and divider. */
@@ -322,14 +324,12 @@ int local_unvote_sys_vdd(unsigned level)
 		return -EINVAL;
 
 	spin_lock_irqsave(&sys_vdd_vote_lock, flags);
-	if (local_sys_vdd_votes[level])
-		local_sys_vdd_votes[level]--;
-	else {
-		pr_warning("%s: Reference counts are incorrect for level %d!\n",
-			__func__, level);
-		goto out;
-	}
 
+	if (WARN(!local_sys_vdd_votes[level],
+		"Reference counts are incorrect for level %d!\n", level))
+		goto out;
+
+	local_sys_vdd_votes[level]--;
 	rc = local_update_sys_vdd();
 	if (rc)
 		local_sys_vdd_votes[level]++;
@@ -365,7 +365,7 @@ static void __branch_clk_enable_reg(const struct branch *clk, const char *name)
 	 * registers.  It's also needed in the udelay() case to ensure
 	 * the delay starts after the branch enable.
 	 */
-	dsb();
+	mb();
 
 	/* Wait for clock to enable before returning. */
 	if (clk->halt_check == DELAY)
@@ -379,10 +379,7 @@ static void __branch_clk_enable_reg(const struct branch *clk, const char *name)
 		for (count = HALT_CHECK_MAX_LOOPS; branch_clk_is_halted(clk)
 					&& count > 0; count--)
 			udelay(1);
-		if (count == 0)
-			pr_warning("%s: %s status stuck at 'off' (bit %d "
-				   "of 0x%p).\n", __func__, name,
-				   clk->halt_bit, clk->halt_reg);
+		WARN(count == 0, "%s status stuck at 'off'", name);
 	}
 }
 
@@ -439,7 +436,7 @@ static u32 __branch_clk_disable_reg(const struct branch *clk, const char *name)
 	 * registers.  It's also needed in the udelay() case to ensure
 	 * the delay starts after the branch disable.
 	 */
-	dsb();
+	mb();
 
 	/* Wait for clock to disable before continuing. */
 	if (clk->halt_check == DELAY || clk->halt_check == ENABLE_VOTED
@@ -452,10 +449,7 @@ static u32 __branch_clk_disable_reg(const struct branch *clk, const char *name)
 		for (count = HALT_CHECK_MAX_LOOPS; !branch_clk_is_halted(clk)
 					&& count > 0; count--)
 			udelay(1);
-		if (count == 0)
-			pr_warning("%s: %s status stuck at 'on' (bit %d "
-				   "of 0x%p).\n", __func__, name,
-				   clk->halt_bit, clk->halt_reg);
+		WARN(count == 0, "%s status stuck at 'on'", name);
 	}
 
 	return reg_val;
@@ -759,7 +753,7 @@ static int pll_vote_clk_enable(struct clk *clk)
 	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
 
 	/* Wait until PLL is enabled */
-	while ((readl_relaxed(pll->status_reg) & pll->status_mask) == 0)
+	while ((readl_relaxed(pll->status_reg) & BIT(16)) == 0)
 		cpu_relax();
 
 	return 0;
@@ -793,7 +787,7 @@ static struct clk *pll_vote_clk_get_parent(struct clk *clk)
 static int pll_vote_clk_is_enabled(struct clk *clk)
 {
 	struct pll_vote_clk *pll = to_pll_vote_clk(clk);
-	return !!(readl_relaxed(pll->status_reg) & pll->status_mask);
+	return !!(readl_relaxed(pll->status_reg) & BIT(16));
 }
 
 struct clk_ops clk_ops_pll_vote = {
@@ -821,20 +815,20 @@ static int pll_clk_enable(struct clk *clk)
 	 * H/W requires a 5us delay between disabling the bypass and
 	 * de-asserting the reset. Delay 10us just to be safe.
 	 */
-	dsb();
+	mb();
 	udelay(10);
 
 	/* De-assert active-low PLL reset. */
 	mode |= BIT(2);
 	writel_relaxed(mode, pll->mode_reg);
 
+	/* Wait until PLL is locked. */
+	mb();
+	udelay(50);
+
 	/* Enable PLL output. */
 	mode |= BIT(0);
 	writel_relaxed(mode, pll->mode_reg);
-
-	/* Wait until PLL is enabled. */
-	while (!readl_relaxed(pll->status_reg))
-		cpu_relax();
 
 	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
 	return 0;
@@ -869,16 +863,9 @@ static struct clk *pll_clk_get_parent(struct clk *clk)
 	return pll->parent;
 }
 
-static int pll_clk_is_enabled(struct clk *clk)
-{
-	struct pll_clk *pll = to_pll_clk(clk);
-	return !!(readl_relaxed(pll->status_reg));
-}
-
 struct clk_ops clk_ops_pll = {
 	.enable = pll_clk_enable,
 	.disable = pll_clk_disable,
-	.is_enabled = pll_clk_is_enabled,
 	.get_rate = pll_clk_get_rate,
 	.get_parent = pll_clk_get_parent,
 	.is_local = local_clk_is_local,
@@ -993,7 +980,7 @@ int branch_reset(struct branch *clk, enum clk_reset_action action)
 	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
 
 	/* Make sure write is issued before returning. */
-	dsb();
+	mb();
 
 	return ret;
 }

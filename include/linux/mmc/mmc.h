@@ -50,6 +50,7 @@
 #define MMC_SET_BLOCKLEN         16   /* ac   [31:0] block len   R1  */
 #define MMC_READ_SINGLE_BLOCK    17   /* adtc [31:0] data addr   R1  */
 #define MMC_READ_MULTIPLE_BLOCK  18   /* adtc [31:0] data addr   R1  */
+#define MMC_SEND_TUNING_BLOCK    19   /* adtc                    R1  */
 
   /* class 3 */
 #define MMC_WRITE_DAT_UNTIL_STOP 20   /* adtc [31:0] data addr   R1  */
@@ -269,7 +270,6 @@ struct _mmc_csd {
 #define EXT_CSD_SEC_ERASE_MULT		230	/* RO */
 #define EXT_CSD_SEC_FEATURE_SUPPORT	231	/* RO */
 #define EXT_CSD_TRIM_MULT		232	/* RO */
-#define EXT_CSD_BOOT_SIZE_MULTI		226	/* RO */
 
 /*
  * EXT_CSD field definitions

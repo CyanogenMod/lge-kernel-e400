@@ -1076,18 +1076,16 @@ static int msm_open(struct file *f)
 		}
 		pcam->mctl.sync.pcam_sync = pcam;
 
+		/* Register isp subdev */
+		rc = v4l2_device_register_subdev(&pcam->v4l2_dev,
+					&pcam->mctl.isp_sdev->sd);
+		if (rc < 0) {
+			mutex_unlock(&pcam->vid_lock);
+			D("%s: v4l2_device_register_subdev failed rc = %d\n",
+				__func__, rc);
+			return rc;
+		}
 	}
-	/* Register isp subdev */
-	rc = v4l2_device_register_subdev(&pcam->v4l2_dev,
-				&pcam->mctl.isp_sdev->sd);
-	if (rc < 0) {
-		mutex_unlock(&pcam->vid_lock);
-		D("%s: v4l2_device_register_subdev failed rc = %d\n",
-			__func__, rc);
-		return rc;
-	}
-
-	pcam->mctl.sync.pcam_sync = pcam;
 
 	/* Initialize the video queue */
 	rc = pcam->mctl.mctl_vidbuf_init(pcam_inst, &pcam_inst->vid_bufq);
@@ -1154,28 +1152,30 @@ static int msm_close(struct file *f)
 	types of buffers (mmap or userptr - it doesn't matter) */
 	rc = videobuf_mmap_free(&pcam_inst->vid_bufq);
 	if (rc  < 0)
-		D("%s: unable to free buffers\n", __func__);
+		pr_err("%s: unable to free buffers\n", __func__);
 
 	kfree(pcam_inst);
 	f->private_data = NULL;
 
-	if (!pcam->mctl.mctl_release) {
-		D("%s: media contoller has no release\n", __func__);
-		return -ENODEV;
-	}
-	/* Now we really have to release the camera */
-	D("%s: call mctl_open\n", __func__);
-	rc = pcam->mctl.mctl_release(&(pcam->mctl));
+	if (pcam->use_count == 0) {
+		if (pcam->mctl.mctl_release) {
+			rc = pcam->mctl.mctl_release(&(pcam->mctl));
+			if (rc < 0)
+				pr_err("mctl_release fails %d\n", rc);
+		}
 
-	v4l2_device_unregister_subdev(&pcam->mctl.isp_sdev->sd);
+		v4l2_device_unregister_subdev(&pcam->mctl.isp_sdev->sd);
 
-	rc = msm_cam_server_close_session(&g_server_dev, pcam);
-	rc = msm_send_close_server();
-	if (rc < 0) {
-		D("%s failed\n", __func__);
-		return rc;
+		rc = msm_cam_server_close_session(&g_server_dev, pcam);
+		if (rc < 0)
+			pr_err("msm_cam_server_close_session fails %d\n", rc);
+
+		rc = msm_send_close_server();
+		if (rc < 0)
+			pr_err("msm_send_close_server failed %d\n", rc);
+
+		dma_release_declared_memory(&pcam->pdev->dev);
 	}
-	dma_release_declared_memory(&pcam->pdev->dev);
 	mutex_unlock(&pcam->vid_lock);
 	return rc;
 }
@@ -1330,15 +1330,15 @@ static long msm_ioctl_server(struct file *fp, unsigned int cmd,
 
 		k_isp_event = (struct msm_isp_stats_event_ctrl *)ev.u.data;
 		if (ev.type == V4L2_EVENT_PRIVATE_START+MSM_CAM_RESP_V4L2 &&
-			u_isp_event->isp_data.ctrl.length > 0) {
+				k_isp_event->isp_data.ctrl.length > 0) {
 			void *k_ctrl_value = k_isp_event->isp_data.ctrl.value;
 			if (copy_to_user(u_ctrl_value, k_ctrl_value,
 				u_isp_event->isp_data.ctrl.length)) {
 				rc = -EINVAL;
 				break;
 			}
-			k_isp_event->isp_data.ctrl.value = u_ctrl_value;
 		}
+		k_isp_event->isp_data.ctrl.value = u_ctrl_value;
 
 		if (copy_to_user((void __user *)arg, &ev,
 				sizeof(struct v4l2_event))) {
@@ -1446,7 +1446,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 		break;
 
 	case VIDIOC_DQEVENT: {
-		void __user *u_ctrl_value = NULL;
+		void __user *u_msg_value = NULL;
 		struct msm_isp_stats_event_ctrl *u_isp_event;
 		struct msm_isp_stats_event_ctrl *k_isp_event;
 
@@ -1456,7 +1456,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 				sizeof(struct v4l2_event)))
 			break;
 		u_isp_event = (struct msm_isp_stats_event_ctrl *)ev.u.data;
-		u_ctrl_value = u_isp_event->isp_data.ctrl.value;
+		u_msg_value = u_isp_event->isp_data.isp_msg.data;
 
 		rc = v4l2_event_dequeue(
 		&config_cam->config_stat_event_queue.eventHandle,
@@ -1467,16 +1467,18 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 		}
 
 		k_isp_event = (struct msm_isp_stats_event_ctrl *)ev.u.data;
-		if (ev.type == V4L2_EVENT_PRIVATE_START+MSM_CAM_RESP_V4L2 &&
-			u_isp_event->isp_data.ctrl.length > 0) {
-			void *k_ctrl_value = k_isp_event->isp_data.ctrl.value;
-			if (copy_to_user(u_ctrl_value, k_ctrl_value,
-				u_isp_event->isp_data.ctrl.length)) {
+		if (ev.type ==
+			V4L2_EVENT_PRIVATE_START+MSM_CAM_RESP_STAT_EVT_MSG &&
+			k_isp_event->isp_data.isp_msg.len > 0) {
+			void *k_msg_value = k_isp_event->isp_data.isp_msg.data;
+			if (copy_to_user(u_msg_value, k_msg_value,
+				k_isp_event->isp_data.isp_msg.len)) {
 				rc = -EINVAL;
 				break;
 			}
-			k_isp_event->isp_data.ctrl.value = u_ctrl_value;
+			kfree(k_msg_value);
 		}
+		k_isp_event->isp_data.isp_msg.data = u_msg_value;
 
 		if (copy_to_user((void __user *)arg, &ev,
 				sizeof(struct v4l2_event))) {

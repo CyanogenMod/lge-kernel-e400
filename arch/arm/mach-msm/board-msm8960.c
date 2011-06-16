@@ -28,6 +28,8 @@
 #include <linux/android_pmem.h>
 #endif
 #include <linux/cyttsp.h>
+#include <linux/dma-mapping.h>
+#include <linux/platform_data/qcom_crypto_device.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -45,10 +47,12 @@
 #include <mach/usbdiag.h>
 #include <mach/socinfo.h>
 #include <mach/usb_gadget_fserial.h>
+#include <linux/platform_data/usb_rmnet.h>
 #include <mach/rpm.h>
 #include <mach/gpio.h>
 #include <mach/msm_bus_board.h>
 #include <mach/msm_memtypes.h>
+#include <mach/dma.h>
 
 #ifdef CONFIG_WCD9310_CODEC
 #include <linux/slimbus/slimbus.h>
@@ -1130,6 +1134,118 @@ static struct slim_boardinfo msm_slim_devices[] = {
 	/* add more slimbus slaves as needed */
 };
 
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
+		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || \
+		defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
+		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
+#define QCE_SIZE		0x10000
+#define QCE_0_BASE		0x18500000
+
+#define QCE_HW_KEY_SUPPORT	0
+#define QCE_SHA_HMAC_SUPPORT	1
+#define QCE_SHARE_CE_RESOURCE	1
+#define QCE_CE_SHARED		0
+
+static struct resource qcrypto_resources[] = {
+	[0] = {
+		.start = QCE_0_BASE,
+		.end = QCE_0_BASE + QCE_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.name = "crypto_channels",
+		.start = DMOV_CE_IN_CHAN,
+		.end = DMOV_CE_OUT_CHAN,
+		.flags = IORESOURCE_DMA,
+	},
+	[2] = {
+		.name = "crypto_crci_in",
+		.start = DMOV_CE_IN_CRCI,
+		.end = DMOV_CE_IN_CRCI,
+		.flags = IORESOURCE_DMA,
+	},
+	[3] = {
+		.name = "crypto_crci_out",
+		.start = DMOV_CE_OUT_CRCI,
+		.end = DMOV_CE_OUT_CRCI,
+		.flags = IORESOURCE_DMA,
+	},
+};
+
+static struct resource qcedev_resources[] = {
+	[0] = {
+		.start = QCE_0_BASE,
+		.end = QCE_0_BASE + QCE_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.name = "crypto_channels",
+		.start = DMOV_CE_IN_CHAN,
+		.end = DMOV_CE_OUT_CHAN,
+		.flags = IORESOURCE_DMA,
+	},
+	[2] = {
+		.name = "crypto_crci_in",
+		.start = DMOV_CE_IN_CRCI,
+		.end = DMOV_CE_IN_CRCI,
+		.flags = IORESOURCE_DMA,
+	},
+	[3] = {
+		.name = "crypto_crci_out",
+		.start = DMOV_CE_OUT_CRCI,
+		.end = DMOV_CE_OUT_CRCI,
+		.flags = IORESOURCE_DMA,
+	},
+};
+
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
+		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+
+static struct msm_ce_hw_support qcrypto_ce_hw_suppport = {
+	.ce_shared = QCE_CE_SHARED,
+	.shared_ce_resource = QCE_SHARE_CE_RESOURCE,
+	.hw_key_support = QCE_HW_KEY_SUPPORT,
+	.sha_hmac = QCE_SHA_HMAC_SUPPORT,
+};
+
+static struct platform_device qcrypto_device = {
+	.name		= "qcrypto",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(qcrypto_resources),
+	.resource	= qcrypto_resources,
+	.dev		= {
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+		.platform_data = &qcrypto_ce_hw_suppport,
+	},
+};
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
+		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
+static struct msm_ce_hw_support qcedev_ce_hw_suppport = {
+	.ce_shared = QCE_CE_SHARED,
+	.shared_ce_resource = QCE_SHARE_CE_RESOURCE,
+	.hw_key_support = QCE_HW_KEY_SUPPORT,
+	.sha_hmac = QCE_SHA_HMAC_SUPPORT,
+};
+
+static struct platform_device qcedev_device = {
+	.name		= "qce",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(qcedev_resources),
+	.resource	= qcedev_resources,
+	.dev		= {
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+		.platform_data = &qcedev_ce_hw_suppport,
+	},
+};
+#endif
+
+
 static int __init gpiomux_init(void)
 {
 	int rc;
@@ -1274,6 +1390,14 @@ static struct msm_mmc_slot_reg_data mmc_slot_vreg_data[MAX_SDCC_CONTROLLER] = {
 	}
 };
 
+static unsigned int sdc1_sup_clk_rates[] = {
+	400000, 24000000, 48000000
+};
+
+static unsigned int sdc3_sup_clk_rates[] = {
+	400000, 24000000, 48000000, 96000000
+};
+
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
 static struct mmc_platform_data msm8960_sdc1_data = {
 	.ocr_mask       = MMC_VDD_27_28 | MMC_VDD_28_29,
@@ -1282,9 +1406,8 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 #else
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 #endif
-	.msmsdcc_fmin	= 400000,
-	.msmsdcc_fmid	= 24000000,
-	.msmsdcc_fmax	= 48000000,
+	.sup_clk_table	= sdc1_sup_clk_rates,
+	.sup_clk_cnt	= ARRAY_SIZE(sdc1_sup_clk_rates),
 	.nonremovable	= 1,
 	.sdcc_v4_sup	= true,
 	.vreg_data	= &mmc_slot_vreg_data[SDCC1],
@@ -1295,9 +1418,8 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 static struct mmc_platform_data msm8960_sdc3_data = {
 	.ocr_mask       = MMC_VDD_27_28 | MMC_VDD_28_29,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-	.msmsdcc_fmin	= 400000,
-	.msmsdcc_fmid	= 24000000,
-	.msmsdcc_fmax	= 48000000,
+	.sup_clk_table	= sdc3_sup_clk_rates,
+	.sup_clk_cnt	= ARRAY_SIZE(sdc3_sup_clk_rates),
 	.wpswitch_gpio	= PM8921_GPIO_PM_TO_SYS(16),
 	.sdcc_v4_sup	= true,
 	.vreg_data	= &mmc_slot_vreg_data[SDCC3],
@@ -1306,6 +1428,9 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 	.status_irq	= PM8921_GPIO_IRQ(PM8921_IRQ_BASE, 26),
 	.irq_flags	= IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 #endif
+	.xpc_cap	= 1,
+	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+				MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50)
 };
 #endif
 
@@ -1429,12 +1554,72 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 };
 #endif
 
+#ifdef CONFIG_USB_ANDROID_DIAG
+#define PID_MAGIC_ID		0x71432909
+#define SERIAL_NUM_MAGIC_ID	0x61945374
+#define SERIAL_NUMBER_LENGTH	127
+#define DLOAD_USB_BASE_ADD	0x2A03F0C8
+
+struct magic_num_struct {
+	uint32_t pid;
+	uint32_t serial_num;
+};
+
+struct dload_struct {
+	uint32_t	reserved1;
+	uint32_t	reserved2;
+	uint32_t	reserved3;
+	uint16_t	reserved4;
+	uint16_t	pid;
+	char		serial_number[SERIAL_NUMBER_LENGTH];
+	uint16_t	reserved5;
+	struct magic_num_struct magic_struct;
+};
+
+static int usb_diag_update_pid_and_serial_num(uint32_t pid, const char *snum)
+{
+	struct dload_struct __iomem *dload = 0;
+
+	dload = ioremap(DLOAD_USB_BASE_ADD, sizeof(*dload));
+	if (!dload) {
+		pr_err("%s: cannot remap I/O memory region: %08x\n",
+					__func__, DLOAD_USB_BASE_ADD);
+		return -ENXIO;
+	}
+
+	pr_debug("%s: dload:%p pid:%x serial_num:%s\n",
+				__func__, dload, pid, snum);
+	/* update pid */
+	dload->magic_struct.pid = PID_MAGIC_ID;
+	dload->pid = pid;
+
+	/* update serial number */
+	dload->magic_struct.serial_num = 0;
+	if (!snum) {
+		memset(dload->serial_number, 0, SERIAL_NUMBER_LENGTH);
+		goto out;
+	}
+
+	dload->magic_struct.serial_num = SERIAL_NUM_MAGIC_ID;
+	strncpy(dload->serial_number, snum, SERIAL_NUMBER_LENGTH);
+	dload->serial_number[SERIAL_NUMBER_LENGTH - 1] = '\0';
+out:
+	iounmap(dload);
+	return 0;
+}
+
 static struct usb_diag_platform_data usb_diag_pdata = {
 	.ch_name = DIAG_LEGACY,
+	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
 };
+#endif
 
 static struct usb_gadget_fserial_platform_data fserial_pdata = {
 	.no_ports	= 2,
+	.transport	= {
+		USB_GADGET_FSERIAL_TRANSPORT_SMD,
+		USB_GADGET_FSERIAL_TRANSPORT_TTY,
+	},
 };
 
 static char *usb_functions_rndis[] = {
@@ -1450,6 +1635,7 @@ static char *usb_functions_default[] = {
 	"diag",
 	"modem",
 	"nmea",
+	"rmnet0",
 	"usb_mass_storage",
 };
 
@@ -1458,6 +1644,7 @@ static char *usb_functions_default_adb[] = {
 	"adb",
 	"modem",
 	"nmea",
+	"rmnet0",
 	"usb_mass_storage",
 };
 
@@ -1469,17 +1656,18 @@ static char *usb_functions_all[] = {
 	"adb",
 	"modem",
 	"nmea",
+	"rmnet0",
 	"usb_mass_storage",
 };
 
 struct android_usb_product usb_products[] = {
 	{
-		.product_id	= 0x9018,
+		.product_id	= 0x9025,
 		.num_functions	= ARRAY_SIZE(usb_functions_default_adb),
 		.functions	= usb_functions_default_adb,
 	},
 	{
-		.product_id	= 0x9017,
+		.product_id	= 0x9026,
 		.num_functions	= ARRAY_SIZE(usb_functions_default),
 		.functions	= usb_functions_default,
 	},
@@ -1497,7 +1685,7 @@ struct android_usb_product usb_products[] = {
 
 static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id	= 0x05C6,
-	.product_id	= 0x9018,
+	.product_id	= 0x9026,
 	.version	= 0x0100,
 	.product_name		= "Qualcomm HSUSB Device",
 	.manufacturer_name	= "Qualcomm Incorporated",
@@ -1572,13 +1760,25 @@ static int __init board_serialno_setup(char *serialno)
 }
 __setup("androidboot.serialno=", board_serialno_setup);
 
+static struct usb_rmnet_pdata usb_rmnet_pdata = {
+	.num_instances = 1,
+};
+
+struct platform_device usb_rmnet = {
+	.name = "usb_rmnet",
+	.id = -1,
+	.dev = {
+		.platform_data = &usb_rmnet_pdata,
+	},
+};
+
 static uint8_t spm_wfi_cmd_sequence[] __initdata = {
-			0x03, 0x0B, 0x0f,
+			0x03, 0x0f,
 };
 
 static uint8_t spm_power_collapse_without_rpm[] __initdata = {
 			0x00, 0x24, 0x54, 0x10,
-			0x09, 0x03, 0x01, 0x0B,
+			0x09, 0x03, 0x01,
 			0x10, 0x54, 0x30, 0x0C,
 			0x24, 0x30, 0x0f,
 };
@@ -1612,14 +1812,16 @@ static struct msm_spm_platform_data msm_spm_data[] __initdata = {
 	[0] = {
 		.reg_base_addr = MSM_SAW0_BASE,
 		.reg_init_values[MSM_SPM_REG_SAW2_SECURE] = 0x00,
+		.reg_init_values[MSM_SPM_REG_SAW2_CFG] = 0x1F,
+		.reg_init_values[MSM_SPM_REG_SAW2_VCTL] = 0x9C,
 #if defined(CONFIG_MSM_AVS_HW)
 		.reg_init_values[MSM_SPM_REG_SAW2_AVS_CTL] = 0x00,
 		.reg_init_values[MSM_SPM_REG_SAW2_AVS_HYSTERESIS] = 0x00,
 #endif
 		.reg_init_values[MSM_SPM_REG_SAW2_SPM_CTL] = 0x01,
 		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DLY] = 0x02020202,
-		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_0] = 0x00A000AE,
-		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_1] = 0x00A00020,
+		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_0] = 0x0060009C,
+		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_1] = 0x0000001C,
 		.vctl_timeout_us = 50,
 		.num_modes = ARRAY_SIZE(msm_spm_seq_list),
 		.modes = msm_spm_seq_list,
@@ -1627,26 +1829,68 @@ static struct msm_spm_platform_data msm_spm_data[] __initdata = {
 	[1] = {
 		.reg_base_addr = MSM_SAW1_BASE,
 		.reg_init_values[MSM_SPM_REG_SAW2_SECURE] = 0x00,
+		.reg_init_values[MSM_SPM_REG_SAW2_CFG] = 0x1F,
+		.reg_init_values[MSM_SPM_REG_SAW2_VCTL] = 0x9C,
 #if defined(CONFIG_MSM_AVS_HW)
 		.reg_init_values[MSM_SPM_REG_SAW2_AVS_CTL] = 0x00,
 		.reg_init_values[MSM_SPM_REG_SAW2_AVS_HYSTERESIS] = 0x00,
 #endif
 		.reg_init_values[MSM_SPM_REG_SAW2_SPM_CTL] = 0x01,
 		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DLY] = 0x02020202,
-		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_0] = 0x00A000AE,
-		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_1] = 0x00A00020,
+		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_0] = 0x0060009C,
+		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_1] = 0x0000001C,
 		.vctl_timeout_us = 50,
 		.num_modes = ARRAY_SIZE(msm_spm_seq_list),
 		.modes = msm_spm_seq_list,
 	},
+};
+
+static uint8_t l2_spm_wfi_cmd_sequence[] __initdata = {
+			0x00, 0x20, 0x30, 0x20,
+			0x00, 0x0f,
+};
+
+static uint8_t l2_spm_gdhs_cmd_sequence[] __initdata = {
+			0x00, 0x20, 0x34, 0x64,
+			0x48, 0x03, 0x48, 0x07,
+			0x48, 0x20, 0x50, 0x64,
+			0x04, 0x34, 0x50, 0x0f,
+};
+static uint8_t l2_spm_power_off_cmd_sequence[] __initdata = {
+			0x00, 0x10, 0x34, 0x64,
+			0x48, 0x07, 0x48, 0x10,
+			0x50, 0x64, 0x04, 0x34,
+			0x50, 0x0F,
+};
+
+static struct msm_spm_seq_entry msm_spm_l2_seq_list[] __initdata = {
+	[0] = {
+		.mode = MSM_SPM_L2_MODE_RETENTION,
+		.notify_rpm = false,
+		.cmd = l2_spm_wfi_cmd_sequence,
+	},
+	[1] = {
+		.mode = MSM_SPM_L2_MODE_GDHS,
+		.notify_rpm = false,
+		.cmd = l2_spm_gdhs_cmd_sequence,
+	},
 	[2] = {
+		.mode = MSM_SPM_L2_MODE_POWER_COLLAPSE,
+		.notify_rpm = true,
+		.cmd = l2_spm_power_off_cmd_sequence,
+	},
+};
+
+static struct msm_spm_platform_data msm_spm_l2_data[] __initdata = {
+	[0] = {
 		.reg_base_addr = MSM_SAW_L2_BASE,
 		.reg_init_values[MSM_SPM_REG_SAW2_SECURE] = 0x00,
 		.reg_init_values[MSM_SPM_REG_SAW2_SPM_CTL] = 0x00,
 		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DLY] = 0x02020202,
 		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_0] = 0x00A000AE,
 		.reg_init_values[MSM_SPM_REG_SAW2_PMIC_DATA_1] = 0x00A00020,
-		.modes = NULL,
+		.modes = msm_spm_l2_seq_list,
+		.num_modes = ARRAY_SIZE(msm_spm_l2_seq_list),
 	},
 };
 
@@ -1796,7 +2040,6 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi10_pdata = {
 	.msm_i2c_config_gpio = gsbi_qup_i2c_gpio_config,
 };
 
-#ifdef CONFIG_MSM_RPM
 static struct msm_rpm_platform_data msm_rpm_data = {
 	.reg_base_addrs = {
 		[MSM_RPM_PAGE_STATUS] = MSM_RPM_BASE,
@@ -1811,7 +2054,6 @@ static struct msm_rpm_platform_data msm_rpm_data = {
 	.msm_apps_ipc_rpm_reg = MSM_APCS_GCC_BASE + 0x008,
 	.msm_apps_ipc_rpm_val = 4,
 };
-#endif
 
 static struct spi_board_info spi_board_info[] __initdata = {
 	{
@@ -1859,6 +2101,15 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_qup_i2c_gsbi10,
 	&msm_slim_ctrl,
 	&msm_device_wcnss_wlan,
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
+		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+	&qcrypto_device,
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
+		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+	&qcedev_device,
+#endif
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif
@@ -1871,7 +2122,8 @@ static struct platform_device *common_devices[] __initdata = {
 	&android_pmem_adsp_device,
 #endif
 	&msm_fb_device,
-	&msm_device_vidc
+	&msm_device_vidc,
+	&msm_device_bam_dmux,
 };
 
 static struct platform_device *sim_devices[] __initdata = {
@@ -1891,15 +2143,30 @@ static struct platform_device *sim_devices[] __initdata = {
 	&msm_bus_sys_fpb,
 	&msm_bus_cpss_fpb,
 #endif
-	&msm_device_bam_dmux,
 	&msm_pcm,
 	&msm_pcm_routing,
 	&msm_cpudai0,
 	&msm_cpudai1,
+	&msm_cpudai_bt_rx,
+	&msm_cpudai_bt_tx,
+	&msm_cpudai_fm_rx,
+	&msm_cpudai_fm_tx,
 	&msm_cpu_fe,
 	&msm_stub_codec,
 	&msm_voice,
 	&msm_voip,
+	&msm_lpa_pcm,
+
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
+		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+	&qcrypto_device,
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
+		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+	&qcedev_device,
+#endif
+
 };
 
 static struct platform_device *rumi3_devices[] __initdata = {
@@ -1910,7 +2177,6 @@ static struct platform_device *rumi3_devices[] __initdata = {
 #ifdef CONFIG_MSM_GEMINI
 	&msm8960_gemini_device,
 #endif
-	&msm_device_bam_dmux,
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
@@ -1921,11 +2187,16 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&usb_diag_device,
 	&usb_mass_storage_device,
 	&usb_gadget_fserial_device,
+	&usb_rmnet,
 	&rndis_device,
 	&msm_pcm,
 	&msm_pcm_routing,
 	&msm_cpudai0,
 	&msm_cpudai1,
+	&msm_cpudai_bt_rx,
+	&msm_cpudai_bt_tx,
+	&msm_cpudai_fm_rx,
+	&msm_cpudai_fm_tx,
 	&msm_cpu_fe,
 	&msm_stub_codec,
 	&msm_kgsl_3d0,
@@ -1944,7 +2215,8 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&msm8960_camera_sensor_ov2720,
 #endif
 	&msm_voice,
-	&msm_voip
+	&msm_voip,
+	&msm_lpa_pcm,
 };
 
 static void __init msm8960_i2c_init(void)
@@ -2143,6 +2415,15 @@ static struct pm8xxx_keypad_platform_data keypad_data_sim = {
 	.keymap_data            = &keymap_data_sim,
 };
 
+static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
+	.safety_time	= 180,
+	.update_time	= 1,
+	.max_voltage	= 4200,
+	.min_voltage	= 3200,
+	.resume_voltage	= 4100,
+	.term_current	= 100,
+};
+
 static struct pm8921_platform_data pm8921_platform_data __devinitdata = {
 	.irq_pdata		= &pm8xxx_irq_pdata,
 	.gpio_pdata		= &pm8xxx_gpio_pdata,
@@ -2151,6 +2432,7 @@ static struct pm8921_platform_data pm8921_platform_data __devinitdata = {
 	.pwrkey_pdata		= &pm8xxx_pwrkey_pdata,
 	.keypad_pdata		= &keypad_data,
 	.regulator_pdatas	= msm_pm8921_regulator_pdata,
+	.charger_pdata		= &pm8921_chg_pdata,
 };
 
 static struct msm_ssbi_platform_data msm8960_ssbi_pm8921_pdata __devinitdata = {
@@ -2216,8 +2498,6 @@ fail:
 	return ret;
 }
 
-#ifdef CONFIG_PM
-#ifdef CONFIG_CPU_IDLE
 static struct msm_cpuidle_state msm_cstates[] __initdata = {
 	{0, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
@@ -2234,7 +2514,6 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 	{1, 1, "C1", "STANDALONE_POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
 };
-#endif
 
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
@@ -2285,7 +2564,7 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 		.residency = 0,
 	},
 };
-#endif
+
 #ifdef CONFIG_I2C
 #define I2C_SURF 1
 #define I2C_FFA  (1 << 1)
@@ -2366,10 +2645,7 @@ static void __init msm8960_sim_init(void)
 	if (socinfo_init() < 0)
 		pr_err("socinfo_init() failed!\n");
 
-#ifdef CONFIG_MSM_RPM
 	BUG_ON(msm_rpm_init(&msm_rpm_data));
-#endif
-
 	msm_clock_init(msm_clocks_8960, msm_num_clocks_8960);
 	msm8960_device_ssbi_pm8921.dev.platform_data =
 				&msm8960_ssbi_pm8921_pdata;
@@ -2387,6 +2663,7 @@ static void __init msm8960_sim_init(void)
 	ethernet_init();
 	msm8960_i2c_init();
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
+	msm_spm_l2_init(msm_spm_l2_data);
 	msm8960_init_buses();
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	pm8921_gpio_mpp_init();
@@ -2399,16 +2676,12 @@ static void __init msm8960_sim_init(void)
 
 	msm8960_init_mmc();
 	msm_fb_add_devices();
-#ifdef CONFIG_PM
-	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
-	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
-#ifdef CONFIG_CPU_IDLE
-	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
-				msm_pm_data);
-#endif
-#endif
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
+	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
+	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
+	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
+				msm_pm_data);
 }
 
 static void __init msm8960_rumi3_init(void)
@@ -2416,10 +2689,7 @@ static void __init msm8960_rumi3_init(void)
 	if (socinfo_init() < 0)
 		pr_err("socinfo_init() failed!\n");
 
-#ifdef CONFIG_MSM_RPM
 	BUG_ON(msm_rpm_init(&msm_rpm_data));
-#endif
-
 	msm_clock_init(msm_clocks_8960_dummy, msm_num_clocks_8960_dummy);
 	gpiomux_init();
 	ethernet_init();
@@ -2430,6 +2700,8 @@ static void __init msm8960_rumi3_init(void)
 				&msm8960_qup_spi_gsbi1_pdata;
 	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
 	msm8960_i2c_init();
+	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
+	msm_spm_l2_init(msm_spm_l2_data);
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	pm8921_gpio_mpp_init();
 	platform_add_devices(rumi3_devices, ARRAY_SIZE(rumi3_devices));
@@ -2437,9 +2709,12 @@ static void __init msm8960_rumi3_init(void)
 
 	register_i2c_devices();
 	msm_fb_add_devices();
-
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
+	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
+	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
+	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
+				msm_pm_data);
 }
 
 static void __init msm8960_cdp_init(void)
@@ -2447,6 +2722,7 @@ static void __init msm8960_cdp_init(void)
 	if (socinfo_init() < 0)
 		pr_err("socinfo_init() failed!\n");
 
+	BUG_ON(msm_rpm_init(&msm_rpm_data));
 	msm_clock_init(msm_clocks_8960, msm_num_clocks_8960);
 	msm_device_otg.dev.platform_data = &msm_otg_pdata;
 	msm_device_gadget_peripheral.dev.parent = &msm_device_otg.dev;
@@ -2460,6 +2736,8 @@ static void __init msm8960_cdp_init(void)
 				&msm8960_ssbi_pm8921_pdata;
 	pm8921_platform_data.num_regulators = msm_pm8921_regulator_pdata_len;
 	msm8960_i2c_init();
+	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
+	msm_spm_l2_init(msm_spm_l2_data);
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	pm8921_gpio_mpp_init();
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
@@ -2470,6 +2748,10 @@ static void __init msm8960_cdp_init(void)
 	msm_fb_add_devices();
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
+	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
+	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
+	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
+				msm_pm_data);
 }
 
 MACHINE_START(MSM8960_SIM, "QCT MSM8960 SIMULATOR")

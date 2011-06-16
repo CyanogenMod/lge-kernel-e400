@@ -64,8 +64,6 @@
 #define BB_PLL8_STATUS_REG			REG(0x3158)
 #define BB_PLL8_CONFIG_REG			REG(0x3154)
 #define BB_PLL8_TEST_CTL_REG			REG(0x3150)
-#define BB_MMC_PLL2_M_VAL_REG			REG(0x3168)
-#define BB_MMC_PLL2_N_VAL_REG			REG(0x316C)
 #define PLLTEST_PAD_CFG_REG			REG(0x2FA4)
 #define PMEM_ACLK_CTL_REG			REG(0x25A0)
 #define PRNG_CLK_NS_REG				REG(0x2E80)
@@ -164,14 +162,7 @@
 #define MM_PLL0_M_VAL_REG			REG_MM(0x0308)
 #define MM_PLL0_MODE_REG			REG_MM(0x0300)
 #define MM_PLL0_N_VAL_REG			REG_MM(0x030C)
-#define MM_PLL0_STATUS_REG			REG_MM(0x0318)
-#define MM_PLL1_CONFIG_REG			REG_MM(0x032C)
-#define MM_PLL1_L_VAL_REG			REG_MM(0x0320)
-#define MM_PLL1_M_VAL_REG			REG_MM(0x0324)
 #define MM_PLL1_MODE_REG			REG_MM(0x031C)
-#define MM_PLL1_N_VAL_REG			REG_MM(0x0328)
-#define MM_PLL1_STATUS_REG			REG_MM(0x0334)
-#define MM_PLL1_TEST_CTL_REG			REG_MM(0x0330)
 #define ROT_CC_REG				REG_MM(0x00E0)
 #define ROT_NS_REG				REG_MM(0x00E8)
 #define SAXI_EN_REG				REG_MM(0x0030)
@@ -208,11 +199,7 @@
 #define LCC_PCM_MD_REG				REG_LPA(0x0058)
 #define LCC_PCM_NS_REG				REG_LPA(0x0054)
 #define LCC_PCM_STATUS_REG			REG_LPA(0x005C)
-#define LCC_PLL0_CONFIG_REG			REG_LPA(0x0014)
-#define LCC_PLL0_L_VAL_REG			REG_LPA(0x0004)
-#define LCC_PLL0_M_VAL_REG			REG_LPA(0x0008)
 #define LCC_PLL0_MODE_REG			REG_LPA(0x0000)
-#define LCC_PLL0_N_VAL_REG			REG_LPA(0x000C)
 #define LCC_PLL0_STATUS_REG			REG_LPA(0x0018)
 #define LCC_PRI_PLL_CLK_CTL_REG			REG_LPA(0x00C4)
 #define LCC_PXO_SRC_CLK_CTL_REG			REG_LPA(0x00B4)
@@ -395,7 +382,6 @@ static struct fixed_clk cxo_clk = {
 static struct pll_clk pll2_clk = {
 	.rate = 800000000,
 	.mode_reg = MM_PLL1_MODE_REG,
-	.status_reg = MM_PLL1_STATUS_REG,
 	.parent = &pxo_clk.c,
 	.c = {
 		.dbg_name = "pll2_clk",
@@ -409,7 +395,6 @@ static struct pll_vote_clk pll4_clk = {
 	.en_reg = BB_PLL_ENA_SC0_REG,
 	.en_mask = BIT(4),
 	.status_reg = LCC_PLL0_STATUS_REG,
-	.status_mask = BIT(16),
 	.parent = &pxo_clk.c,
 	.c = {
 		.dbg_name = "pll4_clk",
@@ -423,7 +408,6 @@ static struct pll_vote_clk pll8_clk = {
 	.en_reg = BB_PLL_ENA_SC0_REG,
 	.en_mask = BIT(8),
 	.status_reg = BB_PLL8_STATUS_REG,
-	.status_mask = BIT(16),
 	.parent = &pxo_clk.c,
 	.c = {
 		.dbg_name = "pll8_clk",
@@ -446,8 +430,6 @@ static void set_rate_tv(struct clk_local *clk, struct clk_freq_tbl *nf)
 int soc_update_sys_vdd(enum sys_vdd_level level)
 {
 	/* TODO: set voltage via pmic driver */
-	if (level == HIGH)
-		return -EINVAL;
 	return 0;
 }
 
@@ -455,118 +437,6 @@ int soc_update_sys_vdd(enum sys_vdd_level level)
 int soc_set_pwr_rail(struct clk *clk, int enable)
 {
 	return 0;
-}
-
-/* Sample clock for 'ticks' reference clock ticks. */
-static uint32_t run_measurement(unsigned ticks)
-{
-	/* Stop counters and set the XO4 counter start value. */
-	writel_relaxed(0x0, RINGOSC_TCXO_CTL_REG);
-	writel_relaxed(ticks, RINGOSC_TCXO_CTL_REG);
-
-	/* Wait for timer to become ready. */
-	while ((readl_relaxed(RINGOSC_STATUS_REG) & BIT(25)) != 0)
-		cpu_relax();
-
-	/* Run measurement and wait for completion. */
-	writel_relaxed(BIT(20)|ticks, RINGOSC_TCXO_CTL_REG);
-	while ((readl_relaxed(RINGOSC_STATUS_REG) & BIT(25)) == 0)
-		cpu_relax();
-
-	/* Stop counters. */
-	writel_relaxed(0x0, RINGOSC_TCXO_CTL_REG);
-
-	/* Return measured ticks. */
-	return readl_relaxed(RINGOSC_STATUS_REG) & BM(24, 0);
-}
-
-/* Perform a hardware rate measurement for a given clock.
-   FOR DEBUG USE ONLY: Measurements take ~15 ms! */
-static int __soc_clk_measure_rate(u32 test_vector)
-{
-	unsigned long flags;
-	uint32_t clk_sel, pdm_reg_backup, ringosc_reg_backup;
-	uint64_t raw_count_short, raw_count_full;
-	int ret;
-
-	spin_lock_irqsave(&local_clock_reg_lock, flags);
-
-	/* Program the test vector. */
-	clk_sel = test_vector & TEST_CLK_SEL_MASK;
-	switch (test_vector >> TEST_TYPE_SHIFT) {
-	case TEST_TYPE_PER_LS:
-		writel_relaxed(0x4030D00|BVAL(7, 0, clk_sel), CLK_TEST_REG);
-		break;
-	case TEST_TYPE_PER_HS:
-		writel_relaxed(0x4020000|BVAL(16, 10, clk_sel), CLK_TEST_REG);
-		break;
-	case TEST_TYPE_MM_LS:
-		writel_relaxed(0x4030D97, CLK_TEST_REG);
-		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_LS_REG);
-		break;
-	case TEST_TYPE_MM_HS:
-		writel_relaxed(0x402B800, CLK_TEST_REG);
-		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_HS_REG);
-		break;
-	case TEST_TYPE_LPA:
-		writel_relaxed(0x4030D98, CLK_TEST_REG);
-		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0),
-			       LCC_CLK_LS_DEBUG_CFG_REG);
-		break;
-	default:
-		ret = -EPERM;
-		goto err;
-	}
-	/* Make sure test vector is set before starting measurements. */
-	dsb();
-
-	/* Enable CXO/4 and RINGOSC branch and root. */
-	pdm_reg_backup = readl_relaxed(PDM_CLK_NS_REG);
-	ringosc_reg_backup = readl_relaxed(RINGOSC_NS_REG);
-	writel_relaxed(0x2898, PDM_CLK_NS_REG);
-	writel_relaxed(0xA00, RINGOSC_NS_REG);
-
-	/*
-	 * The ring oscillator counter will not reset if the measured clock
-	 * is not running.  To detect this, run a short measurement before
-	 * the full measurement.  If the raw results of the two are the same
-	 * then the clock must be off.
-	 */
-
-	/* Run a short measurement. (~1 ms) */
-	raw_count_short = run_measurement(0x1000);
-	/* Run a full measurement. (~14 ms) */
-	raw_count_full = run_measurement(0x10000);
-
-	writel_relaxed(ringosc_reg_backup, RINGOSC_NS_REG);
-	writel_relaxed(pdm_reg_backup, PDM_CLK_NS_REG);
-
-	/* Return 0 if the clock is off. */
-	if (raw_count_full == raw_count_short)
-		ret = 0;
-	else {
-		/* Compute rate in Hz. */
-		raw_count_full = ((raw_count_full * 10) + 15) * 4800000;
-		do_div(raw_count_full, ((0x10000 * 10) + 35));
-		ret = (int)raw_count_full;
-	}
-
-	/* Route dbg_hs_clk to PLLTEST.  300mV single-ended amplitude. */
-	writel_relaxed(0x3CF8, PLLTEST_PAD_CFG_REG);
-err:
-	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
-
-	return ret;
-}
-
-static int soc_clk_measure_rate(struct clk *clk)
-{
-	return __soc_clk_measure_rate(to_local(clk)->b.test_vector);
-}
-
-static int branch_clk_measure_rate(struct clk *clk)
-{
-	return __soc_clk_measure_rate(to_branch_clk(clk)->b.test_vector);
 }
 
 /* Implementation for clk_set_flags(). */
@@ -594,7 +464,6 @@ static struct clk_ops soc_clk_ops_8960 = {
 	.reset = soc_clk_reset,
 	.set_flags = soc_clk_set_flags,
 	.is_local = local_clk_is_local,
-	.measure_rate = soc_clk_measure_rate,
 	.get_parent = local_clk_get_parent,
 };
 
@@ -606,7 +475,6 @@ static struct clk_ops clk_ops_branch = {
 	.reset = branch_clk_reset,
 	.set_flags = soc_clk_set_flags,
 	.is_local = local_clk_is_local,
-	.measure_rate = branch_clk_measure_rate,
 	.get_parent = branch_clk_get_parent,
 	.set_parent = branch_clk_set_parent,
 };
@@ -622,14 +490,11 @@ static struct branch_clk gmem_axi_clk = {
 		.en_reg = MAXI_EN_REG,
 		.en_mask = BIT(24),
 		.halt_reg = DBG_BUS_VEC_E_REG,
-		.halt_check = HALT,
 		.halt_bit = 6,
-		.test_vector = TEST_MM_HS(0x11),
 	},
 	.c = {
 		.dbg_name = "gmem_axi_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gmem_axi_clk.c),
 	},
 };
@@ -641,14 +506,11 @@ static struct branch_clk ijpeg_axi_clk = {
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(14),
 		.halt_reg = DBG_BUS_VEC_E_REG,
-		.halt_check = HALT,
 		.halt_bit = 4,
-		.test_vector = TEST_MM_HS(0x12),
 	},
 	.c = {
 		.dbg_name = "ijpeg_axi_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(ijpeg_axi_clk.c),
 	},
 };
@@ -660,14 +522,11 @@ static struct branch_clk imem_axi_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(10),
 		.halt_reg = DBG_BUS_VEC_E_REG,
-		.halt_check = HALT,
 		.halt_bit = 7,
-		.test_vector = TEST_MM_HS(0x13),
 	},
 	.c = {
 		.dbg_name = "imem_axi_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(imem_axi_clk.c),
 	},
 };
@@ -677,14 +536,11 @@ static struct branch_clk jpegd_axi_clk = {
 		.en_reg = MAXI_EN_REG,
 		.en_mask = BIT(25),
 		.halt_reg = DBG_BUS_VEC_E_REG,
-		.halt_check = HALT,
 		.halt_bit = 5,
-		.test_vector = TEST_MM_HS(0x14),
 	},
 	.c = {
 		.dbg_name = "jpegd_axi_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(jpegd_axi_clk.c),
 	},
 };
@@ -696,14 +552,11 @@ static struct branch_clk vcodec_axi_clk = {
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(7),
 		.halt_reg = DBG_BUS_VEC_E_REG,
-		.halt_check = HALT,
 		.halt_bit = 3,
-		.test_vector = TEST_MM_HS(0x17),
 	},
 	.c = {
 		.dbg_name = "vcodec_axi_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vcodec_axi_clk.c),
 	},
 };
@@ -715,14 +568,11 @@ static struct branch_clk vcodec_axi_a_clk = {
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(5),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 26,
-		.test_vector = TEST_MM_HS(0x29),
 	},
 	.c = {
 		.dbg_name = "vcodec_axi_a_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vcodec_axi_a_clk.c),
 	},
 };
@@ -734,14 +584,11 @@ static struct branch_clk vcodec_axi_b_clk = {
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(4),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 25,
-		.test_vector = TEST_MM_HS(0x2A),
 	},
 	.c = {
 		.dbg_name = "vcodec_axi_b_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vcodec_axi_b_clk.c),
 	},
 };
@@ -753,14 +600,11 @@ static struct branch_clk vfe_axi_clk = {
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(9),
 		.halt_reg = DBG_BUS_VEC_E_REG,
-		.halt_check = HALT,
 		.halt_bit = 0,
-		.test_vector = TEST_MM_HS(0x18),
 	},
 	.c = {
 		.dbg_name = "vfe_axi_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vfe_axi_clk.c),
 	},
 };
@@ -822,14 +666,11 @@ static struct branch_clk amp_p_clk = {
 		.en_reg = AHB_EN_REG,
 		.en_mask = BIT(24),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 18,
-		.test_vector = TEST_MM_LS(0x06),
 	},
 	.c = {
 		.dbg_name = "amp_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(amp_p_clk.c),
 	},
 };
@@ -841,14 +682,11 @@ static struct branch_clk csi0_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(17),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 16,
-		.test_vector = TEST_MM_LS(0x07),
 	},
 	.c = {
 		.dbg_name = "csi0_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi0_p_clk.c),
 	},
 };
@@ -860,14 +698,11 @@ static struct branch_clk dsi1_m_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(6),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 19,
-		.test_vector = TEST_MM_LS(0x09),
 	},
 	.c = {
 		.dbg_name = "dsi1_m_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi1_m_p_clk.c),
 	},
 };
@@ -879,14 +714,11 @@ static struct branch_clk dsi1_s_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(5),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 21,
-		.test_vector = TEST_MM_LS(0x0A),
 	},
 	.c = {
 		.dbg_name = "dsi1_s_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi1_s_p_clk.c),
 	},
 };
@@ -898,14 +730,11 @@ static struct branch_clk dsi2_m_p_clk = {
 		.reset_reg = SW_RESET_AHB2_REG,
 		.reset_mask = BIT(1),
 		.halt_reg = DBG_BUS_VEC_E_REG,
-		.halt_check = HALT,
 		.halt_bit = 18,
-		.test_vector = TEST_MM_LS(0x26),
 	},
 	.c = {
 		.dbg_name = "dsi2_m_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi2_m_p_clk.c),
 	},
 };
@@ -917,14 +746,11 @@ static struct branch_clk dsi2_s_p_clk = {
 		.reset_reg = SW_RESET_AHB2_REG,
 		.reset_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 20,
-		.test_vector = TEST_MM_LS(0x08),
 	},
 	.c = {
 		.dbg_name = "dsi2_s_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi2_s_p_clk.c),
 	},
 };
@@ -936,14 +762,11 @@ static struct branch_clk gfx2d0_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(12),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 2,
-		.test_vector = TEST_MM_LS(0x0C),
 	},
 	.c = {
 		.dbg_name = "gfx2d0_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gfx2d0_p_clk.c),
 	},
 };
@@ -955,14 +778,11 @@ static struct branch_clk gfx2d1_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(11),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 3,
-		.test_vector = TEST_MM_LS(0x0D),
 	},
 	.c = {
 		.dbg_name = "gfx2d1_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gfx2d1_p_clk.c),
 	},
 };
@@ -974,14 +794,11 @@ static struct branch_clk gfx3d_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(10),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 4,
-		.test_vector = TEST_MM_LS(0x0E),
 	},
 	.c = {
 		.dbg_name = "gfx3d_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gfx3d_p_clk.c),
 	},
 };
@@ -993,14 +810,11 @@ static struct branch_clk hdmi_m_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(9),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 5,
-		.test_vector = TEST_MM_LS(0x0F),
 	},
 	.c = {
 		.dbg_name = "hdmi_m_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(hdmi_m_p_clk.c),
 	},
 };
@@ -1012,14 +826,11 @@ static struct branch_clk hdmi_s_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(9),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 6,
-		.test_vector = TEST_MM_LS(0x10),
 	},
 	.c = {
 		.dbg_name = "hdmi_s_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(hdmi_s_p_clk.c),
 	},
 };
@@ -1031,14 +842,11 @@ static struct branch_clk ijpeg_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(7),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 9,
-		.test_vector = TEST_MM_LS(0x11),
 	},
 	.c = {
-		.dbg_name = "ijepg_p_clk",
+		.dbg_name = "ijpeg_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(ijpeg_p_clk.c),
 	},
 };
@@ -1050,14 +858,11 @@ static struct branch_clk imem_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(8),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 10,
-		.test_vector = TEST_MM_LS(0x12),
 	},
 	.c = {
 		.dbg_name = "imem_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(imem_p_clk.c),
 	},
 };
@@ -1069,14 +874,11 @@ static struct branch_clk jpegd_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(4),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 7,
-		.test_vector = TEST_MM_LS(0x13),
 	},
 	.c = {
 		.dbg_name = "jpegd_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(jpegd_p_clk.c),
 	},
 };
@@ -1088,14 +890,11 @@ static struct branch_clk mdp_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(3),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 11,
-		.test_vector = TEST_MM_LS(0x14),
 	},
 	.c = {
 		.dbg_name = "mdp_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(mdp_p_clk.c),
 	},
 };
@@ -1107,14 +906,11 @@ static struct branch_clk rot_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(2),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 13,
-		.test_vector = TEST_MM_LS(0x16),
 	},
 	.c = {
 		.dbg_name = "rot_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(rot_p_clk.c),
 	},
 };
@@ -1124,14 +920,11 @@ static struct branch_clk smmu_p_clk = {
 		.en_reg = AHB_EN_REG,
 		.en_mask = BIT(15),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 22,
-		.test_vector = TEST_MM_LS(0x18),
 	},
 	.c = {
 		.dbg_name = "smmu_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(smmu_p_clk.c),
 	},
 };
@@ -1143,14 +936,11 @@ static struct branch_clk tv_enc_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(15),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 23,
-		.test_vector = TEST_MM_LS(0x19),
 	},
 	.c = {
 		.dbg_name = "tv_enc_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(tv_enc_p_clk.c),
 	},
 };
@@ -1162,14 +952,11 @@ static struct branch_clk vcodec_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(1),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 12,
-		.test_vector = TEST_MM_LS(0x1A),
 	},
 	.c = {
 		.dbg_name = "vcodec_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vcodec_p_clk.c),
 	},
 };
@@ -1181,14 +968,11 @@ static struct branch_clk vfe_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 14,
-		.test_vector = TEST_MM_LS(0x1B),
 	},
 	.c = {
 		.dbg_name = "vfe_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vfe_p_clk.c),
 	},
 };
@@ -1200,14 +984,11 @@ static struct branch_clk vpe_p_clk = {
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(14),
 		.halt_reg = DBG_BUS_VEC_F_REG,
-		.halt_check = HALT,
 		.halt_bit = 15,
-		.test_vector = TEST_MM_LS(0x1C),
 	},
 	.c = {
 		.dbg_name = "vpe_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vpe_p_clk.c),
 	},
 };
@@ -1215,7 +996,7 @@ static struct branch_clk vpe_p_clk = {
 /*
  * Peripheral Clocks
  */
-#define CLK_GSBI_UART(i, n, h_r, h_c, h_b, tv) \
+#define CLK_GSBI_UART(i, n, h_r, h_b) \
 	struct clk_local i##_clk = { \
 		.b = { \
 			.en_reg = GSBIn_UART_APPS_NS_REG(n), \
@@ -1223,9 +1004,7 @@ static struct branch_clk vpe_p_clk = {
 			.reset_reg = GSBIn_RESET_REG(n), \
 			.reset_mask = BIT(0), \
 			.halt_reg = h_r, \
-			.halt_check = h_c, \
 			.halt_bit = h_b, \
-			.test_vector = tv, \
 		}, \
 		.ns_reg = GSBIn_UART_APPS_NS_REG(n), \
 		.md_reg = GSBIn_UART_APPS_MD_REG(n), \
@@ -1237,7 +1016,6 @@ static struct branch_clk vpe_p_clk = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -1269,32 +1047,20 @@ static struct clk_freq_tbl clk_tbl_gsbi_uart[] = {
 	F_END
 };
 
-static CLK_GSBI_UART(gsbi1_uart,   1, CLK_HALT_CFPB_STATEA_REG, HALT, 10,
-			TEST_PER_LS(0x3E));
-static CLK_GSBI_UART(gsbi2_uart,   2, CLK_HALT_CFPB_STATEA_REG, HALT,  6,
-			TEST_PER_LS(0x42));
-static CLK_GSBI_UART(gsbi3_uart,   3, CLK_HALT_CFPB_STATEA_REG, HALT,  2,
-			TEST_PER_LS(0x46));
-static CLK_GSBI_UART(gsbi4_uart,   4, CLK_HALT_CFPB_STATEB_REG, HALT, 26,
-			TEST_PER_LS(0x4A));
-static CLK_GSBI_UART(gsbi5_uart,   5, CLK_HALT_CFPB_STATEB_REG, HALT, 22,
-			TEST_PER_LS(0x4E));
-static CLK_GSBI_UART(gsbi6_uart,   6, CLK_HALT_CFPB_STATEB_REG, HALT, 18,
-			TEST_PER_LS(0x52));
-static CLK_GSBI_UART(gsbi7_uart,   7, CLK_HALT_CFPB_STATEB_REG, HALT, 14,
-			TEST_PER_LS(0x56));
-static CLK_GSBI_UART(gsbi8_uart,   8, CLK_HALT_CFPB_STATEB_REG, HALT, 10,
-			TEST_PER_LS(0x5A));
-static CLK_GSBI_UART(gsbi9_uart,   9, CLK_HALT_CFPB_STATEB_REG, HALT,  6,
-			TEST_PER_LS(0x5E));
-static CLK_GSBI_UART(gsbi10_uart, 10, CLK_HALT_CFPB_STATEB_REG, HALT,  2,
-			TEST_PER_LS(0x62));
-static CLK_GSBI_UART(gsbi11_uart, 11, CLK_HALT_CFPB_STATEC_REG, HALT, 17,
-			TEST_PER_LS(0x66));
-static CLK_GSBI_UART(gsbi12_uart, 12, CLK_HALT_CFPB_STATEC_REG, HALT, 13,
-			TEST_PER_LS(0x6A));
+static CLK_GSBI_UART(gsbi1_uart,   1, CLK_HALT_CFPB_STATEA_REG, 10);
+static CLK_GSBI_UART(gsbi2_uart,   2, CLK_HALT_CFPB_STATEA_REG,  6);
+static CLK_GSBI_UART(gsbi3_uart,   3, CLK_HALT_CFPB_STATEA_REG,  2);
+static CLK_GSBI_UART(gsbi4_uart,   4, CLK_HALT_CFPB_STATEB_REG, 26);
+static CLK_GSBI_UART(gsbi5_uart,   5, CLK_HALT_CFPB_STATEB_REG, 22);
+static CLK_GSBI_UART(gsbi6_uart,   6, CLK_HALT_CFPB_STATEB_REG, 18);
+static CLK_GSBI_UART(gsbi7_uart,   7, CLK_HALT_CFPB_STATEB_REG, 14);
+static CLK_GSBI_UART(gsbi8_uart,   8, CLK_HALT_CFPB_STATEB_REG, 10);
+static CLK_GSBI_UART(gsbi9_uart,   9, CLK_HALT_CFPB_STATEB_REG,  6);
+static CLK_GSBI_UART(gsbi10_uart, 10, CLK_HALT_CFPB_STATEB_REG,  2);
+static CLK_GSBI_UART(gsbi11_uart, 11, CLK_HALT_CFPB_STATEC_REG, 17);
+static CLK_GSBI_UART(gsbi12_uart, 12, CLK_HALT_CFPB_STATEC_REG, 13);
 
-#define CLK_GSBI_QUP(i, n, h_r, h_c, h_b, tv) \
+#define CLK_GSBI_QUP(i, n, h_r, h_b) \
 	struct clk_local i##_clk = { \
 		.b = { \
 			.en_reg = GSBIn_QUP_APPS_NS_REG(n), \
@@ -1302,9 +1068,7 @@ static CLK_GSBI_UART(gsbi12_uart, 12, CLK_HALT_CFPB_STATEC_REG, HALT, 13,
 			.reset_reg = GSBIn_RESET_REG(n), \
 			.reset_mask = BIT(0), \
 			.halt_reg = h_r, \
-			.halt_check = h_c, \
 			.halt_bit = h_b, \
-			.test_vector = tv, \
 		}, \
 		.ns_reg = GSBIn_QUP_APPS_NS_REG(n), \
 		.md_reg = GSBIn_QUP_APPS_MD_REG(n), \
@@ -1316,7 +1080,6 @@ static CLK_GSBI_UART(gsbi12_uart, 12, CLK_HALT_CFPB_STATEC_REG, HALT, 13,
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -1343,30 +1106,18 @@ static struct clk_freq_tbl clk_tbl_gsbi_qup[] = {
 	F_END
 };
 
-static CLK_GSBI_QUP(gsbi1_qup,   1, CLK_HALT_CFPB_STATEA_REG, HALT,  9,
-			TEST_PER_LS(0x3F));
-static CLK_GSBI_QUP(gsbi2_qup,   2, CLK_HALT_CFPB_STATEA_REG, HALT,  4,
-			TEST_PER_LS(0x44));
-static CLK_GSBI_QUP(gsbi3_qup,   3, CLK_HALT_CFPB_STATEA_REG, HALT,  0,
-			TEST_PER_LS(0x48));
-static CLK_GSBI_QUP(gsbi4_qup,   4, CLK_HALT_CFPB_STATEB_REG, HALT, 24,
-			TEST_PER_LS(0x4C));
-static CLK_GSBI_QUP(gsbi5_qup,   5, CLK_HALT_CFPB_STATEB_REG, HALT, 20,
-			TEST_PER_LS(0x50));
-static CLK_GSBI_QUP(gsbi6_qup,   6, CLK_HALT_CFPB_STATEB_REG, HALT, 16,
-			TEST_PER_LS(0x54));
-static CLK_GSBI_QUP(gsbi7_qup,   7, CLK_HALT_CFPB_STATEB_REG, HALT, 12,
-			TEST_PER_LS(0x58));
-static CLK_GSBI_QUP(gsbi8_qup,   8, CLK_HALT_CFPB_STATEB_REG, HALT,  8,
-			TEST_PER_LS(0x5C));
-static CLK_GSBI_QUP(gsbi9_qup,   9, CLK_HALT_CFPB_STATEB_REG, HALT,  4,
-			TEST_PER_LS(0x60));
-static CLK_GSBI_QUP(gsbi10_qup, 10, CLK_HALT_CFPB_STATEB_REG, HALT,  0,
-			TEST_PER_LS(0x64));
-static CLK_GSBI_QUP(gsbi11_qup, 11, CLK_HALT_CFPB_STATEC_REG, HALT, 15,
-			TEST_PER_LS(0x68));
-static CLK_GSBI_QUP(gsbi12_qup, 12, CLK_HALT_CFPB_STATEC_REG, HALT, 11,
-			TEST_PER_LS(0x6C));
+static CLK_GSBI_QUP(gsbi1_qup,   1, CLK_HALT_CFPB_STATEA_REG,  9);
+static CLK_GSBI_QUP(gsbi2_qup,   2, CLK_HALT_CFPB_STATEA_REG,  4);
+static CLK_GSBI_QUP(gsbi3_qup,   3, CLK_HALT_CFPB_STATEA_REG,  0);
+static CLK_GSBI_QUP(gsbi4_qup,   4, CLK_HALT_CFPB_STATEB_REG, 24);
+static CLK_GSBI_QUP(gsbi5_qup,   5, CLK_HALT_CFPB_STATEB_REG, 20);
+static CLK_GSBI_QUP(gsbi6_qup,   6, CLK_HALT_CFPB_STATEB_REG, 16);
+static CLK_GSBI_QUP(gsbi7_qup,   7, CLK_HALT_CFPB_STATEB_REG, 12);
+static CLK_GSBI_QUP(gsbi8_qup,   8, CLK_HALT_CFPB_STATEB_REG,  8);
+static CLK_GSBI_QUP(gsbi9_qup,   9, CLK_HALT_CFPB_STATEB_REG,  4);
+static CLK_GSBI_QUP(gsbi10_qup, 10, CLK_HALT_CFPB_STATEB_REG,  0);
+static CLK_GSBI_QUP(gsbi11_qup, 11, CLK_HALT_CFPB_STATEC_REG, 15);
+static CLK_GSBI_QUP(gsbi12_qup, 12, CLK_HALT_CFPB_STATEC_REG, 11);
 
 #define F_PDM(f, s, d, v) \
 	{ \
@@ -1388,7 +1139,6 @@ struct clk_local pdm_clk = {
 		.reset_reg = PDM_CLK_NS_REG,
 		.reset_mask = BIT(12),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 3,
 	},
 	.ns_reg = PDM_CLK_NS_REG,
@@ -1400,7 +1150,6 @@ struct clk_local pdm_clk = {
 	.c = {
 		.dbg_name = "pdm_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(pdm_clk.c),
 	},
 };
@@ -1410,14 +1159,11 @@ static struct branch_clk pmem_clk = {
 		.en_reg = PMEM_ACLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 20,
-		.test_vector = TEST_PER_LS(0x26),
 	},
 	.c = {
 		.dbg_name = "pmem_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(pmem_clk.c),
 	},
 };
@@ -1443,7 +1189,6 @@ struct clk_local prng_clk = {
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 10,
-		.test_vector = TEST_PER_LS(0x7D),
 	},
 	.ns_reg = PRNG_CLK_NS_REG,
 	.ns_mask = (BM(6, 3) | BM(2, 0)),
@@ -1453,12 +1198,11 @@ struct clk_local prng_clk = {
 	.c = {
 		.dbg_name = "prng_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(prng_clk.c),
 	},
 };
 
-#define CLK_SDC(i, n, h_r, h_c, h_b, tv) \
+#define CLK_SDC(i, n, h_r, h_c, h_b) \
 	struct clk_local i##_clk = { \
 		.b = { \
 			.en_reg = SDCn_APPS_CLK_NS_REG(n), \
@@ -1468,7 +1212,6 @@ struct clk_local prng_clk = {
 			.halt_reg = h_r, \
 			.halt_check = h_c, \
 			.halt_bit = h_b, \
-			.test_vector = tv, \
 		}, \
 		.ns_reg = SDCn_APPS_CLK_NS_REG(n), \
 		.md_reg = SDCn_APPS_CLK_MD_REG(n), \
@@ -1480,7 +1223,6 @@ struct clk_local prng_clk = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -1494,24 +1236,25 @@ struct clk_local prng_clk = {
 		.sys_vdd = v, \
 	}
 static struct clk_freq_tbl clk_tbl_sdc[] = {
-	F_SDC(       0, gnd,   1, 0,   0, NONE),
-	F_SDC(  144000, pxo,   3, 2, 125, LOW),
-	F_SDC(  400000, pll8,  4, 1, 240, LOW),
-	F_SDC(16000000, pll8,  4, 1,   6, LOW),
-	F_SDC(17070000, pll8,  1, 2,  45, LOW),
-	F_SDC(20210000, pll8,  1, 1,  19, LOW),
-	F_SDC(24000000, pll8,  4, 1,   4, LOW),
-	F_SDC(48000000, pll8,  4, 1,   2, NOMINAL),
-	F_SDC(64000000, pll8,  3, 1,   2, NOMINAL),
-	F_SDC(96000000, pll8,  4, 0,   0, NOMINAL),
+	F_SDC(        0, gnd,   1, 0,   0, NONE),
+	F_SDC(   144000, pxo,   3, 2, 125, LOW),
+	F_SDC(   400000, pll8,  4, 1, 240, LOW),
+	F_SDC( 16000000, pll8,  4, 1,   6, LOW),
+	F_SDC( 17070000, pll8,  1, 2,  45, LOW),
+	F_SDC( 20210000, pll8,  1, 1,  19, LOW),
+	F_SDC( 24000000, pll8,  4, 1,   4, LOW),
+	F_SDC( 48000000, pll8,  4, 1,   2, NOMINAL),
+	F_SDC( 64000000, pll8,  3, 1,   2, NOMINAL),
+	F_SDC( 96000000, pll8,  4, 0,   0, NOMINAL),
+	F_SDC(192000000, pll8,  2, 0,   0, NOMINAL),
 	F_END
 };
 
-static CLK_SDC(sdc1, 1, CLK_HALT_DFAB_STATE_REG, HALT, 6, TEST_PER_LS(0x13));
-static CLK_SDC(sdc2, 2, CLK_HALT_DFAB_STATE_REG, HALT, 5, TEST_PER_LS(0x15));
-static CLK_SDC(sdc3, 3, CLK_HALT_DFAB_STATE_REG, HALT, 4, TEST_PER_LS(0x17));
-static CLK_SDC(sdc4, 4, CLK_HALT_DFAB_STATE_REG, HALT, 3, TEST_PER_LS(0x19));
-static CLK_SDC(sdc5, 5, CLK_HALT_DFAB_STATE_REG, HALT, 2, TEST_PER_LS(0x1B));
+static CLK_SDC(sdc1, 1, CLK_HALT_DFAB_STATE_REG, HALT, 6);
+static CLK_SDC(sdc2, 2, CLK_HALT_DFAB_STATE_REG, HALT, 5);
+static CLK_SDC(sdc3, 3, CLK_HALT_DFAB_STATE_REG, HALT, 4);
+static CLK_SDC(sdc4, 4, CLK_HALT_DFAB_STATE_REG, HALT, 3);
+static CLK_SDC(sdc5, 5, CLK_HALT_DFAB_STATE_REG, HALT, 2);
 
 #define F_TSIF_REF(f, s, d, m, n, v) \
 	{ \
@@ -1533,9 +1276,7 @@ struct clk_local tsif_ref_clk = {
 		.en_reg = TSIF_REF_CLK_NS_REG,
 		.en_mask = BIT(9),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 5,
-		.test_vector = TEST_PER_LS(0x91),
 	},
 	.ns_reg = TSIF_REF_CLK_NS_REG,
 	.md_reg = TSIF_REF_CLK_MD_REG,
@@ -1547,7 +1288,6 @@ struct clk_local tsif_ref_clk = {
 	.c = {
 		.dbg_name = "tsif_ref_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(tsif_ref_clk.c),
 	},
 };
@@ -1570,9 +1310,7 @@ struct clk_local tssc_clk = {
 		.en_reg = TSSC_CLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 4,
-		.test_vector = TEST_PER_LS(0x94),
 	},
 	.ns_reg = TSSC_CLK_CTL_REG,
 	.ns_mask = BM(1, 0),
@@ -1582,7 +1320,6 @@ struct clk_local tssc_clk = {
 	.c = {
 		.dbg_name = "tssc_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(tssc_clk.c),
 	},
 };
@@ -1609,9 +1346,7 @@ struct clk_local usb_hs1_xcvr_clk = {
 		.reset_reg = USB_HS1_RESET_REG,
 		.reset_mask = BIT(0),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 0,
-		.test_vector = TEST_PER_LS(0x85),
 	},
 	.ns_reg = USB_HS1_XCVR_FS_CLK_NS_REG,
 	.md_reg = USB_HS1_XCVR_FS_CLK_MD_REG,
@@ -1623,7 +1358,6 @@ struct clk_local usb_hs1_xcvr_clk = {
 	.c = {
 		.dbg_name = "usb_hs1_xcvr_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_hs1_xcvr_clk.c),
 	},
 };
@@ -1645,6 +1379,7 @@ static struct branch_clk usb_phy0_clk = {
 		.ns_reg = USB_FSn_XCVR_FS_CLK_NS_REG(n), \
 		.b = { \
 			.en_reg = USB_FSn_XCVR_FS_CLK_NS_REG(n), \
+			.halt_check = NOCHECK, \
 		}, \
 		.md_reg = USB_FSn_XCVR_FS_CLK_MD_REG(n), \
 		.root_en_mask = BIT(11), \
@@ -1655,7 +1390,6 @@ static struct branch_clk usb_phy0_clk = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -1668,15 +1402,12 @@ static struct branch_clk usb_fs1_xcvr_clk = {
 		.reset_reg = USB_FSn_RESET_REG(1),
 		.reset_mask = BIT(1),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 15,
-		.test_vector = TEST_PER_LS(0x8B),
 	},
 	.parent = &usb_fs1_src_clk.c,
 	.c = {
 		.dbg_name = "usb_fs1_xcvr_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_fs1_xcvr_clk.c),
 	},
 };
@@ -1688,15 +1419,12 @@ static struct branch_clk usb_fs1_sys_clk = {
 		.reset_reg = USB_FSn_RESET_REG(1),
 		.reset_mask = BIT(0),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 16,
-		.test_vector = TEST_PER_LS(0x8A),
 	},
 	.parent = &usb_fs1_src_clk.c,
 	.c = {
 		.dbg_name = "usb_fs1_sys_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_fs1_sys_clk.c),
 	},
 };
@@ -1709,15 +1437,12 @@ static struct branch_clk usb_fs2_xcvr_clk = {
 		.reset_reg = USB_FSn_RESET_REG(2),
 		.reset_mask = BIT(1),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 12,
-		.test_vector = TEST_PER_LS(0x8E),
 	},
 	.parent = &usb_fs2_src_clk.c,
 	.c = {
 		.dbg_name = "usb_fs2_xcvr_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_fs2_xcvr_clk.c),
 	},
 };
@@ -1729,15 +1454,12 @@ static struct branch_clk usb_fs2_sys_clk = {
 		.reset_reg = USB_FSn_RESET_REG(2),
 		.reset_mask = BIT(0),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 13,
-		.test_vector = TEST_PER_LS(0x8D),
 	},
 	.parent = &usb_fs2_src_clk.c,
 	.c = {
 		.dbg_name = "usb_fs2_sys_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_fs2_sys_clk.c),
 	},
 };
@@ -1748,14 +1470,11 @@ static struct branch_clk ce1_core_clk = {
 		.en_reg = CE1_CORE_CLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 27,
-		.test_vector = TEST_PER_LS(0xA4),
 	},
 	.c = {
 		.dbg_name = "ce1_core_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(ce1_core_clk.c),
 	},
 };
@@ -1764,14 +1483,11 @@ static struct branch_clk ce1_p_clk = {
 		.en_reg = CE1_HCLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 1,
-		.test_vector = TEST_PER_LS(0x92),
 	},
 	.c = {
 		.dbg_name = "ce1_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(ce1_p_clk.c),
 	},
 };
@@ -1781,14 +1497,11 @@ static struct branch_clk dma_bam_p_clk = {
 		.en_reg = DMA_BAM_HCLK_CTL,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 12,
-		.test_vector = TEST_PER_LS(0x32),
 	},
 	.c = {
 		.dbg_name = "dma_bam_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dma_bam_p_clk.c),
 	},
 };
@@ -1798,14 +1511,11 @@ static struct branch_clk gsbi1_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(1),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 11,
-		.test_vector = TEST_PER_LS(0x3D),
 	},
 	.c = {
 		.dbg_name = "gsbi1_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi1_p_clk.c),
 	},
 };
@@ -1815,14 +1525,11 @@ static struct branch_clk gsbi2_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(2),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 7,
-		.test_vector = TEST_PER_LS(0x41),
 	},
 	.c = {
 		.dbg_name = "gsbi2_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi2_p_clk.c),
 	},
 };
@@ -1832,14 +1539,11 @@ static struct branch_clk gsbi3_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(3),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 3,
-		.test_vector = TEST_PER_LS(0x45),
 	},
 	.c = {
 		.dbg_name = "gsbi3_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi3_p_clk.c),
 	},
 };
@@ -1849,14 +1553,11 @@ static struct branch_clk gsbi4_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(4),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
-		.halt_check = HALT,
 		.halt_bit = 27,
-		.test_vector = TEST_PER_LS(0x49),
 	},
 	.c = {
 		.dbg_name = "gsbi4_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi4_p_clk.c),
 	},
 };
@@ -1866,14 +1567,11 @@ static struct branch_clk gsbi5_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(5),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
-		.halt_check = HALT,
 		.halt_bit = 23,
-		.test_vector = TEST_PER_LS(0x4D),
 	},
 	.c = {
 		.dbg_name = "gsbi5_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi5_p_clk.c),
 	},
 };
@@ -1883,14 +1581,11 @@ static struct branch_clk gsbi6_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(6),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
-		.halt_check = HALT,
 		.halt_bit = 19,
-		.test_vector = TEST_PER_LS(0x51),
 	},
 	.c = {
 		.dbg_name = "gsbi6_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi6_p_clk.c),
 	},
 };
@@ -1900,14 +1595,11 @@ static struct branch_clk gsbi7_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(7),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
-		.halt_check = HALT,
 		.halt_bit = 15,
-		.test_vector = TEST_PER_LS(0x55),
 	},
 	.c = {
 		.dbg_name = "gsbi7_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi7_p_clk.c),
 	},
 };
@@ -1917,14 +1609,11 @@ static struct branch_clk gsbi8_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(8),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
-		.halt_check = HALT,
 		.halt_bit = 11,
-		.test_vector = TEST_PER_LS(0x59),
 	},
 	.c = {
 		.dbg_name = "gsbi8_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi8_p_clk.c),
 	},
 };
@@ -1934,14 +1623,11 @@ static struct branch_clk gsbi9_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(9),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
-		.halt_check = HALT,
 		.halt_bit = 7,
-		.test_vector = TEST_PER_LS(0x5D),
 	},
 	.c = {
 		.dbg_name = "gsbi9_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi9_p_clk.c),
 	},
 };
@@ -1951,14 +1637,11 @@ static struct branch_clk gsbi10_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(10),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
-		.halt_check = HALT,
 		.halt_bit = 3,
-		.test_vector = TEST_PER_LS(0x61),
 	},
 	.c = {
 		.dbg_name = "gsbi10_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi10_p_clk.c),
 	},
 };
@@ -1968,14 +1651,11 @@ static struct branch_clk gsbi11_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(11),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 18,
-		.test_vector = TEST_PER_LS(0x65),
 	},
 	.c = {
 		.dbg_name = "gsbi11_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi11_p_clk.c),
 	},
 };
@@ -1985,14 +1665,11 @@ static struct branch_clk gsbi12_p_clk = {
 		.en_reg = GSBIn_HCLK_CTL_REG(12),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 14,
-		.test_vector = TEST_PER_LS(0x69),
 	},
 	.c = {
 		.dbg_name = "gsbi12_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gsbi12_p_clk.c),
 	},
 };
@@ -2002,14 +1679,11 @@ static struct branch_clk tsif_p_clk = {
 		.en_reg = TSIF_HCLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
-		.halt_check = HALT,
 		.halt_bit = 7,
-		.test_vector = TEST_PER_LS(0x8F),
 	},
 	.c = {
 		.dbg_name = "tsif_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(tsif_p_clk.c),
 	},
 };
@@ -2019,14 +1693,11 @@ static struct branch_clk usb_fs1_p_clk = {
 		.en_reg = USB_FSn_HCLK_CTL_REG(1),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 17,
-		.test_vector = TEST_PER_LS(0x89),
 	},
 	.c = {
 		.dbg_name = "usb_fs1_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_fs1_p_clk.c),
 	},
 };
@@ -2036,14 +1707,11 @@ static struct branch_clk usb_fs2_p_clk = {
 		.en_reg = USB_FSn_HCLK_CTL_REG(2),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
-		.halt_check = HALT,
 		.halt_bit = 14,
-		.test_vector = TEST_PER_LS(0x8C),
 	},
 	.c = {
 		.dbg_name = "usb_fs2_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_fs2_p_clk.c),
 	},
 };
@@ -2053,14 +1721,11 @@ static struct branch_clk usb_hs1_p_clk = {
 		.en_reg = USB_HS1_HCLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 1,
-		.test_vector = TEST_PER_LS(0x84),
 	},
 	.c = {
 		.dbg_name = "usb_hs1_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(usb_hs1_p_clk.c),
 	},
 };
@@ -2070,14 +1735,11 @@ static struct branch_clk sdc1_p_clk = {
 		.en_reg = SDCn_HCLK_CTL_REG(1),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 11,
-		.test_vector = TEST_PER_LS(0x12),
 	},
 	.c = {
 		.dbg_name = "sdc1_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(sdc1_p_clk.c),
 	},
 };
@@ -2087,14 +1749,11 @@ static struct branch_clk sdc2_p_clk = {
 		.en_reg = SDCn_HCLK_CTL_REG(2),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 10,
-		.test_vector = TEST_PER_LS(0x14),
 	},
 	.c = {
 		.dbg_name = "sdc2_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(sdc2_p_clk.c),
 	},
 };
@@ -2104,14 +1763,11 @@ static struct branch_clk sdc3_p_clk = {
 		.en_reg = SDCn_HCLK_CTL_REG(3),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 9,
-		.test_vector = TEST_PER_LS(0x16),
 	},
 	.c = {
 		.dbg_name = "sdc3_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(sdc3_p_clk.c),
 	},
 };
@@ -2121,14 +1777,11 @@ static struct branch_clk sdc4_p_clk = {
 		.en_reg = SDCn_HCLK_CTL_REG(4),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 8,
-		.test_vector = TEST_PER_LS(0x18),
 	},
 	.c = {
 		.dbg_name = "sdc4_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(sdc4_p_clk.c),
 	},
 };
@@ -2138,14 +1791,11 @@ static struct branch_clk sdc5_p_clk = {
 		.en_reg = SDCn_HCLK_CTL_REG(5),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
-		.halt_check = HALT,
 		.halt_bit = 7,
-		.test_vector = TEST_PER_LS(0x1A),
 	},
 	.c = {
 		.dbg_name = "sdc5_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(sdc5_p_clk.c),
 	},
 };
@@ -2158,12 +1808,10 @@ static struct branch_clk adm0_clk = {
 		.halt_reg = CLK_HALT_MSS_SMPSS_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 14,
-		.test_vector = TEST_PER_HS(0x2A),
 	},
 	.c = {
 		.dbg_name = "adm0_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(adm0_clk.c),
 	},
 };
@@ -2175,12 +1823,10 @@ static struct branch_clk adm0_p_clk = {
 		.halt_reg = CLK_HALT_MSS_SMPSS_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 13,
-		.test_vector = TEST_PER_LS(0x80),
 	},
 	.c = {
 		.dbg_name = "adm0_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(adm0_p_clk.c),
 	},
 };
@@ -2192,12 +1838,10 @@ static struct branch_clk pmic_arb0_p_clk = {
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 22,
-		.test_vector = TEST_PER_LS(0x7B),
 	},
 	.c = {
 		.dbg_name = "pmic_arb0_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(pmic_arb0_p_clk.c),
 	},
 };
@@ -2209,12 +1853,10 @@ static struct branch_clk pmic_arb1_p_clk = {
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 21,
-		.test_vector = TEST_PER_LS(0x7C),
 	},
 	.c = {
 		.dbg_name = "pmic_arb1_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(pmic_arb1_p_clk.c),
 	},
 };
@@ -2226,12 +1868,10 @@ static struct branch_clk pmic_ssbi2_clk = {
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 23,
-		.test_vector = TEST_PER_LS(0x7A),
 	},
 	.c = {
 		.dbg_name = "pmic_ssbi2_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(pmic_ssbi2_clk.c),
 	},
 };
@@ -2243,12 +1883,10 @@ static struct branch_clk rpm_msg_ram_p_clk = {
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 12,
-		.test_vector = TEST_PER_LS(0x7F),
 	},
 	.c = {
 		.dbg_name = "rpm_msg_ram_p_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(rpm_msg_ram_p_clk.c),
 	},
 };
@@ -2269,15 +1907,13 @@ static struct branch_clk amp_clk = {
 	},
 };
 
-#define CLK_CAM(i, n, hb, tv) \
+#define CLK_CAM(i, n, hb) \
 	struct clk_local i##_clk = { \
 		.b = { \
 			.en_reg = CAMCLKn_CC_REG(n), \
 			.en_mask = BIT(0), \
-			.halt_check = HALT, \
 			.halt_reg = DBG_BUS_VEC_I_REG, \
 			.halt_bit = hb, \
-			.test_vector = tv, \
 		}, \
 		.ns_reg = CAMCLKn_NS_REG(n), \
 		.md_reg = CAMCLKn_MD_REG(n), \
@@ -2290,7 +1926,6 @@ static struct branch_clk amp_clk = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -2320,8 +1955,8 @@ static struct clk_freq_tbl clk_tbl_cam[] = {
 	F_END
 };
 
-static CLK_CAM(cam0, 0, 15, TEST_MM_LS(0x1D));
-static CLK_CAM(cam1, 1, 16, TEST_MM_LS(0x02));
+static CLK_CAM(cam0, 0, 15);
+static CLK_CAM(cam1, 1, 16);
 
 #define F_CSI(f, s, d, m, n, v) \
 	{ \
@@ -2344,6 +1979,7 @@ static struct clk_local csi0_src_clk = {
 	.ns_reg = CSI0_NS_REG,
 	.b = {
 		.en_reg = CSI0_CC_REG,
+		.halt_check = NOCHECK,
 	},
 	.md_reg	= CSI0_MD_REG,
 	.root_en_mask = BIT(2),
@@ -2355,7 +1991,6 @@ static struct clk_local csi0_src_clk = {
 	.c = {
 		.dbg_name = "csi0_src_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi0_src_clk.c),
 	},
 };
@@ -2367,15 +2002,12 @@ static struct branch_clk csi0_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(8),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 13,
-		.test_vector = TEST_MM_HS(0x00),
 	},
 	.parent = &csi0_src_clk.c,
 	.c = {
 		.dbg_name = "csi0_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi0_clk.c),
 	},
 };
@@ -2387,15 +2019,12 @@ static struct branch_clk csi0_phy_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(29),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 9,
-		.test_vector = TEST_MM_HS(0x24),
 	},
 	.parent = &csi0_src_clk.c,
 	.c = {
 		.dbg_name = "csi0_phy_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi0_phy_clk.c),
 	},
 };
@@ -2404,6 +2033,7 @@ static struct clk_local csi1_src_clk = {
 	.ns_reg = CSI1_NS_REG,
 	.b = {
 		.en_reg = CSI1_CC_REG,
+		.halt_check = NOCHECK,
 	},
 	.md_reg	= CSI1_MD_REG,
 	.root_en_mask = BIT(2),
@@ -2415,7 +2045,6 @@ static struct clk_local csi1_src_clk = {
 	.c = {
 		.dbg_name = "csi1_src_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi1_src_clk.c),
 	},
 };
@@ -2427,15 +2056,12 @@ static struct branch_clk csi1_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(18),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 14,
-		.test_vector = TEST_MM_HS(0x01),
 	},
 	.parent = &csi1_src_clk.c,
 	.c = {
 		.dbg_name = "csi1_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi1_clk.c),
 	},
 };
@@ -2447,15 +2073,12 @@ static struct branch_clk csi1_phy_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(28),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 10,
-		.test_vector = TEST_MM_HS(0x25),
 	},
 	.parent = &csi1_src_clk.c,
 	.c = {
 		.dbg_name = "csi1_phy_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi1_phy_clk.c),
 	},
 };
@@ -2491,7 +2114,6 @@ struct clk_local csi_pix_clk = {
 		.halt_check = DELAY,
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(26),
-		.test_vector = TEST_MM_HS(0x26),
 	},
 	.ns_reg = MISC_CC_REG,
 	.ns_mask = BIT(25),
@@ -2501,7 +2123,6 @@ struct clk_local csi_pix_clk = {
 	.c = {
 		.dbg_name = "csi_pix_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi_pix_clk.c),
 	},
 };
@@ -2513,7 +2134,6 @@ struct clk_local csi_rdi_clk = {
 		.halt_check = DELAY,
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(27),
-		.test_vector = TEST_MM_HS(0x27),
 	},
 	.ns_reg = MISC_CC_REG,
 	.ns_mask = BIT(12),
@@ -2523,7 +2143,6 @@ struct clk_local csi_rdi_clk = {
 	.c = {
 		.dbg_name = "csi_rdi_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi_rdi_clk.c),
 	},
 };
@@ -2549,6 +2168,7 @@ struct clk_local csiphy_timer_src_clk = {
 	.ns_reg = CSIPHYTIMER_NS_REG,
 	.b = {
 		.en_reg = CSIPHYTIMER_CC_REG,
+		.halt_check = NOCHECK,
 	},
 	.md_reg = CSIPHYTIMER_MD_REG,
 	.root_en_mask = BIT(2),
@@ -2560,7 +2180,6 @@ struct clk_local csiphy_timer_src_clk = {
 	.c = {
 		.dbg_name = "csiphy_timer_src_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csiphy_timer_src_clk.c),
 	},
 };
@@ -2570,15 +2189,12 @@ static struct branch_clk csi0phy_timer_clk = {
 		.en_reg = CSIPHYTIMER_CC_REG,
 		.en_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 17,
-		.test_vector = TEST_MM_HS(0x2C),
 	},
 	.parent = &csiphy_timer_src_clk.c,
 	.c = {
 		.dbg_name = "csi0phy_timer_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi0phy_timer_clk.c),
 	},
 };
@@ -2588,15 +2204,12 @@ static struct branch_clk csi1phy_timer_clk = {
 		.en_reg = CSIPHYTIMER_CC_REG,
 		.en_mask = BIT(9),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 18,
-		.test_vector = TEST_MM_HS(0x2B),
 	},
 	.parent = &csiphy_timer_src_clk.c,
 	.c = {
 		.dbg_name = "csi1phy_timer_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi1phy_timer_clk.c),
 	},
 };
@@ -2626,9 +2239,7 @@ static struct clk_local dsi1_byte_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(7),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 21,
-		.test_vector = TEST_MM_LS(0x00),
 	},
 	.ns_reg = DSI1_BYTE_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2639,7 +2250,6 @@ static struct clk_local dsi1_byte_clk = {
 	.c = {
 		.dbg_name = "dsi1_byte_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi1_byte_clk.c),
 	},
 };
@@ -2651,9 +2261,7 @@ static struct clk_local dsi2_byte_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(25),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 20,
-		.test_vector = TEST_MM_LS(0x01),
 	},
 	.ns_reg = DSI2_BYTE_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2664,7 +2272,6 @@ static struct clk_local dsi2_byte_clk = {
 	.c = {
 		.dbg_name = "dsi2_byte_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi2_byte_clk.c),
 	},
 };
@@ -2675,9 +2282,7 @@ static struct clk_local dsi1_esc_clk = {
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 1,
-		.test_vector = TEST_MM_LS(0x17),
 	},
 	.ns_reg = DSI1_ESC_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2688,7 +2293,6 @@ static struct clk_local dsi1_esc_clk = {
 	.c = {
 		.dbg_name = "dsi1_esc_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi1_esc_clk.c),
 	},
 };
@@ -2698,9 +2302,7 @@ static struct clk_local dsi2_esc_clk = {
 		.en_reg = DSI2_ESC_CC_REG,
 		.en_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 3,
-		.test_vector = TEST_MM_LS(0x23),
 	},
 	.ns_reg = DSI2_ESC_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2711,7 +2313,6 @@ static struct clk_local dsi2_esc_clk = {
 	.c = {
 		.dbg_name = "dsi2_esc_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(dsi2_esc_clk.c),
 	},
 };
@@ -2768,9 +2369,7 @@ struct clk_local gfx2d0_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(14),
 		.halt_reg = DBG_BUS_VEC_A_REG,
-		.halt_check = HALT,
 		.halt_bit = 9,
-		.test_vector = TEST_MM_HS(0x07),
 	},
 	.ns_reg = GFX2D0_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2781,7 +2380,6 @@ struct clk_local gfx2d0_clk = {
 	.c = {
 		.dbg_name = "gfx2d0_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gfx2d0_clk.c),
 	},
 };
@@ -2811,9 +2409,7 @@ struct clk_local gfx2d1_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(13),
 		.halt_reg = DBG_BUS_VEC_A_REG,
-		.halt_check = HALT,
 		.halt_bit = 14,
-		.test_vector = TEST_MM_HS(0x08),
 	},
 	.ns_reg = GFX2D1_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2824,7 +2420,6 @@ struct clk_local gfx2d1_clk = {
 	.c = {
 		.dbg_name = "gfx2d1_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gfx2d1_clk.c),
 	},
 };
@@ -2883,9 +2478,7 @@ struct clk_local gfx3d_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(12),
 		.halt_reg = DBG_BUS_VEC_A_REG,
-		.halt_check = HALT,
 		.halt_bit = 4,
-		.test_vector = TEST_MM_HS(0x09),
 	},
 	.ns_reg = GFX3D_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2897,7 +2490,6 @@ struct clk_local gfx3d_clk = {
 	.c = {
 		.dbg_name = "gfx3d_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(gfx3d_clk.c),
 	},
 };
@@ -2933,9 +2525,7 @@ struct clk_local ijpeg_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(9),
 		.halt_reg = DBG_BUS_VEC_A_REG,
-		.halt_check = HALT,
 		.halt_bit = 24,
-		.test_vector = TEST_MM_HS(0x05),
 	},
 	.ns_reg = IJPEG_NS_REG,
 	.md_reg = IJPEG_MD_REG,
@@ -2949,7 +2539,6 @@ struct clk_local ijpeg_clk = {
 	.c = {
 		.dbg_name = "ijpeg_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(ijpeg_clk.c),
 	},
 };
@@ -2978,9 +2567,7 @@ struct clk_local jpegd_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(19),
 		.halt_reg = DBG_BUS_VEC_A_REG,
-		.halt_check = HALT,
 		.halt_bit = 19,
-		.test_vector = TEST_MM_HS(0x0A),
 	},
 	.ns_reg = JPEGD_NS_REG,
 	.root_en_mask = BIT(2),
@@ -2992,7 +2579,6 @@ struct clk_local jpegd_clk = {
 	.c = {
 		.dbg_name = "jpegd_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(jpegd_clk.c),
 	},
 };
@@ -3051,9 +2637,7 @@ struct clk_local mdp_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(21),
 		.halt_reg = DBG_BUS_VEC_C_REG,
-		.halt_check = HALT,
 		.halt_bit = 10,
-		.test_vector = TEST_MM_HS(0x1A),
 	},
 	.ns_reg = MDP_NS_REG,
 	.root_en_mask = BIT(2),
@@ -3064,7 +2648,6 @@ struct clk_local mdp_clk = {
 	.c = {
 		.dbg_name = "mdp_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(mdp_clk.c),
 	},
 };
@@ -3074,15 +2657,12 @@ static struct branch_clk lut_mdp_clk = {
 		.en_reg = MDP_LUT_CC_REG,
 		.en_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_I_REG,
-		.halt_check = HALT,
 		.halt_bit = 13,
-		.test_vector = TEST_MM_HS(0x28),
 	},
 	.parent = &mdp_clk.c,
 	.c = {
 		.dbg_name = "lut_mdp_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(lut_mdp_clk.c),
 	},
 };
@@ -3106,9 +2686,7 @@ struct clk_local mdp_vsync_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(3),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 22,
-		.test_vector = TEST_MM_LS(0x20),
 	},
 	.ns_reg = MISC_CC2_REG,
 	.ns_mask = BIT(13),
@@ -3118,7 +2696,6 @@ struct clk_local mdp_vsync_clk = {
 	.c = {
 		.dbg_name = "mdp_vsync_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(mdp_vsync_clk.c),
 	},
 };
@@ -3166,9 +2743,7 @@ struct clk_local rot_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(2),
 		.halt_reg = DBG_BUS_VEC_C_REG,
-		.halt_check = HALT,
 		.halt_bit = 15,
-		.test_vector = TEST_MM_HS(0x1B),
 	},
 	.ns_reg = ROT_NS_REG,
 	.root_en_mask = BIT(2),
@@ -3179,7 +2754,6 @@ struct clk_local rot_clk = {
 	.c = {
 		.dbg_name = "rot_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(rot_clk.c),
 	},
 };
@@ -3205,6 +2779,7 @@ struct clk_local tv_src_clk = {
 	.ns_reg = TV_NS_REG,
 	.b = {
 		.en_reg = TV_CC_REG,
+		.halt_check = NOCHECK,
 	},
 	.md_reg = TV_MD_REG,
 	.root_en_mask = BIT(2),
@@ -3216,7 +2791,6 @@ struct clk_local tv_src_clk = {
 	.c = {
 		.dbg_name = "tv_src_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(tv_src_clk.c),
 	},
 };
@@ -3228,15 +2802,12 @@ static struct branch_clk tv_enc_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_check = HALT,
 		.halt_bit = 8,
-		.test_vector = TEST_MM_LS(0x22),
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
 		.dbg_name = "tv_enc_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(tv_enc_clk.c),
 	},
 };
@@ -3246,15 +2817,12 @@ static struct branch_clk tv_dac_clk = {
 		.en_reg = TV_CC_REG,
 		.en_mask = BIT(10),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_check = HALT,
 		.halt_bit = 9,
-		.test_vector = TEST_MM_LS(0x21),
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
 		.dbg_name = "tv_dac_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(tv_dac_clk.c),
 	},
 };
@@ -3266,15 +2834,12 @@ static struct branch_clk mdp_tv_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(4),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_check = HALT,
 		.halt_bit = 11,
-		.test_vector = TEST_MM_HS(0x1F),
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
 		.dbg_name = "mdp_tv_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(mdp_tv_clk.c),
 	},
 };
@@ -3286,15 +2851,12 @@ static struct branch_clk hdmi_tv_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(1),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_check = HALT,
 		.halt_bit = 10,
-		.test_vector = TEST_MM_HS(0x1E),
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
 		.dbg_name = "hdmi_tv_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(hdmi_tv_clk.c),
 	},
 };
@@ -3306,14 +2868,11 @@ static struct branch_clk hdmi_app_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(11),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 25,
-		.test_vector = TEST_MM_LS(0x1F),
 	},
 	.c = {
 		.dbg_name = "hdmi_app_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(hdmi_app_clk.c),
 	},
 };
@@ -3365,9 +2924,7 @@ struct clk_local vcodec_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(6),
 		.halt_reg = DBG_BUS_VEC_C_REG,
-		.halt_check = HALT,
 		.halt_bit = 29,
-		.test_vector = TEST_MM_HS(0x0B),
 	},
 	.ns_reg = VCODEC_NS_REG,
 	.root_en_mask = BIT(2),
@@ -3379,7 +2936,6 @@ struct clk_local vcodec_clk = {
 	.c = {
 		.dbg_name = "vcodec_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vcodec_clk.c),
 	},
 };
@@ -3411,9 +2967,7 @@ struct clk_local vpe_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(17),
 		.halt_reg = DBG_BUS_VEC_A_REG,
-		.halt_check = HALT,
 		.halt_bit = 28,
-		.test_vector = TEST_MM_HS(0x1C),
 	},
 	.ns_reg = VPE_NS_REG,
 	.root_en_mask = BIT(2),
@@ -3424,7 +2978,6 @@ struct clk_local vpe_clk = {
 	.c = {
 		.dbg_name = "vpe_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vpe_clk.c),
 	},
 };
@@ -3467,10 +3020,8 @@ struct clk_local vfe_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(15),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 6,
 		.en_mask = BIT(0),
-		.test_vector = TEST_MM_HS(0x06),
 	},
 	.ns_reg = VFE_NS_REG,
 	.md_reg = VFE_MD_REG,
@@ -3484,7 +3035,6 @@ struct clk_local vfe_clk = {
 	.c = {
 		.dbg_name = "vfe_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(vfe_clk.c),
 	},
 };
@@ -3496,15 +3046,12 @@ static struct branch_clk csi0_vfe_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(24),
 		.halt_reg = DBG_BUS_VEC_B_REG,
-		.halt_check = HALT,
 		.halt_bit = 8,
-		.test_vector = TEST_MM_HS(0x04),
 	},
 	.parent = &vfe_clk.c,
 	.c = {
 		.dbg_name = "csi0_vfe_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(csi0_vfe_clk.c),
 	},
 };
@@ -3557,7 +3104,6 @@ static struct clk_freq_tbl clk_tbl_aif_osr[] = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -3582,7 +3128,6 @@ static struct clk_freq_tbl clk_tbl_aif_osr[] = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -3601,14 +3146,13 @@ static struct clk_freq_tbl clk_tbl_aif_bit[] = {
 	F_END
 };
 
-#define CLK_AIF_BIT(i, ns, h_r, tv) \
+#define CLK_AIF_BIT(i, ns, h_r) \
 	struct clk_local i##_clk = { \
 		.b = { \
 			.en_reg = ns, \
 			.en_mask = BIT(15), \
 			.halt_reg = h_r, \
 			.halt_check = DELAY, \
-			.test_vector = tv, \
 		}, \
 		.ns_reg = ns, \
 		.ns_mask = BM(14, 10), \
@@ -3618,7 +3162,6 @@ static struct clk_freq_tbl clk_tbl_aif_bit[] = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -3639,14 +3182,13 @@ static struct clk_freq_tbl clk_tbl_aif_bit_div[] = {
 	F_END
 };
 
-#define CLK_AIF_BIT_DIV(i, ns, h_r, tv) \
+#define CLK_AIF_BIT_DIV(i, ns, h_r) \
 	struct clk_local i##_clk = { \
 		.b = { \
 			.en_reg = ns, \
 			.en_mask = BIT(19), \
 			.halt_reg = h_r, \
 			.halt_check = ENABLE, \
-			.test_vector = tv, \
 		}, \
 		.ns_reg = ns, \
 		.ns_mask = BM(18, 10), \
@@ -3656,35 +3198,33 @@ static struct clk_freq_tbl clk_tbl_aif_bit_div[] = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &soc_clk_ops_8960, \
-			.flags = CLKFLAG_AUTO_OFF, \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
 
 static CLK_AIF_OSR(mi2s_osr, LCC_MI2S_NS_REG, LCC_MI2S_MD_REG,
 		LCC_MI2S_STATUS_REG);
-static CLK_AIF_BIT(mi2s_bit, LCC_MI2S_NS_REG, LCC_MI2S_STATUS_REG,
-		TEST_LPA(0x0F));
+static CLK_AIF_BIT(mi2s_bit, LCC_MI2S_NS_REG, LCC_MI2S_STATUS_REG);
 
 static CLK_AIF_OSR_DIV(codec_i2s_mic_osr, LCC_CODEC_I2S_MIC_NS_REG,
 		LCC_CODEC_I2S_MIC_MD_REG, LCC_CODEC_I2S_MIC_STATUS_REG);
 static CLK_AIF_BIT_DIV(codec_i2s_mic_bit, LCC_CODEC_I2S_MIC_NS_REG,
-		LCC_CODEC_I2S_MIC_STATUS_REG, TEST_LPA(0x10));
+		LCC_CODEC_I2S_MIC_STATUS_REG);
 
 static CLK_AIF_OSR_DIV(spare_i2s_mic_osr, LCC_SPARE_I2S_MIC_NS_REG,
 		LCC_SPARE_I2S_MIC_MD_REG, LCC_SPARE_I2S_MIC_STATUS_REG);
 static CLK_AIF_BIT_DIV(spare_i2s_mic_bit, LCC_SPARE_I2S_MIC_NS_REG,
-		LCC_SPARE_I2S_MIC_STATUS_REG, TEST_LPA(0x12));
+		LCC_SPARE_I2S_MIC_STATUS_REG);
 
 static CLK_AIF_OSR_DIV(codec_i2s_spkr_osr, LCC_CODEC_I2S_SPKR_NS_REG,
 		LCC_CODEC_I2S_SPKR_MD_REG, LCC_CODEC_I2S_SPKR_STATUS_REG);
 static CLK_AIF_BIT_DIV(codec_i2s_spkr_bit, LCC_CODEC_I2S_SPKR_NS_REG,
-		LCC_CODEC_I2S_SPKR_STATUS_REG, TEST_LPA(0x11));
+		LCC_CODEC_I2S_SPKR_STATUS_REG);
 
 static CLK_AIF_OSR_DIV(spare_i2s_spkr_osr, LCC_SPARE_I2S_SPKR_NS_REG,
 		LCC_SPARE_I2S_SPKR_MD_REG, LCC_SPARE_I2S_SPKR_STATUS_REG);
 static CLK_AIF_BIT_DIV(spare_i2s_spkr_bit, LCC_SPARE_I2S_SPKR_NS_REG,
-		LCC_SPARE_I2S_SPKR_STATUS_REG, TEST_LPA(0x13));
+		LCC_SPARE_I2S_SPKR_STATUS_REG);
 
 #define F_PCM(f, s, d, m, n, v) \
 	{ \
@@ -3720,7 +3260,6 @@ static struct clk_local pcm_clk = {
 		.halt_reg = LCC_PCM_STATUS_REG,
 		.halt_check = ENABLE,
 		.halt_bit = 0,
-		.test_vector = TEST_LPA(0x14),
 	},
 	.ns_reg = LCC_PCM_NS_REG,
 	.md_reg = LCC_PCM_MD_REG,
@@ -3732,7 +3271,6 @@ static struct clk_local pcm_clk = {
 	.c = {
 		.dbg_name = "pcm_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(pcm_clk.c),
 	},
 };
@@ -3746,7 +3284,6 @@ static struct clk_local audio_slimbus_clk = {
 		.halt_reg = LCC_SLIMBUS_STATUS_REG,
 		.halt_check = ENABLE,
 		.halt_bit = 0,
-		.test_vector = TEST_LPA(0x1D),
 	},
 	.ns_reg = LCC_SLIMBUS_NS_REG,
 	.md_reg = LCC_SLIMBUS_MD_REG,
@@ -3758,7 +3295,6 @@ static struct clk_local audio_slimbus_clk = {
 	.c = {
 		.dbg_name = "audio_slimbus_clk",
 		.ops = &soc_clk_ops_8960,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(audio_slimbus_clk.c),
 	},
 };
@@ -3775,7 +3311,6 @@ static struct branch_clk sps_slimbus_clk = {
 	.c = {
 		.dbg_name = "sps_slimbus_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(sps_slimbus_clk.c),
 	},
 };
@@ -3787,13 +3322,11 @@ static struct branch_clk slimbus_xo_src_clk = {
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_check = HALT,
 		.halt_bit = 28,
-		.test_vector = TEST_PER_LS(0x08),
 	},
 	.parent = &sps_slimbus_clk.c,
 	.c = {
 		.dbg_name = "slimbus_xo_src_clk",
 		.ops = &clk_ops_branch,
-		.flags = CLKFLAG_AUTO_OFF,
 		CLK_INIT(slimbus_xo_src_clk.c),
 	},
 };
@@ -3807,10 +3340,319 @@ static DEFINE_CLK_VOTER(dfab_sdc4_clk, &dummy_clk);
 static DEFINE_CLK_VOTER(dfab_sdc5_clk, &dummy_clk);
 static DEFINE_CLK_VOTER(dfab_sps_clk, &dummy_clk);
 
+#ifdef CONFIG_DEBUG_FS
+struct measure_sel {
+	u32 test_vector;
+	struct clk *clk;
+};
+
+static struct measure_sel measure_mux[] = {
+	{ TEST_PER_LS(0x08), &slimbus_xo_src_clk.c },
+	{ TEST_PER_LS(0x12), &sdc1_p_clk.c },
+	{ TEST_PER_LS(0x13), &sdc1_clk.c },
+	{ TEST_PER_LS(0x14), &sdc2_p_clk.c },
+	{ TEST_PER_LS(0x15), &sdc2_clk.c },
+	{ TEST_PER_LS(0x16), &sdc3_p_clk.c },
+	{ TEST_PER_LS(0x17), &sdc3_clk.c },
+	{ TEST_PER_LS(0x18), &sdc4_p_clk.c },
+	{ TEST_PER_LS(0x19), &sdc4_clk.c },
+	{ TEST_PER_LS(0x1A), &sdc5_p_clk.c },
+	{ TEST_PER_LS(0x1B), &sdc5_clk.c },
+	{ TEST_PER_LS(0x26), &pmem_clk.c },
+	{ TEST_PER_LS(0x32), &dma_bam_p_clk.c },
+	{ TEST_PER_LS(0x3D), &gsbi1_p_clk.c },
+	{ TEST_PER_LS(0x3E), &gsbi1_uart_clk.c },
+	{ TEST_PER_LS(0x3F), &gsbi1_qup_clk.c },
+	{ TEST_PER_LS(0x41), &gsbi2_p_clk.c },
+	{ TEST_PER_LS(0x42), &gsbi2_uart_clk.c },
+	{ TEST_PER_LS(0x44), &gsbi2_qup_clk.c },
+	{ TEST_PER_LS(0x45), &gsbi3_p_clk.c },
+	{ TEST_PER_LS(0x46), &gsbi3_uart_clk.c },
+	{ TEST_PER_LS(0x48), &gsbi3_qup_clk.c },
+	{ TEST_PER_LS(0x49), &gsbi4_p_clk.c },
+	{ TEST_PER_LS(0x4A), &gsbi4_uart_clk.c },
+	{ TEST_PER_LS(0x4C), &gsbi4_qup_clk.c },
+	{ TEST_PER_LS(0x4D), &gsbi5_p_clk.c },
+	{ TEST_PER_LS(0x4E), &gsbi5_uart_clk.c },
+	{ TEST_PER_LS(0x50), &gsbi5_qup_clk.c },
+	{ TEST_PER_LS(0x51), &gsbi6_p_clk.c },
+	{ TEST_PER_LS(0x52), &gsbi6_uart_clk.c },
+	{ TEST_PER_LS(0x54), &gsbi6_qup_clk.c },
+	{ TEST_PER_LS(0x55), &gsbi7_p_clk.c },
+	{ TEST_PER_LS(0x56), &gsbi7_uart_clk.c },
+	{ TEST_PER_LS(0x58), &gsbi7_qup_clk.c },
+	{ TEST_PER_LS(0x59), &gsbi8_p_clk.c },
+	{ TEST_PER_LS(0x5A), &gsbi8_uart_clk.c },
+	{ TEST_PER_LS(0x5C), &gsbi8_qup_clk.c },
+	{ TEST_PER_LS(0x5D), &gsbi9_p_clk.c },
+	{ TEST_PER_LS(0x5E), &gsbi9_uart_clk.c },
+	{ TEST_PER_LS(0x60), &gsbi9_qup_clk.c },
+	{ TEST_PER_LS(0x61), &gsbi10_p_clk.c },
+	{ TEST_PER_LS(0x62), &gsbi10_uart_clk.c },
+	{ TEST_PER_LS(0x64), &gsbi10_qup_clk.c },
+	{ TEST_PER_LS(0x65), &gsbi11_p_clk.c },
+	{ TEST_PER_LS(0x66), &gsbi11_uart_clk.c },
+	{ TEST_PER_LS(0x68), &gsbi11_qup_clk.c },
+	{ TEST_PER_LS(0x69), &gsbi12_p_clk.c },
+	{ TEST_PER_LS(0x6A), &gsbi12_uart_clk.c },
+	{ TEST_PER_LS(0x6C), &gsbi12_qup_clk.c },
+	{ TEST_PER_LS(0x7A), &pmic_ssbi2_clk.c },
+	{ TEST_PER_LS(0x7B), &pmic_arb0_p_clk.c },
+	{ TEST_PER_LS(0x7C), &pmic_arb1_p_clk.c },
+	{ TEST_PER_LS(0x7D), &prng_clk.c },
+	{ TEST_PER_LS(0x7F), &rpm_msg_ram_p_clk.c },
+	{ TEST_PER_LS(0x80), &adm0_p_clk.c },
+	{ TEST_PER_LS(0x84), &usb_hs1_p_clk.c },
+	{ TEST_PER_LS(0x85), &usb_hs1_xcvr_clk.c },
+	{ TEST_PER_LS(0x89), &usb_fs1_p_clk.c },
+	{ TEST_PER_LS(0x8A), &usb_fs1_sys_clk.c },
+	{ TEST_PER_LS(0x8B), &usb_fs1_xcvr_clk.c },
+	{ TEST_PER_LS(0x8C), &usb_fs2_p_clk.c },
+	{ TEST_PER_LS(0x8D), &usb_fs2_sys_clk.c },
+	{ TEST_PER_LS(0x8E), &usb_fs2_xcvr_clk.c },
+	{ TEST_PER_LS(0x8F), &tsif_p_clk.c },
+	{ TEST_PER_LS(0x91), &tsif_ref_clk.c },
+	{ TEST_PER_LS(0x92), &ce1_p_clk.c },
+	{ TEST_PER_LS(0x94), &tssc_clk.c },
+	{ TEST_PER_LS(0xA4), &ce1_core_clk.c },
+
+	{ TEST_PER_HS(0x2A), &adm0_clk.c },
+
+	{ TEST_MM_LS(0x00), &dsi1_byte_clk.c },
+	{ TEST_MM_LS(0x01), &dsi2_byte_clk.c },
+	{ TEST_MM_LS(0x02), &cam1_clk.c },
+	{ TEST_MM_LS(0x06), &amp_p_clk.c },
+	{ TEST_MM_LS(0x07), &csi0_p_clk.c },
+	{ TEST_MM_LS(0x08), &dsi2_s_p_clk.c },
+	{ TEST_MM_LS(0x09), &dsi1_m_p_clk.c },
+	{ TEST_MM_LS(0x0A), &dsi1_s_p_clk.c },
+	{ TEST_MM_LS(0x0C), &gfx2d0_p_clk.c },
+	{ TEST_MM_LS(0x0D), &gfx2d1_p_clk.c },
+	{ TEST_MM_LS(0x0E), &gfx3d_p_clk.c },
+	{ TEST_MM_LS(0x0F), &hdmi_m_p_clk.c },
+	{ TEST_MM_LS(0x10), &hdmi_s_p_clk.c },
+	{ TEST_MM_LS(0x11), &ijpeg_p_clk.c },
+	{ TEST_MM_LS(0x12), &imem_p_clk.c },
+	{ TEST_MM_LS(0x13), &jpegd_p_clk.c },
+	{ TEST_MM_LS(0x14), &mdp_p_clk.c },
+	{ TEST_MM_LS(0x16), &rot_p_clk.c },
+	{ TEST_MM_LS(0x17), &dsi1_esc_clk.c },
+	{ TEST_MM_LS(0x18), &smmu_p_clk.c },
+	{ TEST_MM_LS(0x19), &tv_enc_p_clk.c },
+	{ TEST_MM_LS(0x1A), &vcodec_p_clk.c },
+	{ TEST_MM_LS(0x1B), &vfe_p_clk.c },
+	{ TEST_MM_LS(0x1C), &vpe_p_clk.c },
+	{ TEST_MM_LS(0x1D), &cam0_clk.c },
+	{ TEST_MM_LS(0x1F), &hdmi_app_clk.c },
+	{ TEST_MM_LS(0x20), &mdp_vsync_clk.c },
+	{ TEST_MM_LS(0x21), &tv_dac_clk.c },
+	{ TEST_MM_LS(0x22), &tv_enc_clk.c },
+	{ TEST_MM_LS(0x23), &dsi2_esc_clk.c },
+	{ TEST_MM_LS(0x26), &dsi2_m_p_clk.c },
+
+	{ TEST_MM_HS(0x00), &csi0_clk.c },
+	{ TEST_MM_HS(0x01), &csi1_clk.c },
+	{ TEST_MM_HS(0x04), &csi0_vfe_clk.c },
+	{ TEST_MM_HS(0x05), &ijpeg_clk.c },
+	{ TEST_MM_HS(0x06), &vfe_clk.c },
+	{ TEST_MM_HS(0x07), &gfx2d0_clk.c },
+	{ TEST_MM_HS(0x08), &gfx2d1_clk.c },
+	{ TEST_MM_HS(0x09), &gfx3d_clk.c },
+	{ TEST_MM_HS(0x0A), &jpegd_clk.c },
+	{ TEST_MM_HS(0x0B), &vcodec_clk.c },
+	{ TEST_MM_HS(0x11), &gmem_axi_clk.c },
+	{ TEST_MM_HS(0x12), &ijpeg_axi_clk.c },
+	{ TEST_MM_HS(0x13), &imem_axi_clk.c },
+	{ TEST_MM_HS(0x14), &jpegd_axi_clk.c },
+	{ TEST_MM_HS(0x15), &mdp_axi_clk.c },
+	{ TEST_MM_HS(0x16), &rot_axi_clk.c },
+	{ TEST_MM_HS(0x17), &vcodec_axi_clk.c },
+	{ TEST_MM_HS(0x18), &vfe_axi_clk.c },
+	{ TEST_MM_HS(0x19), &vpe_axi_clk.c },
+	{ TEST_MM_HS(0x1A), &mdp_clk.c },
+	{ TEST_MM_HS(0x1B), &rot_clk.c },
+	{ TEST_MM_HS(0x1C), &vpe_clk.c },
+	{ TEST_MM_HS(0x1E), &hdmi_tv_clk.c },
+	{ TEST_MM_HS(0x1F), &mdp_tv_clk.c },
+	{ TEST_MM_HS(0x24), &csi0_phy_clk.c },
+	{ TEST_MM_HS(0x25), &csi1_phy_clk.c },
+	{ TEST_MM_HS(0x26), &csi_pix_clk.c },
+	{ TEST_MM_HS(0x27), &csi_rdi_clk.c },
+	{ TEST_MM_HS(0x28), &lut_mdp_clk.c },
+	{ TEST_MM_HS(0x29), &vcodec_axi_a_clk.c },
+	{ TEST_MM_HS(0x2A), &vcodec_axi_b_clk.c },
+	{ TEST_MM_HS(0x2B), &csi1phy_timer_clk.c },
+	{ TEST_MM_HS(0x2C), &csi0phy_timer_clk.c },
+
+	{ TEST_LPA(0x0F), &mi2s_bit_clk.c },
+	{ TEST_LPA(0x10), &codec_i2s_mic_bit_clk.c },
+	{ TEST_LPA(0x11), &codec_i2s_spkr_bit_clk.c },
+	{ TEST_LPA(0x12), &spare_i2s_mic_bit_clk.c },
+	{ TEST_LPA(0x13), &spare_i2s_spkr_bit_clk.c },
+	{ TEST_LPA(0x14), &pcm_clk.c },
+	{ TEST_LPA(0x1D), &audio_slimbus_clk.c },
+};
+
+static struct measure_sel *find_measure_sel(struct clk *clk)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(measure_mux); i++)
+		if (measure_mux[i].clk == clk)
+			return &measure_mux[i];
+	return NULL;
+}
+
+static int measure_clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	int ret = 0;
+	u32 clk_sel;
+	struct measure_sel *p;
+	unsigned long flags;
+
+	if (!parent)
+		return -EINVAL;
+
+	p = find_measure_sel(parent);
+	if (!p)
+		return -EINVAL;
+
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+
+	/* Program the test vector. */
+	clk_sel = p->test_vector & TEST_CLK_SEL_MASK;
+	switch (p->test_vector >> TEST_TYPE_SHIFT) {
+	case TEST_TYPE_PER_LS:
+		writel_relaxed(0x4030D00|BVAL(7, 0, clk_sel), CLK_TEST_REG);
+		break;
+	case TEST_TYPE_PER_HS:
+		writel_relaxed(0x4020000|BVAL(16, 10, clk_sel), CLK_TEST_REG);
+		break;
+	case TEST_TYPE_MM_LS:
+		writel_relaxed(0x4030D97, CLK_TEST_REG);
+		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_LS_REG);
+		break;
+	case TEST_TYPE_MM_HS:
+		writel_relaxed(0x402B800, CLK_TEST_REG);
+		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0), DBG_CFG_REG_HS_REG);
+		break;
+	case TEST_TYPE_LPA:
+		writel_relaxed(0x4030D98, CLK_TEST_REG);
+		writel_relaxed(BVAL(6, 1, clk_sel)|BIT(0),
+				LCC_CLK_LS_DEBUG_CFG_REG);
+		break;
+	default:
+		ret = -EPERM;
+	}
+	/* Make sure test vector is set before starting measurements. */
+	mb();
+
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+
+	return ret;
+}
+
+/* Sample clock for 'ticks' reference clock ticks. */
+static u32 run_measurement(unsigned ticks)
+{
+	/* Stop counters and set the XO4 counter start value. */
+	writel_relaxed(0x0, RINGOSC_TCXO_CTL_REG);
+	writel_relaxed(ticks, RINGOSC_TCXO_CTL_REG);
+
+	/* Wait for timer to become ready. */
+	while ((readl_relaxed(RINGOSC_STATUS_REG) & BIT(25)) != 0)
+		cpu_relax();
+
+	/* Run measurement and wait for completion. */
+	writel_relaxed(BIT(20)|ticks, RINGOSC_TCXO_CTL_REG);
+	while ((readl_relaxed(RINGOSC_STATUS_REG) & BIT(25)) == 0)
+		cpu_relax();
+
+	/* Stop counters. */
+	writel_relaxed(0x0, RINGOSC_TCXO_CTL_REG);
+
+	/* Return measured ticks. */
+	return readl_relaxed(RINGOSC_STATUS_REG) & BM(24, 0);
+}
+
+
+/* Perform a hardware rate measurement for a given clock.
+   FOR DEBUG USE ONLY: Measurements take ~15 ms! */
+static unsigned measure_clk_get_rate(struct clk *clk)
+{
+	unsigned long flags;
+	u32 pdm_reg_backup, ringosc_reg_backup;
+	u64 raw_count_short, raw_count_full;
+	unsigned ret;
+
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+
+	/* Enable CXO/4 and RINGOSC branch and root. */
+	pdm_reg_backup = readl_relaxed(PDM_CLK_NS_REG);
+	ringosc_reg_backup = readl_relaxed(RINGOSC_NS_REG);
+	writel_relaxed(0x2898, PDM_CLK_NS_REG);
+	writel_relaxed(0xA00, RINGOSC_NS_REG);
+
+	/*
+	 * The ring oscillator counter will not reset if the measured clock
+	 * is not running.  To detect this, run a short measurement before
+	 * the full measurement.  If the raw results of the two are the same
+	 * then the clock must be off.
+	 */
+
+	/* Run a short measurement. (~1 ms) */
+	raw_count_short = run_measurement(0x1000);
+	/* Run a full measurement. (~14 ms) */
+	raw_count_full = run_measurement(0x10000);
+
+	writel_relaxed(ringosc_reg_backup, RINGOSC_NS_REG);
+	writel_relaxed(pdm_reg_backup, PDM_CLK_NS_REG);
+
+	/* Return 0 if the clock is off. */
+	if (raw_count_full == raw_count_short)
+		ret = 0;
+	else {
+		/* Compute rate in Hz. */
+		raw_count_full = ((raw_count_full * 10) + 15) * 4800000;
+		do_div(raw_count_full, ((0x10000 * 10) + 35));
+		ret = raw_count_full;
+	}
+
+	/* Route dbg_hs_clk to PLLTEST.  300mV single-ended amplitude. */
+	writel_relaxed(0x3CF8, PLLTEST_PAD_CFG_REG);
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+
+	return ret;
+}
+#else /* !CONFIG_DEBUG_FS */
+static int measure_clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	return -EINVAL;
+}
+
+static unsigned measure_clk_get_rate(struct clk *clk)
+{
+	return 0;
+}
+#endif /* CONFIG_DEBUG_FS */
+
+static struct clk_ops measure_clk_ops = {
+	.set_parent = measure_clk_set_parent,
+	.get_rate = measure_clk_get_rate,
+	.is_local = local_clk_is_local,
+};
+
+static struct clk measure_clk = {
+	.dbg_name = "measure_clk",
+	.ops = &measure_clk_ops,
+	CLK_INIT(measure_clk),
+};
+
 struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("pll2",		pll2_clk.c,		NULL),
 	CLK_LOOKUP("pll8",		pll8_clk.c,		NULL),
 	CLK_LOOKUP("pll4",		pll4_clk.c,		NULL),
+	CLK_LOOKUP("measure",		measure_clk,		"debug"),
 
 	CLK_DUMMY("afab_clk",		AFAB_CLK,	NULL, 0),
 	CLK_DUMMY("afab_a_clk",		AFAB_A_CLK,	NULL, 0),
@@ -3906,7 +3748,7 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,		NULL),
 	CLK_LOOKUP("cam_clk",		cam1_clk.c,		NULL),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"msm_camera_imx074.0"),
-	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"msm_camera_ov2720.0"),
+	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"msm_camera_ov2720.0"),
 	CLK_LOOKUP("csi_src_clk",	csi0_src_clk.c,		NULL),
 	CLK_LOOKUP("csi_src_clk",	csi1_src_clk.c,		NULL),
 	CLK_LOOKUP("csi_src_clk",	csi0_src_clk.c,	"msm_camera_imx074.0"),
@@ -4029,23 +3871,6 @@ static void rmwreg(uint32_t val, void *reg, uint32_t mask)
 
 static void reg_init(void)
 {
-	/* Set MM_PLL1 (PLL2) @ 800 MHz but leave it off. */
-	writel_relaxed(0, MM_PLL1_MODE_REG); /* PXO */
-	writel_relaxed(0x31000 | 29, MM_PLL1_L_VAL_REG);
-	writel_relaxed(17, MM_PLL1_M_VAL_REG);
-	writel_relaxed(27, MM_PLL1_N_VAL_REG);
-	writel_relaxed(0xC20000, MM_PLL1_CONFIG_REG); /* Enable MN, misc */
-	writel_relaxed(0x1000, MM_PLL1_TEST_CTL_REG); /* Enable aux output */
-
-	/* Set PLL4 @ 393.216 MHz */
-	writel_relaxed(0, LCC_PLL0_MODE_REG);
-	writel_relaxed(14, LCC_PLL0_L_VAL_REG);
-	writel_relaxed(634, LCC_PLL0_M_VAL_REG);
-	writel_relaxed(1125, LCC_PLL0_N_VAL_REG);
-	writel_relaxed(0xC00000, LCC_PLL0_CONFIG_REG); /* Fractional, main */
-	rmwreg(0, BB_MMC_PLL2_M_VAL_REG, 0x3FFFF);
-	rmwreg(0x3400000, BB_MMC_PLL2_N_VAL_REG, 0x3FFFF);
-
 	/* Enable PLL4 */
 	writel_relaxed(0x4, LCC_PLL0_MODE_REG);
 	udelay(10);
@@ -4115,7 +3940,7 @@ static void reg_init(void)
 	clk_set_rate(&gfx3d_clk.c, 27000000);
 	clk_enable(&gfx3d_clk.c);
 	writel_relaxed(BIT(12), SW_RESET_CORE_REG);
-	dsb();
+	mb();
 	udelay(5);
 	writel_relaxed(0, SW_RESET_CORE_REG);
 	/* Make sure reset is de-asserted before clock is disabled. */
@@ -4155,20 +3980,20 @@ static int wr_pll_clk_enable(struct clk *clk)
 	 * H/W requires a 5us delay between disabling the bypass and
 	 * de-asserting the reset. Delay 10us just to be safe.
 	 */
-	dsb();
+	mb();
 	udelay(10);
 
 	/* Disable PLL bypass mode. */
 	mode |= BIT(1);
 	writel_relaxed(mode, pll->mode_reg);
 
+	/* Wait until PLL is locked. */
+	mb();
+	udelay(60);
+
 	/* Enable PLL output. */
 	mode |= BIT(0);
 	writel_relaxed(mode, pll->mode_reg);
-
-	/* Wait until PLL is enabled. */
-	while (!readl_relaxed(pll->status_reg))
-		cpu_relax();
 
 	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
 	return 0;
@@ -4178,8 +4003,7 @@ static int wr_pll_clk_enable(struct clk *clk)
 /* Local clock driver initialization. */
 void __init msm_clk_soc_init(void)
 {
-	/* TODO: Make HIGH */
-	local_vote_sys_vdd(NOMINAL);
+	local_vote_sys_vdd(HIGH);
 
 	if (machine_is_msm8960_rumi3())
 		return;
@@ -4200,6 +4024,15 @@ void __init msm_clk_soc_init(void)
 	clk_set_rate(&usb_fs1_src_clk.c, 60000000);
 	clk_set_rate(&usb_fs2_src_clk.c, 60000000);
 
+	/*
+	 * The halt status bits for PDM and TSSC may be incorrect at boot.
+	 * Toggle these clocks on and off to refresh them.
+	 */
+	local_clk_enable(&pdm_clk.c);
+	local_clk_disable(&pdm_clk.c);
+	local_clk_enable(&tssc_clk.c);
+	local_clk_disable(&tssc_clk.c);
+
 	if (machine_is_msm8960_sim()) {
 		clk_set_rate(&sdc1_clk.c, 48000000);
 		clk_enable(&sdc1_clk.c);
@@ -4212,7 +4045,6 @@ void __init msm_clk_soc_init(void)
 
 static int msm_clk_soc_late_init(void)
 {
-	/* TODO: Make HIGH */
-	return local_unvote_sys_vdd(NOMINAL);
+	return local_unvote_sys_vdd(HIGH);
 }
 late_initcall(msm_clk_soc_late_init);

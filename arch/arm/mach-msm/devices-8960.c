@@ -18,6 +18,7 @@
 #include <linux/gpio.h>
 #include <asm/clkdev.h>
 #include <linux/msm_kgsl.h>
+#include <linux/android_pmem.h>
 #include <mach/irqs-8960.h>
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
@@ -25,7 +26,7 @@
 #include <mach/msm_sps.h>
 #include <mach/rpm.h>
 #include <mach/msm_bus_board.h>
-
+#include <mach/msm_memtypes.h>
 #include "clock.h"
 #include "devices.h"
 #include "devices-msm8x60.h"
@@ -406,7 +407,7 @@ static struct msm_bus_paths vidc_bus_client_config[] = {
 	},
 };
 
-static struct msm_bus_scale_pdata vidc_bus_client_pdata = {
+static struct msm_bus_scale_pdata vidc_bus_client_data = {
 	vidc_bus_client_config,
 	ARRAY_SIZE(vidc_bus_client_config),
 	.name = "vidc",
@@ -429,16 +430,21 @@ static struct resource msm_device_vidc_resources[] = {
 	},
 };
 
+struct msm_vidc_platform_data vidc_platform_data = {
+#ifdef CONFIG_MSM_BUS_SCALING
+	.vidc_bus_client_pdata = &vidc_bus_client_data,
+#endif
+	.memtype = MEMTYPE_EBI1
+};
+
 struct platform_device msm_device_vidc = {
 	.name = "msm_vidc",
 	.id = 0,
 	.num_resources = ARRAY_SIZE(msm_device_vidc_resources),
 	.resource = msm_device_vidc_resources,
-#ifdef CONFIG_MSM_BUS_SCALING
 	.dev = {
-		.platform_data	= &vidc_bus_client_pdata,
+		.platform_data	= &vidc_platform_data,
 	},
-#endif
 };
 
 #define MSM_WCNSS_PHYS	0x03000000
@@ -1062,6 +1068,26 @@ struct platform_device msm_cpudai1 = {
 	.id	= 0x4001,
 };
 
+struct platform_device msm_cpudai_bt_rx = {
+	.name   = "msm-dai-q6",
+	.id     = 0x3000,
+};
+
+struct platform_device msm_cpudai_bt_tx = {
+	.name   = "msm-dai-q6",
+	.id     = 0x3001,
+};
+
+struct platform_device msm_cpudai_fm_rx = {
+	.name   = "msm-dai-q6",
+	.id     = 0x3004,
+};
+
+struct platform_device msm_cpudai_fm_tx = {
+	.name   = "msm-dai-q6",
+	.id     = 0x3005,
+};
+
 struct platform_device msm_cpu_fe = {
 	.name	= "msm-dai-fe",
 	.id	= -1,
@@ -1069,7 +1095,7 @@ struct platform_device msm_cpu_fe = {
 
 struct platform_device msm_stub_codec = {
 	.name	= "msm-stub-codec",
-	.id	= -1,
+	.id	= 1,
 };
 
 struct platform_device msm_voice = {
@@ -1080,6 +1106,11 @@ struct platform_device msm_voice = {
 struct platform_device msm_voip = {
 	.name	= "msm-voip-dsp",
 	.id	= -1,
+};
+
+struct platform_device msm_lpa_pcm = {
+	.name   = "msm-pcm-lpa",
+	.id     = -1,
 };
 
 #define FS(_id, _name) (&(struct platform_device){ \

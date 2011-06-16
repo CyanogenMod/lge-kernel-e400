@@ -31,7 +31,7 @@
 #define CLKFLAG_NORESET			0x00000008
 
 #define CLK_FIRST_AVAILABLE_FLAG	0x00000100
-#define CLKFLAG_AUTO_OFF		0x00000200
+#define CLKFLAG_SKIP_AUTO_OFF			0x00000200
 #define CLKFLAG_MIN			0x00000400
 #define CLKFLAG_MAX			0x00000800
 
@@ -46,7 +46,6 @@ struct clk_ops {
 	int (*set_flags)(struct clk *clk, unsigned flags);
 	unsigned (*get_rate)(struct clk *clk);
 	int (*list_rate)(struct clk *clk, unsigned n);
-	int (*measure_rate)(struct clk *clk);
 	int (*is_enabled)(struct clk *clk);
 	long (*round_rate)(struct clk *clk, unsigned rate);
 	int (*set_parent)(struct clk *clk, struct clk *parent);
@@ -75,11 +74,6 @@ struct clk {
 	.lock = __SPIN_LOCK_UNLOCKED((name).lock), \
 	.children = LIST_HEAD_INIT((name).children), \
 	.siblings = LIST_HEAD_INIT((name).siblings)
-
-#define OFF CLKFLAG_AUTO_OFF
-#define CLK_MIN CLKFLAG_MIN
-#define CLK_MAX CLKFLAG_MAX
-#define CLK_MINMAX (CLK_MIN | CLK_MAX)
 
 #if defined(CONFIG_ARCH_MSM7X30) || defined(CONFIG_ARCH_MSM8X60) || \
 defined(CONFIG_ARCH_MSM8960)

@@ -34,6 +34,7 @@
 #define MODEM_HWIO_MSS_RESET_ADDR       0x00902C48
 #define SCM_Q6_NMI_CMD                  0x1
 #define MODULE_NAME			"subsystem_fatal_8x60"
+#define Q6SS_SOFT_INTR_WAKEUP		0x288A001C
 
 #define SUBSYS_FATAL_DEBUG
 
@@ -65,11 +66,21 @@ static void send_q6_nmi(void)
 {
 	/* Send NMI to QDSP6 via an SCM call. */
 	uint32_t cmd = 0x1;
+	void __iomem *q6_wakeup_intr;
+
 	scm_call(SCM_SVC_UTIL, SCM_Q6_NMI_CMD,
 	&cmd, sizeof(cmd), NULL, 0);
 
+	/* Wakeup the Q6 */
+	q6_wakeup_intr = ioremap_nocache(Q6SS_SOFT_INTR_WAKEUP, 8);
+	writel_relaxed(0x2000, q6_wakeup_intr);
+	iounmap(q6_wakeup_intr);
+	mb();
+
 	/* Q6 requires atleast 5ms to dump caches etc.*/
 	usleep(5000);
+
+	pr_info("subsystem-fatal-8x60: Q6 NMI was sent.\n");
 }
 
 int subsys_q6_shutdown(void)
@@ -121,7 +132,16 @@ static struct notifier_block modem_notif_nb = {
 
 static void modem_unlock_timeout(struct work_struct *work)
 {
+	void __iomem *hwio_modem_reset_addr =
+			ioremap_nocache(MODEM_HWIO_MSS_RESET_ADDR, 8);
 	pr_crit("%s: Timeout waiting for modem to unlock.\n", MODULE_NAME);
+
+	/* Set MSS_MODEM_RESET to 0x0 since the unlock didn't work */
+	writel_relaxed(0x0, hwio_modem_reset_addr);
+	/* Write needs to go through before the modem is restarted. */
+	mb();
+	iounmap(hwio_modem_reset_addr);
+
 	subsystem_restart("modem");
 }
 

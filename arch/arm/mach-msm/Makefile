@@ -1,4 +1,4 @@
-obj-y += io.o dma.o memory.o
+obj-y += io.o dma.o memory.o timer.o
 obj-y += clock.o clock-voter.o clock-dummy.o
 obj-y += modem_notifier.o
 obj-$(CONFIG_CPU_FREQ_MSM) += cpufreq.o
@@ -14,16 +14,13 @@ ifndef CONFIG_ARCH_MSM8X60
 	endif
 endif
 
-obj-$(CONFIG_ARCH_MSM_ARM11) += acpuclock.o timer.o
-obj-$(CONFIG_ARCH_MSM_SCORPION) += timer.o
+obj-$(CONFIG_ARCH_MSM_ARM11) += acpuclock.o
 obj-$(CONFIG_ARCH_MSM_SCORPION) += pmu.o
-obj-$(CONFIG_ARCH_MSM_SCORPIONMP) += timer.o
-obj-$(CONFIG_ARCH_MSM_CORTEX_A5) += timer.o acpuclock.o
-ifndef CONFIG_ARCH_MSM8960
-obj-$(CONFIG_ARCH_MSM_SCORPIONMP) += pmu.o
-endif
+obj-$(CONFIG_ARCH_MSM_CORTEX_A5) += acpuclock.o
 
+ifndef CONFIG_MSM_SMP
 obj-$(CONFIG_ARCH_MSM_SCORPION) += msm_fault_handlers.o
+endif
 
 obj-$(CONFIG_MSM_VIC) += irq-vic.o
 
@@ -124,6 +121,10 @@ ifdef CONFIG_PM
 else
 	obj-y += no-pm.o
 endif
+
+obj-$(CONFIG_MSM_SPM_V1) += spm.o
+obj-$(CONFIG_MSM_SPM_V2) += spm-v2.o spm_devices.o
+
 obj-$(CONFIG_MSM_DMA_TEST) += dma_test.o
 obj-$(CONFIG_SURF_FFA_GPIO_KEYPAD) += keypad-surf-ffa.o
 
@@ -138,7 +139,7 @@ obj-$(CONFIG_MACH_QSD8X50_FFA) += board-qsd8x50.o
 obj-$(CONFIG_MACH_QSD8X50A_SURF) += board-qsd8x50.o
 obj-$(CONFIG_MACH_QSD8X50A_FFA) += board-qsd8x50.o
 obj-$(CONFIG_ARCH_MSM8X60) += devices-msm8x60.o clock-local.o clock-8x60.o acpuclock-8x60.o
-obj-$(CONFIG_ARCH_MSM8X60) += clock-rpm.o spm.o restart.o
+obj-$(CONFIG_ARCH_MSM8X60) += clock-rpm.o
 obj-$(CONFIG_ARCH_MSM8X60) += saw-regulator.o
 obj-$(CONFIG_ARCH_MSM8X60) += rpm-regulator.o
 obj-$(CONFIG_ARCH_MSM8X60) += footswitch-8x60.o
@@ -185,7 +186,7 @@ obj-$(CONFIG_MACH_MSM7X25_FFA) += board-msm7x27.o devices-msm7x25.o
 obj-$(CONFIG_ARCH_MSM8960) += clock-local.o clock-8960.o
 obj-$(CONFIG_ARCH_MSM8960) += board-msm8960.o devices-8960.o footswitch-8x60.o
 obj-$(CONFIG_ARCH_MSM8960) += board-msm8960-regulator.o acpuclock-8960.o
-obj-$(CONFIG_ARCH_MSM8960) += spm-v2.o saw-regulator.o restart.o
+obj-$(CONFIG_ARCH_MSM8960) += saw-regulator.o
 
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
@@ -199,7 +200,6 @@ obj-$(CONFIG_HTC_HEADSET) += htc_headset.o
 obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
 obj-$(CONFIG_MSM_SDIO_SMEM) += sdio_smem.o
 obj-$(CONFIG_PMIC8058) += pmic8058-gpio.o pmic8058-mpp.o
-obj-$(CONFIG_ARCH_MSM7X30) += spm.o
 obj-$(CONFIG_MSM_RPM) += rpm.o rpm_resources.o
 obj-$(CONFIG_MSM_MPM) += mpm.o
 obj-$(CONFIG_MSM_RPM_STATS_LOG) += rpm_stats.o
@@ -218,8 +218,7 @@ obj-$(CONFIG_ARCH_MSM7X30) += gpiomux-7x30.o gpiomux-v1.o gpiomux.o
 obj-$(CONFIG_ARCH_QSD8X50) += gpiomux-8x50.o gpiomux-v1.o gpiomux.o
 obj-$(CONFIG_ARCH_MSM8X60) += gpiomux-8x60.o gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_MSM8960) += gpiomux-v2.o gpiomux.o
-obj-$(CONFIG_ARCH_MSM_SCORPION) += pmu.o
-obj-$(CONFIG_ARCH_MSM_SCORPIONMP) += pmu.o
+
 ifdef CONFIG_MSM_V2_TLMM
 obj-y	+= gpio-v2.o
 else
@@ -230,5 +229,5 @@ obj-$(CONFIG_MSM_SHOW_RESUME_IRQ) += msm_show_resume_irq.o
 obj-$(CONFIG_BT_MSM_PINTEST)  += btpintest.o
 obj-$(CONFIG_MSM_FAKE_BATTERY) += fish_battery.o
 obj-$(CONFIG_MSM_RPC_VIBRATOR) += msm_vibrator.o
+obj-$(CONFIG_MSM_NATIVE_RESTART) += restart.o
 obj-$(CONFIG_MACH_LGE) += lge/
-

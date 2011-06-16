@@ -655,6 +655,8 @@ kgsl_sharedmem_find(struct kgsl_process_private *private, unsigned int gpuaddr)
 
 	BUG_ON(private == NULL);
 
+	gpuaddr &= PAGE_MASK;
+
 	list_for_each_entry(entry, &private->mem_list, list) {
 		if (entry->memdesc.gpuaddr == gpuaddr) {
 			result = entry;
@@ -696,8 +698,8 @@ uint8_t *kgsl_gpuaddr_to_vaddr(const struct kgsl_memdesc *memdesc,
 		gpuaddr >= memdesc->gpuaddr + memdesc->size))
 		return NULL;
 
-	*size = memdesc->size - (memdesc->gpuaddr - gpuaddr);
-	return memdesc->hostptr + (memdesc->gpuaddr - gpuaddr);
+	*size = memdesc->size - (gpuaddr - memdesc->gpuaddr);
+	return memdesc->hostptr + (gpuaddr - memdesc->gpuaddr);
 }
 EXPORT_SYMBOL(kgsl_gpuaddr_to_vaddr);
 
@@ -736,24 +738,6 @@ static long kgsl_ioctl_device_getproperty(struct kgsl_device_private *dev_priv,
 
 	return result;
 }
-
-static long kgsl_ioctl_device_regread(struct kgsl_device_private *dev_priv,
-				      unsigned int cmd, void *data)
-{
-	struct kgsl_device_regread *param = data;
-
-	if (param->offsetwords*sizeof(uint32_t) >=
-	    dev_priv->device->regspace.sizebytes) {
-		KGSL_DRV_ERR(dev_priv->device, "invalid offset %d\n",
-			     param->offsetwords);
-		return -ERANGE;
-	}
-
-	kgsl_regread(dev_priv->device, param->offsetwords, &param->value);
-
-	return 0;
-}
-
 
 static long kgsl_ioctl_device_waittimestamp(struct kgsl_device_private
 						*dev_priv, unsigned int cmd,
@@ -1203,6 +1187,9 @@ static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
 	if (size == 0)
 		size = len;
 
+	/* Adjust the size of the region to account for the offset */
+	size += offset & ~PAGE_MASK;
+
 	size = ALIGN(size, PAGE_SIZE);
 
 	if (_check_region(offset & PAGE_MASK, size, len)) {
@@ -1263,6 +1250,9 @@ static int kgsl_setup_hostptr(struct kgsl_mem_entry *entry,
 
 	if (size == 0)
 		size = len;
+
+	/* Adjust the size of the region to account for the offset */
+	size += offset & ~PAGE_MASK;
 
 	size = ALIGN(size, PAGE_SIZE);
 
@@ -1412,7 +1402,8 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 	if (result)
 		goto error_put_file_ptr;
 
-	param->gpuaddr = entry->memdesc.gpuaddr;
+	/* Adjust the returned value for a non 4k aligned offset */
+	param->gpuaddr = entry->memdesc.gpuaddr + (param->offset & ~PAGE_MASK);
 
 	entry->memtype = KGSL_MAPPED_MEMORY;
 
@@ -1523,8 +1514,6 @@ static const struct {
 } kgsl_ioctl_funcs[] = {
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_DEVICE_GETPROPERTY,
 			kgsl_ioctl_device_getproperty, 1),
-	KGSL_IOCTL_FUNC(IOCTL_KGSL_DEVICE_REGREAD,
-			kgsl_ioctl_device_regread, 1),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_DEVICE_WAITTIMESTAMP,
 			kgsl_ioctl_device_waittimestamp, 1),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_RINGBUFFER_ISSUEIBCMDS,
@@ -1597,6 +1586,12 @@ static long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 		lock = kgsl_ioctl_funcs[nr].lock;
 	} else {
 		func = dev_priv->device->ftbl->ioctl;
+		if (!func) {
+			KGSL_DRV_INFO(dev_priv->device,
+				      "invalid ioctl code %08x\n", cmd);
+			ret = -EINVAL;
+			goto done;
+		}
 		lock = 1;
 	}
 

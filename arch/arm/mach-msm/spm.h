@@ -28,54 +28,23 @@
 
 #ifndef __ARCH_ARM_MACH_MSM_SPM_H
 #define __ARCH_ARM_MACH_MSM_SPM_H
-
 enum {
+	MSM_SPM_MODE_DISABLED,
 	MSM_SPM_MODE_CLOCK_GATING,
 	MSM_SPM_MODE_POWER_RETENTION,
 	MSM_SPM_MODE_POWER_COLLAPSE,
 	MSM_SPM_MODE_NR
 };
 
-#if defined(CONFIG_ARCH_MSM8960)
 enum {
-	MSM_SPM_REG_SAW2_SECURE,
-	MSM_SPM_REG_SAW2_ID,
-	MSM_SPM_REG_SAW2_CFG,
-	MSM_SPM_REG_SAW2_STS0,
-	MSM_SPM_REG_SAW2_STS1,
-	MSM_SPM_REG_SAW2_VCTL,
-	MSM_SPM_REG_SAW2_AVS_CTL,
-	MSM_SPM_REG_SAW2_AVS_HYSTERESIS,
-	MSM_SPM_REG_SAW2_SPM_CTL,
-	MSM_SPM_REG_SAW2_PMIC_DLY,
-	MSM_SPM_REG_SAW2_PMIC_DATA_0,
-	MSM_SPM_REG_SAW2_PMIC_DATA_1,
-	MSM_SPM_REG_SAW2_RST,
-
-	MSM_SPM_REG_NR_INITIALIZE,
-	MSM_SPM_REG_SAW2_SEQ_ENTRY = MSM_SPM_REG_NR_INITIALIZE,
-
-	MSM_SPM_REG_NR
+	MSM_SPM_L2_MODE_DISABLED = MSM_SPM_MODE_DISABLED,
+	MSM_SPM_L2_MODE_RETENTION,
+	MSM_SPM_L2_MODE_GDHS,
+	MSM_SPM_L2_MODE_POWER_COLLAPSE,
 };
 
-struct msm_spm_seq_entry {
-	uint32_t mode;
-	uint8_t *cmd;
-	bool  notify_rpm;
-}
-;
-struct msm_spm_platform_data {
-	void __iomem *reg_base_addr;
-	uint32_t reg_init_values[MSM_SPM_REG_NR_INITIALIZE];
+#if defined(CONFIG_MSM_SPM_V1)
 
-	uint8_t awake_vlevel;
-	uint32_t vctl_timeout_us;
-
-	uint32_t num_modes;
-	struct msm_spm_seq_entry *modes;
-};
-
-#else
 enum {
 	MSM_SPM_REG_SAW_AVS_CTL,
 	MSM_SPM_REG_SAW_CFG,
@@ -108,11 +77,49 @@ struct msm_spm_platform_data {
 
 	uint32_t vctl_timeout_us;
 };
+
+#elif defined(CONFIG_MSM_SPM_V2)
+
+enum {
+	MSM_SPM_REG_SAW2_SECURE,
+	MSM_SPM_REG_SAW2_ID,
+	MSM_SPM_REG_SAW2_CFG,
+	MSM_SPM_REG_SAW2_STS0,
+	MSM_SPM_REG_SAW2_STS1,
+	MSM_SPM_REG_SAW2_VCTL,
+	MSM_SPM_REG_SAW2_AVS_CTL,
+	MSM_SPM_REG_SAW2_AVS_HYSTERESIS,
+	MSM_SPM_REG_SAW2_SPM_CTL,
+	MSM_SPM_REG_SAW2_PMIC_DLY,
+	MSM_SPM_REG_SAW2_PMIC_DATA_0,
+	MSM_SPM_REG_SAW2_PMIC_DATA_1,
+	MSM_SPM_REG_SAW2_RST,
+
+	MSM_SPM_REG_NR_INITIALIZE,
+	MSM_SPM_REG_SAW2_SEQ_ENTRY = MSM_SPM_REG_NR_INITIALIZE,
+
+	MSM_SPM_REG_NR
+};
+
+struct msm_spm_seq_entry {
+	uint32_t mode;
+	uint8_t *cmd;
+	bool  notify_rpm;
+};
+
+struct msm_spm_platform_data {
+	void __iomem *reg_base_addr;
+	uint32_t reg_init_values[MSM_SPM_REG_NR_INITIALIZE];
+
+	uint8_t awake_vlevel;
+	uint32_t vctl_timeout_us;
+
+	uint32_t num_modes;
+	struct msm_spm_seq_entry *modes;
+};
 #endif
 
-#if defined(CONFIG_ARCH_MSM7X30) \
-		|| defined(CONFIG_ARCH_MSM8X60) \
-			|| defined(CONFIG_ARCH_MSM8960)
+#if defined(CONFIG_MSM_SPM_V1) || defined(CONFIG_MSM_SPM_V2)
 
 int msm_spm_set_low_power_mode(unsigned int mode, bool notify_rpm);
 int msm_spm_set_vdd(unsigned int cpu, unsigned int vlevel);
@@ -120,7 +127,22 @@ void msm_spm_reinit(void);
 void msm_spm_allow_x_cpu_set_vdd(bool allowed);
 int msm_spm_init(struct msm_spm_platform_data *data, int nr_devs);
 
+#if defined(CONFIG_MSM_L2_SPM)
+int msm_spm_l2_set_low_power_mode(unsigned int mode, bool notify_rpm);
+int msm_spm_l2_init(struct msm_spm_platform_data *data);
 #else
+static inline int msm_spm_l2_set_low_power_mode(unsigned int mode,
+		bool notify_rpm)
+{
+	return -ENOSYS;
+}
+static inline int msm_spm_l2_init(struct msm_spm_platform_data *data)
+{
+	return -ENOSYS;
+}
+#endif /* defined(CONFIG_MSM_L2_SPM) */
+
+#else /* defined(CONFIG_MSM_SPM_V1) || defined(CONFIG_MSM_SPM_V2) */
 
 static inline int msm_spm_set_low_power_mode(unsigned int mode, bool notify_rpm)
 {
@@ -142,12 +164,6 @@ static inline void msm_spm_allow_x_cpu_set_vdd(bool allowed)
 	/* empty */
 }
 
-static inline int msm_spm_init(struct msm_spm_platform_data *data, int nr_devs)
-{
-	return -ENOSYS;
-}
-
-#endif  /* defined(CONFIG_ARCH_MSM7X30) || defined(CONFIG_ARCH_MSM8X60)
-	   || defined (CONFIG_ARCH_MSM8960) */
+#endif  /*defined(CONFIG_MSM_SPM_V1) || defined (CONFIG_MSM_SPM_V2) */
 
 #endif  /* __ARCH_ARM_MACH_MSM_SPM_H */

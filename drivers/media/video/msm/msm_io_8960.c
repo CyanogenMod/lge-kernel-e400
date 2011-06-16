@@ -90,6 +90,8 @@
 
 /* Regulator Voltage and Current */
 
+#define CAM_VAF_MINUV                 2800000
+#define CAM_VAF_MAXUV                 2800000
 #define CAM_VDIG_MINUV                    1200000
 #define CAM_VDIG_MAXUV                    1200000
 #define CAM_VANA_MINUV                    2800000
@@ -97,6 +99,7 @@
 #define CAM_CSI_VDD_MINUV                  1200000
 #define CAM_CSI_VDD_MAXUV                  1200000
 
+#define CAM_VAF_LOAD_UA               300000
 #define CAM_VDIG_LOAD_UA                  105000
 #define CAM_VANA_LOAD_UA                  85600
 #define CAM_CSI_LOAD_UA                    20000
@@ -128,6 +131,7 @@ static struct regulator *fs_vpe;
 static struct regulator *cam_vana;
 static struct regulator *cam_vio;
 static struct regulator *cam_vdig;
+static struct regulator *cam_vaf;
 static struct regulator *mipi_csi_vdd;
 
 static struct msm_camera_io_ext camio_ext;
@@ -433,6 +437,30 @@ static int msm_camera_vreg_enable(struct platform_device *pdev)
 			goto cam_vdig_disable;
 		}
 	}
+	if (cam_vaf == NULL) {
+		cam_vaf = regulator_get(&pdev->dev, "cam_vaf");
+		if (IS_ERR(cam_vaf)) {
+			CDBG("%s: VREG CAM VAF get failed\n", __func__);
+			cam_vaf = NULL;
+			goto cam_vdig_disable;
+		}
+		if (regulator_set_voltage(cam_vaf, CAM_VAF_MINUV,
+			CAM_VAF_MAXUV)) {
+			CDBG("%s: VREG CAM VAF set voltage failed\n",
+				__func__);
+			goto cam_vaf_put;
+		}
+		if (regulator_set_optimum_mode(cam_vaf,
+			CAM_VAF_LOAD_UA) < 0) {
+			CDBG("%s: VREG CAM VAF set optimum mode failed\n",
+				__func__);
+			goto cam_vaf_release;
+		}
+		if (regulator_enable(cam_vaf)) {
+			CDBG("%s: VREG CAM VAF enable failed\n", __func__);
+			goto cam_vaf_disable;
+		}
+	}
 	if (fs_vfe == NULL) {
 		fs_vfe = regulator_get(&pdev->dev, "fs_vfe");
 		if (IS_ERR(fs_vfe)) {
@@ -446,7 +474,14 @@ static int msm_camera_vreg_enable(struct platform_device *pdev)
 	}
 	return 0;
 
-
+cam_vaf_disable:
+	regulator_set_optimum_mode(cam_vaf, 0);
+cam_vaf_release:
+	regulator_set_voltage(cam_vaf, 0, CAM_VAF_MAXUV);
+	regulator_disable(cam_vaf);
+cam_vaf_put:
+	regulator_put(cam_vaf);
+	cam_vaf = NULL;
 cam_vdig_disable:
 	regulator_set_optimum_mode(cam_vdig, 0);
 cam_vdig_release:
@@ -510,6 +545,14 @@ static void msm_camera_vreg_disable(void)
 		regulator_disable(cam_vdig);
 		regulator_put(cam_vdig);
 		cam_vdig = NULL;
+	}
+
+	if (cam_vaf) {
+		regulator_set_voltage(cam_vaf, 0, CAM_VAF_MAXUV);
+		regulator_set_optimum_mode(cam_vaf, 0);
+		regulator_disable(cam_vaf);
+		regulator_put(cam_vaf);
+		cam_vaf = NULL;
 	}
 
 	if (fs_vfe) {
@@ -1196,10 +1239,6 @@ int msm_camio_csid_cid_lut(struct msm_camera_csid_lut_params *csid_lut_params)
 int msm_camio_csid_config(struct msm_camera_csid_params *csid_params)
 {
 	int rc = 0;
-	struct msm_ispif_params ispif_params;
-	struct msm_camera_sensor_info *sinfo = camio_dev->dev.platform_data;
-	struct msm_camera_device_platform_data *camdev = sinfo->pdata;
-	uint8_t csid_core = camdev->csid_core;
 	uint32_t val = 0;
 	val = csid_params->lane_cnt - 1;
 	val |= csid_params->lane_assign << 2;
@@ -1215,13 +1254,6 @@ int msm_camio_csid_config(struct msm_camera_csid_params *csid_params)
 
 	msm_io_w(0xFFFFFFFF, csidbase + CSID_IRQ_MASK_ADDR);
 	msm_io_w(0xFFFFFFFF, csidbase + CSID_IRQ_CLEAR_CMD_ADDR);
-
-	ispif_params.intftype = PIX0;
-	ispif_params.cid_mask = 0x0001;
-	ispif_params.csid = csid_core;
-
-	msm_ispif_config(&ispif_params, 1);
-	msm_ispif_start_intf_transfer(&ispif_params);
 
 	msleep(20);
 	return rc;

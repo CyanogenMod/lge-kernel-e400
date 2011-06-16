@@ -42,8 +42,8 @@
 /*
  * Halt/Status Checking Mode Macros
  */
-#define NOCHECK		0	/* No bit to check, do nothing */
-#define HALT		1	/* Bit pol: 1 = halted */
+#define HALT		0	/* Bit pol: 1 = halted */
+#define NOCHECK		1	/* No bit to check, do nothing */
 #define HALT_VOTED	2	/* Bit pol: 1 = halted; delay on disable */
 #define ENABLE		3	/* Bit pol: 1 = running */
 #define ENABLE_VOTED	4	/* Bit pol: 1 = running; delay on disable */
@@ -106,7 +106,6 @@ struct bank_masks {
  * @halt_bit: ANDed with @halt_reg to test for clock halted
  * @reset_reg: reset register
  * @reset_mask: ORed with @reset_reg to reset the clock domain
- * @test_vector: bits to program to measure the clock
  */
 struct branch {
 	void __iomem *const en_reg;
@@ -118,8 +117,6 @@ struct branch {
 
 	void __iomem *const reset_reg;
 	const u32 reset_mask;
-
-	const u32 test_vector;
 };
 
 int branch_reset(struct branch *clk, enum clk_reset_action action);
@@ -190,7 +187,6 @@ static inline unsigned fixed_clk_get_rate(struct clk *clk)
  * @en_reg: enable register
  * @en_mask: ORed with @en_reg to enable the clock
  * @status_reg: status register
- * @status_mask: ANDed with @status_reg to test if the PLL is enabled
  * @parent: clock source
  * @c: clk
  */
@@ -201,7 +197,6 @@ struct pll_vote_clk {
 	const u32 en_mask;
 
 	void __iomem *const status_reg;
-	const u32 status_mask;
 
 	struct clk *parent;
 	struct clk c;
@@ -218,7 +213,6 @@ static inline struct pll_vote_clk *to_pll_vote_clk(struct clk *clk)
  * struct pll_clk - phase locked loop
  * @rate: output rate
  * @mode_reg: enable register
- * @status_reg: status register
  * @parent: clock source
  * @c: clk
  */
@@ -226,7 +220,6 @@ struct pll_clk {
 	unsigned long rate;
 
 	void __iomem *const mode_reg;
-	void __iomem *const status_reg;
 
 	struct clk *parent;
 	struct clk c;

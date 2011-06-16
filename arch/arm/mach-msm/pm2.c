@@ -403,14 +403,14 @@ static void msm_pm_config_hw_before_power_down(void)
 {
 #if defined(CONFIG_ARCH_MSM7X30)
 	__raw_writel(1, APPS_PWRDOWN);
-	dsb();
+	mb();
 	__raw_writel(4, APPS_SECOP);
-	dsb();
+	mb();
 #elif defined(CONFIG_ARCH_MSM7X27)
 	__raw_writel(0x1f, APPS_CLK_SLEEP_EN);
-	dsb();
+	mb();
 	__raw_writel(1, APPS_PWRDOWN);
-	dsb();
+	mb();
 #elif defined(CONFIG_ARCH_MSM7x27A)
 	__raw_writel(0x7, APPS_CLK_SLEEP_EN);
 	mb();
@@ -418,11 +418,11 @@ static void msm_pm_config_hw_before_power_down(void)
 	mb();
 #else
 	__raw_writel(0x1f, APPS_CLK_SLEEP_EN);
-	dsb();
+	mb();
 	__raw_writel(1, APPS_PWRDOWN);
-	dsb();
+	mb();
 	__raw_writel(0, APPS_STANDBY_CTL);
-	dsb();
+	mb();
 #endif
 }
 
@@ -433,9 +433,9 @@ static void msm_pm_config_hw_after_power_up(void)
 {
 #if defined(CONFIG_ARCH_MSM7X30)
 	__raw_writel(0, APPS_SECOP);
-	dsb();
+	mb();
 	__raw_writel(0, APPS_PWRDOWN);
-	dsb();
+	mb();
 	msm_spm_reinit();
 #elif defined(CONFIG_ARCH_MSM7x27A)
 	__raw_writel(0, APPS_PWRDOWN);
@@ -444,9 +444,9 @@ static void msm_pm_config_hw_after_power_up(void)
 	mb();
 #else
 	__raw_writel(0, APPS_PWRDOWN);
-	dsb();
+	mb();
 	__raw_writel(0, APPS_CLK_SLEEP_EN);
-	dsb();
+	mb();
 #endif
 }
 
@@ -457,10 +457,10 @@ static void msm_pm_config_hw_before_swfi(void)
 {
 #if defined(CONFIG_ARCH_QSD8X50)
 	__raw_writel(0x1f, APPS_CLK_SLEEP_EN);
-	dsb();
+	mb();
 #elif defined(CONFIG_ARCH_MSM7X27)
 	__raw_writel(0x0f, APPS_CLK_SLEEP_EN);
-	dsb();
+	mb();
 #elif defined(CONFIG_ARCH_MSM7X27A)
 	__raw_writel(0x7, APPS_CLK_SLEEP_EN);
 	mb();
@@ -1823,8 +1823,7 @@ static int __init msm_pm_init(void)
 		printk(KERN_ERR "%s: failed to get smsm_data\n", __func__);
 		return -ENODEV;
 	}
-
-#ifdef CONFIG_ARCH_MSM_SCORPION
+#if defined(CONFIG_ARCH_MSM_SCORPION) && !defined(CONFIG_MSM_SMP)
 	/* The bootloader is responsible for initializing many of Scorpion's
 	 * coprocessor registers for things like cache timing. The state of
 	 * these coprocessor registers is lost on reset, so part of the

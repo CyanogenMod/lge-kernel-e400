@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  */
-
+#include <mach/msm_memtypes.h>
 #include "vcd_ddl.h"
 #include "vcd_ddl_shared_mem.h"
 
@@ -327,8 +327,7 @@ u32 ddl_decoder_dpb_init(struct ddl_client_context *ddl)
 
 void ddl_release_context_buffers(struct ddl_context *ddl_context)
 {
-	u32 memorytype = PMEM_MEMTYPE;
-	if (memorytype == PMEM_MEMTYPE_SMI) {
+	if (ddl_context->memtype == MEMTYPE_SMI_KERNEL) {
 		ddl_pmem_free(&ddl_context->dram_base_a);
 		ddl_pmem_free(&ddl_context->dram_base_b);
 	}
@@ -902,13 +901,12 @@ void ddl_decoder_chroma_dpb_change(struct ddl_client_context *ddl)
 u32 ddl_check_reconfig(struct ddl_client_context *ddl)
 {
 	u32 need_reconfig = true;
-	struct ddl_context *ddl_context = ddl->ddl_context;
 	struct ddl_decoder_data *decoder = &ddl->codec_data.decoder;
 	if (decoder->cont_mode) {
 		if ((decoder->actual_output_buf_req.sz <=
 			 decoder->client_output_buf_req.sz) &&
-			(decoder->min_dpb_num <=
-			 decoder->client_output_buf_req.min_count)) {
+			(decoder->actual_output_buf_req.actual_count <=
+			 decoder->client_output_buf_req.actual_count)) {
 			need_reconfig = false;
 			if (decoder->min_dpb_num >
 				decoder->min_output_buf_req.min_count) {
@@ -921,20 +919,6 @@ u32 ddl_check_reconfig(struct ddl_client_context *ddl)
 				 decoder->frame_size.height,
 				 decoder->client_frame_size.width,
 				 decoder->client_frame_size.height);
-			if ((decoder->frame_size.width !=
-				decoder->client_frame_size.width) ||
-				(decoder->frame_size.height !=
-				 decoder->client_frame_size.height)) {
-					decoder->client_frame_size =
-						decoder->frame_size;
-					DDL_MSG_HIGH("%s Sending reconf"
-						"info event\n", __func__);
-					ddl_context->ddl_callback(
-					VCD_EVT_IND_INFO_OUTPUT_RECONFIG,
-					VCD_S_SUCCESS, NULL, 0,
-					(u32 *)ddl,
-					ddl->client_data);
-			}
 		}
 	} else {
 		if ((decoder->frame_size.width ==

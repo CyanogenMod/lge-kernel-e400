@@ -563,7 +563,7 @@ static void usb_ept_enable(struct msm_endpoint *ept, int yes,
 	writel(n, USB_ENDPTCTRL(ept->num));
 
 	/* Ensure endpoint is enabled before returning */
-	dsb();
+	mb();
 
 	dev_dbg(&ui->pdev->dev, "ept %d %s %s\n",
 	       ept->num, in ? "in" : "out", yes ? "enabled" : "disabled");
@@ -660,8 +660,9 @@ int usb_ept_queue_xfer(struct msm_endpoint *ept, struct usb_request *_req)
 	if (!atomic_read(&ui->configured) && (ept->num != 0)) {
 		req->req.status = -ESHUTDOWN;
 		spin_unlock_irqrestore(&ui->lock, flags);
-		dev_err(&ui->pdev->dev,
-			"usb_ept_queue_xfer() called while offline\n");
+		if (printk_ratelimit())
+			dev_err(&ui->pdev->dev,
+				"%s: called while offline\n", __func__);
 		return -ESHUTDOWN;
 	}
 
@@ -669,7 +670,8 @@ int usb_ept_queue_xfer(struct msm_endpoint *ept, struct usb_request *_req)
 		if (!atomic_read(&ui->remote_wakeup)) {
 			req->req.status = -EAGAIN;
 			spin_unlock_irqrestore(&ui->lock, flags);
-			dev_err(&ui->pdev->dev,
+			if (printk_ratelimit())
+				dev_err(&ui->pdev->dev,
 				"%s: cannot queue as bus is suspended "
 				"ept #%d %s max:%d head:%p bit:%d\n",
 				__func__, ept->num,
@@ -885,7 +887,7 @@ static void handle_setup(struct usb_info *ui)
 
 	memcpy(&ctl, ui->ep0out.head->setup_data, sizeof(ctl));
 	/* Ensure buffer is read before acknowledging to h/w */
-	dsb();
+	mb();
 
 	writel(EPT_RX(0), USB_ENDPTSETUPSTAT);
 
@@ -1386,7 +1388,7 @@ static void usb_reset(struct usb_info *ui)
 	writel(STS_URI | STS_SLI | STS_UI | STS_PCI, USB_USBINTR);
 
 	/* Ensure that h/w RESET is completed before returning */
-	dsb();
+	mb();
 
 	atomic_set(&ui->running, 1);
 }
@@ -2132,7 +2134,7 @@ static int msm72k_pullup_internal(struct usb_gadget *_gadget, int is_active)
 	}
 
 	/* Ensure pull-up operation is completed before returning */
-	dsb();
+	mb();
 
 	return 0;
 }
@@ -2184,7 +2186,7 @@ static int msm72k_wakeup(struct usb_gadget *_gadget)
 		writel(readl(USB_PORTSC) | PORTSC_FPR, USB_PORTSC);
 
 	/* Ensure that USB port is resumed before enabling the IRQ */
-	dsb();
+	mb();
 
 	enable_irq(otg->irq);
 

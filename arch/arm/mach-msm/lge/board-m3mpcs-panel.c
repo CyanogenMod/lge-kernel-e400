@@ -123,6 +123,25 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mdp_rev = MDP_REV_303,
 };
 
+enum {
+	DSI_SINGLE_LANE = 1,
+	DSI_TWO_LANES,
+};
+
+static int msm_fb_get_lane_config(void)
+{
+	int rc = DSI_TWO_LANES;
+#if 0
+	if (cpu_is_msm7x25a()) {
+		rc = DSI_SINGLE_LANE;
+		pr_info("DSI Single Lane\n");
+	} else {
+		pr_info("DSI Two Lanes\n");
+	}
+#endif
+	return rc;
+}
+
 #define GPIO_LCD_RESET 125
 static int dsi_gpio_initialized;
 
@@ -196,6 +215,7 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 #ifndef CONFIG_MACH_LGE
 	.dsi_client_reset = msm_fb_dsi_client_reset,
 #endif
+	.get_lane_config = msm_fb_get_lane_config,
 };
 #endif
 
