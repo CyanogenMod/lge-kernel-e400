@@ -9,8 +9,8 @@
 
 /* Sub-PMIC */
 static struct gpio_i2c_pin subpm_i2c_pin = {
-	.sda_pin = 76,
-	.scl_pin = 77,
+	.sda_pin = 13,
+	.scl_pin = 14,
 };
 
 static struct i2c_gpio_platform_data subpm_i2c_pdata = {
