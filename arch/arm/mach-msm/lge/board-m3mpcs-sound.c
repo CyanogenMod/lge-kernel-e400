@@ -1,6 +1,7 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/input.h>
 
 #include <mach/board.h>
 #include <mach/board_lge.h>
@@ -161,7 +162,7 @@ enum {
 	EAR_INJECT = 1,
 };
 
-static int m3eu_gpio_earsense_work_func(void)
+static int m3mpcs_gpio_earsense_work_func(void)
 {
 	int state;
 	int gpio_value;
@@ -178,17 +179,17 @@ static int m3eu_gpio_earsense_work_func(void)
 	return state;
 }
 
-static char *m3eu_gpio_earsense_print_name(void)
+static char *m3mpcs_gpio_earsense_print_name(void)
 {
 	return "Headset";
 }
 
-static char *m3eu_gpio_earsense_print_state(int state)
+static char *m3mpcs_gpio_earsense_print_state(int state)
 {
 	return ear_state_string[state];
 }
 
-static int m3eu_gpio_earsense_sysfs_store(const char *buf, size_t size)
+static int m3mpcs_gpio_earsense_sysfs_store(const char *buf, size_t size)
 {
 	int state;
 
@@ -202,40 +203,62 @@ static int m3eu_gpio_earsense_sysfs_store(const char *buf, size_t size)
 	return state;
 }
 
-static unsigned m3eu_earsense_gpios[] = {
+static unsigned m3mpcs_earsense_gpios[] = {
 	GPIO_EAR_SENSE,
 };
 
-static struct lge_gpio_switch_platform_data m3eu_earsense_data = {
-	.name = "h2w_headset",
-	.gpios = m3eu_earsense_gpios,
-	.num_gpios = ARRAY_SIZE(m3eu_earsense_gpios),
-	.irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-	.wakeup_flag = 1,
-	.work_func = m3eu_gpio_earsense_work_func,
-	.print_name = m3eu_gpio_earsense_print_name,
-	.print_state = m3eu_gpio_earsense_print_state,
-	.sysfs_store = m3eu_gpio_earsense_sysfs_store,
+/* especially to address gpio key */
+static unsigned m3mpcs_hook_key_gpios[] = {
+	GPIO_BUTTON_DETECT,
 };
 
-static struct platform_device m3eu_earsense_device = {
+static int m3mpcs_gpio_hook_key_work_func(int *value)
+{
+	int gpio_value;
+
+	*value = KEY_MEDIA;
+	gpio_value = gpio_get_value(GPIO_BUTTON_DETECT);
+	printk(KERN_INFO "%s: hook key detected : %s\n", __func__,
+		gpio_value ? "pressed" : "released");
+
+	return gpio_value;
+}
+
+static struct lge_gpio_switch_platform_data m3mpcs_earsense_data = {
+	.name = "h2w_headset",
+	.gpios = m3mpcs_earsense_gpios,
+	.num_gpios = ARRAY_SIZE(m3mpcs_earsense_gpios),
+	.irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	.wakeup_flag = 1,
+	.work_func = m3mpcs_gpio_earsense_work_func,
+	.print_name = m3mpcs_gpio_earsense_print_name,
+	.print_state = m3mpcs_gpio_earsense_print_state,
+	.sysfs_store = m3mpcs_gpio_earsense_sysfs_store,
+
+	/* especially to address gpio key */
+	.key_gpios = m3mpcs_hook_key_gpios,
+	.num_key_gpios = ARRAY_SIZE(m3mpcs_hook_key_gpios),
+	.key_work_func = m3mpcs_gpio_hook_key_work_func,
+};
+
+static struct platform_device m3mpcs_earsense_device = {
 	.name	= "lge-switch-gpio",
 	.id		= -1,
 	.dev	= {
-		.platform_data = &m3eu_earsense_data,
+		.platform_data = &m3mpcs_earsense_data,
 	},
 };
 
 /* input platform device */
-static struct platform_device *m3_sound_devices[] __initdata = {
+static struct platform_device *m3mpcs_sound_devices[] __initdata = {
 	&msm_device_snd,
 	&msm_device_adspdec,
-	&m3eu_earsense_device,
+	&m3mpcs_earsense_device,
 };
 
 /* common function */
 void __init lge_add_sound_devices(void)
 {
-	platform_add_devices(m3_sound_devices, ARRAY_SIZE(m3_sound_devices));
+	platform_add_devices(m3mpcs_sound_devices, ARRAY_SIZE(m3mpcs_sound_devices));
 }
 
