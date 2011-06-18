@@ -393,9 +393,11 @@ static int32_t ov2720_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			ov2720_csiphy_params.lane_cnt = 2;
 			ov2720_csiphy_params.settle_cnt = 0x1B;
 			rc = msm_camio_csid_config(&ov2720_csid_params);
-			dsb();
+			v4l2_subdev_notify(s_ctrl->sensor_v4l2_subdev,
+						NOTIFY_CID_CHANGE, NULL);
+			mb();
 			rc = msm_camio_csiphy_config(&ov2720_csiphy_params);
-			dsb();
+			mb();
 			msleep(20);
 			s_ctrl->config_csi_flag = 0;
 		}

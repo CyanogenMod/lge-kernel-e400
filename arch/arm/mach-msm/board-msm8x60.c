@@ -2436,7 +2436,7 @@ static struct platform_device msm_batt_device = {
 /* VGA = 1440 x 900 x 4(bpp) x 2(pages)
    prim = 1024 x 600 x 4(bpp) x 2(pages)
    This is the difference. */
-#define MSM_FB_DSUB_PMEM_ADDER (0x9E3400-0x4B0000)
+#define MSM_FB_DSUB_PMEM_ADDER (0xA32000-0x4B0000)
 #else
 #define MSM_FB_DSUB_PMEM_ADDER (0)
 #endif
@@ -2505,11 +2505,11 @@ static void __init msm8x60_init_dsps(void)
 #endif
 
 
-#ifdef CONFIG_FB_MSM_MIPI_DSI
+#ifdef CONFIG_FB_MSM_OVERLAY_WRITEBACK
 /* 960 x 540 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE 0x300000
+#define MSM_FB_WRITEBACK_SIZE 0x300000
 #else
-#define MIPI_DSI_WRITEBACK_SIZE 0
+#define MSM_FB_WRITEBACK_SIZE 0
 #endif
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
@@ -2517,7 +2517,7 @@ static void __init msm8x60_init_dsps(void)
  * hdmi = 1920 x 1080 x 2(bpp) x 1(page)
  * Note: must be multiple of 4096 */
 #define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE + 0x3F4800 + \
-			MIPI_DSI_WRITEBACK_SIZE + MSM_FB_DSUB_PMEM_ADDER, 4096)
+			MSM_FB_WRITEBACK_SIZE + MSM_FB_DSUB_PMEM_ADDER, 4096)
 #elif defined(CONFIG_FB_MSM_TVOUT)
 /* prim = 1024 x 600 x 4(bpp) x 2(pages)
  * tvout = 720 x 576 x 2(bpp) x 2(pages)
@@ -3127,7 +3127,7 @@ static struct cy8c_ts_platform_data cy8ctmg200_pdata = {
 	.dis_max_x = 1023,
 	.dis_min_y = 0,
 	.dis_max_y = 599,
-	.min_tid = 1,
+	.min_tid = 0,
 	.max_tid = 255,
 	.min_touch = 0,
 	.max_touch = 255,
@@ -3644,6 +3644,8 @@ static struct platform_device *early_devices[] __initdata = {
 	&msm_bus_sys_fpb,
 	&msm_bus_cpss_fpb,
 #endif
+	&msm_device_dmov_adm0,
+	&msm_device_dmov_adm1,
 };
 
 #if (defined(CONFIG_MARIMBA_CORE)) && \
@@ -4486,8 +4488,6 @@ static struct platform_device *charm_devices[] __initdata = {
 static struct platform_device *surf_devices[] __initdata = {
 	&msm_device_smd,
 	&msm_device_uart_dm12,
-	&msm_device_dmov_adm0,
-	&msm_device_dmov_adm1,
 #ifdef CONFIG_I2C_QUP
 	&msm_gsbi3_qup_i2c_device,
 	&msm_gsbi4_qup_i2c_device,
@@ -6334,7 +6334,7 @@ static unsigned int msm_bahama_shutdown_power(int value)
 
 
 {
-	gpio_set_value(GPIO_MS_SYS_RESET_N, 0);
+	gpio_set_value_cansleep(GPIO_MS_SYS_RESET_N, 0);
 
 	gpio_free(GPIO_MS_SYS_RESET_N);
 
@@ -6750,7 +6750,7 @@ static void __init msm8x60_init_uart12dm(void)
 	writew(1, fpga_mem + 0xEA);
 	/* FPGA_GPIO_CONFIG_118 */
 	writew(1, fpga_mem + 0xEC);
-	dmb();
+	mb();
 	iounmap(fpga_mem);
 #endif
 }
@@ -6765,7 +6765,7 @@ static void __init msm8x60_init_buses(void)
 	/* Setting protocol code to 0x60 for dual UART/I2C in GSBI12 */
 	writel_relaxed(0x6 << 4, gsbi_mem);
 	/* Ensure protocol code is written before proceeding further */
-	dsb();
+	mb();
 	iounmap(gsbi_mem);
 
 	msm_gsbi3_qup_i2c_device.dev.platform_data = &msm_gsbi3_qup_i2c_pdata;
@@ -6777,7 +6777,7 @@ static void __init msm8x60_init_buses(void)
 	if (machine_is_msm8x60_fusion() || machine_is_msm8x60_fusn_ffa()) {
 		/* Setting protocol code to 0x60 for dual UART/I2C in GSBI9 */
 		gsbi_mem = ioremap_nocache(MSM_GSBI9_PHYS, 4);
-		writel(GSBI_DUAL_MODE_CODE, gsbi_mem);
+		writel_relaxed(GSBI_DUAL_MODE_CODE, gsbi_mem);
 		iounmap(gsbi_mem);
 		msm_gsbi9_qup_i2c_pdata.use_gsbi_shared_mode = 1;
 	}
@@ -7797,7 +7797,7 @@ static struct mmc_platform_data msm8x60_sdc2_data = {
 	.msmsdcc_fmin	= 400000,
 	.msmsdcc_fmid	= 24000000,
 	.msmsdcc_fmax	= 48000000,
-	.nonremovable	= 1,
+	.nonremovable	= 0,
 	.pclk_src_dfab  = 1,
 	.register_status_notify = sdc2_register_status_notify,
 #ifdef CONFIG_MMC_MSM_SDC2_DUMMY52_REQUIRED
@@ -7858,7 +7858,7 @@ static struct mmc_platform_data msm8x60_sdc5_data = {
 	.msmsdcc_fmin	= 400000,
 	.msmsdcc_fmid	= 24000000,
 	.msmsdcc_fmax	= 48000000,
-	.nonremovable	= 1,
+	.nonremovable	= 0,
 	.pclk_src_dfab  = 1,
 	.register_status_notify = sdc5_register_status_notify,
 #ifdef CONFIG_MMC_MSM_SDC5_DUMMY52_REQUIRED
@@ -8492,7 +8492,7 @@ static struct msm_bus_vectors mdp_sd_ebi_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 388800000,
-		.ib = 486000000,
+		.ib = 486000000 * 2,
 	},
 };
 static struct msm_bus_vectors mdp_vga_vectors[] = {
@@ -8507,7 +8507,7 @@ static struct msm_bus_vectors mdp_vga_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 458092800,
-		.ib = 572616000,
+		.ib = 572616000 * 2,
 	},
 };
 static struct msm_bus_vectors mdp_720p_vectors[] = {
@@ -8523,7 +8523,7 @@ static struct msm_bus_vectors mdp_720p_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 	       .ab = 471744000,
-	       .ib = 589680000,
+	       .ib = 589680000 * 2,
 	},
 };
 
@@ -8540,7 +8540,7 @@ static struct msm_bus_vectors mdp_1080p_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 575424000,
-		.ib = 719280000,
+		.ib = 719280000 * 2,
 	},
 };
 
@@ -8594,7 +8594,7 @@ static struct msm_bus_vectors mdp_sd_ebi_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 216000000,
-		.ib = 270000000,
+		.ib = 270000000 * 2,
 	},
 };
 static struct msm_bus_vectors mdp_vga_vectors[] = {
@@ -8609,7 +8609,7 @@ static struct msm_bus_vectors mdp_vga_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 216000000,
-		.ib = 270000000,
+		.ib = 270000000 * 2,
 	},
 };
 
@@ -8626,7 +8626,7 @@ static struct msm_bus_vectors mdp_720p_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 230400000,
-		.ib = 288000000,
+		.ib = 288000000 * 2,
 	},
 };
 
@@ -8643,7 +8643,7 @@ static struct msm_bus_vectors mdp_1080p_vectors[] = {
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 334080000,
-		.ib = 417600000,
+		.ib = 417600000 * 2,
 	},
 };
 
@@ -9220,6 +9220,15 @@ static struct msm_xo_voter *bt_clock;
 static int bluetooth_power(int on)
 {
 	int rc = 0;
+	int id;
+
+	/* In case probe function fails, cur_connv_type would be -1 */
+	id = adie_get_detected_connectivity_type();
+	if (id != BAHAMA_ID) {
+		pr_err("%s: unexpected adie connectivity type: %d\n",
+			__func__, id);
+		return -ENODEV;
+	}
 
 	if (on) {
 

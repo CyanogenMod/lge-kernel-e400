@@ -256,8 +256,9 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 	}
 #endif
 
-	/* BR-EDR initialization */
 	if (hdev->dev_type == HCI_BREDR) {
+		/* BR-EDR initialization */
+
 		/* Read Local Supported Features */
 		hci_send_cmd(hdev, HCI_OP_READ_LOCAL_FEATURES, 0, NULL);
 
@@ -282,20 +283,19 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 		param = cpu_to_le16(0x7d00);
 		hci_send_cmd(hdev, HCI_OP_WRITE_CA_TIMEOUT, 2, &param);
 
-		return;
+		bacpy(&cp.bdaddr, BDADDR_ANY);
+		cp.delete_all = 1;
+		hci_send_cmd(hdev, HCI_OP_DELETE_STORED_LINK_KEY,
+				sizeof(cp), &cp);
+	} else {
+		/* AMP initialization */
+		/* Connection accept timeout ~5 secs */
+		param = cpu_to_le16(0x1f40);
+		hci_send_cmd(hdev, HCI_OP_WRITE_CA_TIMEOUT, 2, &param);
+
+		/* Read AMP Info */
+		hci_send_cmd(hdev, HCI_OP_READ_LOCAL_AMP_INFO, 0, NULL);
 	}
-
-	/* AMP initialization */
-	/* Connection accept timeout ~5 secs */
-	param = cpu_to_le16(0x1f40);
-	hci_send_cmd(hdev, HCI_OP_WRITE_CA_TIMEOUT, 2, &param);
-
-	/* Read AMP Info */
-	hci_send_cmd(hdev, HCI_OP_READ_LOCAL_AMP_INFO, 0, NULL);
-
-	bacpy(&cp.bdaddr, BDADDR_ANY);
-	cp.delete_all = 1;
-	hci_send_cmd(hdev, HCI_OP_DELETE_STORED_LINK_KEY, sizeof(cp), &cp);
 }
 
 static void hci_le_init_req(struct hci_dev *hdev, unsigned long opt)
@@ -2282,7 +2282,7 @@ static inline void hci_acldata_packet(struct hci_dev *hdev, struct sk_buff *skb)
 	if (conn) {
 		register struct hci_proto *hp;
 
-		hci_conn_enter_active_mode(conn, 1);
+		hci_conn_enter_active_mode(conn, bt_cb(skb)->force_active);
 
 		/* Send to upper protocol */
 		hp = hci_proto[HCI_PROTO_L2CAP];

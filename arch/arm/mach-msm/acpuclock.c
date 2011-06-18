@@ -50,6 +50,9 @@
 #define dprintk(msg...) \
 	cpufreq_debug_printk(CPUFREQ_DEBUG_DRIVER, "cpufreq-msm", msg)
 
+/* Max CPU frequency allowed by hardware while in standby waiting for an irq. */
+#define MAX_WAIT_FOR_IRQ_KHZ 128000
+
 enum {
 	ACPU_PLL_TCXO	= -1,
 	ACPU_PLL_0	= 0,
@@ -78,6 +81,7 @@ struct clock_state {
 	uint32_t			max_speed_delta_khz;
 	uint32_t			vdd_switch_time_us;
 	unsigned long			max_axi_khz;
+	unsigned long			wait_for_irq_khz;
 	struct clk			*ebi1_clk;
 };
 
@@ -270,10 +274,10 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_800_pll4_0[] = {
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
-/* 7x27a pll2 at 1200mhz */
+/* 7x27a pll2 at 1200mhz with GSM capable modem */
 static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 19200, 0, 0, 30720 },
-	{ 0, 61440, ACPU_PLL_1, 4, 3,  61440, 0, 1,  61440 },
+	{ 0, 61440, ACPU_PLL_1, 1, 3,  61440, 0, 1,  61440 },
 	{ 1, 122880, ACPU_PLL_1, 1, 1,  61440, 1, 2,  61440 },
 	{ 1, 245760, ACPU_PLL_1, 1, 0, 122880, 1, 3,  61440 },
 	{ 0, 300000, ACPU_PLL_2, 2, 3, 160000, 1, 4, 122880 },
@@ -285,23 +289,20 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800[] = {
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
-#if defined (CONFIG_MACH_MSM7X27A_M3MPCS)
 /* 7x27a pll2 at 1200mhz with CDMA only modem */
 static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_800[] = {
-       { 0, 19200, ACPU_PLL_TCXO, 0, 0, 19200, 0, 0, 24576 },
-       { 0, 65536, ACPU_PLL_1, 1, 3,  65536, 0, 1,  49152 },
-       { 1, 98304, ACPU_PLL_1, 1, 1,  98304, 0, 2,  49152 },
-       { 1, 196608, ACPU_PLL_1, 1, 0, 65536, 2, 3,  98304 },
-       { 0, 300000, ACPU_PLL_2, 2, 3, 160000, 1, 4, 122880 },
-       { 1, 320000, ACPU_PLL_0, 4, 2, 160000, 1, 4, 122880 },
-       { 0, 400000, ACPU_PLL_4, 6, 1, 133333, 3, 7, 122880 },
-       { 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 5, 122880 },
-       { 1, 600000, ACPU_PLL_2, 2, 1, 200000, 2, 6, 122880 },
-       { 1, 800000, ACPU_PLL_4, 6, 0, 200000, 3, 7, 122880 },
-       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
+	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 19200, 0, 0, 24576 },
+	{ 0, 65536, ACPU_PLL_1, 1, 3,  65536, 0, 1,  49152 },
+	{ 1, 98304, ACPU_PLL_1, 1, 1,  98304, 0, 2,  49152 },
+	{ 1, 196608, ACPU_PLL_1, 1, 0, 65536, 2, 3,  98304 },
+	{ 0, 300000, ACPU_PLL_2, 2, 3, 160000, 1, 4, 122880 },
+	{ 1, 320000, ACPU_PLL_0, 4, 2, 160000, 1, 4, 122880 },
+	{ 0, 400000, ACPU_PLL_4, 6, 1, 133333, 3, 7, 122880 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 5, 122880 },
+	{ 1, 600000, ACPU_PLL_2, 2, 1, 200000, 2, 6, 122880 },
+	{ 1, 800000, ACPU_PLL_4, 6, 0, 200000, 3, 7, 122880 },
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
-#endif
-
 #define PLL_0_MHZ	0
 #define PLL_196_MHZ	10
 #define PLL_245_MHZ	12
@@ -337,9 +338,7 @@ static struct pll_freq_tbl_map acpu_freq_tbl_list[] = {
 	PLL_CONFIG(960, 196, 800, 0),
 	PLL_CONFIG(960, 245, 800, 0),
 	PLL_CONFIG(960, 245, 1200, 800),
-#if defined (CONFIG_MACH_MSM7X27A_M3MPCS)
 	PLL_CONFIG(960, 196, 1200, 800),
-#endif
 	{ 0, 0, 0, 0, 0 }
 };
 
@@ -378,8 +377,11 @@ static void __init cpufreq_table_init(void)
 static void pll_enable(void __iomem *addr, unsigned on)
 {
 	if (on) {
+		writel_relaxed(2, addr);
+		mb();
+		udelay(5);
 		writel_relaxed(6, addr);
-		dsb();
+		mb();
 		udelay(50);
 		writel_relaxed(7, addr);
 	} else {
@@ -446,22 +448,25 @@ unsigned long acpuclk_power_collapse(void)
 	return ret;
 }
 
-#define WAIT_FOR_IRQ_KHZ 128000
 unsigned long acpuclk_wait_for_irq(void)
 {
-	int ret = acpuclk_get_rate(smp_processor_id());
-	acpuclk_set_rate(smp_processor_id(), WAIT_FOR_IRQ_KHZ, SETRATE_SWFI);
-	return ret;
+	int rate = acpuclk_get_rate(smp_processor_id());
+	if (rate > MAX_WAIT_FOR_IRQ_KHZ)
+		acpuclk_set_rate(smp_processor_id(), drv_state.wait_for_irq_khz,
+				 SETRATE_SWFI);
+	return rate;
 }
 
-/*
- * NOTE: v1.0 of 7x27a chip doesn't have working VDD switching
- *       support.
- */
-#ifndef CONFIG_ARCH_MSM7X27A
 static int acpuclk_set_vdd_level(int vdd)
 {
 	uint32_t current_vdd;
+
+	/*
+	 * NOTE: v1.0 of 7x27a/7x25a chip doesn't have working
+	 * VDD switching support.
+	 */
+	if (cpu_is_msm7x27a() || cpu_is_msm7x25a())
+		return 0;
 
 	current_vdd = readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR) & 0x07;
 
@@ -469,7 +474,7 @@ static int acpuclk_set_vdd_level(int vdd)
 	       current_vdd, vdd);
 
 	writel_relaxed((1 << 7) | (vdd << 3), A11S_VDD_SVS_PLEVEL_ADDR);
-	dsb();
+	mb();
 	udelay(drv_state.vdd_switch_time_us);
 	if ((readl_relaxed(A11S_VDD_SVS_PLEVEL_ADDR) & 0x7) != vdd) {
 		pr_err("VDD set failed\n");
@@ -480,9 +485,6 @@ static int acpuclk_set_vdd_level(int vdd)
 
 	return 0;
 }
-#else
-static int acpuclk_set_vdd_level(int vdd) { return 0; }
-#endif
 
 /* Set proper dividers for the given clock speed. */
 static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
@@ -659,7 +661,7 @@ int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason)
 		drv_state.current_speed = cur_s;
 		/* Re-adjust lpj for the new clock speed. */
 		loops_per_jiffy = cur_s->lpj;
-		dsb();
+		mb();
 		udelay(drv_state.acpu_switch_time_us);
 	}
 
@@ -885,6 +887,22 @@ static void __init acpu_freq_tbl_fixup(void)
 		pr_info("Turbo mode supported but not enabled.\n");
 }
 
+/*
+ * Hardware requires the CPU to be dropped to less than MAX_WAIT_FOR_IRQ_KHZ
+ * before entering a wait for irq low-power mode. Find a suitable rate.
+ */
+static unsigned long __init find_wait_for_irq_khz(void)
+{
+	unsigned long found_khz = 0;
+	int i;
+
+	for (i = 0; acpu_freq_tbl[i].a11clk_khz &&
+		    acpu_freq_tbl[i].a11clk_khz <= MAX_WAIT_FOR_IRQ_KHZ; i++)
+		found_khz = acpu_freq_tbl[i].a11clk_khz;
+
+	return found_khz;
+}
+
 /* Initalize the lpj field in the acpu_freq_tbl. */
 static void __init lpj_init(void)
 {
@@ -1013,13 +1031,13 @@ void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 	BUG_ON(IS_ERR(drv_state.ebi1_clk));
 
 	mutex_init(&drv_state.lock);
-	if (cpu_is_msm7x27() || cpu_is_msm7x27a())
-		shared_pll_control_init();
+	shared_pll_control_init();
 	drv_state.acpu_switch_time_us = clkdata->acpu_switch_time_us;
 	drv_state.max_speed_delta_khz = clkdata->max_speed_delta_khz;
 	drv_state.vdd_switch_time_us = clkdata->vdd_switch_time_us;
 	drv_state.max_axi_khz = clkdata->max_axi_khz;
 	acpu_freq_tbl_fixup();
+	drv_state.wait_for_irq_khz = find_wait_for_irq_khz();
 	precompute_stepping();
 	if (cpu_is_msm7x25())
 		msm7x25_acpu_pll_hw_bug_fix();

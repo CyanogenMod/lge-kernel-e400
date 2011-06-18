@@ -67,6 +67,7 @@ struct kgsl_device;
 struct platform_device;
 struct kgsl_device_private;
 struct kgsl_context;
+struct kgsl_power_stats;
 
 struct kgsl_functable {
 	/* Mandatory functions - these functions must be implemented
@@ -98,13 +99,12 @@ struct kgsl_functable {
 		struct kgsl_context *context, struct kgsl_ibdesc *ibdesc,
 		unsigned int sizedwords, uint32_t *timestamp,
 		unsigned int flags);
-	long (*ioctl) (struct kgsl_device_private *dev_priv,
-		unsigned int cmd, void *data);
 	int (*setup_pt)(struct kgsl_device *device,
 		struct kgsl_pagetable *pagetable);
 	int (*cleanup_pt)(struct kgsl_device *device,
 		struct kgsl_pagetable *pagetable);
-	unsigned int (*idle_calc)(struct kgsl_device *device);
+	void (*power_stats)(struct kgsl_device *device,
+		struct kgsl_power_stats *stats);
 	/* Optional functions - these functions are not mandatory.  The
 	   driver will check that the function pointer is not NULL before
 	   calling the hook */
@@ -114,6 +114,8 @@ struct kgsl_functable {
 		uint32_t flags);
 	int (*drawctxt_destroy) (struct kgsl_device *device,
 		struct kgsl_context *context);
+	long (*ioctl) (struct kgsl_device_private *dev_priv,
+		unsigned int cmd, void *data);
 };
 
 struct kgsl_memregion {
@@ -198,6 +200,11 @@ struct kgsl_process_private {
 struct kgsl_device_private {
 	struct kgsl_device *device;
 	struct kgsl_process_private *process_priv;
+};
+
+struct kgsl_power_stats {
+	s64 total_time;
+	s64 busy_time;
 };
 
 struct kgsl_device *kgsl_get_device(int dev_idx);

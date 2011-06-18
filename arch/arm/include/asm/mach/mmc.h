@@ -57,6 +57,13 @@ struct msm_mmc_slot_reg_data {
 
 struct mmc_platform_data {
 	unsigned int ocr_mask;			/* available voltages */
+	/*
+	 * XPC controls the maximum current in the
+	 * default speed mode of SDXC card.
+	 */
+	unsigned int xpc_cap;
+	/* Supported UHS-I Modes */
+	unsigned int uhs_caps;
 	u32 (*translate_vdd)(struct device *, unsigned int);
 	void (*sdio_lpm_gpio_setup)(struct device *, unsigned int);
 	unsigned int (*status)(struct device *);
@@ -80,6 +87,8 @@ struct mmc_platform_data {
 	unsigned char wpswitch_polarity;
 	struct msm_mmc_slot_reg_data *vreg_data;
 	int is_sdio_al_client;
+	unsigned int *sup_clk_table;
+	unsigned char sup_clk_cnt;
 };
 
 #endif

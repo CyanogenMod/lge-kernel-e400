@@ -27,10 +27,23 @@
 
 #define REG_MPP_BASE		0x050
 
+#define PM8921_VERSION_MASK	0xFFF0
+#define PM8921_VERSION_VALUE	0x06F0
+#define PM8921_REVISION_MASK	0x000F
+
+#define SINGLE_IRQ_RESOURCE(_name, _irq) \
+{ \
+	.name	= _name, \
+	.start	= _irq, \
+	.end	= _irq, \
+	.flags	= IORESOURCE_IRQ, \
+}
+
 struct pm8921 {
 	struct device			*dev;
 	struct pm_irq_chip		*irq_chip;
 	struct mfd_cell                 *mfd_regulators;
+	u32				rev_registers;
 };
 
 static int pm8921_readb(const struct device *dev, u16 addr, u8 *val)
@@ -75,12 +88,34 @@ static int pm8921_read_irq_stat(const struct device *dev, int irq)
 	return pm8xxx_get_irq_stat(pmic->irq_chip, irq);
 }
 
+static enum pm8xxx_version pm8921_get_version(const struct device *dev)
+{
+	const struct pm8xxx_drvdata *pm8921_drvdata = dev_get_drvdata(dev);
+	const struct pm8921 *pmic = pm8921_drvdata->pm_chip_data;
+	enum pm8xxx_version version = -ENODEV;
+
+	if ((pmic->rev_registers & PM8921_VERSION_MASK) == PM8921_VERSION_VALUE)
+		version = PM8XXX_VERSION_8921;
+
+	return version;
+}
+
+static int pm8921_get_revision(const struct device *dev)
+{
+	const struct pm8xxx_drvdata *pm8921_drvdata = dev_get_drvdata(dev);
+	const struct pm8921 *pmic = pm8921_drvdata->pm_chip_data;
+
+	return pmic->rev_registers & PM8921_REVISION_MASK;
+}
+
 static struct pm8xxx_drvdata pm8921_drvdata = {
 	.pmic_readb		= pm8921_readb,
 	.pmic_writeb		= pm8921_writeb,
 	.pmic_read_buf		= pm8921_read_buf,
 	.pmic_write_buf		= pm8921_write_buf,
 	.pmic_read_irq_stat	= pm8921_read_irq_stat,
+	.pmic_get_version	= pm8921_get_version,
+	.pmic_get_revision	= pm8921_get_revision,
 };
 
 static const struct resource gpio_cell_resources[] __devinitconst = {
@@ -116,11 +151,7 @@ static struct mfd_cell mpp_cell __devinitdata = {
 };
 
 static const struct resource rtc_cell_resources[] __devinitconst = {
-	[0] = {
-		.start  = PM8921_RTC_ALARM_IRQ,
-		.end    = PM8921_RTC_ALARM_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
+	[0] = SINGLE_IRQ_RESOURCE(NULL, PM8921_RTC_ALARM_IRQ),
 	[1] = {
 		.name   = "pmic_rtc_base",
 		.start  = PM8921_RTC_BASE,
@@ -137,16 +168,8 @@ static struct mfd_cell rtc_cell __devinitdata = {
 };
 
 static const struct resource resources_pwrkey[] __devinitconst = {
-	{
-		.start  = PM8921_PWRKEY_REL_IRQ,
-		.end    = PM8921_PWRKEY_REL_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
-	{
-		.start  = PM8921_PWRKEY_PRESS_IRQ,
-		.end    = PM8921_PWRKEY_PRESS_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_PWRKEY_REL_IRQ),
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_PWRKEY_PRESS_IRQ),
 };
 
 static struct mfd_cell pwrkey_cell __devinitdata = {
@@ -157,16 +180,8 @@ static struct mfd_cell pwrkey_cell __devinitdata = {
 };
 
 static const struct resource resources_keypad[] = {
-	{
-		.start  = PM8921_KEYPAD_IRQ,
-		.end    = PM8921_KEYPAD_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
-	{
-		.start  = PM8921_KEYSTUCK_IRQ,
-		.end    = PM8921_KEYSTUCK_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_KEYPAD_IRQ),
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_KEYSTUCK_IRQ),
 };
 
 static struct mfd_cell keypad_cell __devinitdata = {
@@ -188,10 +203,51 @@ static struct mfd_cell pwm_cell __devinitdata = {
 	.id             = -1,
 };
 
-static int __devinit pm8921_add_subdevices(const struct pm8921_platform_data
-					   *pdata,
-					   struct pm8921 *pmic,
-					   u32 rev)
+static const struct resource charger_cell_resources[] __devinitconst = {
+	SINGLE_IRQ_RESOURCE("USBIN_VALID_IRQ", PM8921_USBIN_VALID_IRQ),
+	SINGLE_IRQ_RESOURCE("USBIN_OV_IRQ", PM8921_USBIN_OV_IRQ),
+	SINGLE_IRQ_RESOURCE("BATT_INSERTED_IRQ", PM8921_BATT_INSERTED_IRQ),
+	SINGLE_IRQ_RESOURCE("VBATDET_LOW_IRQ", PM8921_VBATDET_LOW_IRQ),
+	SINGLE_IRQ_RESOURCE("USBIN_UV_IRQ", PM8921_USBIN_UV_IRQ),
+	SINGLE_IRQ_RESOURCE("VBAT_OV_IRQ", PM8921_VBAT_OV_IRQ),
+	SINGLE_IRQ_RESOURCE("CHGWDOG_IRQ", PM8921_CHGWDOG_IRQ),
+	SINGLE_IRQ_RESOURCE("VCP_IRQ", PM8921_VCP_IRQ),
+	SINGLE_IRQ_RESOURCE("ATCDONE_IRQ", PM8921_ATCDONE_IRQ),
+	SINGLE_IRQ_RESOURCE("ATCFAIL_IRQ", PM8921_ATCFAIL_IRQ),
+	SINGLE_IRQ_RESOURCE("CHGDONE_IRQ", PM8921_CHGDONE_IRQ),
+	SINGLE_IRQ_RESOURCE("CHGFAIL_IRQ", PM8921_CHGFAIL_IRQ),
+	SINGLE_IRQ_RESOURCE("CHGSTATE_IRQ", PM8921_CHGSTATE_IRQ),
+	SINGLE_IRQ_RESOURCE("LOOP_CHANGE_IRQ", PM8921_LOOP_CHANGE_IRQ),
+	SINGLE_IRQ_RESOURCE("FASTCHG_IRQ", PM8921_FASTCHG_IRQ),
+	SINGLE_IRQ_RESOURCE("TRKLCHG_IRQ", PM8921_TRKLCHG_IRQ),
+	SINGLE_IRQ_RESOURCE("BATT_REMOVED_IRQ", PM8921_BATT_REMOVED_IRQ),
+	SINGLE_IRQ_RESOURCE("BATTTEMP_HOT_IRQ", PM8921_BATTTEMP_HOT_IRQ),
+	SINGLE_IRQ_RESOURCE("CHGHOT_IRQ", PM8921_CHGHOT_IRQ),
+	SINGLE_IRQ_RESOURCE("BATTTEMP_COLD_IRQ", PM8921_BATTTEMP_COLD_IRQ),
+	SINGLE_IRQ_RESOURCE("CHG_GONE_IRQ", PM8921_CHG_GONE_IRQ),
+	SINGLE_IRQ_RESOURCE("BAT_TEMP_OK_IRQ", PM8921_BAT_TEMP_OK_IRQ),
+	SINGLE_IRQ_RESOURCE("COARSE_DET_LOW_IRQ", PM8921_COARSE_DET_LOW_IRQ),
+	SINGLE_IRQ_RESOURCE("VDD_LOOP_IRQ", PM8921_VDD_LOOP_IRQ),
+	SINGLE_IRQ_RESOURCE("VREG_OV_IRQ", PM8921_VREG_OV_IRQ),
+	SINGLE_IRQ_RESOURCE("VBAT_IRQ", PM8921_VBAT_IRQ),
+	SINGLE_IRQ_RESOURCE("VBATDET_IRQ", PM8921_VBATDET_IRQ),
+	SINGLE_IRQ_RESOURCE("BATFET_IRQ", PM8921_BATFET_IRQ),
+	SINGLE_IRQ_RESOURCE("PSI_IRQ", PM8921_PSI_IRQ),
+	SINGLE_IRQ_RESOURCE("DCIN_VALID_IRQ", PM8921_DCIN_VALID_IRQ),
+	SINGLE_IRQ_RESOURCE("DCIN_OV_IRQ", PM8921_DCIN_OV_IRQ),
+	SINGLE_IRQ_RESOURCE("DCIN_UV_IRQ", PM8921_DCIN_UV_IRQ),
+};
+
+static struct mfd_cell charger_cell __devinitdata = {
+	.name		= PM8921_CHARGER_DEV_NAME,
+	.id		= -1,
+	.resources	= charger_cell_resources,
+	.num_resources	= ARRAY_SIZE(charger_cell_resources),
+};
+
+static int __devinit
+pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
+		      struct pm8921 *pmic)
 {
 	int ret = 0, irq_base = 0;
 	struct pm_irq_chip *irq_chip;
@@ -200,7 +256,6 @@ static int __devinit pm8921_add_subdevices(const struct pm8921_platform_data
 
 	if (pdata->irq_pdata) {
 		pdata->irq_pdata->irq_cdata.nirqs = PM8921_NR_IRQS;
-		pdata->irq_pdata->irq_cdata.rev = rev;
 		irq_base = pdata->irq_pdata->irq_base;
 		irq_chip = pm8xxx_irq_init(pmic->dev, pdata->irq_pdata);
 
@@ -214,7 +269,6 @@ static int __devinit pm8921_add_subdevices(const struct pm8921_platform_data
 
 	if (pdata->gpio_pdata) {
 		pdata->gpio_pdata->gpio_cdata.ngpios = PM8921_NR_GPIOS;
-		pdata->gpio_pdata->gpio_cdata.rev = rev;
 		gpio_cell.platform_data = pdata->gpio_pdata;
 		gpio_cell.data_size = sizeof(struct pm8xxx_gpio_platform_data);
 		ret = mfd_add_devices(pmic->dev, 0, &gpio_cell, 1,
@@ -269,6 +323,19 @@ static int __devinit pm8921_add_subdevices(const struct pm8921_platform_data
 					irq_base);
 		if (ret) {
 			pr_err("Failed to add keypad subdevice ret=%d\n", ret);
+			goto bail;
+		}
+	}
+
+	if (pdata->charger_pdata) {
+		pdata->charger_pdata->charger_cdata.rev = pmic->rev_registers;
+		charger_cell.platform_data = pdata->charger_pdata;
+		charger_cell.data_size =
+				sizeof(struct pm8921_charger_platform_data);
+		ret = mfd_add_devices(pmic->dev, 0, &charger_cell, 1, NULL,
+					irq_base);
+		if (ret) {
+			pr_err("Failed to add charger subdevice ret=%d\n", ret);
 			goto bail;
 		}
 	}
@@ -330,7 +397,6 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 	struct pm8921 *pmic;
 	int rc;
 	u8 val;
-	u32 rev;
 
 	if (!pdata) {
 		pr_err("missing platform data\n");
@@ -350,7 +416,7 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 		goto err_read_rev;
 	}
 	pr_info("PMIC revision 1: %02X\n", val);
-	rev = val;
+	pmic->rev_registers = val;
 
 	/* Read PMIC chip revision 2 */
 	rc = msm_ssbi_read(pdev->dev.parent, REG_HWREV_2, &val, sizeof(val));
@@ -360,13 +426,13 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 		goto err_read_rev;
 	}
 	pr_info("PMIC revision 2: %02X\n", val);
-	rev |= val << BITS_PER_BYTE;
+	pmic->rev_registers |= val << BITS_PER_BYTE;
 
 	pmic->dev = &pdev->dev;
 	pm8921_drvdata.pm_chip_data = pmic;
 	platform_set_drvdata(pdev, &pm8921_drvdata);
 
-	rc = pm8921_add_subdevices(pdata, pmic, rev);
+	rc = pm8921_add_subdevices(pdata, pmic);
 	if (rc) {
 		pr_err("Cannot add subdevices rc=%d\n", rc);
 		goto err;

@@ -40,7 +40,7 @@ VREG_CONSUMERS(L3) = {
 VREG_CONSUMERS(L4) = {
 	REGULATOR_SUPPLY("8921_l4",		NULL),
 	REGULATOR_SUPPLY("HSUSB_1p8",		"msm_otg"),
-	REGULATOR_SUPPLY("8921_l4",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("iris_vddxo",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(L5) = {
 	REGULATOR_SUPPLY("8921_l5",		NULL),
@@ -64,7 +64,7 @@ VREG_CONSUMERS(L9) = {
 };
 VREG_CONSUMERS(L10) = {
 	REGULATOR_SUPPLY("8921_l10",		NULL),
-	REGULATOR_SUPPLY("8921_l10",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("iris_vddpa",		"wcnss_wlan.0"),
 
 };
 VREG_CONSUMERS(L11) = {
@@ -85,6 +85,8 @@ VREG_CONSUMERS(L15) = {
 };
 VREG_CONSUMERS(L16) = {
 	REGULATOR_SUPPLY("8921_l16",		NULL),
+	REGULATOR_SUPPLY("cam_vaf",		"msm_camera_imx074.0"),
+	REGULATOR_SUPPLY("cam_vaf",		"msm_camera_ov2720.0"),
 };
 VREG_CONSUMERS(L17) = {
 	REGULATOR_SUPPLY("8921_l17",		NULL),
@@ -104,7 +106,7 @@ VREG_CONSUMERS(L23) = {
 };
 VREG_CONSUMERS(L24) = {
 	REGULATOR_SUPPLY("8921_l24",		NULL),
-	REGULATOR_SUPPLY("8921_l24",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("riva_vddmx",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(L25) = {
 	REGULATOR_SUPPLY("8921_l25",		NULL),
@@ -129,24 +131,26 @@ VREG_CONSUMERS(S1) = {
 };
 VREG_CONSUMERS(S2) = {
 	REGULATOR_SUPPLY("8921_s2",		NULL),
-	REGULATOR_SUPPLY("8921_s2",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("iris_vddrfa",		"wcnss_wlan.0"),
 
 };
 VREG_CONSUMERS(S3) = {
 	REGULATOR_SUPPLY("8921_s3",		NULL),
 	REGULATOR_SUPPLY("HSUSB_VDDCX",		"msm_otg"),
-	REGULATOR_SUPPLY("8921_s3",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("riva_vddcx",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(S4) = {
 	REGULATOR_SUPPLY("8921_s4",		NULL),
 	REGULATOR_SUPPLY("sdc_vccq",		"msm_sdcc.1"),
-	REGULATOR_SUPPLY("8921_s4",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("riva_vddpx",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(S5) = {
 	REGULATOR_SUPPLY("8921_s5",		NULL),
+	REGULATOR_SUPPLY("krait0",		NULL),
 };
 VREG_CONSUMERS(S6) = {
 	REGULATOR_SUPPLY("8921_s6",		NULL),
+	REGULATOR_SUPPLY("krait1",		NULL),
 };
 VREG_CONSUMERS(S7) = {
 	REGULATOR_SUPPLY("8921_s7",		NULL),
@@ -157,11 +161,11 @@ VREG_CONSUMERS(S8) = {
 VREG_CONSUMERS(LVS1) = {
 	REGULATOR_SUPPLY("8921_lvs1",		NULL),
 	REGULATOR_SUPPLY("sdc_vdd",		"msm_sdcc.4"),
-	REGULATOR_SUPPLY("8921_lvs1",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("iris_vddio",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(LVS2) = {
 	REGULATOR_SUPPLY("8921_lvs2",		NULL),
-	REGULATOR_SUPPLY("8921_lvs2",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("iris_vdddig",		"wcnss_wlan.0"),
 };
 VREG_CONSUMERS(LVS3) = {
 	REGULATOR_SUPPLY("8921_lvs3",		NULL),

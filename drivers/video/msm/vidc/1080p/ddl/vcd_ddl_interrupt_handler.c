@@ -1033,6 +1033,10 @@ static void get_dec_op_done_crop(u32 output_order,
 	op_frame_sz->width = dec_disp_info->img_size_x;
 	op_frame_sz->height = dec_disp_info->img_size_y;
 	ddl_calculate_stride(op_frame_sz, false);
+	op_frame_sz->stride = DDL_ALIGN(op_frame_sz->width,
+				DDL_TILE_ALIGN_WIDTH);
+	op_frame_sz->scan_lines = DDL_ALIGN(op_frame_sz->height,
+					DDL_TILE_ALIGN_HEIGHT);
 	DDL_MSG_LOW("%s img_size_x = %u img_size_y = %u\n",
 				__func__, dec_disp_info->img_size_x,
 				dec_disp_info->img_size_y);
@@ -1118,7 +1122,11 @@ static u32 ddl_decoder_output_done_callback(
 			((output_vcd_frm->dec_op_prop.frm_size.width !=
 			decoder->frame_size.width) ||
 			(output_vcd_frm->dec_op_prop.frm_size.height !=
-			decoder->frame_size.height))) {
+			decoder->frame_size.height) ||
+			(decoder->frame_size.width !=
+			decoder->client_frame_size.width) ||
+			(decoder->frame_size.height !=
+			decoder->client_frame_size.height))) {
 			DDL_MSG_LOW("%s o/p width = %u o/p height = %u"
 				"decoder width = %u decoder height = %u ",
 				__func__,

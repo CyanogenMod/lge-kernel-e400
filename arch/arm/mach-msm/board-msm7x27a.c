@@ -51,6 +51,7 @@
 #include "devices-msm7x2xa.h"
 #include "pm.h"
 #include <mach/rpc_server_handset.h>
+#include <mach/socinfo.h>
 
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
@@ -1087,38 +1088,25 @@ static int __init board_serialno_setup(char *serialno)
 __setup("androidboot.serialno=", board_serialno_setup);
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
-static int  msm_hsusb_vbus_init(int on)
+static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 {
 	int rc = 0;
 	unsigned gpio;
 
 	gpio = GPIO_HOST_VBUS_EN;
-	if (on) {
-		rc = gpio_request(gpio, "i2c_host_vbus_en");
-		if (rc < 0) {
-			pr_err("failed to request %d GPIO\n", gpio);
-			return rc;
-		}
-		gpio_direction_output(gpio, 1);
-	} else {
-		gpio_free(gpio);
+
+	rc = gpio_request(gpio, "i2c_host_vbus_en");
+	if (rc < 0) {
+		pr_err("failed to request %d GPIO\n", gpio);
+		return;
 	}
-
-	return rc;
-}
-static void msm_hsusb_vbus_power(unsigned phy_info, int on)
-{
-	unsigned gpio;
-
-	gpio = GPIO_HOST_VBUS_EN;
-
+	gpio_direction_output(gpio, !!on);
 	gpio_set_value_cansleep(gpio, !!on);
+	gpio_free(gpio);
 }
 
 static struct msm_usb_host_platform_data msm_usb_host_pdata = {
 	.phy_info       = (USB_PHY_INTEGRATED | USB_PHY_MODEL_45NM),
-	.vbus_init	= msm_hsusb_vbus_init,
-	.vbus_power     = msm_hsusb_vbus_power,
 };
 
 static void __init msm7x2x_init_host(void)
@@ -1166,6 +1154,20 @@ static int msm_hsusb_ldo_enable(int enable)
 
 	return vreg_disable(vreg_3p3);
 }
+
+#ifndef CONFIG_USB_EHCI_MSM_72K
+static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
+{
+	int ret = 0;
+
+	if (init)
+		ret = msm_pm_app_rpc_init(callback);
+	else
+		msm_pm_app_rpc_deinit(callback);
+
+	return ret;
+}
+#endif
 
 static struct msm_otg_platform_data msm_otg_pdata = {
 #ifndef CONFIG_USB_EHCI_MSM_72K
@@ -1609,39 +1611,81 @@ static int msm_fb_lcdc_config(int on)
 	return rc;
 }
 
+static const char * const msm_fb_lcdc_vreg[] = {
+		"gp2",
+		"msme1",
+};
+
+static const int msm_fb_lcdc_vreg_mV[] = {
+	2850,
+	1800,
+};
+
+struct vreg *lcdc_vreg[ARRAY_SIZE(msm_fb_lcdc_vreg)];
+
 static uint32_t lcdc_gpio_initialized;
 
 static void lcdc_toshiba_gpio_init(void)
 {
+	int i, rc = 0;
 	if (!lcdc_gpio_initialized) {
 		if (gpio_request(GPIO_SPI_CLK, "spi_clk")) {
 			pr_err("failed to request gpio spi_clk\n");
-			goto fail_gpio;
+			return;
 		}
 		if (gpio_request(GPIO_SPI_CS0_N, "spi_cs")) {
 			pr_err("failed to request gpio spi_cs0_N\n");
-			goto fail_gpio;
+			goto fail_gpio6;
 		}
 		if (gpio_request(GPIO_SPI_MOSI, "spi_mosi")) {
 			pr_err("failed to request gpio spi_mosi\n");
-			goto fail_gpio;
+			goto fail_gpio5;
 		}
 		if (gpio_request(GPIO_SPI_MISO, "spi_miso")) {
 			pr_err("failed to request gpio spi_miso\n");
-			goto fail_gpio;
+			goto fail_gpio4;
 		}
 		if (gpio_request(GPIO_DISPLAY_PWR_EN, "gpio_disp_pwr")) {
 			pr_err("failed to request gpio_disp_pwr\n");
-			goto fail_gpio;
+			goto fail_gpio3;
 		}
 		if (gpio_request(GPIO_BACKLIGHT_EN, "gpio_bkl_en")) {
 			pr_err("failed to request gpio_bkl_en\n");
-			goto fail_gpio;
+			goto fail_gpio2;
+		}
+		pmapp_disp_backlight_init();
+
+		for (i = 0; i < ARRAY_SIZE(msm_fb_lcdc_vreg); i++) {
+			lcdc_vreg[i] = vreg_get(0, msm_fb_lcdc_vreg[i]);
+
+			rc = vreg_set_level(lcdc_vreg[i],
+						msm_fb_lcdc_vreg_mV[i]);
+
+			if (rc < 0) {
+				pr_err("%s: set regulator level failed "
+					"with :(%d)\n", __func__, rc);
+				goto fail_gpio1;
+			}
 		}
 		lcdc_gpio_initialized = 1;
-		return;
 	}
-fail_gpio:
+	return;
+
+fail_gpio1:
+	for (; i > 0; i--)
+			vreg_put(lcdc_vreg[i - 1]);
+
+	gpio_free(GPIO_BACKLIGHT_EN);
+fail_gpio2:
+	gpio_free(GPIO_DISPLAY_PWR_EN);
+fail_gpio3:
+	gpio_free(GPIO_SPI_MISO);
+fail_gpio4:
+	gpio_free(GPIO_SPI_MOSI);
+fail_gpio5:
+	gpio_free(GPIO_SPI_CS0_N);
+fail_gpio6:
+	gpio_free(GPIO_SPI_CLK);
 	lcdc_gpio_initialized = 0;
 }
 
@@ -1673,9 +1717,7 @@ static void lcdc_toshiba_config_gpios(int enable)
 
 static int msm_fb_lcdc_power_save(int on)
 {
-	/* struct vreg *vreg[ARRAY_SIZE(msm_fb_lcdc_vreg)]; */
-	int rc = 0;
-
+	int i, rc = 0;
 	/* Doing the init of the LCDC GPIOs very late as they are from
 		an I2C-controlled IO Expander */
 	lcdc_toshiba_gpio_init();
@@ -1683,13 +1725,57 @@ static int msm_fb_lcdc_power_save(int on)
 	if (lcdc_gpio_initialized) {
 		gpio_set_value_cansleep(GPIO_DISPLAY_PWR_EN, on);
 		gpio_set_value_cansleep(GPIO_BACKLIGHT_EN, on);
+
+		for (i = 0; i < ARRAY_SIZE(msm_fb_lcdc_vreg); i++) {
+			if (on) {
+				rc = vreg_enable(lcdc_vreg[i]);
+
+				if (rc) {
+					printk(KERN_ERR "vreg_enable: %s vreg"
+						"operation failed\n",
+						msm_fb_lcdc_vreg[i]);
+						goto lcdc_vreg_fail;
+				}
+			} else {
+				rc = vreg_disable(lcdc_vreg[i]);
+
+				if (rc) {
+					printk(KERN_ERR "vreg_disable: %s vreg "
+						"operation failed\n",
+						msm_fb_lcdc_vreg[i]);
+					goto lcdc_vreg_fail;
+				}
+			}
+		}
 	}
 
-	pmapp_disp_backlight_init();
-	rc = pmapp_disp_backlight_set_brightness(100);
+	return rc;
 
-	return 0;
+lcdc_vreg_fail:
+	if (on) {
+		for (; i > 0; i--)
+			vreg_disable(lcdc_vreg[i - 1]);
+	} else {
+		for (; i > 0; i--)
+			vreg_enable(lcdc_vreg[i - 1]);
+	}
+
+return rc;
+
 }
+
+
+static int lcdc_toshiba_set_bl(int level)
+{
+	int ret;
+
+	ret = pmapp_disp_backlight_set_brightness(level);
+	if (ret)
+		pr_err("%s: can't set lcd backlight!\n", __func__);
+
+	return ret;
+}
+
 
 static struct lcdc_platform_data lcdc_pdata = {
 	.lcdc_gpio_config = msm_fb_lcdc_config,
@@ -1705,6 +1791,7 @@ static int lcd_panel_spi_gpio_num[] = {
 
 static struct msm_panel_common_pdata lcdc_toshiba_panel_data = {
 	.panel_config_gpio = lcdc_toshiba_config_gpios,
+	.pmic_backlight = lcdc_toshiba_set_bl,
 	.gpio_num	  = lcd_panel_spi_gpio_num,
 };
 
@@ -1751,9 +1838,29 @@ static struct platform_device msm_fb_device = {
 };
 
 #ifdef CONFIG_FB_MSM_MIPI_DSI
+static int mipi_renesas_set_bl(int level)
+{
+	int ret;
+
+	ret = pmapp_disp_backlight_set_brightness(level);
+
+	if (ret)
+		pr_err("%s: can't set lcd backlight!\n", __func__);
+
+	return ret;
+}
+
+static struct msm_panel_common_pdata mipi_renesas_pdata = {
+	.pmic_backlight = mipi_renesas_set_bl,
+};
+
+
 static struct platform_device mipi_dsi_renesas_panel_device = {
 	.name = "mipi_renesas",
 	.id = 0,
+	.dev    = {
+		.platform_data = &mipi_renesas_pdata,
+	}
 };
 #endif
 
@@ -1773,6 +1880,12 @@ static void __init msm7x27a_init_mmc(void)
 		return;
 	}
 
+	/* eMMC slot */
+#ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
+	sdcc_vreg_data[2].vreg_data = vreg_emmc;
+	sdcc_vreg_data[2].level = 3000;
+	msm_add_sdcc(3, &sdc3_plat_data);
+#endif
 	/* Micro-SD slot */
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
 	sdcc_vreg_data[0].vreg_data = vreg_mmc;
@@ -1784,12 +1897,6 @@ static void __init msm7x27a_init_mmc(void)
 	sdcc_vreg_data[1].vreg_data = vreg_mmc;
 	sdcc_vreg_data[1].level = 2850;
 	msm_add_sdcc(2, &sdc2_plat_data);
-#endif
-	/* eMMC slot */
-#ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
-	sdcc_vreg_data[2].vreg_data = vreg_emmc;
-	sdcc_vreg_data[2].level = 1800;
-	msm_add_sdcc(3, &sdc3_plat_data);
 #endif
 	/* Not Used */
 #if (defined(CONFIG_MMC_MSM_SDC4_SUPPORT)\
@@ -2068,11 +2175,28 @@ static struct msm_camera_sensor_flash_src msm_flash_src = {
 };
 #endif
 
+static struct vreg *vreg_gp1;
 static struct vreg *vreg_gp2;
 static struct vreg *vreg_gp3;
 static void msm_camera_vreg_config(int vreg_en)
 {
 	int rc;
+
+	if (vreg_gp1 == NULL) {
+		vreg_gp1 = vreg_get(NULL, "msme1");
+		if (IS_ERR(vreg_gp1)) {
+			pr_err("%s: vreg_get(%s) failed (%ld)\n",
+				__func__, "msme1", PTR_ERR(vreg_gp1));
+			return;
+		}
+
+		rc = vreg_set_level(vreg_gp1, 1800);
+		if (rc) {
+			pr_err("%s: GP1 set_level failed (%d)\n",
+				__func__, rc);
+			return;
+		}
+	}
 
 	if (vreg_gp2 == NULL) {
 		vreg_gp2 = vreg_get(NULL, "gp2");
@@ -2105,6 +2229,13 @@ static void msm_camera_vreg_config(int vreg_en)
 	}
 
 	if (vreg_en) {
+		rc = vreg_enable(vreg_gp1);
+		if (rc) {
+			pr_err("%s: GP1 enable failed (%d)\n",
+				__func__, rc);
+			return;
+		}
+
 		rc = vreg_enable(vreg_gp2);
 		if (rc) {
 			pr_err("%s: GP2 enable failed (%d)\n",
@@ -2117,6 +2248,11 @@ static void msm_camera_vreg_config(int vreg_en)
 				__func__, rc);
 		}
 	} else {
+		rc = vreg_disable(vreg_gp1);
+		if (rc)
+			pr_err("%s: GP1 disable failed (%d)\n",
+				__func__, rc);
+
 		rc = vreg_disable(vreg_gp2);
 		if (rc) {
 			pr_err("%s: GP2 disable failed (%d)\n",
@@ -2581,6 +2717,24 @@ static unsigned mipi_dsi_gpio[] = {
 		GPIO_CFG_2MA),       /* LCDC_BRDG_RESET_N */
 };
 
+enum {
+	DSI_SINGLE_LANE = 1,
+	DSI_TWO_LANES,
+};
+
+static int msm_fb_get_lane_config(void)
+{
+	int rc = DSI_TWO_LANES;
+
+	if (cpu_is_msm7x25a()) {
+		rc = DSI_SINGLE_LANE;
+		pr_info("DSI Single Lane\n");
+	} else {
+		pr_info("DSI Two Lanes\n");
+	}
+	return rc;
+}
+
 static int msm_fb_dsi_client_reset(void)
 {
 	int rc = 0;
@@ -2636,19 +2790,29 @@ gpio_error:
 	return rc;
 }
 
+static const char * const msm_fb_dsi_vreg[] = {
+	"gp2",
+	"msme1",
+	"mddi"
+};
+
+static const int msm_fb_dsi_vreg_mV[] = {
+	2850,
+	1800,
+	1200
+};
+
+static struct vreg *dsi_vreg[ARRAY_SIZE(msm_fb_dsi_vreg)];
 static int dsi_gpio_initialized;
 
 static int mipi_dsi_panel_power(int on)
 {
-	int rc = 0;
+	int i, rc = 0;
 	uint32_t lcdc_reset_cfg;
 
 	/* I2C-controlled GPIO Expander -init of the GPIOs very late */
 	if (!dsi_gpio_initialized) {
 		pmapp_disp_backlight_init();
-
-		if (pmapp_disp_backlight_set_brightness(100))
-			pr_err("display backlight set brightness failed\n");
 
 		rc = gpio_request(GPIO_DISPLAY_PWR_EN, "gpio_disp_pwr");
 		if (rc < 0) {
@@ -2673,6 +2837,25 @@ static int mipi_dsi_panel_power(int on)
 			if (rc < 0) {
 				pr_err("failed to enable backlight\n");
 				goto fail_gpio2;
+			}
+		}
+
+		for (i = 0; i < ARRAY_SIZE(msm_fb_dsi_vreg); i++) {
+			dsi_vreg[i] = vreg_get(0, msm_fb_dsi_vreg[i]);
+
+			if (IS_ERR(dsi_vreg[i])) {
+				pr_err("%s: vreg get failed with : (%ld)\n",
+					__func__, PTR_ERR(dsi_vreg[i]));
+				goto fail_gpio2;
+			}
+
+			rc = vreg_set_level(dsi_vreg[i],
+				msm_fb_dsi_vreg_mV[i]);
+
+			if (rc < 0) {
+				pr_err("%s: set regulator level failed "
+					"with :(%d)\n",	__func__, rc);
+				goto vreg_fail1;
 			}
 		}
 		dsi_gpio_initialized = 1;
@@ -2713,13 +2896,52 @@ static int mipi_dsi_panel_power(int on)
 				pr_err("backlight set brightness failed\n");
 		}
 
+		/*Configure vreg lines */
+		for (i = 0; i < ARRAY_SIZE(msm_fb_dsi_vreg); i++) {
+			if (on) {
+				rc = vreg_enable(dsi_vreg[i]);
+
+				if (rc) {
+					printk(KERN_ERR "vreg_enable: %s vreg"
+						"operation failed\n",
+						msm_fb_dsi_vreg[i]);
+
+					goto vreg_fail2;
+				}
+			} else {
+				rc = vreg_disable(dsi_vreg[i]);
+
+				if (rc) {
+					printk(KERN_ERR "vreg_disable: %s vreg "
+						"operation failed\n",
+						msm_fb_dsi_vreg[i]);
+					goto vreg_fail2;
+				}
+			}
+		}
+
 	return rc;
+
+vreg_fail2:
+	if (on) {
+		for (; i > 0; i--)
+			vreg_disable(dsi_vreg[i - 1]);
+	} else {
+		for (; i > 0; i--)
+			vreg_enable(dsi_vreg[i - 1]);
+	}
+
+	return rc;
+
+vreg_fail1:
+	for (; i > 0; i--)
+		vreg_put(dsi_vreg[i - 1]);
 
 fail_gpio2:
 	gpio_free(GPIO_BACKLIGHT_EN);
 fail_gpio1:
 	gpio_free(GPIO_DISPLAY_PWR_EN);
-
+	dsi_gpio_initialized = 0;
 	return rc;
 }
 
@@ -2730,6 +2952,7 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.vsync_gpio = MDP_303_VSYNC_GPIO,
 	.dsi_power_save   = mipi_dsi_panel_power,
 	.dsi_client_reset = msm_fb_dsi_client_reset,
+	.get_lane_config = msm_fb_get_lane_config,
 };
 #endif
 
@@ -2774,7 +2997,7 @@ static void __init msm7x27a_init_ebi2(void)
 }
 
 #define ATMEL_TS_I2C_NAME "maXTouch"
-static struct vreg *vreg_l2;
+static struct vreg *vreg_l12;
 static struct vreg *vreg_s3;
 
 #define ATMEL_TS_GPIO_IRQ 82
@@ -2783,7 +3006,7 @@ static int atmel_ts_power_on(bool on)
 {
 	int rc;
 
-	rc = on ? vreg_enable(vreg_l2) : vreg_disable(vreg_l2);
+	rc = on ? vreg_enable(vreg_l12) : vreg_disable(vreg_l12);
 	if (rc) {
 		pr_err("%s: vreg %sable failed (%d)\n",
 		       __func__, on ? "en" : "dis", rc);
@@ -2794,11 +3017,11 @@ static int atmel_ts_power_on(bool on)
 	if (rc) {
 		pr_err("%s: vreg %sable failed (%d) for S3\n",
 		       __func__, on ? "en" : "dis", rc);
-		!on ? vreg_enable(vreg_l2) : vreg_disable(vreg_l2);
+		!on ? vreg_enable(vreg_l12) : vreg_disable(vreg_l12);
 		return rc;
 	}
 	/* vreg stabilization delay */
-	usleep_range(10000, 10000);
+	msleep(50);
 	return 0;
 }
 
@@ -2806,13 +3029,13 @@ static int atmel_ts_platform_init(struct i2c_client *client)
 {
 	int rc;
 
-	vreg_l2 = vreg_get(NULL, "rfrx2");
-	if (IS_ERR(vreg_l2)) {
+	vreg_l12 = vreg_get(NULL, "gp2");
+	if (IS_ERR(vreg_l12)) {
 		pr_err("%s: vreg_get for L2 failed\n", __func__);
-		return PTR_ERR(vreg_l2);
+		return PTR_ERR(vreg_l12);
 	}
 
-	rc = vreg_set_level(vreg_l2, 2850);
+	rc = vreg_set_level(vreg_l12, 2850);
 	if (rc) {
 		pr_err("%s: vreg set level failed (%d) for l2\n",
 		       __func__, rc);
@@ -2867,7 +3090,7 @@ ts_gpio_tlmm_unconfig:
 vreg_put_s3:
 	vreg_put(vreg_s3);
 vreg_put_l2:
-	vreg_put(vreg_l2);
+	vreg_put(vreg_l12);
 	return rc;
 }
 
@@ -2879,8 +3102,8 @@ static int atmel_ts_platform_exit(struct i2c_client *client)
 				GPIO_CFG_2MA), GPIO_CFG_DISABLE);
 	vreg_disable(vreg_s3);
 	vreg_put(vreg_s3);
-	vreg_disable(vreg_l2);
-	vreg_put(vreg_l2);
+	vreg_disable(vreg_l12);
+	vreg_put(vreg_l12);
 	return 0;
 }
 
@@ -3002,6 +3225,8 @@ static struct platform_device hs_pdev = {
 		.platform_data = &hs_platform_data,
 	},
 };
+
+#define LED_GPIO_PDM		96
 #define UART1DM_RX_GPIO		45
 static void __init msm7x2x_init(void)
 {
@@ -3061,10 +3286,21 @@ static void __init msm7x2x_init(void)
 	platform_device_register(&kp_pdev);
 	platform_device_register(&hs_pdev);
 
+	/* configure it as a pdm function*/
+	if (gpio_tlmm_config(GPIO_CFG(LED_GPIO_PDM, 3,
+				GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_8MA), GPIO_CFG_ENABLE))
+		pr_err("%s: gpio_tlmm_config for %d failed\n",
+			__func__, LED_GPIO_PDM);
+	else
+		platform_device_register(&led_pdev);
+
 #ifdef CONFIG_MSM_RPC_VIBRATOR
 	if (machine_is_msm7x27a_ffa())
 		msm_init_pmic_vibrator();
 #endif
+	/*7x25a kgsl initializations*/
+	msm7x25a_kgsl_3d0_init();
 }
 
 static void __init msm7x2x_init_early(void)

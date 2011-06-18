@@ -59,7 +59,8 @@ do { \
 #define D(x...) do {} while (0)
 #endif
 
-#if defined(CONFIG_ARCH_MSM7X30) || defined(CONFIG_ARCH_MSM8X60)
+#if defined(CONFIG_ARCH_MSM7X30) || defined(CONFIG_ARCH_MSM8X60) \
+	|| defined(CONFIG_ARCH_FSM9XXX)
 #define TIMESTAMP_ADDR (MSM_TMR_BASE + 0x08)
 #else
 #define TIMESTAMP_ADDR (MSM_TMR_BASE + 0x04)
@@ -867,19 +868,19 @@ static int _smem_log_init(void)
 	ret = remote_spin_lock_init(&remote_spinlock,
 			      SMEM_SPINLOCK_SMEM_LOG);
 	if (ret) {
-		dsb();
+		mb();
 		return ret;
 	}
 
 	ret = remote_spin_lock_init(&remote_spinlock_static,
 			      SMEM_SPINLOCK_STATIC_LOG);
 	if (ret) {
-		dsb();
+		mb();
 		return ret;
 	}
 
 	init_syms();
-	dsb();
+	mb();
 
 	return 0;
 }

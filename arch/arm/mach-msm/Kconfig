@@ -45,6 +45,7 @@ config ARCH_MSM7X30
 	select MSM_GPIOMUX
 	select RESERVE_FIRST_PAGE
 	select MSM_DALRPC
+	select MSM_SPM_V1
 
 config ARCH_QSD8X50
 	bool "QSD8X50"
@@ -79,6 +80,7 @@ config ARCH_MSM8X60
 	select MSM_SECURE_IO
 	select MSM_DALRPC
 	select MSM_QDSP6_APR
+	select MSM_NATIVE_RESTART
 	select ARCH_INLINE_SPIN_TRYLOCK
 	select ARCH_INLINE_SPIN_TRYLOCK_BH
 	select ARCH_INLINE_SPIN_LOCK
@@ -106,10 +108,12 @@ config ARCH_MSM8X60
 	select ARCH_INLINE_WRITE_UNLOCK
 	select ARCH_INLINE_WRITE_UNLOCK_BH
 	select ARCH_INLINE_WRITE_UNLOCK_IRQRESTORE
+	select CPU_HAS_L2_PMU
+	select MSM_SPM_V1
 
 config ARCH_MSM8960
 	bool "MSM8960"
-	select ARCH_MSM_SCORPIONMP
+	select ARCH_MSM_KRAITMP
 	select MACH_MSM8960_SIM if (!MACH_MSM8960_RUMI3)
 	select ARM_GIC
 	select CPU_V7
@@ -122,6 +126,10 @@ config ARCH_MSM8960
 	select MSM_QDSP6_APR
 	select MSM_PIL
 	select MSM_AUDIO_QDSP6 if SND_SOC
+	select CPU_HAS_L2_PMU
+	select MSM_SPM_V2
+	select MSM_L2_SPM
+	select MSM_NATIVE_RESTART
 
 config ARCH_FSM9XXX
 	bool "FSM9XXX"
@@ -148,16 +156,33 @@ endchoice
 
 config  ARCH_MSM_ARM11
 	bool
+
 config  ARCH_MSM_SCORPION
 	bool
-config  ARCH_MSM_SCORPIONMP
+
+config  ARCH_MSM_KRAIT
 	bool
+
+config  MSM_SMP
+	bool
+
+config  ARCH_MSM_SCORPIONMP
+	select ARCH_MSM_SCORPION
+	select MSM_SMP
+	bool
+
+config  ARCH_MSM_KRAITMP
+	select ARCH_MSM_KRAIT
+	select MSM_SMP
+	bool
+
 config  ARCH_MSM_CORTEX_A5
 	bool
 	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
 config ARCH_QSD8X50A
 	bool
+
 config ARCH_MSM7X27A
 	bool
 	select MSM_DALRPC
@@ -576,7 +601,7 @@ choice
 		bool "DG Timer"
 	help
 	  High resolution timer.
-endchoice	  
+endchoice
 
 choice
 	prompt "Suspend sleep mode"
@@ -603,7 +628,7 @@ choice
 
 	config MSM7X00A_SLEEP_WAIT_FOR_INTERRUPT
 		bool "Wait for interrupt"
-endchoice	  
+endchoice
 
 config MSM7X00A_SLEEP_MODE
 	int
@@ -638,7 +663,7 @@ choice
 
 	config MSM7X00A_IDLE_SLEEP_WAIT_FOR_INTERRUPT
 		bool "Wait for interrupt"
-endchoice	  
+endchoice
 
 config MSM7X00A_IDLE_SLEEP_MODE
 	int
@@ -691,6 +716,11 @@ config MSM_SUSPEND_STATS_FIRST_BUCKET
 	  histogram.  This is for collecting statistics on suspend.
 
 endif # MSM_IDLE_STATS
+
+config CPU_HAS_L2_PMU
+	bool "L2CC PMU Support"
+	help
+	 Select this if the L2 cache controller has a Performance Monitoring Unit.
 
 config MSM_JTAG_V7
 	depends on CPU_V7
@@ -840,7 +870,7 @@ config MSM_BAM_DMUX
 	  via muxing than BAM could without muxing.
 
 config MSM_N_WAY_SMD
-	depends on (MSM_SMD && (ARCH_MSM_SCORPION || ARCH_MSM_SCORPIONMP || ARCH_MSM7X27 || ARCH_MSM7X25))
+	depends on (MSM_SMD && (ARCH_MSM_SCORPION || ARCH_MSM8960 || ARCH_MSM7X27 || ARCH_MSM7X25))
 	default y
 	bool "MSM N-WAY SMD support"
 	help
@@ -848,7 +878,7 @@ config MSM_N_WAY_SMD
 	  normal APPS-MODEM SMD communication.
 
 config MSM_N_WAY_SMSM
-	depends on (MSM_SMD && (ARCH_MSM_SCORPION || ARCH_MSM_SCORPIONMP || ARCH_MSM7X27 || ARCH_MSM7X25))
+	depends on (MSM_SMD && (ARCH_MSM_SCORPION || ARCH_MSM8960 || ARCH_MSM7X27 || ARCH_MSM7X25))
 	default y
 	bool "MSM N-WAY SMSM support"
 	help
@@ -1054,7 +1084,7 @@ config MSM_SDIO_SMEM
 
 config MSM_DALRPC
 	bool "DAL RPC support"
-	depends on ARCH_MSM_SCORPION || ARCH_MSM_SCORPIONMP
+	depends on ARCH_MSM_SCORPION || ARCH_MSM_KRAIT
 	default y
 	help
 	  Supports RPC calls to DAL devices on remote processor cores.
@@ -1211,7 +1241,7 @@ config WIFI_CONTROL_FUNC
 	bool "Enable WiFi control function abstraction"
 	help
 	  Enables Power/Reset/Carddetect function abstraction
-	
+
 config WIFI_MEM_PREALLOC
 	depends on WIFI_CONTROL_FUNC
 	bool "Preallocate memory for WiFi buffers"
@@ -1220,7 +1250,7 @@ config WIFI_MEM_PREALLOC
 
 config QSD_AUDIO
 	bool "QSD audio"
-	depends on ARCH_MSM_SCORPION && MSM_DALRPC && ANDROID_PMEM
+	depends on ARCH_MSM_SCORPION && MSM_DALRPC && ANDROID_PMEM && !MSM_SMP
 	default y
 	help
 	  Provides PCM, MP3, and AAC audio playback.
@@ -1430,6 +1460,9 @@ config FSM9XXX_TLMM
 config MSM_SECURE_IO
 	bool
 
+config MSM_NATIVE_RESTART
+	bool
+
 config MSM_BUS_SCALING
 	bool "Bus scaling driver"
 	default n
@@ -1543,4 +1576,28 @@ config PM8XXX_RPC_VIBRATOR
 	  Enable the vibrator support on MSM over RPC. The vibrator
 	  is connected on the PM8XXX PMIC. Say Y if you want to enable
 	  this feature.
+
+config MSM_SPM_V1
+	bool "Driver support for SPM Version 1"
+	help
+	  Enables the support for Version 1 of the SPM driver. SPM hardware is
+	  used to manage the processor power during sleep. The driver allows
+	  configuring SPM to allow different power modes.
+
+config MSM_SPM_V2
+	bool "Driver support for SPM Version 2"
+	help
+	  Enables the support for Version 2 of the SPM driver. SPM hardware is
+	  used to manage the processor power during sleep. The driver allows
+	  configuring SPM to allow different power modes.
+
+config MSM_L2_SPM
+	bool "SPM support for L2 cache"
+	depends on MSM_SPM_V2
+	help
+	  Enable SPM driver support for L2 cache. Some MSM chipsets allow
+	  control of L2 cache low power mode with a Subsystem Power manager.
+	  Enabling this driver allows configuring L2 SPM for low power modes
+	  on supported chipsets.
+
 endif

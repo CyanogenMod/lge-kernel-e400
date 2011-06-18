@@ -300,6 +300,7 @@ struct mipi_dsi_platform_data {
 	int fpga_config_addr;
 #endif
 	int (*dsi_client_reset)(void);
+	int (*get_lane_config)(void);
 	int target_type;
 };
 
@@ -339,6 +340,13 @@ struct msm_i2c_platform_data {
 struct msm_i2c_ssbi_platform_data {
 	const char *rsl_id;
 	enum msm_ssbi_controller_type controller_type;
+};
+
+struct msm_vidc_platform_data {
+	int memtype;
+#ifdef CONFIG_MSM_BUS_SCALING
+	struct msm_bus_scale_pdata *vidc_bus_client_pdata;
+#endif
 };
 
 #if defined(CONFIG_USB_PEHCI_HCD) || defined(CONFIG_USB_PEHCI_HCD_MODULE)

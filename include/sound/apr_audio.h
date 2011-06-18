@@ -53,6 +53,12 @@
 #define SLIMBUS_4_RX		0x4008
 #define SLIMBUS_4_TX		0x4009		/* index = 24 */
 
+#define INT_BT_SCO_RX 0x3000		/* index = 25 */
+#define INT_BT_SCO_TX 0x3001		/* index = 26 */
+#define INT_BT_A2DP_RX 0x3002		/* index = 27 */
+#define INT_FM_RX 0x3004		/* index = 28 */
+#define INT_FM_TX 0x3005		/* index = 29 */
+
 #define AFE_PORT_INVALID 0xFFFF
 
 #define AFE_PORT_CMD_START 0x000100ca
@@ -492,6 +498,13 @@ struct asm_softvolume_params {
 	u32 rampingcurve;
 } __attribute__ ((packed));
 
+struct asm_softpause_params {
+	u32 enable;
+	u32 period;
+	u32 step;
+	u32 rampingcurve;
+} __packed;
+
 struct asm_pp_param_data_hdr {
 	u32 module_id;
 	u32 param_id;
@@ -513,6 +526,7 @@ struct asm_pp_params_command {
 #define MASTER_GAIN_PARAM_ID		0x00010bff
 #define L_R_CHANNEL_GAIN_PARAM_ID	0x00010c00
 #define MUTE_CONFIG_PARAM_ID 0x00010c01
+#define SOFT_PAUSE_PARAM_ID 0x00010D6A
 
 #define IIR_FILTER_ENABLE_PARAM_ID 0x00010c03
 #define IIR_FILTER_PREGAIN_PARAM_ID 0x00010c04

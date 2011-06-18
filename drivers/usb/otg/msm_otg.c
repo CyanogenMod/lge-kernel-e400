@@ -39,15 +39,33 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/usb/msm_hsusb_hw.h>
 #include <linux/regulator/consumer.h>
-#include <linux/msm-charger.h>
+#include <linux/mfd/pm8xxx/pm8921-charger.h>
 
 #include <mach/clk.h>
 
 #define MSM_USB_BASE	(motg->regs)
 #define DRIVER_NAME	"msm_otg"
 
+#ifdef CONFIG_USB_MSM_ACA
 static void msm_chg_enable_aca_det(struct msm_otg *motg);
 static void msm_chg_enable_aca_intr(struct msm_otg *motg);
+#else
+static inline bool msm_chg_aca_detect(struct msm_otg *motg)
+{
+	return false;
+}
+
+static inline void msm_chg_enable_aca_det(struct msm_otg *motg)
+{
+}
+static inline void msm_chg_enable_aca_intr(struct msm_otg *motg)
+{
+}
+static inline bool msm_chg_check_aca_intr(struct msm_otg *motg)
+{
+	return false;
+}
+#endif
 
 #define ULPI_IO_TIMEOUT_USEC	(10 * 1000)
 
@@ -439,7 +457,7 @@ static int msm_otg_reset(struct otg_transceiver *otg)
 	writel(0x00, USB_AHBMODE);
 
 	/* Ensure that RESET operation is completed before turning off clock */
-	dsb();
+	mb();
 	clk_disable(motg->clk);
 	if (pdata->otg_control == OTG_PHY_CONTROL) {
 		val = readl(USB_OTGSC);
@@ -533,7 +551,7 @@ static int msm_otg_suspend(struct msm_otg *motg)
 		writel(readl(USB_PHY_CTRL) | PHY_RETEN, USB_PHY_CTRL);
 
 	/* Ensure that above operation is completed before turning off clocks */
-	dsb();
+	mb();
 	clk_disable(motg->pclk);
 	if (motg->core_clk)
 		clk_disable(motg->core_clk);
@@ -643,7 +661,7 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 		return;
 
 	dev_info(motg->otg.dev, "Avail curr from USB = %u\n", mA);
-	msm_charger_vbus_draw(mA);
+	pm8921_charger_vbus_draw(mA);
 	motg->cur_power = mA;
 }
 
@@ -948,22 +966,6 @@ static bool msm_chg_check_aca_intr(struct msm_otg *motg)
 		break;
 	}
 	return ret;
-}
-#else
-static inline bool msm_chg_aca_detect(struct msm_otg *motg)
-{
-	return false;
-}
-
-static inline void msm_chg_enable_aca_det(struct msm_otg *motg)
-{
-}
-static inline void msm_chg_enable_aca_intr(struct msm_otg *motg)
-{
-}
-static inline bool msm_chg_check_aca_intr(struct msm_otg *motg)
-{
-	return false;
 }
 #endif
 static bool msm_chg_check_secondary_det(struct msm_otg *motg)
@@ -1793,7 +1795,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	writel(0, USB_USBINTR);
 	writel(0, USB_OTGSC);
 	/* Ensure that above STOREs are completed before enabling interrupts */
-	dsb();
+	mb();
 
 	wake_lock_init(&motg->wlock, WAKE_LOCK_SUSPEND, "msm_otg");
 	INIT_WORK(&motg->sm_work, msm_otg_sm_work);
@@ -1842,7 +1844,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
-		msm_charger_register_vbus_sn(&msm_otg_set_vbus_state);
+		pm8921_charger_register_vbus_sn(&msm_otg_set_vbus_state);
 
 	wake_lock(&motg->wlock);
 	pm_runtime_set_active(&pdev->dev);
@@ -1890,7 +1892,7 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		return -EBUSY;
 
 	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
-		msm_charger_unregister_vbus_sn(0);
+		pm8921_charger_unregister_vbus_sn(0);
 	msm_otg_debugfs_cleanup();
 	cancel_delayed_work_sync(&motg->chg_work);
 	cancel_work_sync(&motg->sm_work);

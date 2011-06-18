@@ -25,6 +25,7 @@
 #include <mach/usbdiag.h>
 #include <mach/usb_gadget_fserial.h>
 #include <mach/rpc_hsusb.h>
+#include <mach/socinfo.h>
 
 #include "devices.h"
 #include "devices-msm7x2xa.h"
@@ -581,6 +582,16 @@ struct platform_device msm_kgsl_3d0 = {
 	},
 };
 
+void __init msm7x25a_kgsl_3d0_init(void)
+{
+	if (cpu_is_msm7x25a()) {
+		kgsl_3d0_pdata.pwr_data.pwrlevel[0].gpu_freq = 133330000;
+		kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 200000000;
+		kgsl_3d0_pdata.pwr_data.pwrlevel[1].gpu_freq = 96000000;
+		kgsl_3d0_pdata.pwr_data.pwrlevel[1].bus_freq = 0;
+	}
+}
+
 static void __init msm_register_device(struct platform_device *pdev, void *data)
 {
 	int ret;
@@ -631,3 +642,30 @@ void __init msm_common_io_init(void)
 	msm7x27x_cache_init();
 }
 
+#define PERPH_WEB_BLOCK_ADDR (0xA9D00040)
+#define PDM0_CTL_OFFSET (0x04)
+#define SIZE_8B (0x08)
+
+static struct resource resources_led[] = {
+	{
+		.start	= PERPH_WEB_BLOCK_ADDR,
+		.end	= PERPH_WEB_BLOCK_ADDR + (SIZE_8B) - 1,
+		.name	= "led-gpio-pdm",
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct led_info msm_kpbl_pdm_led_pdata = {
+	.name = "keyboard-backlight",
+};
+
+struct platform_device led_pdev = {
+	.name	= "leds-msm-pdm",
+	/* use pdev id to represent pdm id */
+	.id	= 0,
+	.num_resources	= ARRAY_SIZE(resources_led),
+	.resource	= resources_led,
+	.dev	= {
+		.platform_data	= &msm_kpbl_pdm_led_pdata,
+	},
+};

@@ -58,6 +58,25 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mdp_rev = MDP_REV_303,
 };
 
+enum {
+	DSI_SINGLE_LANE = 1,
+	DSI_TWO_LANES,
+};
+
+static int msm_fb_get_lane_config(void)
+{
+	int rc = DSI_TWO_LANES;
+#if 0
+	if (cpu_is_msm7x25a()) {
+		rc = DSI_SINGLE_LANE;
+		pr_info("DSI Single Lane\n");
+	} else {
+		pr_info("DSI Two Lanes\n");
+	}
+#endif
+	return rc;
+}
+
 #define GPIO_LCD_RESET 125
 static int dsi_gpio_initialized;
 
@@ -67,7 +86,7 @@ static int mipi_dsi_panel_power(int on)
 	struct vreg *vreg_mipi_dsi_v28;
 
 	printk("mipi_dsi_panel_power : %d \n",on);
-	
+
 	if (!dsi_gpio_initialized) {
 
 		// Resetting LCD Panel
@@ -78,13 +97,13 @@ static int mipi_dsi_panel_power(int on)
 
 		dsi_gpio_initialized = 1;
 	}
- 
+
 	vreg_mipi_dsi_v28 = vreg_get(0, "emmc");
 	if (IS_ERR(vreg_mipi_dsi_v28)) {
 		pr_err("%s: vreg_get for emmc failed\n", __func__);
 		return PTR_ERR(vreg_mipi_dsi_v28);
 	}
-	
+
 	if (on) {
 		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800); 
 		if (rc) {
@@ -102,7 +121,7 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("%s: gpio_direction_output failed for lcd_reset\n", __func__);
 			goto vreg_put_dsi_v28;
 		}
-		
+
 		mdelay(10);
 		gpio_set_value(GPIO_LCD_RESET, 0);
 		mdelay(10);
@@ -118,7 +137,7 @@ static int mipi_dsi_panel_power(int on)
 
 vreg_put_dsi_v28:
 	vreg_put(vreg_mipi_dsi_v28);
-	
+
 	return rc;
 }
 
@@ -131,6 +150,7 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 #ifndef CONFIG_MACH_LGE
 	.dsi_client_reset = msm_fb_dsi_client_reset,
 #endif
+	.get_lane_config = msm_fb_get_lane_config,
 };
 #endif
 
@@ -145,7 +165,7 @@ void __init msm7x27a_m3_init_i2c_backlight(int bus_num)
 {
 	bl_i2c_device.id = bus_num;
 	bl_i2c_bdinfo[0].platform_data = &lm3530bl_data;
-	
+
 	/* workaround for HDK rev_a no pullup */
 	lge_init_gpio_i2c_pin_pullup(&bl_i2c_pdata, bl_i2c_pin, &bl_i2c_bdinfo[0]);
 	i2c_register_board_info(bus_num, &bl_i2c_bdinfo[0], 1);

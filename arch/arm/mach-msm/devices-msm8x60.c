@@ -39,13 +39,16 @@
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 #include <mach/socinfo.h>
+#include <mach/msm_memtypes.h>
 #ifdef CONFIG_MSM_DSPS
 #include <mach/msm_dsps.h>
 #endif
+#include <linux/android_pmem.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <mach/mdm.h>
 #include <mach/rpm.h>
+#include <mach/board.h>
 #include "rpm_stats.h"
 #include "mpm.h"
 
@@ -332,6 +335,18 @@ static struct resource gsbi3_qup_i2c_resources[] = {
 		.end	= GSBI3_QUP_IRQ,
 		.flags	= IORESOURCE_IRQ,
 	},
+	{
+		.name	= "i2c_clk",
+		.start	= 44,
+		.end	= 44,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "i2c_sda",
+		.start	= 43,
+		.end	= 43,
+		.flags	= IORESOURCE_IO,
+	},
 };
 
 static struct resource gsbi4_qup_i2c_resources[] = {
@@ -373,6 +388,18 @@ static struct resource gsbi7_qup_i2c_resources[] = {
 		.start	= GSBI7_QUP_IRQ,
 		.end	= GSBI7_QUP_IRQ,
 		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name	= "i2c_clk",
+		.start	= 60,
+		.end	= 60,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "i2c_sda",
+		.start	= 59,
+		.end	= 59,
+		.flags	= IORESOURCE_IO,
 	},
 };
 
@@ -923,6 +950,30 @@ static struct resource gsbi1_qup_spi_resources[] = {
 		.end    = 7,
 		.flags  = IORESOURCE_DMA,
 	},
+	{
+		.name   = "spi_clk",
+		.start  = 36,
+		.end    = 36,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_cs",
+		.start  = 35,
+		.end    = 35,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_miso",
+		.start  = 34,
+		.end    = 34,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_mosi",
+		.start  = 33,
+		.end    = 33,
+		.flags  = IORESOURCE_IO,
+	},
 };
 
 /* Use GSBI1 QUP for SPI-0 */
@@ -952,6 +1003,24 @@ static struct resource gsbi10_qup_spi_resources[] = {
 		.start	= GSBI10_QUP_IRQ,
 		.end	= GSBI10_QUP_IRQ,
 		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_clk",
+		.start  = 73,
+		.end    = 73,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_cs",
+		.start  = 72,
+		.end    = 72,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_mosi",
+		.start  = 70,
+		.end    = 70,
+		.flags  = IORESOURCE_IO,
 	},
 };
 
@@ -1917,7 +1986,7 @@ static struct msm_bus_paths vidc_bus_client_config[] = {
 	},
 };
 
-static struct msm_bus_scale_pdata vidc_bus_client_pdata = {
+static struct msm_bus_scale_pdata vidc_bus_client_data = {
 	vidc_bus_client_config,
 	ARRAY_SIZE(vidc_bus_client_config),
 	.name = "vidc",
@@ -1941,16 +2010,21 @@ static struct resource msm_device_vidc_resources[] = {
 	},
 };
 
+struct msm_vidc_platform_data vidc_platform_data = {
+#ifdef CONFIG_MSM_BUS_SCALING
+	.vidc_bus_client_pdata = &vidc_bus_client_data,
+#endif
+	.memtype = MEMTYPE_SMI_KERNEL
+};
+
 struct platform_device msm_device_vidc = {
 	.name = "msm_vidc",
 	.id = 0,
 	.num_resources = ARRAY_SIZE(msm_device_vidc_resources),
 	.resource = msm_device_vidc_resources,
-#ifdef CONFIG_MSM_BUS_SCALING
 	.dev = {
-		.platform_data	= &vidc_bus_client_pdata,
+		.platform_data	= &vidc_platform_data,
 	},
-#endif
 };
 
 #if defined(CONFIG_MSM_RPM_STATS_LOG)

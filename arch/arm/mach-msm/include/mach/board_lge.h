@@ -178,6 +178,18 @@ struct led_flash_platform_data {
 	int gpio_inh;
 };
 
+/* pp2106 qwerty platform data */
+struct pp2106_platform_data {
+	unsigned int reset_pin;
+	unsigned int irq_pin;
+	unsigned int sda_pin;
+	unsigned int scl_pin;
+	unsigned int keypad_row;
+	unsigned int keypad_col;
+	unsigned char *keycode;
+	int (*power)(unsigned char onoff);
+};
+
 void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 
