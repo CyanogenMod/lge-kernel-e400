@@ -94,6 +94,12 @@ static int mipi_dsi_panel_power(int on)
 		if (rc) {
 			pr_err("%s: gpio_request GPIO_LCD_RESET failed\n", __func__);
 		}
+		rc = gpio_tlmm_config(GPIO_CFG(GPIO_LCD_RESET, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		if (rc){
+			printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
+					__func__, rc);
+		}
 
 		dsi_gpio_initialized = 1;
 	}
