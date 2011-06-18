@@ -31,43 +31,50 @@ static struct platform_device bl_i2c_device = {
 	.dev.platform_data = &bl_i2c_pdata,
 };
 
+#ifdef CONFIG_BACKLIGHT_LM3530
 static struct lge_backlight_platform_data lm3530bl_data = {
 	.gpio = 124,
 	.version = 3530,
 };
+#endif
 
+#ifdef CONFIG_BACKLIGHT_AAT2870
 /* For 2.8" Display */
 static struct lge_backlight_platform_data aat2870bl_data = {
 	.gpio = 124,
-	.version = 2870,
+	.version = 2862,
 };
+#endif
 
 static struct i2c_board_info bl_i2c_bdinfo[] = {
-	[0] = {
+#ifdef CONFIG_BACKLIGHT_LM3530
+	{
 		I2C_BOARD_INFO("lm3530bl", 0x38),
 		.type = "lm3530bl",
+		.platform_data = &lm3530bl_data,
 	},
-	[1] = {
+#endif
+#ifdef CONFIG_BACKLIGHT_AAT2870
+	{
 		I2C_BOARD_INFO("aat2870bl", 0x60),
 		.type = "aat2870bl",
+		.platform_data = &aat2870bl_data,
 	},
+#endif
 };
+
+static struct msm_panel_common_pdata mdp_pdata = {
+	.gpio = 97,						//LCD_VSYNC_O
+	.mdp_rev = MDP_REV_303,
+};
+
+#define GPIO_LCD_RESET 125
+#define GPIO_LCD_IFMODE1 129
 
 #ifdef CONFIG_FB_MSM_MIPI_DSI
 static struct platform_device mipi_dsi_r61529_panel_device = {
 	.name = "mipi_r61529",
 	.id = 0,
-};
-
-/* input platform device */
-static struct platform_device *hdk_panel_devices[] __initdata = {
-	&mipi_dsi_r61529_panel_device,
-};
-#endif /* CONFIG_FB_MSM_MIPI_DSI */
-
-static struct msm_panel_common_pdata mdp_pdata = {
-	.gpio = 97,						//LCD_VSYNC_O
-	.mdp_rev = MDP_REV_303,
 };
 
 enum {
@@ -88,9 +95,6 @@ static int msm_fb_get_lane_config(void)
 #endif
 	return rc;
 }
-
-#define GPIO_LCD_RESET 125
-#define GPIO_LCD_IFMODE1 129
 
 static int dsi_gpio_initialized;
 
@@ -200,23 +204,97 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.get_lane_config = msm_fb_get_lane_config,
 };
 #endif
+#endif /* CONFIG_FB_MSM_MIPI_DSI */
+
+#ifdef CONFIG_FB_MSM_EBI2
+#define MSM_FB_LCDC_VREG_OP(name, op, level) \
+	do { \
+		vreg = vreg_get(0, name); \
+		vreg_set_level(vreg, level); \
+		if (vreg_##op(vreg)) \
+			printk(KERN_ERR "%s: %s vreg operation failed \n", \
+				(vreg_##op == vreg_enable) ? "vreg_enable" \
+					: "vreg_disable", name); \
+	} while (0)
+
+static char *msm_fb_vreg[] = {
+	"wlan_tcx0",
+	"emmc",
+};
+
+static int ebi2_power_save_on;
+
+static int ebi2_hdk_power_save(int on)
+{
+	struct vreg *vreg;
+	int flag_on = !!on;
+
+	printk(KERN_INFO"%s: on=%d\n", __func__, flag_on);
+
+	if (ebi2_power_save_on == flag_on)
+		return 0;
+
+	ebi2_power_save_on = flag_on;
+
+	if (on) {
+		gpio_direction_output(GPIO_LCD_RESET, 1);
+
+		MSM_FB_LCDC_VREG_OP(msm_fb_vreg[0], enable, 1800);
+		MSM_FB_LCDC_VREG_OP(msm_fb_vreg[1], enable, 2800);
+	} else{
+		/* LGE_CHANGE, [hyuncheol0.kim@lge.com] , 2011-02-10, for current consumption */
+		//MSM_FB_LCDC_VREG_OP(msm_fb_vreg[0], disable, 0);
+		MSM_FB_LCDC_VREG_OP(msm_fb_vreg[1], disable, 0);
+	}
+	
+	return 0;
+}
+
+static struct msm_panel_ilitek_pdata ebi2_hdk_panel_data = {
+	.gpio = GPIO_LCD_RESET,
+	.lcd_power_save = ebi2_hdk_power_save,
+	.maker_id = PANEL_ID_LGDISPLAY,
+	.initialized = 0,
+};
+
+static struct platform_device ebi2_hdk_panel_device = {
+	.name = "ebi2_tovis_qvga",
+	.id = 0,
+	.dev = {
+		.platform_data = &ebi2_hdk_panel_data,
+	}
+};
+#endif /* CONFIG_FB_MSM_EBI2 */
 
 static void __init msm_fb_add_devices(void)
 {
 	msm_fb_register_device("mdp", &mdp_pdata);
 	msm_fb_register_device("lcdc", 0);
+#ifdef CONFIG_FB_MSM_MIPI_DSI
 	msm_fb_register_device("mipi_dsi", &mipi_dsi_pdata);
+#endif
+#ifdef CONFIG_FB_MSM_EBI2
+	msm_fb_register_device("ebi2", 0);
+#endif
 }
+
+/* hdk panel platform device */
+static struct platform_device *hdk_panel_devices[] __initdata = {
+#ifdef CONFIG_FB_MSM_MIPI_DSI
+	&mipi_dsi_r61529_panel_device,
+#endif
+#ifdef CONFIG_FB_MSM_EBI2
+	&ebi2_hdk_panel_device,
+#endif
+};
 
 void __init hdk_init_i2c_backlight(int bus_num)
 {
 	bl_i2c_device.id = bus_num;
-	bl_i2c_bdinfo[0].platform_data = &lm3530bl_data;
-	bl_i2c_bdinfo[1].platform_data = &aat2870bl_data;
 	
 	/* workaround for HDK rev_a no pullup */
 	lge_init_gpio_i2c_pin_pullup(&bl_i2c_pdata, bl_i2c_pin, &bl_i2c_bdinfo[0]);
-	i2c_register_board_info(bus_num, &bl_i2c_bdinfo[0], 2);
+	i2c_register_board_info(bus_num, bl_i2c_bdinfo, ARRAY_SIZE(bl_i2c_bdinfo));
 	platform_device_register(&bl_i2c_device);
 }
 
