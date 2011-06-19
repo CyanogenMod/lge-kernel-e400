@@ -56,8 +56,14 @@ static struct platform_driver ebi2_lcd_driver = {
 	.probe = ebi2_lcd_probe,
 	.remove = ebi2_lcd_remove,
 	.suspend = NULL,
+#ifdef CONFIG_MACH_LGE
+	/* LGE_CHANGE : Compile error fixed
+	 * 2011-06-17, bongkyu.kim@lge.com
+	 */
+#else /* qualcomm original */
 	.suspend_late = NULL,
 	.resume_early = NULL,
+#endif
 	.resume = NULL,
 	.shutdown = NULL,
 	.driver = {

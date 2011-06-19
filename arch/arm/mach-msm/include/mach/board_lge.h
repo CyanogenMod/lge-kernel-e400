@@ -190,6 +190,19 @@ struct pp2106_platform_data {
 	int (*power)(unsigned char onoff);
 };
 
+/* LCD panel */
+enum {
+	PANEL_ID_AUTO = 0,
+	PANEL_ID_LGDISPLAY = 1,
+};
+
+struct msm_panel_ilitek_pdata {
+	int gpio;
+	int initialized;
+	int maker_id;
+	int (*lcd_power_save)(int);
+};
+
 void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 

@@ -334,7 +334,7 @@ static void lm3530_go_opmode(struct lm3530_driver_data *drvdata)
 	}
 }
 
-static void aat28xx_device_init(struct lm3530_driver_data *drvdata)
+static void lm3530_device_init(struct lm3530_driver_data *drvdata)
 {
 /* LGE_CHANGE.
   * Do not initialize aat28xx when system booting. The aat28xx is already initialized in oemsbl or LK !!
@@ -357,7 +357,7 @@ static void lm3530_poweron(struct lm3530_driver_data *drvdata)
 	
 	dprintk("POWER ON \n");
 
-	aat28xx_device_init(drvdata);
+	lm3530_device_init(drvdata);
 	
 	if (drvdata->mode == NORMAL_MODE)
 	{
@@ -755,7 +755,7 @@ static int __init lm3530_probe(struct i2c_client *i2c_dev, const struct i2c_devi
 	i2c_set_clientdata(i2c_dev, drvdata);
 	i2c_set_adapdata(i2c_dev->adapter, i2c_dev);
 
-	aat28xx_device_init(drvdata);
+	lm3530_device_init(drvdata);
 	lm3530_send_intensity(drvdata, DEFAULT_BRIGHTNESS);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -807,7 +807,7 @@ static struct i2c_driver lm3530_driver __refdata = {
 
 static int __init lm3530_init(void)
 {
-	printk("AAT28XX init start\n");
+	printk("lm3530_init init start\n");
 	return i2c_add_driver(&lm3530_driver);
 }
 
