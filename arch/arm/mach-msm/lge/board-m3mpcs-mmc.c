@@ -7,7 +7,7 @@
 #include <mach/vreg.h>
 #include <mach/board.h>
 
-#include "board-m3.h"
+#include "board-m3mpcs.h"
 
 #if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT)\
