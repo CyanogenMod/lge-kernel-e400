@@ -39,7 +39,7 @@ static struct platform_device msm_device_pmic_leds = {
 };
 
 /* misc platform devices */
-static struct platform_device *m3_misc_devices[] __initdata = {
+static struct platform_device *m3eu_misc_devices[] __initdata = {
 	&msm_batt_device,
 	&msm_device_pmic_leds,
 };
@@ -47,7 +47,7 @@ static struct platform_device *m3_misc_devices[] __initdata = {
 /* main interface */
 void __init lge_add_misc_devices(void)
 {
-	platform_add_devices(m3_misc_devices, ARRAY_SIZE(m3_misc_devices));
+	platform_add_devices(m3eu_misc_devices, ARRAY_SIZE(m3eu_misc_devices));
 
 	/* QCT native Vibrator enable [mach-msm/msm_vibrator.c] */
 	msm_init_pmic_vibrator();

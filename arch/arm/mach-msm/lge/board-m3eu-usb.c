@@ -18,7 +18,7 @@
 
 #include <mach/board_lge.h>
 
-#include "board-m3.h"
+#include "board-m3eu.h"
 
 static char *usb_functions_default[] = {
 	"diag",
@@ -289,7 +289,7 @@ static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	},
 };
 
-static struct platform_device *m3_usb_devices[] __initdata = {
+static struct platform_device *m3eu_usb_devices[] __initdata = {
 	&msm_device_otg,
 	&msm_device_gadget_peripheral,
 	&android_usb_device,
@@ -308,7 +308,7 @@ void __init lge_add_usb_devices(void)
 		[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency;
 	msm_device_otg.dev.platform_data = &msm_otg_pdata;
 #endif
-	platform_add_devices(m3_usb_devices, ARRAY_SIZE(m3_usb_devices));
+	platform_add_devices(m3eu_usb_devices, ARRAY_SIZE(m3eu_usb_devices));
 #ifdef CONFIG_USB_EHCI_MSM_72K
 	msm7x2x_init_host();
 #endif

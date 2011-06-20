@@ -27,7 +27,7 @@
 
 #include <mach/board_lge.h>
 
-#include "board-m3.h"
+#include "board-m3mpcs.h"
 
 static struct msm_gpio qup_i2c_gpios_io[] = {
 	{ GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),

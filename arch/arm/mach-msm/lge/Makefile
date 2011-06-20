@@ -1,15 +1,15 @@
 EXTRA_CFLAGS += -Iarch/arm/mach-msm
 
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-input.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-misc.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-mmc.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-sound.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-panel.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-camera.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-pm.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-usb.o
-obj-$(CONFIG_MACH_MSM7X27A_M3) += board-m3-connectivity.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-input.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-misc.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-mmc.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-sound.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-panel.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-camera.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-pm.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-usb.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-connectivity.o
 
 obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += board-m3mpcs.o
 obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += board-m3mpcs-input.o

@@ -6,7 +6,7 @@
 #include <mach/board.h>
 #include <mach/board_lge.h>
 
-#include "board-m3.h"
+#include "board-m3eu.h"
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
@@ -250,7 +250,7 @@ static struct platform_device m3eu_earsense_device = {
 };
 
 /* input platform device */
-static struct platform_device *m3_sound_devices[] __initdata = {
+static struct platform_device *m3eu_sound_devices[] __initdata = {
 	&msm_device_snd,
 	&msm_device_adspdec,
 	&m3eu_earsense_device,
@@ -259,6 +259,6 @@ static struct platform_device *m3_sound_devices[] __initdata = {
 /* common function */
 void __init lge_add_sound_devices(void)
 {
-	platform_add_devices(m3_sound_devices, ARRAY_SIZE(m3_sound_devices));
+	platform_add_devices(m3eu_sound_devices, ARRAY_SIZE(m3eu_sound_devices));
 }
 
