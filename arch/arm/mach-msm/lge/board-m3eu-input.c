@@ -11,7 +11,7 @@
 #include <linux/regulator/consumer.h>
 
 #include "devices-msm7x2xa.h"
-#include "board-m3.h"
+#include "board-m3eu.h"
 
 /* handset device */
 static struct msm_handset_platform_data hs_platform_data = {
@@ -26,7 +26,7 @@ static struct platform_device hs_pdev = {
 		.platform_data = &hs_platform_data,
 	},
 };
- /* GPIO key map for M3 EVB */
+ /* GPIO key map for M3EU EVB */
 static unsigned int keypad_row_gpios[] = {
 	36, 37
 };
@@ -35,12 +35,12 @@ static unsigned int keypad_col_gpios[] = {33};
 
 #define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
 
-static const unsigned short keypad_keymap_m3[] = {
-	[KEYMAP_INDEX(0, 0)] = KEY_BACK, /* KEY_VOLUMEDOWN, FIXME: temp change for M3 evb board */
+static const unsigned short keypad_keymap_m3eu[] = {
+	[KEYMAP_INDEX(0, 0)] = KEY_BACK, /* KEY_VOLUMEDOWN, FIXME: temp change for M3EU evb board */
 	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEUP,
 };
 
-int m3_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,struct gpio_event_info *info, void **data, int func)
+int m3eu_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,struct gpio_event_info *info, void **data, int func)
 {
         int ret ;
 		if (func == GPIO_EVENT_FUNC_RESUME) {
@@ -54,7 +54,7 @@ int m3_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,struct gpio_e
         return ret ;
 }
 
-static int m3_gpio_matrix_power(
+static int m3eu_gpio_matrix_power(
                 const struct gpio_event_platform_data *pdata, bool on)
 {
 	/* this is dummy function to make gpio_event driver register suspend function
@@ -66,9 +66,9 @@ static int m3_gpio_matrix_power(
 	return 0;
 }
 
-static struct gpio_event_matrix_info m3_keypad_matrix_info = {
-	.info.func	= m3_matrix_info_wrapper,
-	.keymap		= keypad_keymap_m3,
+static struct gpio_event_matrix_info m3eu_keypad_matrix_info = {
+	.info.func	= m3eu_matrix_info_wrapper,
+	.keymap		= keypad_keymap_m3eu,
 	.output_gpios	= keypad_col_gpios,
 	.input_gpios	= keypad_row_gpios,
 	.noutputs	= ARRAY_SIZE(keypad_col_gpios),
@@ -78,33 +78,33 @@ static struct gpio_event_matrix_info m3_keypad_matrix_info = {
 	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_PRINT_UNMAPPED_KEYS | GPIOKPF_DRIVE_INACTIVE
 };
 
-static struct gpio_event_info *m3_keypad_info[] = {
-	&m3_keypad_matrix_info.info
+static struct gpio_event_info *m3eu_keypad_info[] = {
+	&m3eu_keypad_matrix_info.info
 };
 
-static struct gpio_event_platform_data m3_keypad_data = {
+static struct gpio_event_platform_data m3eu_keypad_data = {
 	.name		= "m3_keypad",
-	.info		= m3_keypad_info,
-	.info_count	= ARRAY_SIZE(m3_keypad_info),
-	.power          = m3_gpio_matrix_power,
+	.info		= m3eu_keypad_info,
+	.info_count	= ARRAY_SIZE(m3eu_keypad_info),
+	.power          = m3eu_gpio_matrix_power,
 };
 
-struct platform_device keypad_device_m3 = {
+struct platform_device keypad_device_m3eu = {
 	.name	= GPIO_EVENT_DEV_NAME,
 	.id	= -1,
 	.dev	= {
-		.platform_data	= &m3_keypad_data,
+		.platform_data	= &m3eu_keypad_data,
 	},
 };
 
 
 /* input platform device */
-static struct platform_device *m3_input_devices[] __initdata = {
+static struct platform_device *m3eu_input_devices[] __initdata = {
 	&hs_pdev,
 };
 
-static struct platform_device *m3_gpio_input_devices[] __initdata = {
-	&keypad_device_m3,/* the gpio keypad for m3 EVB */
+static struct platform_device *m3eu_gpio_input_devices[] __initdata = {
+	&keypad_device_m3eu,/* the gpio keypad for m3eu EVB */
 };
 
 /* Melfas MCS8000 Touch (mms-128)*/
@@ -208,7 +208,7 @@ static int init_gpio_i2c_pin_touch(struct i2c_gpio_platform_data *i2c_adap_pdata
 	return 0;
 }
 
-static void __init m3_init_i2c_touch(int bus_num)
+static void __init m3eu_init_i2c_touch(int bus_num)
 {
 	ts_i2c_device.id = bus_num;
 
@@ -218,7 +218,7 @@ static void __init m3_init_i2c_touch(int bus_num)
 }
 #endif /* CONFIG_TOUCH_MCS8000 */
 
-/* Atmel Touch for M3 EVB */
+/* Atmel Touch for M3EU EVB */
 #if defined(CONFIG_TOUCHSCREEN_MXT140)
 
 static struct gpio_i2c_pin ts_i2c_pin = {
@@ -288,7 +288,7 @@ static struct i2c_board_info ts_i2c_bdinfo[] = {
 	},
 };
 
-static void __init m3_init_i2c_touch(int bus_num)
+static void __init m3eu_init_i2c_touch(int bus_num)
 {
 	ts_i2c_device.id = bus_num;
 	/* workaround for HDK rev_a no pullup */
@@ -353,7 +353,7 @@ static struct i2c_board_info accel_i2c_bdinfo[] = {
 	},
 };
 
-static void __init m3_init_i2c_acceleration(int bus_num)
+static void __init m3eu_init_i2c_acceleration(int bus_num)
 {
 	accel_i2c_device.id = bus_num;
 
@@ -417,7 +417,7 @@ static struct platform_device ecom_i2c_device = {
 };
 
 
-static void __init m3_init_i2c_ecom(int bus_num)
+static void __init m3eu_init_i2c_ecom(int bus_num)
 {
 	ecom_i2c_device.id = bus_num;
 
@@ -526,7 +526,7 @@ static struct platform_device proxi_i2c_device = {
         .dev.platform_data = &proxi_i2c_pdata,
 };
 
-static void __init m3_init_i2c_prox(int bus_num)
+static void __init m3eu_init_i2c_prox(int bus_num)
 {
 	proxi_i2c_device.id = bus_num;
 
@@ -539,10 +539,10 @@ static void __init m3_init_i2c_prox(int bus_num)
 /* common function */
 void __init lge_add_input_devices(void)
 {
-	platform_add_devices(m3_input_devices, ARRAY_SIZE(m3_input_devices));
-	platform_add_devices(m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
-	lge_add_gpio_i2c_device(m3_init_i2c_touch);
-	lge_add_gpio_i2c_device(m3_init_i2c_acceleration);
-	lge_add_gpio_i2c_device(m3_init_i2c_ecom);
-	lge_add_gpio_i2c_device(m3_init_i2c_prox);
+	platform_add_devices(m3eu_input_devices, ARRAY_SIZE(m3eu_input_devices));
+	platform_add_devices(m3eu_gpio_input_devices, ARRAY_SIZE(m3eu_gpio_input_devices));
+	lge_add_gpio_i2c_device(m3eu_init_i2c_touch);
+	lge_add_gpio_i2c_device(m3eu_init_i2c_acceleration);
+	lge_add_gpio_i2c_device(m3eu_init_i2c_ecom);
+	lge_add_gpio_i2c_device(m3eu_init_i2c_prox);
 }

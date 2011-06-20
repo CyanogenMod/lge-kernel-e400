@@ -21,7 +21,7 @@
 
 #define MAX_KEYPAD_BL_LEVEL	16
 
-#if defined (CONFIG_MACH_MSM7X27A_M3)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
 static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	enum led_brightness value)
 {
@@ -79,7 +79,7 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	if (ret)
 		dev_err(led_cdev->dev, "can't set keypad backlight\n");
 }
-#endif /* defined (CONFIG_MACH_MSM7X27A_M3) */
+#endif /* defined (CONFIG_MACH_MSM7X27A_M3EU) */
 
 static struct led_classdev msm_kp_bl_led = {
 	.name			= "keyboard-backlight",
