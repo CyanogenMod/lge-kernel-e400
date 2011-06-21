@@ -1,6 +1,6 @@
 EXTRA_CFLAGS += -Iarch/arm/mach-msm
 
-obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3.o
+obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu.o
 obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-input.o
 obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-misc.o
 obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-mmc.o
