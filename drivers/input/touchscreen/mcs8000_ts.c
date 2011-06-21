@@ -629,6 +629,13 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 		return err;
 	}
 
+	err = gpio_request(dev->intr_gpio,"touch_mcs8000");
+	if (err < 0) {
+		printk(KERN_ERR "%s: gpio input direction fail\n", __FUNCTION__);
+		return err;
+	}
+	
+
 	err = gpio_direction_input(dev->intr_gpio);
 	if (err < 0) {
 		printk(KERN_ERR "%s: gpio input direction fail\n", __FUNCTION__);

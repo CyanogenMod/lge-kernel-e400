@@ -38,7 +38,7 @@ static unsigned int keypad_col_gpios[] = {36, 37, 38};
 
 static const unsigned short keypad_keymap_hdk[] = {
 	[KEYMAP_INDEX(0, 0)] = KEY_VOLUMEUP,
-	[KEYMAP_INDEX(0, 1)] = KEY_F1, /*KEY_AF*/
+	[KEYMAP_INDEX(0, 1)] = KEY_HP, /*KEY_AF*/
 	[KEYMAP_INDEX(0, 2)] = KEY_CAMERA,
 
 	[KEYMAP_INDEX(1, 0)] = KEY_VOLUMEDOWN,

@@ -526,6 +526,41 @@ static struct platform_device msm_lcdc_device = {
 	.id     = 0,
 };
 
+#ifdef CONFIG_FB_MSM_EBI2
+/* LGE_CHANGE
+ * FIXME: EBI2 LCD platform device add. If QCT is implement, should be removed.
+ * 2011-06-17, bongkyu.kim@lge.com
+ */
+static struct resource msm_ebi2_lcd_resources[] = {
+	{
+		.name   = "base",
+		.start  = 0xa0d00000,
+		.end    = 0xa0d00000 + PAGE_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "lcd01",
+		.start  = 0x98000000,
+		.end    = 0x98000000 + 0x80000 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "lcd02",
+		.start  = 0x9c000000,
+		.end    = 0x9c000000 + 0x80000 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device msm_ebi2_lcd_device = {
+	.name = "ebi2_lcd",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(msm_ebi2_lcd_resources),
+	.resource = msm_ebi2_lcd_resources,
+};
+
+#endif
+
 static struct resource kgsl_3d0_resources[] = {
 	{
 		.name  = KGSL_3D0_REG_MEMORY,
@@ -614,6 +649,14 @@ void __init msm_fb_register_device(char *name, void *data)
 		msm_register_device(&msm_mipi_dsi_device, data);
 	else if (!strncmp(name, "lcdc", 4))
 		msm_register_device(&msm_lcdc_device, data);
+#ifdef CONFIG_FB_MSM_EBI2
+	/* LGE_CHANGE
+	 * FIXME: EBI2 LCD platform device add. If QCT is implement, should be removed.
+	 * 2011-06-17, bongkyu.kim@lge.com
+	 */
+	else if (!strncmp(name, "ebi2", 4))
+		msm_register_device(&msm_ebi2_lcd_device, data);
+#endif
 	else
 		printk(KERN_ERR "%s: unknown device! %s\n", __func__, name);
 }

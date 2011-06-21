@@ -8,7 +8,7 @@
 #include <mach/board.h>
 
 #include "devices.h"
-#include "board-m3.h"
+#include "board-m3eu.h"
 #include <mach/board_lge.h>
 #include <mach/vreg.h>
 
@@ -49,7 +49,7 @@ static struct platform_device mipi_dsi_r61529_panel_device = {
 };
 
 /* input platform device */
-static struct platform_device *m3_panel_devices[] __initdata = {
+static struct platform_device *m3eu_panel_devices[] __initdata = {
 	&mipi_dsi_r61529_panel_device,
 };
 
@@ -93,6 +93,12 @@ static int mipi_dsi_panel_power(int on)
 		rc = gpio_request(GPIO_LCD_RESET, "lcd_reset");
 		if (rc) {
 			pr_err("%s: gpio_request GPIO_LCD_RESET failed\n", __func__);
+		}
+		rc = gpio_tlmm_config(GPIO_CFG(GPIO_LCD_RESET, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		if (rc){
+			printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
+					__func__, rc);
 		}
 
 		dsi_gpio_initialized = 1;
@@ -161,7 +167,7 @@ static void __init msm_fb_add_devices(void)
 	msm_fb_register_device("mipi_dsi", &mipi_dsi_pdata);
 }
 
-void __init msm7x27a_m3_init_i2c_backlight(int bus_num)
+void __init msm7x27a_m3eu_init_i2c_backlight(int bus_num)
 {
 	bl_i2c_device.id = bus_num;
 	bl_i2c_bdinfo[0].platform_data = &lm3530bl_data;
@@ -174,8 +180,8 @@ void __init msm7x27a_m3_init_i2c_backlight(int bus_num)
 
 void __init lge_add_lcd_devices(void)
 {
-	platform_add_devices(m3_panel_devices, ARRAY_SIZE(m3_panel_devices));
+	platform_add_devices(m3eu_panel_devices, ARRAY_SIZE(m3eu_panel_devices));
 	msm_fb_add_devices();
-	lge_add_gpio_i2c_device(msm7x27a_m3_init_i2c_backlight);
+	lge_add_gpio_i2c_device(msm7x27a_m3eu_init_i2c_backlight);
 }
 

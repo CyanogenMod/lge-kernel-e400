@@ -25,7 +25,7 @@
 
 #include <mach/board_lge.h>
 
-#include "board-m3.h"
+#include "board-m3eu.h"
 
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
@@ -771,7 +771,7 @@ static struct i2c_board_info bahama_devices[] = {
 };
 #endif
 
-static struct platform_device *m3_connectivity_devices[] __initdata = {
+static struct platform_device *m3eu_connectivity_devices[] __initdata = {
 #ifdef CONFIG_BT
 	&msm_bt_power_device,
 #endif
@@ -779,8 +779,8 @@ static struct platform_device *m3_connectivity_devices[] __initdata = {
 
 void __init lge_add_connectivity_devices(void)
 {
-	platform_add_devices(m3_connectivity_devices,
-		ARRAY_SIZE(m3_connectivity_devices));
+	platform_add_devices(m3eu_connectivity_devices,
+		ARRAY_SIZE(m3eu_connectivity_devices));
 
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,

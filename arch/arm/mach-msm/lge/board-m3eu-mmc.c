@@ -7,7 +7,7 @@
 #include <mach/vreg.h>
 #include <mach/board.h>
 
-#include "board-m3.h"
+#include "board-m3eu.h"
 
 #if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT)\
@@ -280,7 +280,7 @@ static struct mmc_platform_data sdc1_plat_data = {
 #endif
 
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
-/* FIXME : M3 evb GPIO 66 WLAN SDIO PIN */
+/* FIXME : M3EU evb GPIO 66 WLAN SDIO PIN */
 static struct mmc_platform_data sdc2_plat_data = {
 	.ocr_mask	= MMC_VDD_28_29,
 	.translate_vdd  = msm_sdcc_setup_power,

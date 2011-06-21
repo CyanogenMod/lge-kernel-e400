@@ -13,7 +13,7 @@
 #include <mach/board_lge.h>
 
 #include "devices-msm7x2xa.h"
-#include "board-m3.h"
+#include "board-m3eu.h"
 
 #define GPIO_CAM_RESET 34
 #ifdef CONFIG_MSM_CAMERA
@@ -217,7 +217,7 @@ static struct i2c_board_info i2c_camera_devices[] = {
 };
 #endif
 
-static struct platform_device *m3_camera_devices[] __initdata = {
+static struct platform_device *m3eu_camera_devices[] __initdata = {
 #ifdef CONFIG_MT9P017
     &msm_camera_sensor_mt9p017,
 #endif
@@ -230,5 +230,5 @@ void __init lge_add_camera_devices(void)
 		i2c_camera_devices,
 		ARRAY_SIZE(i2c_camera_devices));
 #endif
-	platform_add_devices(m3_camera_devices, ARRAY_SIZE(m3_camera_devices));
+	platform_add_devices(m3eu_camera_devices, ARRAY_SIZE(m3eu_camera_devices));
 }
