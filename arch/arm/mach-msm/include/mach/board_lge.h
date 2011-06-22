@@ -150,6 +150,7 @@ struct android_vibrator_platform_data {
 struct gpio_h2w_platform_data {
 	int gpio_detect;
 	int gpio_button_detect;
+	int gpio_mic_mode;
 };
 
 /* gpio switch platform data */

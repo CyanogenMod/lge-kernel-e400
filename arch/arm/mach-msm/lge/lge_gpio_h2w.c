@@ -68,6 +68,7 @@ struct h2w_info {
 
 	int gpio_detect;
 	int gpio_button_detect;
+	int gpio_mic_mode;
 
 	atomic_t btn_state;
 	int ignore_btn;
@@ -90,6 +91,8 @@ static ssize_t gpio_h2w_print_name(struct switch_dev *sdev, char *buf)
 		return sprintf(buf, "No Device\n");
 	case LGE_HEADSET:
 		return sprintf(buf, "Headset\n");
+    case LGE_NO_MIC_HEADSET:
+    return sprintf(buf, "Headset_no_mic\n");
 	}
 	return -EINVAL;
 }
@@ -123,6 +126,7 @@ static void insert_headset(void)
 	H2W_DBG("");
 
 	hi->ignore_btn = !gpio_get_value(hi->gpio_button_detect);
+	H2W_DBG("hi->ignore_btn = %d\n", hi->ignore_btn);
 
     if(hi->ignore_btn)
    	{
@@ -159,6 +163,7 @@ static void remove_headset(void)
 	H2W_DBG("");
 	
 	input_report_switch(hi->input, SW_HEADPHONE_INSERT, 0);
+	gpio_set_value(hi->gpio_mic_mode, 0);
 	switch_set_state(&hi->sdev, NO_DEVICE);
 	input_sync(hi->input);
 
@@ -191,7 +196,7 @@ static void detection_work(struct work_struct *work)
 
 		return;
 	}
-
+	msleep(100);
 	cable_in1 = gpio_get_value(hi->gpio_detect);
 
 	if (cable_in1 == 1) {
@@ -246,9 +251,9 @@ static irqreturn_t detect_irq_handler(int irq, void *dev_id)
 	set_irq_type(hi->irq_btn, IRQF_TRIGGER_LOW);
 	do {
 		value1 = gpio_get_value(hi->gpio_detect);
-		//set_irq_type(hi->irq, value1 ?
-		//		IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
-		set_irq_type(hi->irq,IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
+		set_irq_type(hi->irq, value1 ?
+				IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
+
 		value2 = gpio_get_value(hi->gpio_detect);
 	} while (value1 != value2 && retry_limit-- > 0);
 
@@ -259,6 +264,7 @@ static irqreturn_t detect_irq_handler(int irq, void *dev_id)
 			|| switch_get_state(&hi->sdev) == LGE_NO_MIC_HEADSET
 		)
 			hi->ignore_btn = 1;
+		gpio_set_value(hi->gpio_mic_mode, 1);
 		/* Do the rest of the work in timer context */
 		hrtimer_start(&hi->timer, hi->debounce_time, HRTIMER_MODE_REL);
 		
@@ -285,9 +291,9 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 	do {
 		value1 = gpio_get_value(hi->gpio_button_detect);
 		H2W_DBG("button_irq_handler : value1 = %d\n", value1);
-		//set_irq_type(hi->irq_btn, value1 ?
-		//		IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
-		set_irq_type(hi->irq_btn,IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
+		set_irq_type(hi->irq_btn, value1 ?
+				IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
+		
 		value2 = gpio_get_value(hi->gpio_button_detect);
 		H2W_DBG("button_irq_handler : value2 = %d\n", value2);
 	} while (value1 != value2 && retry_limit-- > 0);
@@ -317,6 +323,7 @@ static int gpio_h2w_probe(struct platform_device *pdev)
 
 	hi->gpio_detect = pdata->gpio_detect;
 	hi->gpio_button_detect = pdata->gpio_button_detect;
+	hi->gpio_mic_mode = pdata->gpio_mic_mode;
 
 	hi->sdev.name = "h2w_headset";
 	hi->sdev.print_name = gpio_h2w_print_name;
@@ -340,6 +347,10 @@ static int gpio_h2w_probe(struct platform_device *pdev)
 	ret = gpio_request(hi->gpio_button_detect, "h2w_button");
 	if (ret < 0)
 		goto err_request_button_gpio;
+	gpio_tlmm_config(GPIO_CFG(hi->gpio_mic_mode, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	ret = gpio_request(hi->gpio_mic_mode, "h2w_mic_mode");
+	if (ret < 0)
+		goto err_request_mic_mode_gpio;
 
 	ret = gpio_direction_input(hi->gpio_detect);
 	if (ret < 0)
@@ -366,22 +377,20 @@ static int gpio_h2w_probe(struct platform_device *pdev)
 	hrtimer_init(&hi->btn_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	hi->btn_timer.function = button_event_timer_func;
 
-	//ret = request_irq(hi->irq, detect_irq_handler,
-	//		  IRQF_TRIGGER_HIGH, "h2w_detect", NULL); 
-
 	ret = request_irq(hi->irq, detect_irq_handler,
-			  IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING, "h2w_detect", NULL); 
+			  IRQF_TRIGGER_HIGH, "h2w_detect", NULL); 
+
+	
 
 	if (ret < 0)
 		goto err_request_detect_irq;
 
 	/* Disable button until plugged in */
 	set_irq_flags(hi->irq_btn, IRQF_VALID | IRQF_NOAUTOEN);
-//	ret = request_irq(hi->irq_btn, button_irq_handler,
-//			  IRQF_TRIGGER_LOW, "h2w_button", NULL);
-
 	ret = request_irq(hi->irq_btn, button_irq_handler,
-			  IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING, "h2w_button", NULL);
+			  IRQF_TRIGGER_LOW, "h2w_button", NULL);
+
+
 
 	if (ret < 0)
 		goto err_request_h2w_headset_button_irq;
@@ -425,6 +434,8 @@ err_set_detect_gpio:
 	gpio_free(hi->gpio_button_detect);
 err_request_button_gpio:
 	gpio_free(hi->gpio_detect);
+err_request_mic_mode_gpio:
+	gpio_free(hi->gpio_mic_mode);
 err_request_detect_gpio:
 	destroy_workqueue(g_detection_work_queue);
 err_create_work_queue:
