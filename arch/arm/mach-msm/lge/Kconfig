@@ -5,13 +5,13 @@ menu "LGE Device-Specific Changes"
 
 menu "LGE Board Selection"
 
-config MACH_MSM7X27A_M3
+config MACH_MSM7X27A_M3EU
     depends on ARCH_MSM7X27A
     depends on !MSM_STACKED_MEMORY
     select MACH_LGE
-    bool "MSM7x27A M3"
+    bool "MSM7x27A M3EU"
     help
-        Support for the LG Electronics MSM7x27A M3.
+        Support for the LG Electronics MSM7x27A M3EU.
 
 config MACH_MSM7X27A_M3MPCS
     depends on ARCH_MSM7X27A

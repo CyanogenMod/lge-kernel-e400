@@ -22,6 +22,7 @@ config SENSOR_GP2AP
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ads7846.
+
 config SENSOR_AK8975
 	tristate "AK8975 compass support"
 	help
@@ -80,5 +81,15 @@ config SENSOR_K3DH
           K3DH controller, and your board-specific
           setup code includes i2c devices.
 
-          If unsure, say N (but it's safe to say "Y"). 	  
+          If unsure, say N (but it's safe to say "Y").
+
+config SENSORS_BH1721
+	tristate "ROHM BH1721fvc ambient light sensor"
+	depends on I2C && SYSFS
+	help
+	  If you say yes here you get support for the ROHM BH1721fvc
+	  ambient light sensor.
+	  This driver can also be built as a module.  If so, the module
+	  will be called bh1721fvc.
+
 endif

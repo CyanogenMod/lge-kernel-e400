@@ -18,7 +18,7 @@
 
 #include <mach/board_lge.h>
 
-#include "board-m3.h"
+#include "board-m3mpcs.h"
 
 static char *usb_functions_default[] = {
 	"diag",

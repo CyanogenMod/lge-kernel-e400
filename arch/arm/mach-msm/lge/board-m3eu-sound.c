@@ -6,24 +6,30 @@
 #include <mach/board.h>
 #include <mach/board_lge.h>
 
-#include "board-m3.h"
+#include "board-m3eu.h"
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
-	SND(HANDSET, 0),
-	SND(MONO_HEADSET, 2),
-	SND(HEADSET, 3),
-	SND(SPEAKER, 6),
-	SND(TTY_HEADSET, 8),
-	SND(TTY_VCO, 9),
-	SND(TTY_HCO, 10),
-	SND(BT, 12),
-	SND(IN_S_SADC_OUT_HANDSET, 16),
-	SND(IN_S_SADC_OUT_SPEAKER_PHONE, 25),
-	SND(FM_DIGITAL_STEREO_HEADSET, 26),
-	SND(FM_DIGITAL_SPEAKER_PHONE, 27),
-	SND(FM_DIGITAL_BT_A2DP_HEADSET, 28),
-	SND(CURRENT, 34),	
+	SND(HANDSET_LOOPBACK,5),
+	SND(HANDSET, 6),
+	SND(HEADSET_LOOPBACK, 1),
+	SND(HEADSET, 2),
+	SND(HEADSET_STEREO, 3),
+	SND(SPEAKER, 0),
+	SND(SPEAKER_IN_CALL, 7),
+	SND(SPEAKER_RING, 8),
+	SND(HEADSET_AND_SPEAKER, 8),
+	SND(FM_HEADSET, 10),
+	SND(FM_SPEAKER, 11),
+	SND(BT, 13),
+	SND(TTY_HEADSET, 15),
+	SND(TTY_VCO, 16),
+	SND(TTY_HCO, 17),
+	SND(TTY_HCO_SPEAKER, 18),
+	SND(HANDSET_VR, 20),
+	SND(HEADSET_VR, 21),
+	SND(BT_VR, 23),
+	SND(CURRENT, 30),
 };
 #undef SND
 
@@ -250,7 +256,7 @@ static struct platform_device m3eu_earsense_device = {
 };
 
 /* input platform device */
-static struct platform_device *m3_sound_devices[] __initdata = {
+static struct platform_device *m3eu_sound_devices[] __initdata = {
 	&msm_device_snd,
 	&msm_device_adspdec,
 	&m3eu_earsense_device,
@@ -259,6 +265,6 @@ static struct platform_device *m3_sound_devices[] __initdata = {
 /* common function */
 void __init lge_add_sound_devices(void)
 {
-	platform_add_devices(m3_sound_devices, ARRAY_SIZE(m3_sound_devices));
+	platform_add_devices(m3eu_sound_devices, ARRAY_SIZE(m3eu_sound_devices));
 }
 
