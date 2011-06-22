@@ -127,6 +127,16 @@ struct proximity_platform_data {
 	u8 cycle;
 };
 
+#if defined(CONFIG_SENSORS_BH1721)
+/* light ambient platform data */
+struct light_ambient_platform_data {
+	int power_state;
+	int dvi_gpio;
+	int (*power_on)(unsigned char onoff);
+	int (*dvi_reset_ctrl)(unsigned char onoff);
+};
+#endif
+
 /* backlight platform data*/
 struct lge_backlight_platform_data {
 	void (*platform_init)(void);

@@ -502,6 +502,63 @@ static struct i2c_board_info prox_i2c_bdinfo[] = {
 	},
 };
 
+/* light ambient sensor */
+#if defined(CONFIG_SENSORS_BH1721)
+
+#define AMBIENT_VREG_2_8V		"gp2"
+#define AMBIENT_I2C_ADDRESS		0x23
+#define AMBIENT_DVI_GPIO		17
+
+static int ambient_power_set(unsigned char onoff)
+{
+	int ret = 0;
+	struct vreg *gp2_vreg;
+	gp2_vreg = vreg_get(0, AMBIENT_VREG_2_8V);
+	if (onoff) {
+		vreg_set_level(gp2_vreg, 2800);
+		vreg_enable(gp2_vreg);
+		msleep(10);
+	} else
+		vreg_disable(gp2_vreg);
+
+	return ret;
+}
+
+static int ambient_dvi_reset_ctrl(unsigned char onoff)
+{
+	int rc = 0;
+	rc = gpio_request(AMBIENT_DVI_GPIO, "ambient_dvi_gpio");
+	if (rc) {
+		pr_err("%s: unable to request gpio %d\n",
+			__func__, AMBIENT_DVI_GPIO);
+		goto ambient_err_end;
+	}
+	rc = gpio_direction_output(AMBIENT_DVI_GPIO, onoff);
+	if (rc) {
+		pr_err("dvi_gpio direction failed!\n");
+		goto ambient_err_end;
+	}
+
+ambient_err_end:
+	gpio_free(AMBIENT_DVI_GPIO);
+	return rc;
+}
+static struct light_ambient_platform_data ambient_pdata = {
+	.power_state  = 0,
+	.dvi_gpio = AMBIENT_DVI_GPIO,
+	.power_on	= ambient_power_set,
+	.dvi_reset_ctrl = ambient_dvi_reset_ctrl,
+};
+
+static struct i2c_board_info ambient_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("ambient_bh1721", AMBIENT_I2C_ADDRESS),
+		.platform_data = &ambient_pdata,
+	},
+};
+
+#endif
+
 /* common function */
 void __init lge_add_input_devices(void)
 {
@@ -519,6 +576,12 @@ void __init lge_add_input_devices(void)
 	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
 			prox_i2c_bdinfo,
 			ARRAY_SIZE(prox_i2c_bdinfo));
+
+#if defined(CONFIG_SENSORS_BH1721)
+	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
+			ambient_i2c_bdinfo,
+			ARRAY_SIZE(ambient_i2c_bdinfo));
+#endif
 
 #ifdef CONFIG_MSM_CAMERA_FLASH_LM2759
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
