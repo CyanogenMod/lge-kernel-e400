@@ -133,6 +133,7 @@ static int ts_set_vreg(unsigned char onoff)
 {
 	static struct regulator* ldo1 = NULL;
 	int rc;
+	static int init = 0;
 
 	ldo1 = regulator_get(NULL, "RT8053_LDO1");
 	if (ldo1 == NULL) {
@@ -148,13 +149,16 @@ static int ts_set_vreg(unsigned char onoff)
 		if (rc < 0) {
 			pr_err("%s: regulator_enable(ldo1) failed\n", __func__);
 		}
+		init = 1;
 	}
 	else{
-		rc = regulator_disable(ldo1);
-		if (rc < 0) {
-			pr_err("%s: regulator_disble(ldo1) failed\n", __func__);
+		if(init > 0){
+			rc = regulator_disable(ldo1);
+			if (rc < 0) {
+				pr_err("%s: regulator_disble(ldo1) failed\n", __func__);
+			}
+			regulator_put(ldo1);
 		}
-		regulator_put(ldo1);
 	}
 
 	return 0;
