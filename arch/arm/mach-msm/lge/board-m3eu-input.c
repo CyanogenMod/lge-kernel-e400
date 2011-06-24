@@ -154,6 +154,7 @@ static int ts_set_vreg(unsigned char onoff)
 		if (rc < 0) {
 			pr_err("%s: regulator_disble(ldo1) failed\n", __func__);
 		}
+		regulator_put(ldo1);
 	}
 
 	return 0;
