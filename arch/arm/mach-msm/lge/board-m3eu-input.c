@@ -36,8 +36,8 @@ static unsigned int keypad_col_gpios[] = {33};
 #define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
 
 static const unsigned short keypad_keymap_m3eu[] = {
-	[KEYMAP_INDEX(0, 0)] = KEY_BACK, /* KEY_VOLUMEDOWN, FIXME: temp change for M3EU evb board */
-	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEUP,
+	[KEYMAP_INDEX(0, 0)] = KEY_VOLUMEUP,
+	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEDOWN,
 };
 
 int m3eu_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,struct gpio_event_info *info, void **data, int func)
