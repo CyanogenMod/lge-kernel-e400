@@ -31,13 +31,15 @@ struct lge_gpio_switch_data {
 	int dev_id;
 	struct list_head list;
 	struct switch_dev sdev;
+	struct input_dev *ipdev;
+
 	unsigned *gpios;
 	size_t num_gpios;
 	unsigned long irqflags;
 	unsigned int wakeup_flag;
 	struct work_struct work;
-	int (*work_func)(void);
-	char *(*print_name)(void);
+	int (*work_func)(int *value);
+	char *(*print_name)(int state);
 	char *(*print_state)(int state);
 	int (*sysfs_store)(const char *buf, size_t size);
 
@@ -46,20 +48,39 @@ struct lge_gpio_switch_data {
 	size_t num_key_gpios;
 	struct work_struct key_work;
 	int (*key_work_func)(int *value);
-	struct input_dev *ipdev;
 };
 
 struct lge_gpio_switch_data *lge_switch_data;
 
+static int headset_type = 0;
+
 static void gpio_switch_work(struct work_struct *work)
 {
 	int state;
+	int value;
+	int i;
 	struct lge_gpio_switch_data	*data =
 		container_of(work, struct lge_gpio_switch_data, work);
 
 	if (data->work_func) {
-		state = data->work_func();
-		switch_set_state(&data->sdev, state);
+		state = data->work_func(&value);
+		if (state) {
+			if (value == SW_MICROPHONE_INSERT) {
+				for (i = 0; i < data->num_key_gpios; ++i)
+					enable_irq(gpio_to_irq(data->key_gpios[i]));
+			}
+			headset_type = value;
+		} else {
+			if (headset_type == SW_MICROPHONE_INSERT) {
+				for (i = 0; i < data->num_key_gpios; ++i)
+					disable_irq(gpio_to_irq(data->key_gpios[i]));
+			}
+			headset_type = 0;
+		}
+
+		input_report_switch(data->ipdev, value, state);
+		switch_set_state(&data->sdev, value);
+		input_sync(data->ipdev);
 	}
 }
 
@@ -102,9 +123,11 @@ static ssize_t switch_gpio_print_name(struct switch_dev *sdev, char *buf)
 	struct lge_gpio_switch_data *switch_data =
 		container_of(sdev, struct lge_gpio_switch_data, sdev);
 	const char *name;
-
+	int cur_state;
+	
+	cur_state = switch_get_state(sdev);
 	if (switch_data->print_name)
-		name = switch_data->print_name();
+		name = switch_data->print_name(cur_state);
 	else
 		return -1;
 
@@ -281,9 +304,13 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 
 		if (switch_data->wakeup_flag)
 			set_irq_wake(gpio_to_irq(switch_data->key_gpios[index]), 1);
+
+		disable_irq(gpio_to_irq(switch_data->key_gpios[index]));
 	}
 
 	switch_data->ipdev->name = switch_data->sdev.name;
+	input_set_capability(switch_data->ipdev, EV_SW, SW_HEADPHONE_INSERT);
+	input_set_capability(switch_data->ipdev, EV_SW, SW_MICROPHONE_INSERT);
 	input_set_capability(switch_data->ipdev, EV_KEY, KEY_MEDIA);
 
 	ret = input_register_device(switch_data->ipdev);

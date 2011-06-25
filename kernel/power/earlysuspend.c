@@ -20,6 +20,7 @@
 #include <linux/syscalls.h> /* sys_sync */
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
+#include <linux/kallsyms.h>
 
 #include "power.h"
 
@@ -94,6 +95,15 @@ static void early_suspend(struct work_struct *work)
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: call handlers\n");
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
+#ifdef CONFIG_MACH_LGE
+		/* this is test code for detecting main cause of kthread's sleep
+		 * 2010-04-26, cleaneye.kim@lge.com
+		 */
+		char sym[KSYM_SYMBOL_LEN];
+
+		sprint_symbol(sym, (unsigned long)pos->suspend);
+		printk(KERN_INFO"%s: %s\n", __func__, sym);
+#endif
 		if (pos->suspend != NULL)
 			pos->suspend(pos);
 	}
@@ -131,9 +141,19 @@ static void late_resume(struct work_struct *work)
 	}
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: call handlers\n");
-	list_for_each_entry_reverse(pos, &early_suspend_handlers, link)
+	list_for_each_entry_reverse(pos, &early_suspend_handlers, link) {
+#ifdef CONFIG_MACH_LGE
+		/* FIXME: this is test code for detecting main cause of kthread's sleep
+		 * 2010-04-26, cleaneye.kim@lge.com
+		 */
+		char sym[KSYM_SYMBOL_LEN];
+
+		sprint_symbol(sym, (unsigned long)pos->resume);
+		printk(KERN_INFO"%s: %s\n", __func__, sym);
+#endif
 		if (pos->resume != NULL)
 			pos->resume(pos);
+	}
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: done\n");
 abort:

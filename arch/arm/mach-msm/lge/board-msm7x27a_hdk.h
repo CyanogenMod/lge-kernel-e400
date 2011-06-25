@@ -97,5 +97,6 @@ enum {
 /* ear sense gpio */
 #define GPIO_EAR_SENSE		41
 #define GPIO_BUTTON_DETECT  128
+#define GPIO_HS_MIC_BIAS_EN	127
 
 #endif

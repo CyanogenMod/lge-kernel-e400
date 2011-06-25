@@ -148,6 +148,7 @@ static struct platform_device msm_device_adspdec = {
 static struct gpio_h2w_platform_data msm_headset_pdata = {
 	.gpio_detect = GPIO_EAR_SENSE,
 	.gpio_button_detect = GPIO_BUTTON_DETECT,
+	.gpio_mic_mode = GPIO_HS_MIC_BIAS_EN,
 };
 static struct platform_device hdk_earsense_device = {
 	.name   = "gpio-h2w",

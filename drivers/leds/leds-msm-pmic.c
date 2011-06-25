@@ -21,7 +21,6 @@
 
 #define MAX_KEYPAD_BL_LEVEL	16
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU)
 static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	enum led_brightness value)
 {
@@ -64,12 +63,17 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 			brightness = PM_MPP__I_SINK__LEVEL_5mA;
 			break;
 	}
-
-	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3,brightness,(enum mpp_i_sink_switch)on_off);
+	/* LED power(MPP pin) use
+	   - EU	  :  MPP3, MPP4
+	   - MPCS :  MPP 4
+	*/
 	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_4,brightness,(enum mpp_i_sink_switch)on_off);
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3,brightness,(enum mpp_i_sink_switch)on_off);
+#endif
 }
-#else
 
+#if 0  /* QCT led fuction */
 static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	enum led_brightness value)
 {
@@ -79,8 +83,7 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	if (ret)
 		dev_err(led_cdev->dev, "can't set keypad backlight\n");
 }
-#endif /* defined (CONFIG_MACH_MSM7X27A_M3EU) */
-
+#endif
 static struct led_classdev msm_kp_bl_led = {
 	.name			= "keyboard-backlight",
 	.brightness_set		= msm_keypad_bl_led_set,

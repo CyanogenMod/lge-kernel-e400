@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38.6 Kernel Configuration
-# Mon Jun 20 21:27:43 2011
+# Fri Jun 24 13:57:36 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1240,6 +1240,7 @@ CONFIG_SENSOR_BMA222=y
 # CONFIG_SENSOR_AMI304 is not set
 # CONFIG_SENSOR_AMI306 is not set
 # CONFIG_SENSOR_K3DH is not set
+# CONFIG_SENSORS_BH1721 is not set
 
 #
 # Hardware I/O ports
@@ -2132,7 +2133,7 @@ CONFIG_LEDS_CLASS=y
 # CONFIG_LEDS_PCA955X is not set
 # CONFIG_LEDS_REGULATOR is not set
 # CONFIG_LEDS_BD2802 is not set
-# CONFIG_LEDS_MSM_PMIC is not set
+CONFIG_LEDS_MSM_PMIC=y
 # CONFIG_LEDS_LT3593 is not set
 # CONFIG_LEDS_TRIGGERS is not set
 
