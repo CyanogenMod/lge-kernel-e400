@@ -168,7 +168,7 @@ enum {
 	EAR_INJECT = 1,
 };
 
-static int m3eu_gpio_earsense_work_func(void)
+static int m3eu_gpio_earsense_work_func(int *value)
 {
 	int state;
 	int gpio_value;
@@ -177,22 +177,41 @@ static int m3eu_gpio_earsense_work_func(void)
 	printk(KERN_INFO "%s: ear sense detected : %s\n", __func__,
 		gpio_value ? "injected" : "ejected");
 
-	if (gpio_value == EAR_EJECT)
+	if (gpio_value == EAR_EJECT) {
 		state = EAR_STATE_EJECT;
-	else
+		*value = 0;
+		gpio_set_value(GPIO_MIC_MODE, 0);
+	} else {
 		state = EAR_STATE_INJECT;
+		msleep(100);
+		gpio_value = !gpio_get_value(GPIO_BUTTON_DETECT);
+		if (gpio_value) {
+			printk(KERN_INFO "headphone was inserted!\n");
+			*value = SW_HEADPHONE_INSERT;
+		} else {
+			printk(KERN_INFO "micorphone was inserted!\n");
+			*value = SW_MICROPHONE_INSERT;
+			gpio_set_value(GPIO_MIC_MODE, 1);
+		}
+	}
 
 	return state;
 }
 
-static char *m3eu_gpio_earsense_print_name(void)
+static char *m3eu_gpio_earsense_print_name(int state)
 {
-	return "Headset";
+	if (state)
+		return "Headset";
+	else
+		return "No Device";
 }
 
 static char *m3eu_gpio_earsense_print_state(int state)
 {
-	return ear_state_string[state];
+	if (state == 0)
+		return ear_state_string[0];
+	else
+		return ear_state_string[1];
 }
 
 static int m3eu_gpio_earsense_sysfs_store(const char *buf, size_t size)
@@ -265,6 +284,18 @@ static struct platform_device *m3eu_sound_devices[] __initdata = {
 /* common function */
 void __init lge_add_sound_devices(void)
 {
+	int rc;
+
+	rc = gpio_request(GPIO_MIC_MODE, "mic_en");
+	if (rc) {
+		printk(KERN_ERR "%d gpio request is failed\n", GPIO_MIC_MODE);
+	} else {
+		rc = gpio_tlmm_config(GPIO_CFG(GPIO_MIC_MODE, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		if (rc)
+			printk(KERN_ERR "%d gpio tlmm config is failed\n", GPIO_MIC_MODE);
+	}
+
 	platform_add_devices(m3eu_sound_devices, ARRAY_SIZE(m3eu_sound_devices));
 }
 
