@@ -183,8 +183,7 @@ static int m3mpcs_gpio_earsense_work_func(int *value)
 		gpio_set_value(GPIO_MIC_MODE, 0);
 	} else {
 		state = EAR_STATE_INJECT;
-		msleep(100);
-		gpio_value = !gpio_get_value(GPIO_BUTTON_DETECT);
+		gpio_value = gpio_get_value(GPIO_BUTTON_DETECT);
 		if (gpio_value) {
 			printk(KERN_INFO "headphone was inserted!\n");
 			*value = SW_HEADPHONE_INSERT;
