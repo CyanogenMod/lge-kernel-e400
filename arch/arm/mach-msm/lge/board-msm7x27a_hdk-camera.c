@@ -275,20 +275,25 @@ static struct platform_device msm_camera_sensor_imx072 = {
 #endif
 
 #ifdef CONFIG_MT9P017
+static struct msm_camera_sensor_platform_info mt9p017_sensor_info = {
+	.mount_angle = 90
+};
+
 static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
-        .sensor_name    = "mt9p017",
-        .sensor_reset   = CAM_MAIN_GPIO_RESET_N,
-        .sensor_pwd     = 0,
-        .vcm_pwd        = 1,
-        .vcm_enable     = 1,
-        .pdata          = &msm_main_camera_device_data,
+	.sensor_name    = "mt9p017",
+	.sensor_reset   = CAM_MAIN_GPIO_RESET_N,
+	.sensor_pwd     = 0,
+	.vcm_pwd        = 1,
+	.vcm_enable     = 1,
+	.pdata          = &msm_main_camera_device_data,
 #ifdef CONFIG_MSM_CAMERA_FLASH
-	.flash_data             = &led_flash_data,//LM2759 Flash supported
+	.flash_data     = &led_flash_data,//LM2759 Flash supported
 #else
 	.flash_data		= &flash_none,
 #endif
 
-        .csi_if         = 1
+	.csi_if         = 1,
+	.sensor_platform_info = &mt9p017_sensor_info,
 };
 
 static struct platform_device msm_camera_sensor_mt9p017 = {
