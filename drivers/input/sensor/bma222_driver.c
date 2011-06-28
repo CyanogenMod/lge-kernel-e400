@@ -47,7 +47,7 @@
 #include <linux/akm8975.h> /* akm daemon ioctl set define */
 #define BMA222_BLOCK_IOCTL_CHECK 1
 
-#define BMA222_DEBUG 0
+/* #define BMA222_DEBUG */   
 
 #ifdef BMA222_MODULES 
 #include "bma222.c"
