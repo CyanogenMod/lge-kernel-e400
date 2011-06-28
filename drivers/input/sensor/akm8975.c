@@ -36,18 +36,14 @@
 #include <mach/board_lge.h> /* platform data */
 
 #define LGE_DEBUG 0
-#define AKM8975_DEBUG		1
-#define AKM8975_DEBUG_MSG	1
-#define AKM8975_DEBUG_FUNC	1
-#define AKM8975_DEBUG_DATA	1
+#define AKM8975_DEBUG		0
+#define AKM8975_DEBUG_MSG	0
+#define AKM8975_DEBUG_FUNC	0
+#define AKM8975_DEBUG_DATA	0
 #define MAX_FAILURE_COUNT	3
 #define AKM8975_RETRY_COUNT	10
-#define AKM8975_DEFAULT_DELAY	100000000
+#define AKM8975_DEFAULT_DELAY	100
 
-#define AKM_ACCEL_ITEMS 3
-#define AKM_ACCEL_X 0
-#define AKM_ACCEL_Y 1
-#define AKM_ACCEL_Z 2
 
 #if AKM8975_DEBUG_MSG
 #define AKMDBG(format, ...)	\
@@ -86,43 +82,15 @@ static atomic_t m_flag;
 static atomic_t a_flag;
 static atomic_t mv_flag;
 
-static int failure_count;
-static int64_t akmd_delay[3] = {-1, -1, -1};
-static int16_t akmd_accel[AKM_ACCEL_ITEMS] = {0, 0, 720};
-static atomic_t suspend_flag = ATOMIC_INIT(0);
+static atomic_t p_flag;
 
 /* static struct akm8975_platform_data *pdata; */
 
-/* LGE_CHANGE_S for debugging */
-#ifdef LGE_DEBUG
-static short yaw, pitch, roll;
-#endif
-/* LGE_CHANGE_E */
+static int failure_count = 0;
+static short akmd_delay = AKM8975_DEFAULT_DELAY;
 
-/* LGE_CHANGE_S */
-#ifdef LGE_DEBUG
-static ssize_t y_show(struct device *dev, struct device_attribute *attr, char *buf)
-{	
-	return sprintf(buf, "%d\n", yaw);
-}
-
-static DEVICE_ATTR(get_yaw, S_IRUGO, y_show, NULL);
-
-static ssize_t p_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", pitch);
-}
-
-static DEVICE_ATTR(get_pitch, S_IRUGO, p_show, NULL);
-
-static ssize_t r_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", roll);
-}
-
-static DEVICE_ATTR(get_roll, S_IRUGO, r_show, NULL);
-#endif
-/* LGE_CHANGE_E */
+static atomic_t suspend_flag = ATOMIC_INIT(0);
+static struct ecom_platform_data* ecom_pdata;
 
 static int AKI2C_RxData(char *rxData, int length)
 {
@@ -361,37 +329,27 @@ static void AKECS_SetYPR(short *rbuf)
 		   rbuf[9], rbuf[10], rbuf[11]);
 #endif
 	/* Report magnetic vector information */
-	if (atomic_read(&mv_flag) && (rbuf[0] & MAG_DATA_READY)) {
-		input_report_abs(data->input_dev, ABS_HAT0X, rbuf[1]);
-		input_report_abs(data->input_dev, ABS_HAT0Y, rbuf[2]);
-		input_report_abs(data->input_dev, ABS_BRAKE, rbuf[3]);
-		input_report_abs(data->input_dev, ABS_GAS, rbuf[4]);
-	}
-	/* Report acceleration sensor information */
-	if (atomic_read(&a_flag) && (rbuf[0] & ACC_DATA_READY)) {
-		input_report_abs(data->input_dev, ABS_X, rbuf[5]);
-		input_report_abs(data->input_dev, ABS_Y, rbuf[6]);
-		input_report_abs(data->input_dev, ABS_Z, rbuf[7]);
-		input_report_abs(data->input_dev, ABS_WHEEL, rbuf[8]);
-	}
-	/* Report orientation sensor information */
-	if (atomic_read(&m_flag) && (rbuf[0] & ORI_DATA_READY)) {
-		input_report_abs(data->input_dev, ABS_RX, rbuf[9]);
-		input_report_abs(data->input_dev, ABS_RY, rbuf[10]);
-		input_report_abs(data->input_dev, ABS_RZ, rbuf[11]);
+	if (atomic_read(&m_flag)) {
+		input_report_abs(data->input_dev, ABS_RX, rbuf[0]);
+		input_report_abs(data->input_dev, ABS_RY, rbuf[1]);
+		input_report_abs(data->input_dev, ABS_RZ, rbuf[2]);
 		input_report_abs(data->input_dev, ABS_RUDDER, rbuf[4]);
 	}
-
-	if (rbuf[0] != 0) {
-		input_sync(data->input_dev);
-/* LGE_CHANGE_S for debugging */
-#ifdef LGE_DEBUG
-		yaw = rbuf[9];
-		pitch = rbuf[10]; 
-		roll = rbuf[11];
-#endif
-/* LGE_CHANGE_E */
+	/* Report acceleration sensor information */
+	if (atomic_read(&a_flag)) {
+		input_report_abs(data->input_dev, ABS_X, rbuf[6]);
+		input_report_abs(data->input_dev, ABS_Y, rbuf[7]);
+		input_report_abs(data->input_dev, ABS_Z, rbuf[8]);
+		input_report_abs(data->input_dev, ABS_WHEEL, rbuf[5]);
 	}
+	/* Report magnetic vector information */
+	if (atomic_read(&mv_flag)) {
+		input_report_abs(data->input_dev, ABS_HAT0X, rbuf[9]);
+		input_report_abs(data->input_dev, ABS_HAT0Y, rbuf[10]);
+		input_report_abs(data->input_dev, ABS_BRAKE, rbuf[11]);
+	}
+
+	input_sync(data->input_dev);
 }
 
 static int AKECS_GetOpenStatus(void)
@@ -408,9 +366,10 @@ static int AKECS_GetCloseStatus(void)
 
 static void AKECS_CloseDone(void)
 {
-	atomic_set(&m_flag, 0);
-	atomic_set(&a_flag, 0);
-	atomic_set(&mv_flag, 0);
+	atomic_set(&m_flag, 1);
+	atomic_set(&a_flag, 1);
+	atomic_set(&mv_flag, 1);
+	atomic_set(&p_flag, 1);
 }
 
 /***** akm_aot functions ***************************************/
@@ -450,13 +409,12 @@ akm_aot_ioctl(struct file *file,
 
 	void __user *argp = (void __user *)arg;
 	short flag;
-	int64_t delay[3];
-	int16_t accel[AKM_ACCEL_ITEMS];
 
 	switch (cmd) {
 	case ECS_IOCTL_APP_SET_MFLAG:
 	case ECS_IOCTL_APP_SET_AFLAG:
 	case ECS_IOCTL_APP_SET_MVFLAG:
+		case ECS_IOCTL_APP_SET_PFLAG:
 		if (copy_from_user(&flag, argp, sizeof(flag))) {
 			return -EFAULT;
 		}
@@ -465,12 +423,7 @@ akm_aot_ioctl(struct file *file,
 		}
 		break;
 	case ECS_IOCTL_APP_SET_DELAY:
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			return -EFAULT;
-		}
-		break;
-	case ECS_IOCTL_APP_SET_ACCEL:
-		if (copy_from_user(&accel, argp, sizeof(accel))) {
+			if (copy_from_user(&flag, argp, sizeof(flag))) {
 			return -EFAULT;
 		}
 		break;
@@ -500,22 +453,19 @@ akm_aot_ioctl(struct file *file,
 	case ECS_IOCTL_APP_GET_MVFLAG:
 		flag = atomic_read(&mv_flag);
 		break;
-	case ECS_IOCTL_APP_SET_DELAY:
-		akmd_delay[0] = delay[0];
-		akmd_delay[1] = delay[1];
-		akmd_delay[2] = delay[2];
-		AKMDBG("Delay is set to %lld,%lld,%lld",
-				akmd_delay[0],akmd_delay[1],akmd_delay[2]);
+		case ECS_IOCTL_APP_SET_PFLAG:
+			atomic_set(&p_flag, flag);
+			AKMDBG("PFLAG is set to %d", flag);
+			break;
+		case ECS_IOCTL_APP_GET_PFLAG:
+			flag = atomic_read(&p_flag);
+			break;			
+		case ECS_IOCTL_APP_SET_DELAY:
+			akmd_delay = flag;
+			AKMDBG("Delay is set to %d", flag);
 		break;
 	case ECS_IOCTL_APP_GET_DELAY:
-		delay[0] = akmd_delay[0];
-		delay[1] = akmd_delay[1];
-		delay[2] = akmd_delay[2];
-		break;
-	case ECS_IOCTL_APP_SET_ACCEL:
-		akmd_accel[AKM_ACCEL_X] = accel[AKM_ACCEL_X];
-		akmd_accel[AKM_ACCEL_Y] = accel[AKM_ACCEL_Y];
-		akmd_accel[AKM_ACCEL_Z] = accel[AKM_ACCEL_Z];
+			flag = akmd_delay;
 		break;
 	default:
 		return -ENOTTY;
@@ -525,12 +475,9 @@ akm_aot_ioctl(struct file *file,
 	case ECS_IOCTL_APP_GET_MFLAG:
 	case ECS_IOCTL_APP_GET_AFLAG:
 	case ECS_IOCTL_APP_GET_MVFLAG:
-		if (copy_to_user(argp, &flag, sizeof(flag))) {
-			return -EFAULT;
-		}
-		break;
+		case ECS_IOCTL_APP_GET_PFLAG:			
 	case ECS_IOCTL_APP_GET_DELAY:
-		if (copy_to_user(argp, &delay, sizeof(delay))) {
+			if (copy_to_user(argp, &flag, sizeof(flag))) {
 			return -EFAULT;
 		}
 		break;
@@ -581,11 +528,11 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 	char rwbuf[RWBUF_SIZE];		/* for READ/WRITE */
 	char mode;			/* for SET_MODE*/
 	short value[12];	/* for SET_YPR */
-	int64_t delay[3];	/* for GET_DELAY */
+	short delay;				/* for GET_DELAY */
 	int status;			/* for OPEN/CLOSE_STATUS */
 	int ret = -1;		/* Return value. */
-	int16_t accel[AKM_ACCEL_ITEMS];
 	/*AKMDBG("%s (0x%08X).", __func__, cmd);*/
+	char accel_dev_path[30];
 
 	switch (cmd) {
 	case ECS_IOCTL_WRITE:
@@ -675,15 +622,11 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case ECS_IOCTL_GET_DELAY:
 		AKMFUNC("IOCTL_GET_DELAY");
-		delay[0] = akmd_delay[0];
-		delay[1] = akmd_delay[1];
-		delay[2] = akmd_delay[2];
-		break;
-	case ECS_IOCTL_GET_ACCEL:
-		AKMFUNC("IOCTL_GET_ACCEL");
-		accel[AKM_ACCEL_X] = akmd_accel[AKM_ACCEL_X];
-		accel[AKM_ACCEL_Y] = akmd_accel[AKM_ACCEL_Y];
-		accel[AKM_ACCEL_Z] = akmd_accel[AKM_ACCEL_Z];
+			delay = akmd_delay;
+			break;
+		case ECS_IOCTL_GET_ACCEL_PATH:
+			break;
+		case ECS_IOCTL_ACCEL_INIT:
 		break;
 	default:
 		return -ENOTTY;
@@ -715,11 +658,10 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 			return -EFAULT;
 		}
 		break;
-	case ECS_IOCTL_GET_ACCEL:
-		if (copy_to_user(argp, &accel, sizeof(accel))) {
-			AKMDBG("copy_to_user failed.");
+	case ECS_IOCTL_GET_ACCEL_PATH:
+		sprintf(accel_dev_path, "/dev/%s", ecom_pdata->accelerator_name);
+		if (copy_to_user(argp, accel_dev_path, sizeof(accel_dev_path)))
 			return -EFAULT;
-		}
 		break;
 	default:
 		break;
@@ -835,7 +777,6 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct akm8975_data *akm;
 	int err = 0;
 
-	struct ecom_platform_data* ecom_pdata;
 
 	AKMFUNC("akm8975_probe");
 
@@ -879,7 +820,7 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	/* IRQ */
-	err = request_irq(client->irq, akm8975_interrupt, IRQ_TYPE_EDGE_BOTH,
+	err = request_irq(client->irq, akm8975_interrupt, IRQ_TYPE_EDGE_RISING,
 					  "akm8975_DRDY", akm);
 	if (err < 0) {
 		printk(KERN_ERR "AKM8975 akm8975_probe: request irq failed\n");
@@ -953,9 +894,10 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	init_waitqueue_head(&open_wq);
 
 	/* As default, report no information */
-	atomic_set(&m_flag, 0);
-	atomic_set(&a_flag, 0);
-	atomic_set(&mv_flag, 0);
+	atomic_set(&m_flag, 1);
+	atomic_set(&a_flag, 1);
+	atomic_set(&mv_flag, 1);
+	atomic_set(&p_flag, 1);	
 
 /* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
    for using when early_suspend configured only */
@@ -966,34 +908,9 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 #endif
 /* LGE_CHANGE_E */
 
-	akmd_accel[AKM_ACCEL_X] = 0.0f;
-	akmd_accel[AKM_ACCEL_Y] = 0.0f;
-	akmd_accel[AKM_ACCEL_Z] = 0.0f;
 
 	AKMDBG("successfully probed.");
 
-/* LGE_CHANGE_S for debugging */
-#ifdef LGE_DEBUG
-	err = device_create_file(&client->dev, &dev_attr_get_yaw);
-	if (err) {
-		printk( KERN_DEBUG "LG_FW : dev_attr_get_yaw create fail\n");
-		device_remove_file(&client->dev, &dev_attr_get_yaw);
-		return err;
-	}
-	err = device_create_file(&client->dev, &dev_attr_get_pitch);
-	if (err) {
-		printk( KERN_DEBUG "LG_FW : dev_attr_get_pitch create fail\n");
-		device_remove_file(&client->dev, &dev_attr_get_pitch);
-		return err;
-	}
-	err = device_create_file(&client->dev, &dev_attr_get_roll);
-	if (err) {
-		printk( KERN_DEBUG "LG_FW : dev_attr_get_roll create fail\n");
-		device_remove_file(&client->dev, &dev_attr_get_roll);
-		return err;
-	}
-#endif
-/* LGE_CHANGE_E */
 
 	return 0;
 
