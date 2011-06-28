@@ -391,6 +391,7 @@ static struct ecom_platform_data ecom_pdata = {
 	.pin_int        	= ECOM_GPIO_INT,
 	.pin_rst		= 0,
 	.power          	= ecom_power_set,
+	.accelerator_name = "bma222",
 };
 
 static struct i2c_board_info ecom_i2c_bdinfo[] = {

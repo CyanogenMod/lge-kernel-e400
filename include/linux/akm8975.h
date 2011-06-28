@@ -21,9 +21,6 @@
 #define SENSOR_DATA_SIZE	8
 #define RWBUF_SIZE			16
 
-#define MAG_DATA_READY		1
-#define ACC_DATA_READY		2
-#define ORI_DATA_READY		4
 
 
 /*! \name AK8975 register address
@@ -68,10 +65,9 @@ Defines a read-only address of the fuse ROM of the AK8975.*/
 #define ECS_IOCTL_SET_YPR           _IOW(AKMIO, 0x06, short[12])
 #define ECS_IOCTL_GET_OPEN_STATUS   _IOR(AKMIO, 0x07, int)
 #define ECS_IOCTL_GET_CLOSE_STATUS  _IOR(AKMIO, 0x08, int)
-#define ECS_IOCTL_GET_DELAY         _IOR(AKMIO, 0x30, long long int[3])
+#define ECS_IOCTL_GET_DELAY             _IOR(AKMIO, 0x30, short)
 #define ECS_IOCTL_GET_PROJECT_NAME  _IOR(AKMIO, 0x0D, char[64])
-#define ECS_IOCTL_GET_LAYOUT        _IOR(AKMIO, 0x0E, short)
-#define ECS_IOCTL_GET_ACCEL			_IOR(AKMIO, 0x31, short[3])
+#define ECS_IOCTL_GET_MATRIX            _IOR(AKMIO, 0x0E, short [4][3][3])
 
 /* IOCTLs for APPs */
 #define ECS_IOCTL_APP_SET_MODE		_IOW(AKMIO, 0x10, short)/* NOT use */
@@ -79,17 +75,31 @@ Defines a read-only address of the fuse ROM of the AK8975.*/
 #define ECS_IOCTL_APP_GET_MFLAG		_IOW(AKMIO, 0x12, short)
 #define ECS_IOCTL_APP_SET_AFLAG		_IOW(AKMIO, 0x13, short)
 #define ECS_IOCTL_APP_GET_AFLAG		_IOR(AKMIO, 0x14, short)
-#define ECS_IOCTL_APP_SET_DELAY		_IOW(AKMIO, 0x18, long long int[3])
+#define ECS_IOCTL_APP_SET_TFLAG		_IOR(AKMIO, 0x15, short)/* NOT use */
+#define ECS_IOCTL_APP_GET_TFLAG		_IOR(AKMIO, 0x16, short)/* NOT use */
+#define ECS_IOCTL_APP_RESET_PEDOMETER   _IO(AKMIO, 0x17)	/* NOT use */
+#define ECS_IOCTL_APP_SET_DELAY		_IOW(AKMIO, 0x18, short)
 #define ECS_IOCTL_APP_GET_DELAY		ECS_IOCTL_GET_DELAY
 #define ECS_IOCTL_APP_SET_MVFLAG	_IOW(AKMIO, 0x19, short)
 #define ECS_IOCTL_APP_GET_MVFLAG	_IOR(AKMIO, 0x1A, short)
-#define ECS_IOCTL_APP_SET_ACCEL		_IOW(AKMIO, 0x1B, short[3])
+/*LG_CHANGES_S [ey.cho@lge.com] 2010-01-16 Add proximity sensor */
+#define ECS_IOCTL_APP_SET_PFLAG         _IOR(AKMIO, 0x1B, short)        /* Get proximity flag */
+#define ECS_IOCTL_APP_GET_PFLAG         _IOR(AKMIO, 0x1C, short)        /* Set proximity flag */
+/*LG_CHANGES_E [ey.cho@lge.com] 2010-01-16 */
 
+#define ECS_IOCTL_GET_ACCEL_PATH            _IOR(AKMIO, 0x20, char[30])
+#define ECS_IOCTL_ACCEL_INIT             _IOR(AKMIO, 0x21, int[7])
+#define ECS_IOCTL_GET_ALAYOUT_INIO             _IOR(AKMIO, 0x22, signed short[18])
+#define ECS_IOCTL_GET_HLAYOUT_INIO             _IOR(AKMIO, 0x23, signed short[18])
+
+#define AKMD2_TO_ACCEL_IOCTL_READ_XYZ	_IOWR(AKMIO, 0x31, int)
+#define AKMD2_TO_ACCEL_IOCTL_ACCEL_INIT	_IOWR(AKMIO, 0x32, int)
+/* original source
 struct akm8975_platform_data {
-	char layout;
+	char layouts[3][3];
 	char project_name[64];
 	int gpio_DRDY;
 };
-
+*/
 #endif
 
