@@ -85,6 +85,7 @@ Defines a read-only address of the fuse ROM of the AK8975.*/
 #define ECS_IOCTL_APP_GET_MVFLAG	_IOR(AKMIO, 0x1A, short)
 #define ECS_IOCTL_APP_SET_ACCEL		_IOW(AKMIO, 0x1B, short[3])
 
+#define AKMD2_TO_ACCEL_IOCTL_READ_XYZ	_IOWR(AKMIO, 0x31, int)
 struct akm8975_platform_data {
 	char layout;
 	char project_name[64];
