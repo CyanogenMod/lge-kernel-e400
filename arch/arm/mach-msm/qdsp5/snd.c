@@ -57,6 +57,10 @@ static struct snd_ctxt the_snd;
 #define SND_AVC_CTL_PROC 29
 #define SND_AGC_CTL_PROC 30
 
+#if defined (CONFIG_MACH_LGE)
+#define SND_SET_LOOPBACK_MODE_PROC 61
+#endif
+
 struct rpc_snd_set_device_args {
 	uint32_t device;
 	uint32_t ear_mute;
@@ -107,6 +111,24 @@ struct snd_agc_ctl_msg {
 	struct rpc_snd_agc_ctl_args args;
 };
 
+#if defined (CONFIG_MACH_LGE)
+struct snd_set_loopback_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_mode;
+} lrep;	
+
+struct rpc_snd_set_loopback_mode_args {
+	uint32_t mode;
+	uint32_t cb_func;
+	uint32_t client_data;
+};
+
+struct snd_set_loopback_mode_msg {
+	struct rpc_request_hdr hdr;
+	struct rpc_snd_set_loopback_mode_args args;
+};
+#endif
+
 struct snd_endpoint *get_snd_endpoints(int *size);
 
 static inline int check_mute(int mute)
@@ -154,6 +176,12 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct msm_snd_device_config dev;
 	struct msm_snd_volume_config vol;
 	struct snd_ctxt *snd = file->private_data;
+
+#if defined (CONFIG_MACH_LGE)
+	struct msm_snd_set_loopback_mode_param loopback;
+	struct snd_set_loopback_mode_msg lbmsg;
+#endif
+
 	int rc = 0;
 
 	uint32_t avc, agc;
@@ -264,6 +292,38 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case SND_GET_ENDPOINT:
 		rc = get_endpoint(snd, arg);
 		break;
+
+#if defined (CONFIG_MACH_LGE)
+	case SND_SET_LOOPBACK_MODE:
+	if (copy_from_user(&loopback, (void __user *) arg, sizeof(loopback))) {
+		pr_err("snd_ioctl set_loopback_mode: invalid pointer.\n");
+		rc = -EFAULT;
+		break;
+	}
+
+	lbmsg.args.mode = cpu_to_be32(loopback.mode);
+	lbmsg.args.cb_func = -1;
+	lbmsg.args.client_data = 0;
+
+
+	pr_info("set_loopback_mode %d \n", loopback.mode);
+
+	rc = msm_rpc_call(snd->ept,
+		SND_SET_LOOPBACK_MODE_PROC,
+		&lbmsg, sizeof(lbmsg), 5 * HZ);
+	
+	if (rc < 0) {
+		printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+	} else {
+		loopback.get_param = be32_to_cpu(lrep.get_mode);
+		printk(KERN_INFO "%s:loopback mode ->%d\n", __func__, loopback.get_param);
+		if (copy_to_user((void __user *)arg, &loopback, sizeof(loopback))) {
+			pr_err("snd_ioctl get loopback mode: invalid write pointer.\n");
+			rc = -EFAULT;
+		}
+	}
+	break;
+#endif
 
 	default:
 		MM_ERR("unknown command\n");
