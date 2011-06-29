@@ -173,7 +173,11 @@ struct mt9p017_i2c_reg_conf const mode_preview_tbl[]=
 	{0x3008, 0x0A25},	 //x_addr_end
 	{0x3002, 0x0000},	 //y_start_addr
 	{0x3006, 0x07A5},	 //y_addr_end
+#ifdef MT9P017_CAMERA_ROT_180
 	{0x3040, 0xC4C3},	 //read_mode - vertical flip, horizontal mirror
+#else
+	{0x3040, 0x04C3},	 //read_mode
+#endif
 	{0x034C, 0x0514},	 //x_output_size
 	{0x034E, 0x03D4},	 //y_output_size
 	{0x300C, 0x0D4C},	 //line_length_pck
@@ -190,7 +194,11 @@ struct mt9p017_i2c_reg_conf const mode_snapshot_tbl[]=
 	{0x3008, 0x0A2F},	 //x_addr_end
 	{0x3002, 0x0000},	 //y_start_addr
 	{0x3006, 0x07A7},	 //y_addr_end
+#ifdef MT9P017_CAMERA_ROT_180
 	{0x3040, 0xC041},	 //read_mode - vertical flip, horizontal mirror
+#else
+	{0x3040, 0x0041},	 //read_mode
+#endif
 	{0x034C, 0x0A30},	 //x_output_size
 	{0x034E, 0x07A8},	 //y_output_size
 	{0x300C, 0x14A0},	 //line_length_pck
