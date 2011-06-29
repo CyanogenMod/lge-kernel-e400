@@ -933,7 +933,6 @@ config USB_ANDROID
 config USB_ANDROID_ACM
 	boolean "Android gadget ACM serial function"
 	depends on USB_ANDROID
-	depends on !(USB_F_SERIAL || USB_F_SERIAL_SDIO || USB_F_SERIAL_SMD)
 	default n
 	help
 	  Provides ACM serial function for android gadget driver.
@@ -1316,5 +1315,70 @@ config RMNET_SMD_DATA_CHANNEL
 
 
 endchoice
+config USB_SUPPORT_LGE_FACTORY_USB
+	boolean "USB Support LGE Factory USB(CDMA class)"
+	depends on USB_SUPPORT_LGE_GADGET_CDMA
+	select LGE_SUPPORT_RAPI
+	help
+	  Supports LG USB driver for factory manufacturing(CDMA class)
+	
+	default n
+
+config LGE_USB_GADGET_SUPPORT_FACTORY_USB
+	tristate "USB Gadget Support LGE Factory USB"
+	depends on USB_GADGET
+	help
+	  Supports LG USB driver
+	
+	default n
+
+config LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
+	boolean "Function is binded only in init section"
+	depends on USB_GADGET
+	help
+	  Function is binded only in init section
+	
+	default n
+
+config LGE_USB_GADGET_NDIS_DRIVER
+	boolean "LG SI United ndis driver"
+	depends on USB_GADGET
+	help
+	  Support LG SI United ndis driver
+	
+	default n
+
+config USB_SUPPORT_LGE_ANDROID_AUTORUN
+	boolean "Autorun support in LGE Android model(common)"
+	depends on USB_GADGET
+	help
+	  It supports Autorun feature in LGE Android model if it is needed.
+
+	default n
+
+config USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO
+	boolean "Autorun charge only support in LGE Android model(common)"
+	depends on USB_SUPPORT_LGE_ANDROID_AUTORUN
+	help
+	  It supports Autorun charge only feature in LGE Android model if it is needed.
+
+	default n
+
+config LGE_USB_GADGET_DRIVER
+	boolean "LG USB Gadget Platform Driver"
+	depends on USB_GADGET
+	help
+	  LG USB gadget platform driver
+	
+	default n
+
+config USB_ANDROID_CDC_ECM
+	tristate "cdc ecm function driver"
+	depends on USB_ANDROID
+	default n
+	help
+	  enabling this option adds CDC-ECM support to the
+	  android gadget.
+	  Say "y" to link the CDC-ECM as a part of android gadget
 
 endif # USB_GADGET
