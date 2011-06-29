@@ -82,5 +82,8 @@ enum {
 #define GPIO_BUTTON_DETECT  28
 #define GPIO_MIC_MODE		127
 
+/* connectivity gpio */
+#define BT_SYS_REST_EN		6
+
 #endif
 
