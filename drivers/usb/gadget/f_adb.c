@@ -116,6 +116,25 @@ static struct usb_descriptor_header *hs_adb_descs[] = {
 	NULL,
 };
 
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+extern u16 android_get_product_id(void);
+#endif
+#ifdef CONFIG_LGE_USB_GADGET_MTP_DRIVER
+extern const u16 lg_mtp_pid;
+#endif
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+extern const u16 lg_autorun_pid;
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO
+extern const u16 lg_charge_only_pid;
+#endif
+#endif
+#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
+extern const u16 lg_factory_pid;
+#endif
+/* 2011.05.13 jaeho.cho@lge.com generate ADB USB uevent for gingerbread*/
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+extern int adb_disable;
+#endif
 
 /* temporary variable used between adb_open() and adb_gadget_bind() */
 static struct adb_dev *_adb_dev;
@@ -448,11 +467,47 @@ static struct miscdevice adb_device = {
 
 static int adb_enable_open(struct inode *ip, struct file *fp)
 {
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	u16 pid;
+
+	pid = android_get_product_id();
+
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+/* 2011.05.13 jaeho.cho@lge.com generate ADB USB uevent for gingerbread*/
+adb_disable = 0;
+#if defined(CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO)
+if ((pid == lg_autorun_pid) || (pid == lg_charge_only_pid)) {
+#else
+if (pid == lg_autorun_pid) {
+#endif
+	pr_info("%s: adb enabling on Autorun mode, Ignore it\n",
+			__func__);
+	/* intended error trigger */
+	return -1;
+}
+#endif
+
+#if defined(CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB)
+	if(pid == lg_factory_pid)
+	{
+		return 0;
+	}
+#endif
+	
+#ifdef CONFIG_LGE_USB_GADGET_MTP_DRIVER
+	if(pid == lg_mtp_pid)
+		return 0;
+#endif
+#endif
+
+	/* 2011.05.13 jaeho.cho@lge.com generate ADB USB uevent for gingerbread*/
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+#else
 	if (atomic_inc_return(&adb_enable_excl) != 1) {
 		atomic_dec(&adb_enable_excl);
 		return -EBUSY;
 	}
-
+#endif
 	pr_debug("%s: Enabling adb\n", __func__);
 	android_enable_function(&_adb_dev->function, 1);
 
@@ -461,9 +516,48 @@ static int adb_enable_open(struct inode *ip, struct file *fp)
 
 static int adb_enable_release(struct inode *ip, struct file *fp)
 {
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	u16 pid;
+
+	pid = android_get_product_id();
+
+	
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+/* 2011.05.13 jaeho.cho@lge.com generate ADB USB uevent for gingerbread*/
+	adb_disable =1;
+#if defined(CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO)
+	if ((pid == lg_autorun_pid) || (pid == lg_charge_only_pid)) {
+#else
+	if (pid == lg_autorun_pid) {
+#endif
+		pr_info("%s: adb enabling on Autorun mode, Ignore it\n",
+				__func__);
+
+		/* intended error trigger */
+		return -1;
+	}
+#endif
+
+#if defined(CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB)
+	if(pid == lg_factory_pid)
+	{
+		return 0;
+	}
+#endif
+
+#ifdef CONFIG_LGE_USB_GADGET_MTP_DRIVER
+	if(pid == lg_mtp_pid)
+		return 0;
+#endif
+#endif
+
 	pr_debug("%s: Disabling adb\n", __func__);
 	android_enable_function(&_adb_dev->function, 0);
+	/* 2011.05.13 jaeho.cho@lge.com generate ADB USB uevent for gingerbread*/	
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+#else
 	atomic_dec(&adb_enable_excl);
+#endif	
 	return 0;
 }
 

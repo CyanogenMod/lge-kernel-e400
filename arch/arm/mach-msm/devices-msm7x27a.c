@@ -208,6 +208,24 @@ struct platform_device usb_gadget_fserial_device = {
 		.platform_data = &fserial_pdata,
 	},
 };
+
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+#ifdef CONFIG_USB_ANDROID_ACM
+static struct usb_gadget_facm_pdata facm_pdata = {
+	.no_ports	= 2,
+	.transport[0] = USB_GADGET_FSERIAL_TRANSPORT_TTY,
+	.transport[1] = USB_GADGET_FSERIAL_TRANSPORT_TTY,
+};
+
+struct platform_device usb_gadget_facm_device = {
+	.name	= "usb_facm",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &facm_pdata,
+	},
+};
+#endif
+#endif
 static struct resource msm_dmov_resource[] = {
 	{
 		.start	= INT_ADM_AARM,
