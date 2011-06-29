@@ -184,7 +184,7 @@ struct msm_camera_device_platform_data msm_camera_device_data_rear = {
 
 #ifdef CONFIG_MT9P017
 static struct msm_camera_sensor_platform_info mt9p017_sensor_info = {
-	.mount_angle = 180
+	.mount_angle = 0
 };
 
 static struct msm_camera_sensor_flash_data flash_none = {
