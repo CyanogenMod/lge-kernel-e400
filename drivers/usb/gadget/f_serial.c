@@ -104,7 +104,12 @@ static inline struct f_gser *port_to_gser(struct gserial *p)
 	return container_of(p, struct f_gser, port);
 }
 #define GS_LOG2_NOTIFY_INTERVAL		5	/* 1 << 5 == 32 msec */
+
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+#define GS_NOTIFY_MAXPACKET		16
+#else
 #define GS_NOTIFY_MAXPACKET		10	/* notification + 2 bytes */
+#endif
 #endif
 /*-------------------------------------------------------------------------*/
 
@@ -119,9 +124,17 @@ static struct usb_interface_descriptor gser_interface_desc = {
 #else
 	.bNumEndpoints =	2,
 #endif
+
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	.bInterfaceClass =	USB_CLASS_VENDOR_SPEC,
+	.bInterfaceSubClass =	USB_CLASS_VENDOR_SPEC,
+	.bInterfaceProtocol =	USB_CLASS_VENDOR_SPEC,
+#else
 	.bInterfaceClass =	USB_CLASS_VENDOR_SPEC,
 	.bInterfaceSubClass =	0,
 	.bInterfaceProtocol =	0,
+#endif
+
 	/* .iInterface = DYNAMIC */
 };
 #ifdef CONFIG_MODEM_SUPPORT
@@ -182,6 +195,15 @@ static struct usb_endpoint_descriptor gser_fs_out_desc __initdata = {
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
 };
 
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+static struct usb_descriptor_header *gser_fs_function[] __initdata = {
+	(struct usb_descriptor_header *) &gser_interface_desc,
+	(struct usb_descriptor_header *) &gser_fs_in_desc,
+	(struct usb_descriptor_header *) &gser_fs_out_desc,
+	(struct usb_descriptor_header *) &gser_fs_notify_desc,
+	NULL,
+};
+#else /* below is original */
 static struct usb_descriptor_header *gser_fs_function[] __initdata = {
 	(struct usb_descriptor_header *) &gser_interface_desc,
 #ifdef CONFIG_MODEM_SUPPORT
@@ -195,6 +217,7 @@ static struct usb_descriptor_header *gser_fs_function[] __initdata = {
 	(struct usb_descriptor_header *) &gser_fs_out_desc,
 	NULL,
 };
+#endif
 
 /* high speed support: */
 #ifdef CONFIG_MODEM_SUPPORT
@@ -222,6 +245,15 @@ static struct usb_endpoint_descriptor gser_hs_out_desc = {
 	.wMaxPacketSize =	__constant_cpu_to_le16(512),
 };
 
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+static struct usb_descriptor_header *gser_hs_function[] __initdata = {
+	(struct usb_descriptor_header *) &gser_interface_desc,
+	(struct usb_descriptor_header *) &gser_hs_in_desc,
+	(struct usb_descriptor_header *) &gser_hs_out_desc,
+	(struct usb_descriptor_header *) &gser_hs_notify_desc,
+	NULL,
+};
+#else /* below is original */
 static struct usb_descriptor_header *gser_hs_function[] __initdata = {
 	(struct usb_descriptor_header *) &gser_interface_desc,
 #ifdef CONFIG_MODEM_SUPPORT
@@ -235,6 +267,7 @@ static struct usb_descriptor_header *gser_hs_function[] __initdata = {
 	(struct usb_descriptor_header *) &gser_hs_out_desc,
 	NULL,
 };
+#endif
 
 /* string descriptors: */
 
@@ -267,6 +300,7 @@ static char *transport_to_str(enum transport_type t)
 	return "NONE";
 }
 
+#ifndef CONFIG_USB_ANDROID_ACM
 #ifdef CONFIG_USB_F_SERIAL
 static int gport_setup(struct usb_configuration *c)
 {
@@ -284,6 +318,7 @@ static int gport_setup(struct usb_configuration *c)
 
 	return ret;
 }
+#endif
 #endif
 static int gport_connect(struct f_gser *gser)
 {
@@ -503,16 +538,27 @@ static int gser_notify(struct f_gser *gser, u8 type, u16 value,
 	struct usb_ep			*ep = gser->notify;
 	struct usb_request		*req;
 	struct usb_cdc_notification	*notify;
+#ifndef CONFIG_LGE_USB_GADGET_DRIVER	
 	const unsigned			len = sizeof(*notify) + length;
+#endif	
 	void				*buf;
 	int				status;
 	struct usb_composite_dev *cdev = gser->port.func.config->cdev;
+	
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	unsigned char noti_buf[GS_NOTIFY_MAXPACKET];
+	memset(noti_buf, 0, GS_NOTIFY_MAXPACKET);
+#endif	
 
 	req = gser->notify_req;
 	gser->notify_req = NULL;
 	gser->pending = false;
-
+	
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	req->length = GS_NOTIFY_MAXPACKET;
+#else
 	req->length = len;
+#endif
 	notify = req->buf;
 	buf = notify + 1;
 
@@ -522,7 +568,12 @@ static int gser_notify(struct f_gser *gser, u8 type, u16 value,
 	notify->wValue = cpu_to_le16(value);
 	notify->wIndex = cpu_to_le16(gser->data_id);
 	notify->wLength = cpu_to_le16(length);
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	memcpy(noti_buf, data, length);
+	memcpy(buf, noti_buf, GS_NOTIFY_MAXPACKET);
+#else
 	memcpy(buf, data, length);
+#endif
 
 	status = usb_ep_queue(ep, req, GFP_ATOMIC);
 	if (status < 0) {
@@ -874,6 +925,7 @@ static struct android_usb_function nmea_function = {
 	.bind_config = fserial_nmea_bind_config,
 };
 
+#ifndef CONFIG_USB_ANDROID_ACM //hyunjin2.lim@lge.com M3 LG driver는 ACM 사용 
 int fserial_modem_bind_config(struct usb_configuration *c)
 {
 	int ret;
@@ -893,7 +945,7 @@ static struct android_usb_function modem_function = {
 	.name = "modem",
 	.bind_config = fserial_modem_bind_config,
 };
-
+#endif
 static int fserial_remove(struct platform_device *dev)
 {
 	gserial_cleanup();
@@ -952,7 +1004,9 @@ static int __init fserial_probe(struct platform_device *pdev)
 			no_smd_ports, nr_ports);
 
 probe_android_register:
+#ifndef CONFIG_USB_ANDROID_ACM //hyunjin2.lim@lge.com M3 LG driver는 ACM 사용 
 	android_register_function(&modem_function);
+#endif
 	android_register_function(&nmea_function);
 
 	return 0;
