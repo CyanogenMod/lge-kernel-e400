@@ -28,15 +28,21 @@
 #endif
 
 ENTRY(msm_arch_idle)
+	stmfd   sp!, {lr}
 #ifdef CONFIG_MSM_JTAG_V7
-	stmfd	sp!, {lr}
-	bl	msm_save_jtag_debug
+	bl      msm_save_jtag_debug
+#endif
+#ifdef CONFIG_MSM_ETM
+	bl      etm_save_reg_check
 #endif
 	wfi
-#ifdef CONFIG_MSM_JTAG_V7
-	bl	msm_restore_jtag_debug
-	ldmfd	sp!, {lr}
+#ifdef CONFIG_MSM_ETM
+	bl      etm_restore_reg_check
 #endif
+#ifdef CONFIG_MSM_JTAG_V7
+	bl      msm_restore_jtag_debug
+#endif
+	ldmfd   sp!, {lr}
 	bx	lr
 
 #ifdef CONFIG_ARCH_7X27A
@@ -54,7 +60,7 @@ ENTRY(msm_pm_collapse)
 #endif
 
 	ldr     r0, =saved_state
-#if defined(CONFIG_NR_CPUS) && (CONFIG_NR_CPUS >= 2)
+#if (NR_CPUS >= 2)
 	mrc	p15, 0, r1, c0, c0, 5	/* MPIDR */
 	ands	r1, r1, #15		/* What CPU am I */
 	addne	r0, r0, #CPU_SAVED_STATE_SIZE
@@ -64,7 +70,7 @@ ENTRY(msm_pm_collapse)
 	mrc     p15, 0, r1, c1, c0, 0 /* MMU control */
 	mrc     p15, 0, r2, c2, c0, 0 /* TTBR0 */
 	mrc     p15, 0, r3, c3, c0, 0 /* dacr */
-#if !defined(CONFIG_ARCH_MSM8960) && !defined(CONFIG_ARCH_MSM7X27A)
+#ifdef CONFIG_ARCH_MSM_SCORPION
 	/* This instruction is not valid for non scorpion processors */
 	mrc     p15, 3, r4, c15, c0, 3 /* L2CR1 is the L2 cache control reg 1 */
 #endif
@@ -81,7 +87,7 @@ ENTRY(msm_pm_collapse)
 	mrc     p15, 7, r2, c15, c0, 6 /* AVSDSCR is the Adaptive Voltage
 	                                * Scaling Delay Synthesizer Control
 					* Register */
-#ifndef CONFIG_ARCH_MSM8960
+#ifndef CONFIG_ARCH_MSM_KRAIT
 	mrc     p15, 7, r3, c15, c1, 0 /* TSCSR is the Temperature Status and
 	                                * Control Register
 					*/
@@ -92,6 +98,9 @@ ENTRY(msm_pm_collapse)
 
 #ifdef CONFIG_MSM_JTAG_V7
 	bl      msm_save_jtag_debug
+#endif
+#ifdef CONFIG_MSM_ETM
+	bl      etm_save_reg_check
 #endif
 	bl      v7_flush_dcache_all
 
@@ -114,11 +123,14 @@ ENTRY(msm_pm_collapse)
 #if defined(CONFIG_MSM_FIQ_SUPPORT)
 	cpsie   f
 #endif
+#ifdef CONFIG_MSM_ETM
+	bl	etm_restore_reg_check
+#endif
 #ifdef CONFIG_MSM_JTAG_V7
 	bl	msm_restore_jtag_debug
 #endif
 	ldr     r0, =saved_state        /* restore registers */
-#if defined(CONFIG_NR_CPUS) && (CONFIG_NR_CPUS >= 2)
+#if (NR_CPUS >= 2)
 	mrc	p15, 0, r1, c0, c0, 5	/* MPIDR */
 	ands	r1, r1, #15		/* What CPU am I */
 	addne	r0, r0, #CPU_SAVED_STATE_SIZE
@@ -143,7 +155,7 @@ ENTRY(msm_pm_collapse_exit)
 	adr     r3, msm_pm_collapse_exit
 	add     r1, r1, r3
 	sub     r1, r1, r2
-#if defined(CONFIG_NR_CPUS) && (CONFIG_NR_CPUS >= 2)
+#if (NR_CPUS >= 2)
 	mrc	p15, 0, r2, c0, c0, 5	/* MPIDR */
 	ands	r2, r2, #15		/* What CPU am I */
 	subeq	r1, r1, #CPU_SAVED_STATE_SIZE
@@ -151,7 +163,7 @@ ENTRY(msm_pm_collapse_exit)
 
 #ifdef CONFIG_MSM_CPU_AVS
 	ldmdb   r1!, {r2-r4}
-#ifndef CONFIG_ARCH_MSM8960
+#ifndef CONFIG_ARCH_MSM_KRAIT
 	mcr     p15, 7, r4, c15, c1, 0 /* TSCSR */
 #endif
 	mcr     p15, 7, r3, c15, c0, 6 /* AVSDSCR */
@@ -160,7 +172,7 @@ ENTRY(msm_pm_collapse_exit)
 	ldmdb   r1!, {r2-r11}
 	mcr     p15, 0, r4, c3, c0, 0 /* dacr */
 	mcr     p15, 0, r3, c2, c0, 0 /* TTBR0 */
-#if !defined(CONFIG_ARCH_MSM8960) && !defined(CONFIG_ARCH_MSM7X27A)
+#ifdef CONFIG_ARCH_MSM_SCORPION
 	/* This instruction is not valid for non scorpion processors */
 	mcr     p15, 3, r5, c15, c0, 3 /* L2CR1 */
 #endif
@@ -204,6 +216,9 @@ msm_pm_pa_to_va:
 	isb
 	stmfd   sp!, {lr}
 	bl      v7_flush_kern_cache_all
+#ifdef CONFIG_MSM_ETM
+	bl      etm_restore_reg_check
+#endif
 #ifdef CONFIG_MSM_JTAG_V7
 	bl      msm_restore_jtag_debug
 #endif
@@ -243,7 +258,7 @@ msm_pm_pc_pgd:
 	.long	0x0
 
 saved_state:
-#if defined(CONFIG_NR_CPUS) && (CONFIG_NR_CPUS >= 2)
+#if (NR_CPUS >= 2)
 	.space	CPU_SAVED_STATE_SIZE * 2 /* This code only supports 2 cores */
 #else
 	.space	CPU_SAVED_STATE_SIZE

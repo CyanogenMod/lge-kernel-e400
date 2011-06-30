@@ -587,7 +587,9 @@ static void switch_sc_speed(int cpu, struct clkctl_acpu_speed *tgt_s)
 	} else if (strt_s->pll == ACPU_SCPLL && tgt_s->pll != ACPU_SCPLL) {
 		select_clk_source_div(cpu, tgt_s);
 		select_core_source(cpu, tgt_s->core_src_sel);
+		/* Core source switch must complete before disabling SCPLL. */
 		mb();
+		udelay(1);
 		scpll_disable(cpu);
 	} else
 		scpll_change_freq(cpu, tgt_s->l_val);
@@ -859,12 +861,15 @@ static int __cpuinit acpuclock_cpu_callback(struct notifier_block *nfb,
 
 	switch (action) {
 	case CPU_DEAD:
+	case CPU_DEAD_FROZEN:
 		prev_khz[cpu] = acpuclk_get_rate(cpu);
 		/* Fall through. */
 	case CPU_UP_CANCELED:
+	case CPU_UP_CANCELED_FROZEN:
 		acpuclk_set_rate(cpu, HOT_UNPLUG_KHZ, SETRATE_HOTPLUG);
 		break;
 	case CPU_UP_PREPARE:
+	case CPU_UP_PREPARE_FROZEN:
 		if (WARN_ON(!prev_khz[cpu]))
 			prev_khz[cpu] = acpu_freq_tbl->acpuclk_khz;
 		acpuclk_set_rate(cpu, prev_khz[cpu], SETRATE_HOTPLUG);

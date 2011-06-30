@@ -46,6 +46,7 @@ config ARCH_MSM7X30
 	select RESERVE_FIRST_PAGE
 	select MSM_DALRPC
 	select MSM_SPM_V1
+	select REGULATOR
 
 config ARCH_QSD8X50
 	bool "QSD8X50"
@@ -123,6 +124,7 @@ config ARCH_MSM8960
 	select MSM_DIRECT_SCLK_ACCESS
 	select REGULATOR
 	select MSM_RPM
+	select MSM_XO
 	select MSM_QDSP6_APR
 	select MSM_PIL
 	select MSM_AUDIO_QDSP6 if SND_SOC
@@ -130,6 +132,8 @@ config ARCH_MSM8960
 	select MSM_SPM_V2
 	select MSM_L2_SPM
 	select MSM_NATIVE_RESTART
+	select MSM_PIL
+	select MSM_DSPS
 
 config ARCH_FSM9XXX
 	bool "FSM9XXX"
@@ -957,7 +961,7 @@ config MSM_SDIO_CMUX
 
 config MSM_DSPS
 	bool "Sensors DSPS driver"
-	depends on (MSM_PIL && ARCH_MSM8X60)
+	depends on (MSM_PIL && (ARCH_MSM8X60 || ARCH_MSM8960))
 	default n
 	help
 	  Provides user-space interface to the sensors manager
@@ -1375,7 +1379,7 @@ config MSM_SCM
 
 config MSM_SUBSYSTEM_RESTART
 	bool "MSM Subsystem Restart Driver"
-	depends on ARCH_MSM8X60
+	depends on (ARCH_MSM8X60 || ARCH_MSM8960)
 	default n
 	help
 	  This option enables the MSM subsystem restart driver, which provides
@@ -1489,7 +1493,6 @@ config MSM_DLOAD_MODE
 config MSM_ETM
 	tristate "Enable MSM ETM and ETB"
 	depends on ARCH_MSM8X60
-	select MSM_JTAG_V7
 	help
 		This enables embedded trace collection on Qualcomm v7 CPUs.
 

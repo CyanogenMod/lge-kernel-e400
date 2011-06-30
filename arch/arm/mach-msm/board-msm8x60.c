@@ -19,6 +19,7 @@
 #include <linux/mfd/pmic8058.h>
 
 #include <linux/input/pmic8058-keypad.h>
+#include <linux/pmic8058-batt-alarm.h>
 #include <linux/pmic8058-pwrkey.h>
 #include <linux/pmic8058-vibrator.h>
 #include <linux/leds.h>
@@ -100,6 +101,7 @@
 #include "rpm_stats.h"
 #include "peripheral-loader.h"
 #include <linux/platform_data/qcom_crypto_device.h>
+#include "rpm_resources.h"
 
 #define MSM_SHARED_RAM_PHYS 0x40000000
 
@@ -898,6 +900,64 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 	{1, 1, "C1", "STANDALONE_POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
 };
+
+static struct msm_rpmrs_level msm_rpmrs_levels[] __initdata = {
+	{
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT,
+		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
+		true,
+		1, 8000, 100000, 1,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE,
+		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
+		true,
+		1500, 5000, 60100000, 3000,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
+		false,
+		1800, 5000, 60350000, 3500,
+	},
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, ACTIVE, MAX, ACTIVE),
+		false,
+		3800, 4500, 65350000, 5500,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, MAX, ACTIVE),
+		false,
+		2800, 2500, 66850000, 4800,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, MAX, ACTIVE),
+		false,
+		4800, 2000, 71850000, 6800,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, ACTIVE, RET_HIGH),
+		false,
+		6800, 500, 75850000, 8800,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, RET_HIGH, RET_LOW),
+		false,
+		7800, 0, 76350000, 9800,
+	},
+};
+
 #if defined(CONFIG_USB_PEHCI_HCD) || defined(CONFIG_USB_PEHCI_HCD_MODULE)
 
 #define ISP1763_INT_GPIO		117
@@ -2902,33 +2962,7 @@ static struct attribute_group tma300_properties_attr_group = {
 
 static struct kobject *properties_kobj;
 
-static struct cyttsp_platform_data cyttsp_fluid_pdata;
-static void cyttsp_set_params(void)
-{
 
-	uint32_t version;
-	version = socinfo_get_platform_version();
-	version = SOCINFO_VERSION_MAJOR(version);
-
-	if (version < 3) {
-		cyttsp_fluid_pdata.panel_maxx = 539;
-		cyttsp_fluid_pdata.panel_maxy = 994;
-		cyttsp_fluid_pdata.disp_minx = 30;
-		cyttsp_fluid_pdata.disp_maxx = 509;
-		cyttsp_fluid_pdata.disp_miny = 60;
-		cyttsp_fluid_pdata.disp_maxy = 859;
-		cyttsp_fluid_pdata.correct_fw_ver = 4;
-	} else {
-		cyttsp_fluid_pdata.panel_maxx = 550;
-		cyttsp_fluid_pdata.panel_maxy = 1013;
-		cyttsp_fluid_pdata.disp_minx = 35;
-		cyttsp_fluid_pdata.disp_maxx = 515;
-		cyttsp_fluid_pdata.disp_miny = 69;
-		cyttsp_fluid_pdata.disp_maxy = 869;
-		cyttsp_fluid_pdata.correct_fw_ver = 5;
-	}
-
-}
 
 #define FLUID_CYTTSP_TS_GPIO_IRQ	61
 static int cyttsp_fluid_platform_init(struct i2c_client *client)
@@ -3055,6 +3089,30 @@ static struct cyttsp_platform_data cyttsp_fluid_pdata = {
 	.resume = cyttsp_fluid_platform_resume,
 	.init = cyttsp_fluid_platform_init,
 };
+
+static void cyttsp_set_params(void)
+{
+	if (SOCINFO_VERSION_MAJOR(socinfo_get_platform_version()) < 3) {
+		cyttsp_fluid_pdata.fw_fname = "cyttsp_8660_fluid_p2.hex";
+		cyttsp_fluid_pdata.panel_maxx = 539;
+		cyttsp_fluid_pdata.panel_maxy = 994;
+		cyttsp_fluid_pdata.disp_minx = 30;
+		cyttsp_fluid_pdata.disp_maxx = 509;
+		cyttsp_fluid_pdata.disp_miny = 60;
+		cyttsp_fluid_pdata.disp_maxy = 859;
+		cyttsp_fluid_pdata.correct_fw_ver = 4;
+	} else {
+		cyttsp_fluid_pdata.fw_fname = "cyttsp_8660_fluid_p3.hex";
+		cyttsp_fluid_pdata.panel_maxx = 550;
+		cyttsp_fluid_pdata.panel_maxy = 1013;
+		cyttsp_fluid_pdata.disp_minx = 35;
+		cyttsp_fluid_pdata.disp_maxx = 515;
+		cyttsp_fluid_pdata.disp_miny = 69;
+		cyttsp_fluid_pdata.disp_maxy = 869;
+		cyttsp_fluid_pdata.correct_fw_ver = 5;
+	}
+
+}
 
 static struct i2c_board_info cyttsp_fluid_info[] __initdata = {
 	{
@@ -3331,7 +3389,6 @@ static struct msm_charger_platform_data msm_charger_data = {
 	.update_time = 1,
 	.max_voltage = 4200,
 	.min_voltage = 3200,
-	.resume_voltage = 4100,
 };
 
 static struct platform_device msm_charger_device = {
@@ -3676,9 +3733,6 @@ static struct platform_device *rumi_sim_devices[] __initdata = {
 	&msm_gsbi8_qup_i2c_device,
 	&msm_gsbi9_qup_i2c_device,
 	&msm_gsbi12_qup_i2c_device,
-#endif
-#if defined(CONFIG_SPI_QUP) || defined(CONFIG_SPI_QUP_MODULE)
-	&msm_gsbi1_qup_spi_device,
 #endif
 #ifdef CONFIG_I2C_SSBI
 	&msm_device_ssbi1,
@@ -4465,7 +4519,7 @@ static struct sdio_al_platform_data sdio_al_pdata = {
 	.peer_sdioc_version_minor = 0x0101,
 	.peer_sdioc_version_major = 0x0004,
 	.peer_sdioc_boot_version_minor = 0x0001,
-	.peer_sdioc_boot_version_major = 0x0002,
+	.peer_sdioc_boot_version_major = 0x0003
 };
 
 struct platform_device msm_device_sdio_al = {
@@ -4495,9 +4549,6 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm_gsbi8_qup_i2c_device,
 	&msm_gsbi9_qup_i2c_device,
 	&msm_gsbi12_qup_i2c_device,
-#endif
-#if defined(CONFIG_SPI_QUP) || defined(CONFIG_SPI_QUP_MODULE)
-	&msm_gsbi1_qup_spi_device,
 #endif
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm1,
@@ -5649,19 +5700,27 @@ static struct pmic8058_leds_platform_data pm8058_fluid_flash_leds_data = {
 };
 
 static struct resource resources_temp_alarm[] = {
-       {
+	{
 		.start  = PM8058_TEMP_ALARM_IRQ(PM8058_IRQ_BASE),
 		.end    = PM8058_TEMP_ALARM_IRQ(PM8058_IRQ_BASE),
 		.flags  = IORESOURCE_IRQ,
-       },
+	},
 };
 
 static struct resource resources_pm8058_misc[] = {
-       {
+	{
 		.start  = PM8058_OSCHALT_IRQ(PM8058_IRQ_BASE),
 		.end    = PM8058_OSCHALT_IRQ(PM8058_IRQ_BASE),
 		.flags  = IORESOURCE_IRQ,
-       },
+	},
+};
+
+static struct resource resources_pm8058_batt_alarm[] = {
+	{
+		.start  = PM8058_BATT_ALARM_IRQ(PM8058_IRQ_BASE),
+		.end    = PM8058_BATT_ALARM_IRQ(PM8058_IRQ_BASE),
+		.flags  = IORESOURCE_IRQ,
+	},
 };
 
 #define PM8058_SUBDEV_KPD 0
@@ -5762,6 +5821,11 @@ static struct mfd_cell pm8058_subdevs[] = {
 		.id = -1,
 		.num_resources  = ARRAY_SIZE(resources_pm8058_misc),
 		.resources      = resources_pm8058_misc,
+	},
+	{	.name = "pm8058-batt-alarm",
+		.id		= -1,
+		.num_resources  = ARRAY_SIZE(resources_pm8058_batt_alarm),
+		.resources      = resources_pm8058_batt_alarm,
 	},
 };
 
@@ -9370,6 +9434,8 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 #ifdef CONFIG_MSM_RPM
 	BUG_ON(msm_rpm_init(&msm_rpm_data));
 #endif
+	BUG_ON(msm_rpmrs_levels_init(msm_rpmrs_levels,
+				ARRAY_SIZE(msm_rpmrs_levels)));
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
 
@@ -9541,6 +9607,8 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 #if defined(CONFIG_SPI_QUP) || defined(CONFIG_SPI_QUP_MODULE)
 	if (machine_is_msm8x60_fluid())
 		platform_device_register(&msm_gsbi10_qup_spi_device);
+	else
+		platform_device_register(&msm_gsbi1_qup_spi_device);
 #endif
 
 #if defined(CONFIG_TOUCHSCREEN_CYTTSP_I2C) || \

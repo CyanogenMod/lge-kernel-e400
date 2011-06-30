@@ -24,10 +24,13 @@
 #include <linux/mfd/pm8xxx/mpp.h>
 #include <linux/mfd/pm8xxx/rtc.h>
 #include <linux/mfd/pm8xxx/pwm.h>
+#include <linux/mfd/pm8xxx/misc.h>
 #include <linux/input/pmic8xxx-pwrkey.h>
 #include <linux/input/pmic8xxx-keypad.h>
 #include <linux/regulator/pm8921-regulator.h>
 #include <linux/mfd/pm8xxx/pm8921-charger.h>
+#include <linux/mfd/pm8921-adc.h>
+#include <linux/mfd/pm8xxx/pm8921-bms.h>
 
 #define PM8921_NR_IRQS		256
 
@@ -51,6 +54,9 @@
 #define PM8921_PWRKEY_PRESS_IRQ		PM8921_IRQ_BLOCK_BIT(6, 3)
 #define PM8921_KEYPAD_IRQ		PM8921_IRQ_BLOCK_BIT(9, 2)
 #define PM8921_KEYSTUCK_IRQ		PM8921_IRQ_BLOCK_BIT(9, 3)
+#define PM8921_ADC_EOC_USR_IRQ		PM8921_IRQ_BLOCK_BIT(9, 6)
+#define PM8921_ADC_BATT_TEMP_WARM_IRQ	PM8921_IRQ_BLOCK_BIT(9, 1)
+#define PM8921_ADC_BATT_TEMP_COLD_IRQ	PM8921_IRQ_BLOCK_BIT(9, 0)
 #define PM8921_USB_ID_IN_IRQ(base)	(base + PM8921_IRQ_BLOCK_BIT(6, 1))
 
 #define PM8921_USBIN_VALID_IRQ		PM8921_IRQ_BLOCK_BIT(1, 7)
@@ -86,6 +92,15 @@
 #define PM8921_DCIN_OV_IRQ		PM8921_IRQ_BLOCK_BIT(5, 1)
 #define PM8921_DCIN_UV_IRQ		PM8921_IRQ_BLOCK_BIT(5, 0)
 
+#define PM8921_BMS_SBI_WRITE_OK		PM8921_IRQ_BLOCK_BIT(15, 7)
+#define PM8921_BMS_CC_THR		PM8921_IRQ_BLOCK_BIT(15, 6)
+#define PM8921_BMS_VSENSE_THR		PM8921_IRQ_BLOCK_BIT(15, 5)
+#define PM8921_BMS_VSENSE_FOR_R		PM8921_IRQ_BLOCK_BIT(15, 4)
+#define PM8921_BMS_OCV_FOR_R		PM8921_IRQ_BLOCK_BIT(15, 3)
+#define PM8921_BMS_GOOD_OCV		PM8921_IRQ_BLOCK_BIT(15, 2)
+#define PM8921_BMS_VSENSE_AVG		PM8921_IRQ_BLOCK_BIT(15, 1)
+#define PM8921_BMS_CCADC_EOC		PM8921_IRQ_BLOCK_BIT(15, 0)
+
 /* PMIC I/O Resources */
 #define PM8921_RTC_BASE 0x11D
 
@@ -98,8 +113,11 @@ struct pm8921_platform_data {
 	struct pm8xxx_pwrkey_platform_data	*pwrkey_pdata;
 	struct pm8xxx_keypad_platform_data	*keypad_pdata;
 	struct pm8921_charger_platform_data	*charger_pdata;
+	struct pm8921_bms_platform_data		*bms_pdata;
+	struct pm8xxx_misc_platform_data	*misc_pdata;
 	struct pm8921_regulator_platform_data	*regulator_pdatas;
 	int					num_regulators;
+	struct pm8921_adc_platform_data		*adc_pdata;
 };
 
 #endif

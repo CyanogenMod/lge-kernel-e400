@@ -43,7 +43,8 @@
 #define KGSL_PWRFLAGS_IRQ_ON		0x00000040
 #define KGSL_PWRFLAGS_IRQ_OFF		0x00000080
 
-#define KGSL_DEFAULT_PWRLEVEL 1
+#define KGSL_PWRLEVEL_TURBO 0
+#define KGSL_PWRLEVEL_NOMINAL 1
 #define KGSL_MAX_CLKS 5
 
 struct platform_device;
@@ -69,8 +70,6 @@ struct kgsl_pwrctrl {
 	const char *src_clk_name;
 	bool pwrrail_first;
 	s64 time;
-	unsigned int no_switch_cnt;
-	unsigned int idle_pass;
 };
 
 void kgsl_pwrctrl_clk(struct kgsl_device *device, unsigned int pwrflag);
@@ -85,7 +84,8 @@ void kgsl_pre_hwaccess(struct kgsl_device *device);
 void kgsl_check_suspended(struct kgsl_device *device);
 int kgsl_pwrctrl_sleep(struct kgsl_device *device);
 void kgsl_pwrctrl_wake(struct kgsl_device *device);
-
+void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
+	unsigned int level);
 int kgsl_pwrctrl_init_sysfs(struct kgsl_device *device);
 void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device);
 

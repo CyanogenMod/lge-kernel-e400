@@ -25,8 +25,10 @@
 
 #include <mach/msm_iomap.h>
 #include <mach/clk.h>
+#include <mach/rpm-regulator.h>
 
 #include "clock-local.h"
+#include "clock-rpm.h"
 #include "clock-voter.h"
 
 #define REG(off)	(MSM_CLK_CTL_BASE + (off))
@@ -66,7 +68,6 @@
 #define BB_PLL8_TEST_CTL_REG			REG(0x3150)
 #define PLLTEST_PAD_CFG_REG			REG(0x2FA4)
 #define PMEM_ACLK_CTL_REG			REG(0x25A0)
-#define PRNG_CLK_NS_REG				REG(0x2E80)
 #define RINGOSC_NS_REG				REG(0x2DC0)
 #define RINGOSC_STATUS_REG			REG(0x2DCC)
 #define RINGOSC_TCXO_CTL_REG			REG(0x2DC4)
@@ -421,7 +422,7 @@ static struct pll_vote_clk pll8_clk = {
  */
 /* Unlike other clocks, the TV rate is adjusted through PLL
  * re-programming. It is also routed through an MND divider. */
-static void set_rate_tv(struct clk_local *clk, struct clk_freq_tbl *nf)
+static void set_rate_tv(struct rcg_clk *clk, struct clk_freq_tbl *nf)
 {
 	/* TODO: Reprogram the HDMI PHY PLL? */
 }
@@ -429,8 +430,14 @@ static void set_rate_tv(struct clk_local *clk, struct clk_freq_tbl *nf)
 /* Update the sys_vdd voltage given a level. */
 int soc_update_sys_vdd(enum sys_vdd_level level)
 {
-	/* TODO: set voltage via pmic driver */
-	return 0;
+	static const int vdd_uv[] = {
+		[NONE...LOW] =  945000,
+		[NOMINAL] = 1050000,
+		[HIGH]    = 1150000,
+	};
+
+	return rpm_vreg_set_voltage(RPM_VREG_ID_PM8921_S3, RPM_VREG_VOTER3,
+				    vdd_uv[level], vdd_uv[HIGH], 1);
 }
 
 /* Enable/disable a power rail associated with a clock. */
@@ -439,15 +446,9 @@ int soc_set_pwr_rail(struct clk *clk, int enable)
 	return 0;
 }
 
-/* Implementation for clk_set_flags(). */
-int soc_clk_set_flags(struct clk *clk, unsigned flags)
-{
-	return -EPERM;
-}
-
 static int soc_clk_reset(struct clk *clk, enum clk_reset_action action)
 {
-	return branch_reset(&to_local(clk)->b, action);
+	return branch_reset(&to_rcg_clk(clk)->b, action);
 }
 
 static struct clk_ops soc_clk_ops_8960 = {
@@ -462,7 +463,6 @@ static struct clk_ops soc_clk_ops_8960 = {
 	.is_enabled = local_clk_is_enabled,
 	.round_rate = local_clk_round_rate,
 	.reset = soc_clk_reset,
-	.set_flags = soc_clk_set_flags,
 	.is_local = local_clk_is_local,
 	.get_parent = local_clk_get_parent,
 };
@@ -473,7 +473,6 @@ static struct clk_ops clk_ops_branch = {
 	.auto_off = branch_clk_auto_off,
 	.is_enabled = branch_clk_is_enabled,
 	.reset = branch_clk_reset,
-	.set_flags = soc_clk_set_flags,
 	.is_local = local_clk_is_local,
 	.get_parent = branch_clk_get_parent,
 	.set_parent = branch_clk_set_parent,
@@ -487,7 +486,7 @@ static struct clk_ops clk_ops_reset = {
 /* AXI Interfaces */
 static struct branch_clk gmem_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN_REG,
+		.ctl_reg = MAXI_EN_REG,
 		.en_mask = BIT(24),
 		.halt_reg = DBG_BUS_VEC_E_REG,
 		.halt_bit = 6,
@@ -501,7 +500,7 @@ static struct branch_clk gmem_axi_clk = {
 
 static struct branch_clk ijpeg_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN_REG,
+		.ctl_reg = MAXI_EN_REG,
 		.en_mask = BIT(21),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(14),
@@ -517,7 +516,7 @@ static struct branch_clk ijpeg_axi_clk = {
 
 static struct branch_clk imem_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN_REG,
+		.ctl_reg = MAXI_EN_REG,
 		.en_mask = BIT(22),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(10),
@@ -533,7 +532,7 @@ static struct branch_clk imem_axi_clk = {
 
 static struct branch_clk jpegd_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN_REG,
+		.ctl_reg = MAXI_EN_REG,
 		.en_mask = BIT(25),
 		.halt_reg = DBG_BUS_VEC_E_REG,
 		.halt_bit = 5,
@@ -547,7 +546,7 @@ static struct branch_clk jpegd_axi_clk = {
 
 static struct branch_clk vcodec_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN_REG,
+		.ctl_reg = MAXI_EN_REG,
 		.en_mask = BIT(19),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(7),
@@ -563,7 +562,7 @@ static struct branch_clk vcodec_axi_clk = {
 
 static struct branch_clk vcodec_axi_a_clk = {
 	.b = {
-		.en_reg = MAXI_EN4_REG,
+		.ctl_reg = MAXI_EN4_REG,
 		.en_mask = BIT(25),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(5),
@@ -579,7 +578,7 @@ static struct branch_clk vcodec_axi_a_clk = {
 
 static struct branch_clk vcodec_axi_b_clk = {
 	.b = {
-		.en_reg = MAXI_EN4_REG,
+		.ctl_reg = MAXI_EN4_REG,
 		.en_mask = BIT(23),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(4),
@@ -595,7 +594,7 @@ static struct branch_clk vcodec_axi_b_clk = {
 
 static struct branch_clk vfe_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN_REG,
+		.ctl_reg = MAXI_EN_REG,
 		.en_mask = BIT(18),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(9),
@@ -611,7 +610,7 @@ static struct branch_clk vfe_axi_clk = {
 
 static struct branch_clk mdp_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN_REG,
+		.ctl_reg = MAXI_EN_REG,
 		.en_mask = BIT(23),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(13),
@@ -628,7 +627,7 @@ static struct branch_clk mdp_axi_clk = {
 
 static struct branch_clk rot_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN2_REG,
+		.ctl_reg = MAXI_EN2_REG,
 		.en_mask = BIT(24),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(6),
@@ -645,7 +644,7 @@ static struct branch_clk rot_axi_clk = {
 
 static struct branch_clk vpe_axi_clk = {
 	.b = {
-		.en_reg = MAXI_EN2_REG,
+		.ctl_reg = MAXI_EN2_REG,
 		.en_mask = BIT(26),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(15),
@@ -663,7 +662,7 @@ static struct branch_clk vpe_axi_clk = {
 /* AHB Interfaces */
 static struct branch_clk amp_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(24),
 		.halt_reg = DBG_BUS_VEC_F_REG,
 		.halt_bit = 18,
@@ -677,7 +676,7 @@ static struct branch_clk amp_p_clk = {
 
 static struct branch_clk csi0_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(7),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(17),
@@ -693,7 +692,7 @@ static struct branch_clk csi0_p_clk = {
 
 static struct branch_clk dsi1_m_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(9),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(6),
@@ -709,7 +708,7 @@ static struct branch_clk dsi1_m_p_clk = {
 
 static struct branch_clk dsi1_s_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(18),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(5),
@@ -725,7 +724,7 @@ static struct branch_clk dsi1_s_p_clk = {
 
 static struct branch_clk dsi2_m_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(17),
 		.reset_reg = SW_RESET_AHB2_REG,
 		.reset_mask = BIT(1),
@@ -741,7 +740,7 @@ static struct branch_clk dsi2_m_p_clk = {
 
 static struct branch_clk dsi2_s_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(22),
 		.reset_reg = SW_RESET_AHB2_REG,
 		.reset_mask = BIT(0),
@@ -757,7 +756,7 @@ static struct branch_clk dsi2_s_p_clk = {
 
 static struct branch_clk gfx2d0_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(19),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(12),
@@ -773,7 +772,7 @@ static struct branch_clk gfx2d0_p_clk = {
 
 static struct branch_clk gfx2d1_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(2),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(11),
@@ -789,7 +788,7 @@ static struct branch_clk gfx2d1_p_clk = {
 
 static struct branch_clk gfx3d_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(3),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(10),
@@ -805,7 +804,7 @@ static struct branch_clk gfx3d_p_clk = {
 
 static struct branch_clk hdmi_m_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(14),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(9),
@@ -821,7 +820,7 @@ static struct branch_clk hdmi_m_p_clk = {
 
 static struct branch_clk hdmi_s_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(4),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(9),
@@ -837,7 +836,7 @@ static struct branch_clk hdmi_s_p_clk = {
 
 static struct branch_clk ijpeg_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(5),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(7),
@@ -853,7 +852,7 @@ static struct branch_clk ijpeg_p_clk = {
 
 static struct branch_clk imem_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(6),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(8),
@@ -869,7 +868,7 @@ static struct branch_clk imem_p_clk = {
 
 static struct branch_clk jpegd_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(21),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(4),
@@ -885,7 +884,7 @@ static struct branch_clk jpegd_p_clk = {
 
 static struct branch_clk mdp_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(10),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(3),
@@ -901,7 +900,7 @@ static struct branch_clk mdp_p_clk = {
 
 static struct branch_clk rot_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(12),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(2),
@@ -917,7 +916,7 @@ static struct branch_clk rot_p_clk = {
 
 static struct branch_clk smmu_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(15),
 		.halt_reg = DBG_BUS_VEC_F_REG,
 		.halt_bit = 22,
@@ -931,7 +930,7 @@ static struct branch_clk smmu_p_clk = {
 
 static struct branch_clk tv_enc_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(25),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(15),
@@ -947,7 +946,7 @@ static struct branch_clk tv_enc_p_clk = {
 
 static struct branch_clk vcodec_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(11),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(1),
@@ -963,7 +962,7 @@ static struct branch_clk vcodec_p_clk = {
 
 static struct branch_clk vfe_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(13),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(0),
@@ -979,7 +978,7 @@ static struct branch_clk vfe_p_clk = {
 
 static struct branch_clk vpe_p_clk = {
 	.b = {
-		.en_reg = AHB_EN_REG,
+		.ctl_reg = AHB_EN_REG,
 		.en_mask = BIT(16),
 		.reset_reg = SW_RESET_AHB_REG,
 		.reset_mask = BIT(14),
@@ -997,9 +996,9 @@ static struct branch_clk vpe_p_clk = {
  * Peripheral Clocks
  */
 #define CLK_GSBI_UART(i, n, h_r, h_b) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = GSBIn_UART_APPS_NS_REG(n), \
+			.ctl_reg = GSBIn_UART_APPS_NS_REG(n), \
 			.en_mask = BIT(9), \
 			.reset_reg = GSBIn_RESET_REG(n), \
 			.reset_mask = BIT(0), \
@@ -1061,9 +1060,9 @@ static CLK_GSBI_UART(gsbi11_uart, 11, CLK_HALT_CFPB_STATEC_REG, 17);
 static CLK_GSBI_UART(gsbi12_uart, 12, CLK_HALT_CFPB_STATEC_REG, 13);
 
 #define CLK_GSBI_QUP(i, n, h_r, h_b) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = GSBIn_QUP_APPS_NS_REG(n), \
+			.ctl_reg = GSBIn_QUP_APPS_NS_REG(n), \
 			.en_mask = BIT(9), \
 			.reset_reg = GSBIn_RESET_REG(n), \
 			.reset_mask = BIT(0), \
@@ -1132,9 +1131,9 @@ static struct clk_freq_tbl clk_tbl_pdm[] = {
 	F_END
 };
 
-struct clk_local pdm_clk = {
+static struct rcg_clk pdm_clk = {
 	.b = {
-		.en_reg = PDM_CLK_NS_REG,
+		.ctl_reg = PDM_CLK_NS_REG,
 		.en_mask = BIT(9),
 		.reset_reg = PDM_CLK_NS_REG,
 		.reset_mask = BIT(12),
@@ -1156,7 +1155,7 @@ struct clk_local pdm_clk = {
 
 static struct branch_clk pmem_clk = {
 	.b = {
-		.en_reg = PMEM_ACLK_CTL_REG,
+		.ctl_reg = PMEM_ACLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 20,
@@ -1168,30 +1167,25 @@ static struct branch_clk pmem_clk = {
 	},
 };
 
-#define F_PRNG(f, s, d, v) \
+#define F_PRNG(f, s, v) \
 	{ \
 		.freq_hz = f, \
 		.src_clk = &s##_clk.c, \
-		.ns_val = NS_DIVSRC(6, 3, d, 2, 0, s##_to_bb_mux), \
 		.sys_vdd = v, \
 	}
 static struct clk_freq_tbl clk_tbl_prng[] = {
-	F_PRNG(64000000, pll8,  6, NOMINAL),
+	F_PRNG(64000000, pll8, NOMINAL),
 	F_END
 };
 
-struct clk_local prng_clk = {
+static struct rcg_clk prng_clk = {
 	.b = {
-		.en_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
+		.ctl_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
 		.en_mask = BIT(10),
-		.reset_reg = PRNG_CLK_NS_REG,
-		.reset_mask = BIT(12),
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
 		.halt_bit = 10,
 	},
-	.ns_reg = PRNG_CLK_NS_REG,
-	.ns_mask = (BM(6, 3) | BM(2, 0)),
 	.set_rate = set_rate_nop,
 	.freq_tbl = clk_tbl_prng,
 	.current_freq = &local_dummy_freq,
@@ -1203,9 +1197,9 @@ struct clk_local prng_clk = {
 };
 
 #define CLK_SDC(i, n, h_r, h_c, h_b) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = SDCn_APPS_CLK_NS_REG(n), \
+			.ctl_reg = SDCn_APPS_CLK_NS_REG(n), \
 			.en_mask = BIT(9), \
 			.reset_reg = SDCn_RESET_REG(n), \
 			.reset_mask = BIT(0), \
@@ -1271,9 +1265,9 @@ static struct clk_freq_tbl clk_tbl_tsif_ref[] = {
 	F_END
 };
 
-struct clk_local tsif_ref_clk = {
+static struct rcg_clk tsif_ref_clk = {
 	.b = {
-		.en_reg = TSIF_REF_CLK_NS_REG,
+		.ctl_reg = TSIF_REF_CLK_NS_REG,
 		.en_mask = BIT(9),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_bit = 5,
@@ -1305,9 +1299,9 @@ static struct clk_freq_tbl clk_tbl_tssc[] = {
 	F_END
 };
 
-struct clk_local tssc_clk = {
+static struct rcg_clk tssc_clk = {
 	.b = {
-		.en_reg = TSSC_CLK_CTL_REG,
+		.ctl_reg = TSSC_CLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_bit = 4,
@@ -1339,9 +1333,9 @@ static struct clk_freq_tbl clk_tbl_usb[] = {
 	F_END
 };
 
-struct clk_local usb_hs1_xcvr_clk = {
+static struct rcg_clk usb_hs1_xcvr_clk = {
 	.b = {
-		.en_reg = USB_HS1_XCVR_FS_CLK_NS_REG,
+		.ctl_reg = USB_HS1_XCVR_FS_CLK_NS_REG,
 		.en_mask = BIT(9),
 		.reset_reg = USB_HS1_RESET_REG,
 		.reset_mask = BIT(0),
@@ -1375,10 +1369,10 @@ static struct branch_clk usb_phy0_clk = {
 };
 
 #define CLK_USB_FS(i, n) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.ns_reg = USB_FSn_XCVR_FS_CLK_NS_REG(n), \
 		.b = { \
-			.en_reg = USB_FSn_XCVR_FS_CLK_NS_REG(n), \
+			.ctl_reg = USB_FSn_XCVR_FS_CLK_NS_REG(n), \
 			.halt_check = NOCHECK, \
 		}, \
 		.md_reg = USB_FSn_XCVR_FS_CLK_MD_REG(n), \
@@ -1397,7 +1391,7 @@ static struct branch_clk usb_phy0_clk = {
 static CLK_USB_FS(usb_fs1_src, 1);
 static struct branch_clk usb_fs1_xcvr_clk = {
 	.b = {
-		.en_reg = USB_FSn_XCVR_FS_CLK_NS_REG(1),
+		.ctl_reg = USB_FSn_XCVR_FS_CLK_NS_REG(1),
 		.en_mask = BIT(9),
 		.reset_reg = USB_FSn_RESET_REG(1),
 		.reset_mask = BIT(1),
@@ -1414,7 +1408,7 @@ static struct branch_clk usb_fs1_xcvr_clk = {
 
 static struct branch_clk usb_fs1_sys_clk = {
 	.b = {
-		.en_reg = USB_FSn_SYSTEM_CLK_CTL_REG(1),
+		.ctl_reg = USB_FSn_SYSTEM_CLK_CTL_REG(1),
 		.en_mask = BIT(4),
 		.reset_reg = USB_FSn_RESET_REG(1),
 		.reset_mask = BIT(0),
@@ -1432,7 +1426,7 @@ static struct branch_clk usb_fs1_sys_clk = {
 static CLK_USB_FS(usb_fs2_src, 2);
 static struct branch_clk usb_fs2_xcvr_clk = {
 	.b = {
-		.en_reg = USB_FSn_XCVR_FS_CLK_NS_REG(2),
+		.ctl_reg = USB_FSn_XCVR_FS_CLK_NS_REG(2),
 		.en_mask = BIT(9),
 		.reset_reg = USB_FSn_RESET_REG(2),
 		.reset_mask = BIT(1),
@@ -1449,7 +1443,7 @@ static struct branch_clk usb_fs2_xcvr_clk = {
 
 static struct branch_clk usb_fs2_sys_clk = {
 	.b = {
-		.en_reg = USB_FSn_SYSTEM_CLK_CTL_REG(2),
+		.ctl_reg = USB_FSn_SYSTEM_CLK_CTL_REG(2),
 		.en_mask = BIT(4),
 		.reset_reg = USB_FSn_RESET_REG(2),
 		.reset_mask = BIT(0),
@@ -1467,7 +1461,7 @@ static struct branch_clk usb_fs2_sys_clk = {
 /* Fast Peripheral Bus Clocks */
 static struct branch_clk ce1_core_clk = {
 	.b = {
-		.en_reg = CE1_CORE_CLK_CTL_REG,
+		.ctl_reg = CE1_CORE_CLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_bit = 27,
@@ -1480,7 +1474,7 @@ static struct branch_clk ce1_core_clk = {
 };
 static struct branch_clk ce1_p_clk = {
 	.b = {
-		.en_reg = CE1_HCLK_CTL_REG,
+		.ctl_reg = CE1_HCLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_bit = 1,
@@ -1494,7 +1488,7 @@ static struct branch_clk ce1_p_clk = {
 
 static struct branch_clk dma_bam_p_clk = {
 	.b = {
-		.en_reg = DMA_BAM_HCLK_CTL,
+		.ctl_reg = DMA_BAM_HCLK_CTL,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 12,
@@ -1508,7 +1502,7 @@ static struct branch_clk dma_bam_p_clk = {
 
 static struct branch_clk gsbi1_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(1),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(1),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
 		.halt_bit = 11,
@@ -1522,7 +1516,7 @@ static struct branch_clk gsbi1_p_clk = {
 
 static struct branch_clk gsbi2_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(2),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(2),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
 		.halt_bit = 7,
@@ -1536,7 +1530,7 @@ static struct branch_clk gsbi2_p_clk = {
 
 static struct branch_clk gsbi3_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(3),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(3),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
 		.halt_bit = 3,
@@ -1550,7 +1544,7 @@ static struct branch_clk gsbi3_p_clk = {
 
 static struct branch_clk gsbi4_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(4),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(4),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
 		.halt_bit = 27,
@@ -1564,7 +1558,7 @@ static struct branch_clk gsbi4_p_clk = {
 
 static struct branch_clk gsbi5_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(5),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(5),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
 		.halt_bit = 23,
@@ -1578,7 +1572,7 @@ static struct branch_clk gsbi5_p_clk = {
 
 static struct branch_clk gsbi6_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(6),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(6),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
 		.halt_bit = 19,
@@ -1592,7 +1586,7 @@ static struct branch_clk gsbi6_p_clk = {
 
 static struct branch_clk gsbi7_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(7),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(7),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
 		.halt_bit = 15,
@@ -1606,7 +1600,7 @@ static struct branch_clk gsbi7_p_clk = {
 
 static struct branch_clk gsbi8_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(8),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(8),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
 		.halt_bit = 11,
@@ -1620,7 +1614,7 @@ static struct branch_clk gsbi8_p_clk = {
 
 static struct branch_clk gsbi9_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(9),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(9),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
 		.halt_bit = 7,
@@ -1634,7 +1628,7 @@ static struct branch_clk gsbi9_p_clk = {
 
 static struct branch_clk gsbi10_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(10),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(10),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEB_REG,
 		.halt_bit = 3,
@@ -1648,7 +1642,7 @@ static struct branch_clk gsbi10_p_clk = {
 
 static struct branch_clk gsbi11_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(11),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(11),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_bit = 18,
@@ -1662,7 +1656,7 @@ static struct branch_clk gsbi11_p_clk = {
 
 static struct branch_clk gsbi12_p_clk = {
 	.b = {
-		.en_reg = GSBIn_HCLK_CTL_REG(12),
+		.ctl_reg = GSBIn_HCLK_CTL_REG(12),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_bit = 14,
@@ -1676,7 +1670,7 @@ static struct branch_clk gsbi12_p_clk = {
 
 static struct branch_clk tsif_p_clk = {
 	.b = {
-		.en_reg = TSIF_HCLK_CTL_REG,
+		.ctl_reg = TSIF_HCLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEC_REG,
 		.halt_bit = 7,
@@ -1690,7 +1684,7 @@ static struct branch_clk tsif_p_clk = {
 
 static struct branch_clk usb_fs1_p_clk = {
 	.b = {
-		.en_reg = USB_FSn_HCLK_CTL_REG(1),
+		.ctl_reg = USB_FSn_HCLK_CTL_REG(1),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
 		.halt_bit = 17,
@@ -1704,7 +1698,7 @@ static struct branch_clk usb_fs1_p_clk = {
 
 static struct branch_clk usb_fs2_p_clk = {
 	.b = {
-		.en_reg = USB_FSn_HCLK_CTL_REG(2),
+		.ctl_reg = USB_FSn_HCLK_CTL_REG(2),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_CFPB_STATEA_REG,
 		.halt_bit = 14,
@@ -1718,7 +1712,7 @@ static struct branch_clk usb_fs2_p_clk = {
 
 static struct branch_clk usb_hs1_p_clk = {
 	.b = {
-		.en_reg = USB_HS1_HCLK_CTL_REG,
+		.ctl_reg = USB_HS1_HCLK_CTL_REG,
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 1,
@@ -1732,7 +1726,7 @@ static struct branch_clk usb_hs1_p_clk = {
 
 static struct branch_clk sdc1_p_clk = {
 	.b = {
-		.en_reg = SDCn_HCLK_CTL_REG(1),
+		.ctl_reg = SDCn_HCLK_CTL_REG(1),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 11,
@@ -1746,7 +1740,7 @@ static struct branch_clk sdc1_p_clk = {
 
 static struct branch_clk sdc2_p_clk = {
 	.b = {
-		.en_reg = SDCn_HCLK_CTL_REG(2),
+		.ctl_reg = SDCn_HCLK_CTL_REG(2),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 10,
@@ -1760,7 +1754,7 @@ static struct branch_clk sdc2_p_clk = {
 
 static struct branch_clk sdc3_p_clk = {
 	.b = {
-		.en_reg = SDCn_HCLK_CTL_REG(3),
+		.ctl_reg = SDCn_HCLK_CTL_REG(3),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 9,
@@ -1774,7 +1768,7 @@ static struct branch_clk sdc3_p_clk = {
 
 static struct branch_clk sdc4_p_clk = {
 	.b = {
-		.en_reg = SDCn_HCLK_CTL_REG(4),
+		.ctl_reg = SDCn_HCLK_CTL_REG(4),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 8,
@@ -1788,7 +1782,7 @@ static struct branch_clk sdc4_p_clk = {
 
 static struct branch_clk sdc5_p_clk = {
 	.b = {
-		.en_reg = SDCn_HCLK_CTL_REG(5),
+		.ctl_reg = SDCn_HCLK_CTL_REG(5),
 		.en_mask = BIT(4),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_bit = 7,
@@ -1803,7 +1797,7 @@ static struct branch_clk sdc5_p_clk = {
 /* HW-Voteable Clocks */
 static struct branch_clk adm0_clk = {
 	.b = {
-		.en_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
+		.ctl_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
 		.en_mask = BIT(2),
 		.halt_reg = CLK_HALT_MSS_SMPSS_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
@@ -1818,7 +1812,7 @@ static struct branch_clk adm0_clk = {
 
 static struct branch_clk adm0_p_clk = {
 	.b = {
-		.en_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
+		.ctl_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
 		.en_mask = BIT(3),
 		.halt_reg = CLK_HALT_MSS_SMPSS_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
@@ -1833,7 +1827,7 @@ static struct branch_clk adm0_p_clk = {
 
 static struct branch_clk pmic_arb0_p_clk = {
 	.b = {
-		.en_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
+		.ctl_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
 		.en_mask = BIT(8),
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
@@ -1848,7 +1842,7 @@ static struct branch_clk pmic_arb0_p_clk = {
 
 static struct branch_clk pmic_arb1_p_clk = {
 	.b = {
-		.en_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
+		.ctl_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
 		.en_mask = BIT(9),
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
@@ -1863,7 +1857,7 @@ static struct branch_clk pmic_arb1_p_clk = {
 
 static struct branch_clk pmic_ssbi2_clk = {
 	.b = {
-		.en_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
+		.ctl_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
 		.en_mask = BIT(7),
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
@@ -1878,7 +1872,7 @@ static struct branch_clk pmic_ssbi2_clk = {
 
 static struct branch_clk rpm_msg_ram_p_clk = {
 	.b = {
-		.en_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
+		.ctl_reg = SC0_U_CLK_BRANCH_ENA_VOTE_REG,
 		.en_mask = BIT(6),
 		.halt_reg = CLK_HALT_SFPB_MISC_STATE_REG,
 		.halt_check = HALT_VOTED,
@@ -1908,9 +1902,9 @@ static struct branch_clk amp_clk = {
 };
 
 #define CLK_CAM(i, n, hb) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = CAMCLKn_CC_REG(n), \
+			.ctl_reg = CAMCLKn_CC_REG(n), \
 			.en_mask = BIT(0), \
 			.halt_reg = DBG_BUS_VEC_I_REG, \
 			.halt_bit = hb, \
@@ -1919,7 +1913,7 @@ static struct branch_clk amp_clk = {
 		.md_reg = CAMCLKn_MD_REG(n), \
 		.root_en_mask = BIT(2), \
 		.ns_mask = (BM(31, 24) | BM(15, 14) | BM(2, 0)), \
-		.cc_mask = BM(7, 6), \
+		.ctl_mask = BM(7, 6), \
 		.set_rate = set_rate_mnd_8, \
 		.freq_tbl = clk_tbl_cam, \
 		.current_freq = &local_dummy_freq, \
@@ -1935,7 +1929,7 @@ static struct branch_clk amp_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MM(31, 24, n, m, 15, 14, d, 2, 0, s##_to_mm_mux), \
-		.cc_val = CC(6, n), \
+		.ctl_val = CC(6, n), \
 		.mnd_en_mask = BIT(5) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -1964,7 +1958,7 @@ static CLK_CAM(cam1, 1, 16);
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MM(31, 24, n, m, 15, 14, d, 2, 0, s##_to_mm_mux), \
-		.cc_val = CC(6, n), \
+		.ctl_val = CC(6, n), \
 		.mnd_en_mask = BIT(5) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -1975,16 +1969,16 @@ static struct clk_freq_tbl clk_tbl_csi[] = {
 	F_END
 };
 
-static struct clk_local csi0_src_clk = {
+static struct rcg_clk csi0_src_clk = {
 	.ns_reg = CSI0_NS_REG,
 	.b = {
-		.en_reg = CSI0_CC_REG,
+		.ctl_reg = CSI0_CC_REG,
 		.halt_check = NOCHECK,
 	},
 	.md_reg	= CSI0_MD_REG,
 	.root_en_mask = BIT(2),
 	.ns_mask = BM(31, 24) | BM(15, 12) | BM(2, 0),
-	.cc_mask = BM(7, 6),
+	.ctl_mask = BM(7, 6),
 	.set_rate = set_rate_mnd,
 	.freq_tbl = clk_tbl_csi,
 	.current_freq = &local_dummy_freq,
@@ -1997,7 +1991,7 @@ static struct clk_local csi0_src_clk = {
 
 static struct branch_clk csi0_clk = {
 	.b = {
-		.en_reg = CSI0_CC_REG,
+		.ctl_reg = CSI0_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(8),
@@ -2014,7 +2008,7 @@ static struct branch_clk csi0_clk = {
 
 static struct branch_clk csi0_phy_clk = {
 	.b = {
-		.en_reg = CSI0_CC_REG,
+		.ctl_reg = CSI0_CC_REG,
 		.en_mask = BIT(8),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(29),
@@ -2029,16 +2023,16 @@ static struct branch_clk csi0_phy_clk = {
 	},
 };
 
-static struct clk_local csi1_src_clk = {
+static struct rcg_clk csi1_src_clk = {
 	.ns_reg = CSI1_NS_REG,
 	.b = {
-		.en_reg = CSI1_CC_REG,
+		.ctl_reg = CSI1_CC_REG,
 		.halt_check = NOCHECK,
 	},
 	.md_reg	= CSI1_MD_REG,
 	.root_en_mask = BIT(2),
 	.ns_mask = BM(31, 24) | BM(15, 12) | BM(2, 0),
-	.cc_mask = BM(7, 6),
+	.ctl_mask = BM(7, 6),
 	.set_rate = set_rate_mnd,
 	.freq_tbl = clk_tbl_csi,
 	.current_freq = &local_dummy_freq,
@@ -2051,7 +2045,7 @@ static struct clk_local csi1_src_clk = {
 
 static struct branch_clk csi1_clk = {
 	.b = {
-		.en_reg = CSI1_CC_REG,
+		.ctl_reg = CSI1_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(18),
@@ -2068,7 +2062,7 @@ static struct branch_clk csi1_clk = {
 
 static struct branch_clk csi1_phy_clk = {
 	.b = {
-		.en_reg = CSI1_CC_REG,
+		.ctl_reg = CSI1_CC_REG,
 		.en_mask = BIT(8),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(28),
@@ -2107,9 +2101,9 @@ static struct clk_freq_tbl clk_tbl_csi_rdi[] = {
 	F_END
 };
 
-struct clk_local csi_pix_clk = {
+static struct rcg_clk csi_pix_clk = {
 	.b = {
-		.en_reg = MISC_CC_REG,
+		.ctl_reg = MISC_CC_REG,
 		.en_mask = BIT(26),
 		.halt_check = DELAY,
 		.reset_reg = SW_RESET_CORE_REG,
@@ -2127,9 +2121,9 @@ struct clk_local csi_pix_clk = {
 	},
 };
 
-struct clk_local csi_rdi_clk = {
+static struct rcg_clk csi_rdi_clk = {
 	.b = {
-		.en_reg = MISC_CC_REG,
+		.ctl_reg = MISC_CC_REG,
 		.en_mask = BIT(13),
 		.halt_check = DELAY,
 		.reset_reg = SW_RESET_CORE_REG,
@@ -2153,7 +2147,7 @@ struct clk_local csi_rdi_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MM(31, 24, n, m, 15, 14, d, 2, 0, s##_to_mm_mux), \
-		.cc_val = CC(6, n), \
+		.ctl_val = CC(6, n), \
 		.mnd_en_mask = BIT(5) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -2164,16 +2158,16 @@ static struct clk_freq_tbl clk_tbl_csi_phytimer[] = {
 	F_END
 };
 
-struct clk_local csiphy_timer_src_clk = {
+static struct rcg_clk csiphy_timer_src_clk = {
 	.ns_reg = CSIPHYTIMER_NS_REG,
 	.b = {
-		.en_reg = CSIPHYTIMER_CC_REG,
+		.ctl_reg = CSIPHYTIMER_CC_REG,
 		.halt_check = NOCHECK,
 	},
 	.md_reg = CSIPHYTIMER_MD_REG,
 	.root_en_mask = BIT(2),
 	.ns_mask = (BM(31, 24) | BM(15, 14) | BM(2, 0)),
-	.cc_mask = BM(7, 6),
+	.ctl_mask = BM(7, 6),
 	.set_rate = set_rate_mnd_8,
 	.freq_tbl = clk_tbl_csi_phytimer,
 	.current_freq = &local_dummy_freq,
@@ -2186,7 +2180,7 @@ struct clk_local csiphy_timer_src_clk = {
 
 static struct branch_clk csi0phy_timer_clk = {
 	.b = {
-		.en_reg = CSIPHYTIMER_CC_REG,
+		.ctl_reg = CSIPHYTIMER_CC_REG,
 		.en_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_I_REG,
 		.halt_bit = 17,
@@ -2201,7 +2195,7 @@ static struct branch_clk csi0phy_timer_clk = {
 
 static struct branch_clk csi1phy_timer_clk = {
 	.b = {
-		.en_reg = CSIPHYTIMER_CC_REG,
+		.ctl_reg = CSIPHYTIMER_CC_REG,
 		.en_mask = BIT(9),
 		.halt_reg = DBG_BUS_VEC_I_REG,
 		.halt_bit = 18,
@@ -2232,9 +2226,9 @@ static struct clk_freq_tbl clk_tbl_dsi_byte[] = {
 	F_END
 };
 
-static struct clk_local dsi1_byte_clk = {
+static struct rcg_clk dsi1_byte_clk = {
 	.b = {
-		.en_reg = DSI1_BYTE_CC_REG,
+		.ctl_reg = DSI1_BYTE_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(7),
@@ -2254,9 +2248,9 @@ static struct clk_local dsi1_byte_clk = {
 	},
 };
 
-static struct clk_local dsi2_byte_clk = {
+static struct rcg_clk dsi2_byte_clk = {
 	.b = {
-		.en_reg = DSI2_BYTE_CC_REG,
+		.ctl_reg = DSI2_BYTE_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(25),
@@ -2276,9 +2270,9 @@ static struct clk_local dsi2_byte_clk = {
 	},
 };
 
-static struct clk_local dsi1_esc_clk = {
+static struct rcg_clk dsi1_esc_clk = {
 	.b = {
-		.en_reg = DSI1_ESC_CC_REG,
+		.ctl_reg = DSI1_ESC_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.halt_reg = DBG_BUS_VEC_I_REG,
@@ -2297,9 +2291,9 @@ static struct clk_local dsi1_esc_clk = {
 	},
 };
 
-static struct clk_local dsi2_esc_clk = {
+static struct rcg_clk dsi2_esc_clk = {
 	.b = {
-		.en_reg = DSI2_ESC_CC_REG,
+		.ctl_reg = DSI2_ESC_CC_REG,
 		.en_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_I_REG,
 		.halt_bit = 3,
@@ -2323,7 +2317,7 @@ static struct clk_local dsi2_esc_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD4(4, m, 0, n), \
 		.ns_val = NS_MND_BANKED4(20, 16, n, m, 3, 0, s##_to_mm_mux), \
-		.cc_val = CC_BANKED(9, 6, n), \
+		.ctl_val = CC_BANKED(9, 6, n), \
 		.mnd_en_mask = (BIT(8) | BIT(5)) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -2362,9 +2356,9 @@ static struct bank_masks bmnd_info_gfx2d0 = {
 	},
 };
 
-struct clk_local gfx2d0_clk = {
+static struct rcg_clk gfx2d0_clk = {
 	.b = {
-		.en_reg = GFX2D0_CC_REG,
+		.ctl_reg = GFX2D0_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(14),
@@ -2402,9 +2396,9 @@ static struct bank_masks bmnd_info_gfx2d1 = {
 	},
 };
 
-struct clk_local gfx2d1_clk = {
+static struct rcg_clk gfx2d1_clk = {
 	.b = {
-		.en_reg = GFX2D1_CC_REG,
+		.ctl_reg = GFX2D1_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(13),
@@ -2430,7 +2424,7 @@ struct clk_local gfx2d1_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD4(4, m, 0, n), \
 		.ns_val = NS_MND_BANKED4(18, 14, n, m, 3, 0, s##_to_mm_mux), \
-		.cc_val = CC_BANKED(9, 6, n), \
+		.ctl_val = CC_BANKED(9, 6, n), \
 		.mnd_en_mask = (BIT(8) | BIT(5)) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -2471,9 +2465,9 @@ static struct bank_masks bmnd_info_gfx3d = {
 	},
 };
 
-struct clk_local gfx3d_clk = {
+static struct rcg_clk gfx3d_clk = {
 	.b = {
-		.en_reg = GFX3D_CC_REG,
+		.ctl_reg = GFX3D_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(12),
@@ -2500,7 +2494,7 @@ struct clk_local gfx3d_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MM(23, 16, n, m, 15, 12, d, 2, 0, s##_to_mm_mux), \
-		.cc_val = CC(6, n), \
+		.ctl_val = CC(6, n), \
 		.mnd_en_mask = BIT(5) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -2518,9 +2512,9 @@ static struct clk_freq_tbl clk_tbl_ijpeg[] = {
 	F_END
 };
 
-struct clk_local ijpeg_clk = {
+static struct rcg_clk ijpeg_clk = {
 	.b = {
-		.en_reg = IJPEG_CC_REG,
+		.ctl_reg = IJPEG_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(9),
@@ -2531,7 +2525,7 @@ struct clk_local ijpeg_clk = {
 	.md_reg = IJPEG_MD_REG,
 	.root_en_mask = BIT(2),
 	.ns_mask = (BM(23, 16) | BM(15, 12) | BM(2, 0)),
-	.cc_mask = BM(7, 6),
+	.ctl_mask = BM(7, 6),
 	.set_rate = set_rate_mnd,
 	.freq_tbl = clk_tbl_ijpeg,
 	.depends = &ijpeg_axi_clk.c,
@@ -2560,9 +2554,9 @@ static struct clk_freq_tbl clk_tbl_jpegd[] = {
 	F_END
 };
 
-struct clk_local jpegd_clk = {
+static struct rcg_clk jpegd_clk = {
 	.b = {
-		.en_reg = JPEGD_CC_REG,
+		.ctl_reg = JPEGD_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(19),
@@ -2589,7 +2583,7 @@ struct clk_local jpegd_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MND_BANKED8(22, 14, n, m, 3, 0, s##_to_mm_mux), \
-		.cc_val = CC_BANKED(9, 6, n), \
+		.ctl_val = CC_BANKED(9, 6, n), \
 		.mnd_en_mask = (BIT(8) | BIT(5)) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -2630,9 +2624,9 @@ static struct bank_masks bmnd_info_mdp = {
 	},
 };
 
-struct clk_local mdp_clk = {
+static struct rcg_clk mdp_clk = {
 	.b = {
-		.en_reg = MDP_CC_REG,
+		.ctl_reg = MDP_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(21),
@@ -2644,6 +2638,7 @@ struct clk_local mdp_clk = {
 	.set_rate = set_rate_mnd_banked,
 	.freq_tbl = clk_tbl_mdp,
 	.bank_masks = &bmnd_info_mdp,
+	.depends = &mdp_axi_clk.c,
 	.current_freq = &local_dummy_freq,
 	.c = {
 		.dbg_name = "mdp_clk",
@@ -2654,7 +2649,7 @@ struct clk_local mdp_clk = {
 
 static struct branch_clk lut_mdp_clk = {
 	.b = {
-		.en_reg = MDP_LUT_CC_REG,
+		.ctl_reg = MDP_LUT_CC_REG,
 		.en_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_I_REG,
 		.halt_bit = 13,
@@ -2679,9 +2674,9 @@ static struct clk_freq_tbl clk_tbl_mdp_vsync[] = {
 	F_END
 };
 
-struct clk_local mdp_vsync_clk = {
+static struct rcg_clk mdp_vsync_clk = {
 	.b = {
-		.en_reg = MISC_CC_REG,
+		.ctl_reg = MISC_CC_REG,
 		.en_mask = BIT(6),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(3),
@@ -2736,9 +2731,9 @@ static struct bank_masks bdiv_info_rot = {
 	},
 };
 
-struct clk_local rot_clk = {
+static struct rcg_clk rot_clk = {
 	.b = {
-		.en_reg = ROT_CC_REG,
+		.ctl_reg = ROT_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(2),
@@ -2751,6 +2746,7 @@ struct clk_local rot_clk = {
 	.freq_tbl = clk_tbl_rot,
 	.bank_masks = &bdiv_info_rot,
 	.current_freq = &local_dummy_freq,
+	.depends = &rot_axi_clk.c,
 	.c = {
 		.dbg_name = "rot_clk",
 		.ops = &soc_clk_ops_8960,
@@ -2764,7 +2760,7 @@ struct clk_local rot_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MM(23, 16, n, m, 15, 14, d, 2, 0, s##_to_mm_mux), \
-		.cc_val = CC(6, n), \
+		.ctl_val = CC(6, n), \
 		.mnd_en_mask = BIT(5) * !!(n), \
 		.sys_vdd = v, \
 		.extra_freq_data = p_r, \
@@ -2775,16 +2771,16 @@ static struct clk_freq_tbl clk_tbl_tv[] = {
 	F_END
 };
 
-struct clk_local tv_src_clk = {
+static struct rcg_clk tv_src_clk = {
 	.ns_reg = TV_NS_REG,
 	.b = {
-		.en_reg = TV_CC_REG,
+		.ctl_reg = TV_CC_REG,
 		.halt_check = NOCHECK,
 	},
 	.md_reg = TV_MD_REG,
 	.root_en_mask = BIT(2),
 	.ns_mask = (BM(23, 16) | BM(15, 14) | BM(2, 0)),
-	.cc_mask = BM(7, 6),
+	.ctl_mask = BM(7, 6),
 	.set_rate = set_rate_tv,
 	.freq_tbl = clk_tbl_tv,
 	.current_freq = &local_dummy_freq,
@@ -2797,7 +2793,7 @@ struct clk_local tv_src_clk = {
 
 static struct branch_clk tv_enc_clk = {
 	.b = {
-		.en_reg = TV_CC_REG,
+		.ctl_reg = TV_CC_REG,
 		.en_mask = BIT(8),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(0),
@@ -2814,7 +2810,7 @@ static struct branch_clk tv_enc_clk = {
 
 static struct branch_clk tv_dac_clk = {
 	.b = {
-		.en_reg = TV_CC_REG,
+		.ctl_reg = TV_CC_REG,
 		.en_mask = BIT(10),
 		.halt_reg = DBG_BUS_VEC_D_REG,
 		.halt_bit = 9,
@@ -2829,7 +2825,7 @@ static struct branch_clk tv_dac_clk = {
 
 static struct branch_clk mdp_tv_clk = {
 	.b = {
-		.en_reg = TV_CC_REG,
+		.ctl_reg = TV_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(4),
@@ -2846,7 +2842,7 @@ static struct branch_clk mdp_tv_clk = {
 
 static struct branch_clk hdmi_tv_clk = {
 	.b = {
-		.en_reg = TV_CC_REG,
+		.ctl_reg = TV_CC_REG,
 		.en_mask = BIT(12),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(1),
@@ -2863,7 +2859,7 @@ static struct branch_clk hdmi_tv_clk = {
 
 static struct branch_clk hdmi_app_clk = {
 	.b = {
-		.en_reg = MISC_CC2_REG,
+		.ctl_reg = MISC_CC2_REG,
 		.en_mask = BIT(11),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(11),
@@ -2900,7 +2896,7 @@ static struct bank_masks bmnd_info_vcodec = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MND_BANKED8(11, 19, n, m, 0, 27, s##_to_mm_mux), \
-		.cc_val = CC_BANKED(6, 11, n), \
+		.ctl_val = CC_BANKED(6, 11, n), \
 		.mnd_en_mask = (BIT(10) | BIT(5)) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -2917,9 +2913,9 @@ static struct clk_freq_tbl clk_tbl_vcodec[] = {
 	F_END
 };
 
-struct clk_local vcodec_clk = {
+static struct rcg_clk vcodec_clk = {
 	.b = {
-		.en_reg = VCODEC_CC_REG,
+		.ctl_reg = VCODEC_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(6),
@@ -2960,9 +2956,9 @@ static struct clk_freq_tbl clk_tbl_vpe[] = {
 	F_END
 };
 
-struct clk_local vpe_clk = {
+static struct rcg_clk vpe_clk = {
 	.b = {
-		.en_reg = VPE_CC_REG,
+		.ctl_reg = VPE_CC_REG,
 		.en_mask = BIT(0),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(17),
@@ -2975,6 +2971,7 @@ struct clk_local vpe_clk = {
 	.set_rate = set_rate_nop,
 	.freq_tbl = clk_tbl_vpe,
 	.current_freq = &local_dummy_freq,
+	.depends = &vpe_axi_clk.c,
 	.c = {
 		.dbg_name = "vpe_clk",
 		.ops = &soc_clk_ops_8960,
@@ -2988,7 +2985,7 @@ struct clk_local vpe_clk = {
 		.src_clk = &s##_clk.c, \
 		.md_val = MD8(8, m, 0, n), \
 		.ns_val = NS_MM(23, 16, n, m, 11, 10, d, 2, 0, s##_to_mm_mux), \
-		.cc_val = CC(6, n), \
+		.ctl_val = CC(6, n), \
 		.mnd_en_mask = BIT(5) * !!(n), \
 		.sys_vdd = v, \
 	}
@@ -3014,9 +3011,9 @@ static struct clk_freq_tbl clk_tbl_vfe[] = {
 };
 
 
-struct clk_local vfe_clk = {
+static struct rcg_clk vfe_clk = {
 	.b = {
-		.en_reg = VFE_CC_REG,
+		.ctl_reg = VFE_CC_REG,
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(15),
 		.halt_reg = DBG_BUS_VEC_B_REG,
@@ -3027,7 +3024,7 @@ struct clk_local vfe_clk = {
 	.md_reg = VFE_MD_REG,
 	.root_en_mask = BIT(2),
 	.ns_mask = (BM(23, 16) | BM(11, 10) | BM(2, 0)),
-	.cc_mask = BM(7, 6),
+	.ctl_mask = BM(7, 6),
 	.set_rate = set_rate_mnd,
 	.freq_tbl = clk_tbl_vfe,
 	.depends = &vfe_axi_clk.c,
@@ -3041,7 +3038,7 @@ struct clk_local vfe_clk = {
 
 static struct branch_clk csi0_vfe_clk = {
 	.b = {
-		.en_reg = VFE_CC_REG,
+		.ctl_reg = VFE_CC_REG,
 		.en_mask = BIT(12),
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(24),
@@ -3084,9 +3081,9 @@ static struct clk_freq_tbl clk_tbl_aif_osr[] = {
 };
 
 #define CLK_AIF_OSR(i, ns, md, h_r) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = ns, \
+			.ctl_reg = ns, \
 			.en_mask = BIT(17), \
 			.reset_reg = ns, \
 			.reset_mask = BIT(19), \
@@ -3108,9 +3105,9 @@ static struct clk_freq_tbl clk_tbl_aif_osr[] = {
 		}, \
 	}
 #define CLK_AIF_OSR_DIV(i, ns, md, h_r) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = ns, \
+			.ctl_reg = ns, \
 			.en_mask = BIT(21), \
 			.reset_reg = ns, \
 			.reset_mask = BIT(23), \
@@ -3147,9 +3144,9 @@ static struct clk_freq_tbl clk_tbl_aif_bit[] = {
 };
 
 #define CLK_AIF_BIT(i, ns, h_r) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = ns, \
+			.ctl_reg = ns, \
 			.en_mask = BIT(15), \
 			.halt_reg = h_r, \
 			.halt_check = DELAY, \
@@ -3183,9 +3180,9 @@ static struct clk_freq_tbl clk_tbl_aif_bit_div[] = {
 };
 
 #define CLK_AIF_BIT_DIV(i, ns, h_r) \
-	struct clk_local i##_clk = { \
+	struct rcg_clk i##_clk = { \
 		.b = { \
-			.en_reg = ns, \
+			.ctl_reg = ns, \
 			.en_mask = BIT(19), \
 			.halt_reg = h_r, \
 			.halt_check = ENABLE, \
@@ -3251,9 +3248,9 @@ static struct clk_freq_tbl clk_tbl_pcm[] = {
 	F_END
 };
 
-static struct clk_local pcm_clk = {
+static struct rcg_clk pcm_clk = {
 	.b = {
-		.en_reg = LCC_PCM_NS_REG,
+		.ctl_reg = LCC_PCM_NS_REG,
 		.en_mask = BIT(11),
 		.reset_reg = LCC_PCM_NS_REG,
 		.reset_mask = BIT(13),
@@ -3275,9 +3272,9 @@ static struct clk_local pcm_clk = {
 	},
 };
 
-static struct clk_local audio_slimbus_clk = {
+static struct rcg_clk audio_slimbus_clk = {
 	.b = {
-		.en_reg = LCC_SLIMBUS_NS_REG,
+		.ctl_reg = LCC_SLIMBUS_NS_REG,
 		.en_mask = BIT(10),
 		.reset_reg = LCC_AHBEX_BRANCH_CTL_REG,
 		.reset_mask = BIT(5),
@@ -3301,7 +3298,7 @@ static struct clk_local audio_slimbus_clk = {
 
 static struct branch_clk sps_slimbus_clk = {
 	.b = {
-		.en_reg = LCC_SLIMBUS_NS_REG,
+		.ctl_reg = LCC_SLIMBUS_NS_REG,
 		.en_mask = BIT(12),
 		.halt_reg = LCC_SLIMBUS_STATUS_REG,
 		.halt_check = ENABLE,
@@ -3317,7 +3314,7 @@ static struct branch_clk sps_slimbus_clk = {
 
 static struct branch_clk slimbus_xo_src_clk = {
 	.b = {
-		.en_reg = SLIMBUS_XO_SRC_CLK_CTL_REG,
+		.ctl_reg = SLIMBUS_XO_SRC_CLK_CTL_REG,
 		.en_mask = BIT(2),
 		.halt_reg = CLK_HALT_DFAB_STATE_REG,
 		.halt_check = HALT,
@@ -3331,14 +3328,30 @@ static struct branch_clk slimbus_xo_src_clk = {
 	},
 };
 
-static DEFINE_CLK_VOTER(dfab_dsps_clk, &dummy_clk);
-static DEFINE_CLK_VOTER(dfab_usb_hs_clk, &dummy_clk);
-static DEFINE_CLK_VOTER(dfab_sdc1_clk, &dummy_clk);
-static DEFINE_CLK_VOTER(dfab_sdc2_clk, &dummy_clk);
-static DEFINE_CLK_VOTER(dfab_sdc3_clk, &dummy_clk);
-static DEFINE_CLK_VOTER(dfab_sdc4_clk, &dummy_clk);
-static DEFINE_CLK_VOTER(dfab_sdc5_clk, &dummy_clk);
-static DEFINE_CLK_VOTER(dfab_sps_clk, &dummy_clk);
+DEFINE_CLK_RPM(afab_clk, afab_a_clk, APPS_FABRIC);
+DEFINE_CLK_RPM(cfpb_clk, cfpb_a_clk, CFPB);
+DEFINE_CLK_RPM(dfab_clk, dfab_a_clk, DAYTONA_FABRIC);
+DEFINE_CLK_RPM(ebi1_clk, ebi1_a_clk, EBI1);
+DEFINE_CLK_RPM(mmfab_clk, mmfab_a_clk, MM_FABRIC);
+DEFINE_CLK_RPM(mmfpb_clk, mmfpb_a_clk, MMFPB);
+DEFINE_CLK_RPM(sfab_clk, sfab_a_clk, SYSTEM_FABRIC);
+DEFINE_CLK_RPM(sfpb_clk, sfpb_a_clk, SFPB);
+
+static DEFINE_CLK_VOTER(dfab_dsps_clk, &dfab_clk.c);
+static DEFINE_CLK_VOTER(dfab_usb_hs_clk, &dfab_clk.c);
+static DEFINE_CLK_VOTER(dfab_sdc1_clk, &dfab_clk.c);
+static DEFINE_CLK_VOTER(dfab_sdc2_clk, &dfab_clk.c);
+static DEFINE_CLK_VOTER(dfab_sdc3_clk, &dfab_clk.c);
+static DEFINE_CLK_VOTER(dfab_sdc4_clk, &dfab_clk.c);
+static DEFINE_CLK_VOTER(dfab_sdc5_clk, &dfab_clk.c);
+static DEFINE_CLK_VOTER(dfab_sps_clk, &dfab_clk.c);
+
+static DEFINE_CLK_VOTER(ebi1_msmbus_clk, &ebi1_clk.c);
+/*
+ * TODO: replace dummy_clk below with ebi1_clk.c once the
+ * bus driver starts voting on ebi1 rates.
+ */
+static DEFINE_CLK_VOTER(ebi1_adm_clk,    &dummy_clk);
 
 #ifdef CONFIG_DEBUG_FS
 struct measure_sel {
@@ -3358,8 +3371,12 @@ static struct measure_sel measure_mux[] = {
 	{ TEST_PER_LS(0x19), &sdc4_clk.c },
 	{ TEST_PER_LS(0x1A), &sdc5_p_clk.c },
 	{ TEST_PER_LS(0x1B), &sdc5_clk.c },
+	{ TEST_PER_LS(0x25), &dfab_clk.c },
+	{ TEST_PER_LS(0x25), &dfab_a_clk.c },
 	{ TEST_PER_LS(0x26), &pmem_clk.c },
 	{ TEST_PER_LS(0x32), &dma_bam_p_clk.c },
+	{ TEST_PER_LS(0x33), &cfpb_clk.c },
+	{ TEST_PER_LS(0x33), &cfpb_a_clk.c },
 	{ TEST_PER_LS(0x3D), &gsbi1_p_clk.c },
 	{ TEST_PER_LS(0x3E), &gsbi1_uart_clk.c },
 	{ TEST_PER_LS(0x3F), &gsbi1_qup_clk.c },
@@ -3396,6 +3413,8 @@ static struct measure_sel measure_mux[] = {
 	{ TEST_PER_LS(0x69), &gsbi12_p_clk.c },
 	{ TEST_PER_LS(0x6A), &gsbi12_uart_clk.c },
 	{ TEST_PER_LS(0x6C), &gsbi12_qup_clk.c },
+	{ TEST_PER_LS(0x78), &sfpb_clk.c },
+	{ TEST_PER_LS(0x78), &sfpb_a_clk.c },
 	{ TEST_PER_LS(0x7A), &pmic_ssbi2_clk.c },
 	{ TEST_PER_LS(0x7B), &pmic_arb0_p_clk.c },
 	{ TEST_PER_LS(0x7C), &pmic_arb1_p_clk.c },
@@ -3416,7 +3435,13 @@ static struct measure_sel measure_mux[] = {
 	{ TEST_PER_LS(0x94), &tssc_clk.c },
 	{ TEST_PER_LS(0xA4), &ce1_core_clk.c },
 
+	{ TEST_PER_HS(0x07), &afab_clk.c },
+	{ TEST_PER_HS(0x07), &afab_a_clk.c },
+	{ TEST_PER_HS(0x18), &sfab_clk.c },
+	{ TEST_PER_HS(0x18), &sfab_a_clk.c },
 	{ TEST_PER_HS(0x2A), &adm0_clk.c },
+	{ TEST_PER_HS(0x34), &ebi1_clk.c },
+	{ TEST_PER_HS(0x34), &ebi1_a_clk.c },
 
 	{ TEST_MM_LS(0x00), &dsi1_byte_clk.c },
 	{ TEST_MM_LS(0x01), &dsi2_byte_clk.c },
@@ -3448,6 +3473,8 @@ static struct measure_sel measure_mux[] = {
 	{ TEST_MM_LS(0x21), &tv_dac_clk.c },
 	{ TEST_MM_LS(0x22), &tv_enc_clk.c },
 	{ TEST_MM_LS(0x23), &dsi2_esc_clk.c },
+	{ TEST_MM_LS(0x25), &mmfpb_clk.c },
+	{ TEST_MM_LS(0x25), &mmfpb_a_clk.c },
 	{ TEST_MM_LS(0x26), &dsi2_m_p_clk.c },
 
 	{ TEST_MM_HS(0x00), &csi0_clk.c },
@@ -3460,6 +3487,8 @@ static struct measure_sel measure_mux[] = {
 	{ TEST_MM_HS(0x09), &gfx3d_clk.c },
 	{ TEST_MM_HS(0x0A), &jpegd_clk.c },
 	{ TEST_MM_HS(0x0B), &vcodec_clk.c },
+	{ TEST_MM_HS(0x0F), &mmfab_clk.c },
+	{ TEST_MM_HS(0x0F), &mmfab_a_clk.c },
 	{ TEST_MM_HS(0x11), &gmem_axi_clk.c },
 	{ TEST_MM_HS(0x12), &ijpeg_axi_clk.c },
 	{ TEST_MM_HS(0x13), &imem_axi_clk.c },
@@ -3654,22 +3683,22 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("pll4",		pll4_clk.c,		NULL),
 	CLK_LOOKUP("measure",		measure_clk,		"debug"),
 
-	CLK_DUMMY("afab_clk",		AFAB_CLK,	NULL, 0),
-	CLK_DUMMY("afab_a_clk",		AFAB_A_CLK,	NULL, 0),
-	CLK_DUMMY("cfpb_clk",		CFPB_CLK,	NULL, 0),
-	CLK_DUMMY("cfpb_a_clk",		CFPB_A_CLK,	NULL, 0),
-	CLK_DUMMY("dfab_clk",		DFAB_CLK,	NULL, 0),
-	CLK_DUMMY("dfab_a_clk",		DFAB_A_CLK,	NULL, 0),
-	CLK_DUMMY("ebi1_clk",		EBI1_CLK,	NULL, 0),
-	CLK_DUMMY("ebi1_a_clk",		EBI1_A_CLK,	NULL, 0),
-	CLK_DUMMY("mmfab_clk",		MMFAB_CLK,	NULL, 0),
-	CLK_DUMMY("mmfab_a_clk",	MMFAB_A_CLK,	NULL, 0),
-	CLK_DUMMY("mmfpb_clk",		MMFPB_CLK,	NULL, 0),
-	CLK_DUMMY("mmfpb_a_clk",	MMFPB_A_CLK,	NULL, 0),
-	CLK_DUMMY("sfab_clk",		SFAB_CLK,	NULL, 0),
-	CLK_DUMMY("sfab_a_clk",		SFAB_A_CLK,	NULL, 0),
-	CLK_DUMMY("sfpb_clk",		SFPB_CLK,	NULL, 0),
-	CLK_DUMMY("sfpb_a_clk",		SFPB_A_CLK,	NULL, 0),
+	CLK_LOOKUP("afab_clk",		afab_clk.c,	NULL),
+	CLK_LOOKUP("afab_a_clk",	afab_a_clk.c,	NULL),
+	CLK_LOOKUP("cfpb_clk",		cfpb_clk.c,	NULL),
+	CLK_LOOKUP("cfpb_a_clk",	cfpb_a_clk.c,	NULL),
+	CLK_LOOKUP("dfab_clk",		dfab_clk.c,	NULL),
+	CLK_LOOKUP("dfab_a_clk",	dfab_a_clk.c,	NULL),
+	CLK_LOOKUP("ebi1_clk",		ebi1_clk.c,	NULL),
+	CLK_LOOKUP("ebi1_a_clk",	ebi1_a_clk.c,	NULL),
+	CLK_LOOKUP("mmfab_clk",		mmfab_clk.c,	NULL),
+	CLK_LOOKUP("mmfab_a_clk",	mmfab_a_clk.c,	NULL),
+	CLK_LOOKUP("mmfpb_clk",		mmfpb_clk.c,	NULL),
+	CLK_LOOKUP("mmfpb_a_clk",	mmfpb_a_clk.c,	NULL),
+	CLK_LOOKUP("sfab_clk",		sfab_clk.c,	NULL),
+	CLK_LOOKUP("sfab_a_clk",	sfab_a_clk.c,	NULL),
+	CLK_LOOKUP("sfpb_clk",		sfpb_clk.c,	NULL),
+	CLK_LOOKUP("sfpb_a_clk",	sfpb_a_clk.c,	NULL),
 
 	CLK_LOOKUP("gsbi_uart_clk",	gsbi1_uart_clk.c,	NULL),
 	CLK_LOOKUP("gsbi_uart_clk",	gsbi2_uart_clk.c,	NULL),
@@ -3852,6 +3881,9 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("dfab_sdc_clk",	dfab_sdc4_clk.c, "msm_sdcc.4"),
 	CLK_LOOKUP("dfab_sdc_clk",	dfab_sdc5_clk.c, "msm_sdcc.5"),
 	CLK_LOOKUP("dfab_clk",		dfab_sps_clk.c,	NULL /* sps */),
+
+	CLK_LOOKUP("ebi1_msmbus_clk",	ebi1_msmbus_clk.c, NULL),
+	CLK_LOOKUP("ebi1_clk",		ebi1_adm_clk.c, "msm_dmov"),
 };
 
 unsigned msm_num_clocks_8960 = ARRAY_SIZE(msm_clocks_8960);

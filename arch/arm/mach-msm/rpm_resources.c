@@ -19,10 +19,14 @@
 #include <linux/mutex.h>
 #include <linux/proc_fs.h>
 #include <linux/spinlock.h>
+#include <linux/cpu.h>
 #include <mach/rpm.h>
-
+#include <mach/msm_iomap.h>
+#include <asm/mach-types.h>
+#include <linux/io.h>
 #include "mpm.h"
 #include "rpm_resources.h"
+#include "spm.h"
 
 /******************************************************************************
  * Debug Definitions
@@ -38,33 +42,8 @@ module_param_named(
 	debug_mask, msm_rpmrs_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
 );
 
-/******************************************************************************
- * Resource Definitions
- *****************************************************************************/
-
-enum {
-	MSM_RPMRS_PXO_OFF = 0,
-	MSM_RPMRS_PXO_ON = 1,
-};
-
-enum {
-	MSM_RPMRS_L2_CACHE_HSFS_OPEN = 0,
-	MSM_RPMRS_L2_CACHE_ACTIVE = 3,
-};
-
-enum {
-	MSM_RPMRS_VDD_MEM_RET_LOW = 500,
-	MSM_RPMRS_VDD_MEM_RET_HIGH = 750,
-	MSM_RPMRS_VDD_MEM_ACTIVE = 1000,
-	MSM_RPMRS_VDD_MEM_MAX = 1250,
-};
-
-enum {
-	MSM_RPMRS_VDD_DIG_RET_LOW = 500,
-	MSM_RPMRS_VDD_DIG_RET_HIGH = 750,
-	MSM_RPMRS_VDD_DIG_ACTIVE = 1000,
-	MSM_RPMRS_VDD_DIG_MAX = 1250,
-};
+static struct msm_rpmrs_level *msm_rpmrs_levels;
+static int msm_rpmrs_level_count;
 
 static bool msm_rpmrs_pxo_beyond_limits(struct msm_rpmrs_limits *limits);
 static void msm_rpmrs_aggregate_pxo(struct msm_rpmrs_limits *limits);
@@ -80,6 +59,12 @@ static void msm_rpmrs_aggregate_vdd_dig(struct msm_rpmrs_limits *limits);
 static void msm_rpmrs_restore_vdd_dig(void);
 static void msm_rpmrs_aggregate_rpm_cpu(struct msm_rpmrs_limits *limits);
 static void msm_rpmrs_restore_rpm_cpu(void);
+
+#ifdef CONFIG_MSM_L2_SPM
+static  void *msm_rpmrs_l2_counter_addr;
+static  int msm_rpmrs_l2_reset_count;
+#define L2_PC_COUNTER_ADDR 0x660
+#endif
 
 #define MSM_RPMRS_MAX_RS_REGISTER_COUNT 2
 
@@ -177,88 +162,6 @@ struct msm_rpmrs_resource_sysfs {
 };
 
 /******************************************************************************
- * Power Level Definitions
- *****************************************************************************/
-
-#define MSM_RPMRS_LIMITS(_pxo, _l2, _vdd_upper_b, _vdd) { \
-	MSM_RPMRS_PXO_##_pxo, \
-	MSM_RPMRS_L2_CACHE_##_l2, \
-	MSM_RPMRS_VDD_MEM_##_vdd_upper_b, \
-	MSM_RPMRS_VDD_MEM_##_vdd, \
-	MSM_RPMRS_VDD_DIG_##_vdd_upper_b, \
-	MSM_RPMRS_VDD_DIG_##_vdd, \
-	{0}, {0}, \
-}
-
-struct msm_rpmrs_level {
-	enum msm_pm_sleep_mode sleep_mode;
-	struct msm_rpmrs_limits rs_limits;
-	bool available;
-	uint32_t latency_us;
-	uint32_t steady_state_power;
-	uint32_t energy_overhead;
-	uint32_t time_overhead_us;
-};
-
-static struct msm_rpmrs_level msm_rpmrs_levels[] = {
-	{
-		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT,
-		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
-		true,
-		1, 8000, 100000, 1,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE,
-		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
-		true,
-		1500, 5000, 60100000, 3000,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
-		false,
-		1800, 5000, 60350000, 3500,
-	},
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(OFF, ACTIVE, MAX, ACTIVE),
-		false,
-		3800, 4500, 65350000, 5500,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, MAX, ACTIVE),
-		false,
-		2800, 2500, 66850000, 4800,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, MAX, ACTIVE),
-		false,
-		4800, 2000, 71850000, 6800,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, ACTIVE, RET_HIGH),
-		false,
-		6800, 500, 75850000, 8800,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, RET_HIGH, RET_LOW),
-		false,
-		7800, 0, 76350000, 9800,
-	},
-};
-
-
-/******************************************************************************
  * Resource Specific Functions
  *****************************************************************************/
 
@@ -340,6 +243,19 @@ static void msm_rpmrs_aggregate_l2_cache(struct msm_rpmrs_limits *limits)
 			pr_info("%s: %d (0x%x)\n", __func__, *buf, *buf);
 	}
 }
+
+#ifdef CONFIG_MSM_L2_SPM
+static bool msm_spm_l2_cache_beyond_limits(struct msm_rpmrs_limits *limits)
+{
+	struct msm_rpmrs_resource *rs = &msm_rpmrs_l2_cache;
+	uint32_t l2_cache = rs->rs[0].value;
+
+	if (!rs->enable_low_power)
+		l2_cache = MSM_RPMRS_L2_CACHE_ACTIVE;
+
+	return l2_cache > limits->l2_cache;
+}
+#endif
 
 static void msm_rpmrs_restore_l2_cache(void)
 {
@@ -498,7 +414,7 @@ static void msm_rpmrs_update_levels(void)
 {
 	int i, k;
 
-	for (i = 0; i < ARRAY_SIZE(msm_rpmrs_levels); i++) {
+	for (i = 0; i < msm_rpmrs_level_count; i++) {
 		struct msm_rpmrs_level *level = &msm_rpmrs_levels[i];
 
 		if (level->sleep_mode != MSM_PM_SLEEP_MODE_POWER_COLLAPSE)
@@ -582,6 +498,47 @@ static int msm_rpmrs_clear_buffer(struct msm_rpm_iv_pair *req, int count)
 
 	return listed ? 1 : 0;
 }
+
+#ifdef CONFIG_MSM_L2_SPM
+static int msm_rpmrs_flush_L2(struct msm_rpmrs_limits *limits, int notify_rpm)
+{
+	int rc = 0;
+	int lpm;
+
+	switch (limits->l2_cache) {
+	case MSM_RPMRS_L2_CACHE_HSFS_OPEN:
+		lpm = MSM_SPM_L2_MODE_POWER_COLLAPSE;
+		/* Increment the counter for TZ to init L2  on warmboot */
+		/* Barrier in msm_spm_l2_set_low_power_mode */
+		BUG_ON(!msm_rpmrs_l2_counter_addr);
+		writel_relaxed(++msm_rpmrs_l2_reset_count,
+				msm_rpmrs_l2_counter_addr);
+		break;
+	case MSM_RPMRS_L2_CACHE_GDHS:
+		lpm = MSM_SPM_L2_MODE_GDHS;
+		break;
+	case MSM_RPMRS_L2_CACHE_RETENTION:
+		lpm = MSM_SPM_L2_MODE_RETENTION;
+		break;
+	default:
+	case MSM_RPMRS_L2_CACHE_ACTIVE:
+		lpm = MSM_SPM_L2_MODE_DISABLED;
+		break;
+	}
+
+	rc = msm_spm_l2_set_low_power_mode(lpm, notify_rpm);
+	if (MSM_RPMRS_DEBUG_BUFFER & msm_rpmrs_debug_mask)
+		pr_info("%s: Requesting low power mode %d returned %d\n",
+				__func__, lpm, rc);
+
+	return rc;
+}
+#else
+static int msm_rpmrs_flush_L2(struct msm_rpmrs_limits *limits, int notify_rpm)
+{
+	return 0;
+}
+#endif
 
 static int msm_rpmrs_flush_buffer(
 	uint32_t sclk_count, struct msm_rpmrs_limits *limits, int from_idle)
@@ -763,9 +720,6 @@ static int __init msm_rpmrs_resource_sysfs_add(void)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(msm_rpmrs_resources); i++) {
-		if (msm_rpmrs_resources[i]->rs[0].id == MSM_RPM_ID_LAST + 1)
-			continue;
-
 		rs = kzalloc(sizeof(*rs), GFP_KERNEL);
 		if (!rs) {
 			pr_err("%s: cannot allocate memory for attributes\n",
@@ -837,13 +791,14 @@ void msm_rpmrs_show_resources(void)
 	spin_lock_irqsave(&msm_rpmrs_lock, flags);
 	for (i = 0; i < ARRAY_SIZE(msm_rpmrs_resources); i++) {
 		rs = msm_rpmrs_resources[i];
-		if (rs->rs[0].id == MSM_RPM_ID_LAST + 1)
-			continue;
-
-		pr_info("%s: resource %s: buffered %d, value 0x%x\n",
-			__func__, rs->name,
-			test_bit(rs->rs[0].id, msm_rpmrs_buffered),
-			msm_rpmrs_buffer[rs->rs[0].id]);
+		if (rs->rs[0].id < MSM_RPM_ID_LAST + 1)
+			pr_info("%s: resource %s: buffered %d, value 0x%x\n",
+				__func__, rs->name,
+				test_bit(rs->rs[0].id, msm_rpmrs_buffered),
+				msm_rpmrs_buffer[rs->rs[0].id]);
+		else
+			pr_info("%s: resource %s: value %d\n",
+				__func__, rs->name, rs->rs[0].value);
 	}
 	spin_unlock_irqrestore(&msm_rpmrs_lock, flags);
 }
@@ -863,7 +818,7 @@ struct msm_rpmrs_limits *msm_rpmrs_lowest_limits(
 		gpio_detectable = msm_mpm_gpio_irqs_detectable(from_idle);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(msm_rpmrs_levels); i++) {
+	for (i = 0; i < msm_rpmrs_level_count; i++) {
 		struct msm_rpmrs_level *level = &msm_rpmrs_levels[i];
 		uint32_t power;
 
@@ -904,25 +859,76 @@ struct msm_rpmrs_limits *msm_rpmrs_lowest_limits(
 	return best_level ? &best_level->rs_limits : NULL;
 }
 
-int msm_rpmrs_enter_sleep(
-	bool from_idle, uint32_t sclk_count, struct msm_rpmrs_limits *limits)
+int msm_rpmrs_enter_sleep(uint32_t sclk_count, struct msm_rpmrs_limits *limits,
+		bool from_idle, bool notify_rpm)
 {
-	int rc;
+	int rc = 0;
 
-	rc = msm_rpmrs_flush_buffer(sclk_count, limits, from_idle);
+	rc = msm_rpmrs_flush_L2(limits, notify_rpm);
 	if (rc)
 		return rc;
 
-	if (msm_rpmrs_use_mpm(limits))
-		msm_mpm_enter_sleep(from_idle);
+	if (notify_rpm) {
+		rc = msm_rpmrs_flush_buffer(sclk_count, limits, from_idle);
+		if (rc)
+			return rc;
 
-	return 0;
+		if (msm_rpmrs_use_mpm(limits))
+			msm_mpm_enter_sleep(from_idle);
+	}
+
+	return rc;
 }
 
-void msm_rpmrs_exit_sleep(bool from_idle, struct msm_rpmrs_limits *limits)
+void msm_rpmrs_exit_sleep(struct msm_rpmrs_limits *limits,
+		bool from_idle, bool notify_rpm)
 {
+
+	/* Disable L2 for now, we dont want L2 to do retention by default */
+	msm_spm_l2_set_low_power_mode(MSM_SPM_MODE_DISABLED, notify_rpm);
+
 	if (msm_rpmrs_use_mpm(limits))
 		msm_mpm_exit_sleep(from_idle);
+}
+
+#ifdef CONFIG_MSM_L2_SPM
+static int rpmrs_cpu_callback(struct notifier_block *nfb,
+		unsigned long action, void *hcpu)
+{
+	switch (action) {
+	case CPU_ONLINE_FROZEN:
+	case CPU_ONLINE:
+		if (num_online_cpus() > 1)
+			msm_rpmrs_l2_cache.rs[0].value =
+				MSM_RPMRS_L2_CACHE_ACTIVE;
+		break;
+	case CPU_DEAD_FROZEN:
+	case CPU_DEAD:
+		if (num_online_cpus() == 1)
+			msm_rpmrs_l2_cache.rs[0].value =
+				MSM_RPMRS_L2_CACHE_HSFS_OPEN;
+		break;
+	}
+
+	msm_rpmrs_update_levels();
+	return NOTIFY_OK;
+}
+
+static struct notifier_block __refdata rpmrs_cpu_notifier = {
+	.notifier_call = rpmrs_cpu_callback,
+};
+#endif
+
+int __init msm_rpmrs_levels_init(struct msm_rpmrs_level *levels, int size)
+{
+	msm_rpmrs_levels = kzalloc(sizeof(struct msm_rpmrs_level) * size,
+			GFP_KERNEL);
+	if (!msm_rpmrs_levels)
+		return -ENOMEM;
+	msm_rpmrs_level_count = size;
+	memcpy(msm_rpmrs_levels, levels, size * sizeof(struct msm_rpmrs_level));
+
+	return 0;
 }
 
 static int __init msm_rpmrs_init(void)
@@ -930,26 +936,32 @@ static int __init msm_rpmrs_init(void)
 	struct msm_rpm_iv_pair req;
 	int rc;
 
-#ifdef CONFIG_ARCH_MSM8X60
-	req.id = MSM_RPMRS_ID_APPS_L2_CACHE_CTL;
-	req.value = 1;
+	BUG_ON(!msm_rpmrs_levels);
 
-	rc = msm_rpm_set(MSM_RPM_CTX_SET_0, &req, 1);
-	if (rc) {
-		pr_err("%s: failed to request L2 cache: %d\n", __func__, rc);
-		goto init_exit;
+	if (machine_is_msm8x60_surf() || machine_is_msm8x60_ffa() ||
+		machine_is_msm8x60_fluid() || machine_is_msm8x60_fusion() ||
+		machine_is_msm8x60_fusn_ffa()) {
+
+		req.id = MSM_RPMRS_ID_APPS_L2_CACHE_CTL;
+		req.value = 1;
+
+		rc = msm_rpm_set(MSM_RPM_CTX_SET_0, &req, 1);
+		if (rc) {
+			pr_err("%s: failed to request L2 cache: %d\n",
+				__func__, rc);
+			goto init_exit;
+		}
+
+		req.id = MSM_RPMRS_ID_APPS_L2_CACHE_CTL;
+		req.value = 0;
+
+		rc = msm_rpmrs_set(MSM_RPM_CTX_SET_SLEEP, &req, 1);
+		if (rc) {
+			pr_err("%s: failed to initialize L2 cache for sleep: "
+				"%d\n", __func__, rc);
+			goto init_exit;
+		}
 	}
-
-	req.id = MSM_RPMRS_ID_APPS_L2_CACHE_CTL;
-	req.value = 0;
-
-	rc = msm_rpmrs_set(MSM_RPM_CTX_SET_SLEEP, &req, 1);
-	if (rc) {
-		pr_err("%s: failed to initialize L2 cache for sleep: %d\n",
-		       __func__, rc);
-		goto init_exit;
-	}
-#endif
 
 	req.id = MSM_RPMRS_ID_RPM_CTL;
 	req.value = 0;
@@ -972,19 +984,31 @@ static int __init msm_rpmrs_early_init(void)
 {
 	int i, k;
 
-	/* initialize listed bitmap for valid resource IDs */
+	/* Initialize listed bitmap for valid resource IDs */
 	for (i = 0; i < ARRAY_SIZE(msm_rpmrs_resources); i++) {
-		if (msm_rpmrs_resources[i]->rs[0].id == MSM_RPM_ID_LAST + 1) {
-			msm_rpmrs_resources[i]->beyond_limits = NULL;
-			msm_rpmrs_resources[i]->aggregate = NULL;
-			msm_rpmrs_resources[i]->restore = NULL;
-		} else {
-			for (k = 0; k < msm_rpmrs_resources[i]->size; k++)
-				set_bit(msm_rpmrs_resources[i]->rs[k].id,
-					msm_rpmrs_listed);
-		}
+		for (k = 0; k < msm_rpmrs_resources[i]->size; k++)
+			set_bit(msm_rpmrs_resources[i]->rs[k].id,
+				msm_rpmrs_listed);
 	}
 
 	return 0;
 }
 early_initcall(msm_rpmrs_early_init);
+
+#ifdef CONFIG_MSM_L2_SPM
+static int __init msm_rpmrs_l2_counter_init(void)
+{
+	msm_rpmrs_l2_counter_addr = MSM_IMEM_BASE + L2_PC_COUNTER_ADDR;
+	writel_relaxed(msm_rpmrs_l2_reset_count, msm_rpmrs_l2_counter_addr);
+	mb();
+
+	msm_rpmrs_l2_cache.beyond_limits = msm_spm_l2_cache_beyond_limits;
+	msm_rpmrs_l2_cache.aggregate = NULL;
+	msm_rpmrs_l2_cache.restore = NULL;
+
+	register_hotcpu_notifier(&rpmrs_cpu_notifier);
+
+	return 0;
+}
+early_initcall(msm_rpmrs_l2_counter_init);
+#endif

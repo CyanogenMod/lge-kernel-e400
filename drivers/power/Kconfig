@@ -221,6 +221,7 @@ config FUELGAUGE_MAXIM17040
 
 config BATTERY_MSM8X60
 	tristate "MSM8X60 battery"
+	select PMIC8058_BATTALARM
 	help
 	  Some MSM boards have dual charging paths to charge the battery.
 	  Say Y to enable support for the battery charging in
@@ -306,5 +307,11 @@ config PM8921_CHARGER
 	depends on MFD_PM8921_CORE
 	help
 	  Say Y here to enable support for pm8921 chip charger subdevice
+
+config PM8921_BMS
+	tristate "PM8921 Battery Monitoring System driver"
+	depends on MFD_PM8921_CORE
+	help
+	  Say Y here to enable support for pm8921 chip bms subdevice
 
 endif # POWER_SUPPLY

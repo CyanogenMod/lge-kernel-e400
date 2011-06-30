@@ -30,7 +30,7 @@
 #include <mach/dma.h>
 #include "inc/qce.h"
 #include "inc/qcedev.h"
-#include "inc/qcryptohw.h"
+#include "inc/qcryptohw_30.h"
 
 /* ADM definitions */
 #define LI_SG_CMD  (1 << 31)    /* last index in the scatter gather cmd */
@@ -2008,27 +2008,17 @@ int qce_hw_support(void *handle, struct ce_hw_support *ce_support)
 	ce_support->sha1_hmac = false;
 	ce_support->sha256_hmac = false;
 	ce_support->sha_hmac = false;
-	ce_support->cbc_mac  = false;
+	ce_support->cmac  = false;
+	ce_support->aes_key_192 = true;
+	ce_support->aes_xts  = false;
+	ce_support->aes_ccm  = false;
 	ce_support->ota = false;
 	return 0;
 }
 EXPORT_SYMBOL(qce_hw_support);
 
-static int __init _qce_init(void)
-{
-	return 0;
-}
-
-static void __exit _qce_exit(void)
-{
-	return;
-}
-
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Mona Hossain <mhossain@codeaurora.org>");
 MODULE_DESCRIPTION("Crypto Engine driver");
-MODULE_VERSION("1.08");
-
-module_init(_qce_init);
-module_exit(_qce_exit);
+MODULE_VERSION("1.09");
 

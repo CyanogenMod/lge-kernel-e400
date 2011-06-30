@@ -381,6 +381,7 @@ static int cyttsp_platform_resume(struct i2c_client *client)
 }
 
 static struct cyttsp_platform_data cyttsp_data = {
+	.fw_fname = "cyttsp_7630_fluid.hex",
 	.panel_maxx = 479,
 	.panel_maxy = 799,
 	.disp_maxx = 469,
@@ -5492,7 +5493,7 @@ static struct sdio_al_platform_data sdio_al_pdata = {
 	.peer_sdioc_version_minor = 0x0001,
 	.peer_sdioc_version_major = 0x0003,
 	.peer_sdioc_boot_version_minor = 0x0001,
-	.peer_sdioc_boot_version_major = 0x0002,
+	.peer_sdioc_boot_version_major = 0x0003,
 };
 
 struct platform_device msm_device_sdio_al = {
@@ -7260,7 +7261,8 @@ static void __init msm7x30_init(void)
 		android_usb_pdata.products = fusion_usb_products;
 	}
 #endif
-
+	platform_add_devices(msm_footswitch_devices,
+			     msm_num_footswitch_devices);
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 #ifdef CONFIG_USB_EHCI_MSM_72K
 	msm_add_host(0, &msm_usb_host_pdata);

@@ -291,6 +291,7 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 {
 	int status = -EINVAL;
 	unsigned int nap_allowed_saved;
+	struct kgsl_pwrscale_policy *policy_saved;
 
 	if (!device)
 		return -EINVAL;
@@ -300,6 +301,8 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 	mutex_lock(&device->mutex);
 	nap_allowed_saved = device->pwrctrl.nap_allowed;
 	device->pwrctrl.nap_allowed = false;
+	policy_saved = device->pwrscale.policy;
+	device->pwrscale.policy = NULL;
 	device->requested_state = KGSL_STATE_SUSPEND;
 	/* Make sure no user process is waiting for a timestamp *
 	 * before supending */
@@ -333,6 +336,7 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 	}
 	device->requested_state = KGSL_STATE_NONE;
 	device->pwrctrl.nap_allowed = nap_allowed_saved;
+	device->pwrscale.policy = policy_saved;
 	status = 0;
 
 end:
@@ -352,6 +356,7 @@ static int kgsl_resume_device(struct kgsl_device *device)
 	mutex_lock(&device->mutex);
 	if (device->state == KGSL_STATE_SUSPEND) {
 		device->requested_state = KGSL_STATE_ACTIVE;
+		kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_NOMINAL);
 		status = device->ftbl->start(device, 0);
 		if (status == 0) {
 			device->state = KGSL_STATE_ACTIVE;
@@ -372,6 +377,7 @@ static int kgsl_resume_device(struct kgsl_device *device)
 
 end:
 	mutex_unlock(&device->mutex);
+	kgsl_check_idle(device);
 	KGSL_PWR_WARN(device, "resume end\n");
 	return status;
 }
@@ -408,6 +414,14 @@ const struct dev_pm_ops kgsl_pm_ops = {
 };
 EXPORT_SYMBOL(kgsl_pm_ops);
 
+void kgsl_early_suspend_driver(struct early_suspend *h)
+{
+	struct kgsl_device *device = container_of(h,
+					struct kgsl_device, display_off);
+	kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_NOMINAL);
+}
+EXPORT_SYMBOL(kgsl_early_suspend_driver);
+
 int kgsl_suspend_driver(struct platform_device *pdev,
 					pm_message_t state)
 {
@@ -422,6 +436,14 @@ int kgsl_resume_driver(struct platform_device *pdev)
 	return kgsl_resume_device(device);
 }
 EXPORT_SYMBOL(kgsl_resume_driver);
+
+void kgsl_late_resume_driver(struct early_suspend *h)
+{
+	struct kgsl_device *device = container_of(h,
+					struct kgsl_device, display_off);
+	kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_TURBO);
+}
+EXPORT_SYMBOL(kgsl_late_resume_driver);
 
 /* file operations */
 static struct kgsl_process_private *
@@ -564,7 +586,7 @@ static int kgsl_release(struct inode *inodep, struct file *filep)
 
 	kgsl_put_process_private(device, private);
 
-	pm_runtime_put(&device->pdev->dev);
+	pm_runtime_put(device->parentdev);
 	return result;
 }
 
@@ -574,7 +596,6 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 	struct kgsl_device_private *dev_priv;
 	struct kgsl_device *device;
 	unsigned int minor = iminor(inodep);
-	struct device *dev;
 
 	device = kgsl_get_minor(minor);
 	BUG_ON(device == NULL);
@@ -584,9 +605,7 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 		return -EBUSY;
 	}
 
-	dev = &device->pdev->dev;
-
-	result = pm_runtime_get_sync(dev);
+	result = pm_runtime_get_sync(device->parentdev);
 	if (result < 0) {
 		KGSL_DRV_ERR(device,
 			"Runtime PM: Unable to wake up the device, rc = %d\n",
@@ -642,7 +661,7 @@ err_freedevpriv:
 	filep->private_data = NULL;
 	kfree(dev_priv);
 err_pmruntime:
-	pm_runtime_put(&device->pdev->dev);
+	pm_runtime_put(device->parentdev);
 	return result;
 }
 
@@ -877,6 +896,11 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 		result = -EINVAL;
 		goto free_ibdesc;
 	}
+
+	/* Let the pwrscale policy know that a new command buffer
+	   is being issued */
+
+	kgsl_pwrscale_busy(dev_priv->device);
 
 	result = dev_priv->device->ftbl->issueibcmds(dev_priv,
 					     context,
@@ -1749,6 +1773,8 @@ void kgsl_unregister_device(struct kgsl_device *device)
 	kgsl_pwrctrl_uninit_sysfs(device);
 
 	wake_lock_destroy(&device->idle_wakelock);
+	pm_qos_remove_request(&device->pm_qos_req_dma);
+
 	idr_destroy(&device->context_idr);
 
 	if (device->memstore.hostptr)
@@ -1796,7 +1822,7 @@ kgsl_register_device(struct kgsl_device *device)
 	/* Create the device */
 	dev = MKDEV(MAJOR(kgsl_driver.major), minor);
 	device->dev = device_create(kgsl_driver.class,
-				    &device->pdev->dev,
+				    device->parentdev,
 				    dev, device,
 				    device->name);
 
@@ -1806,7 +1832,7 @@ kgsl_register_device(struct kgsl_device *device)
 		goto err_devlist;
 	}
 
-	dev_set_drvdata(&device->pdev->dev, device);
+	dev_set_drvdata(device->parentdev, device);
 
 	/* Generic device initialization */
 	init_waitqueue_head(&device->wait_queue);
@@ -1840,6 +1866,9 @@ kgsl_register_device(struct kgsl_device *device)
 	kgsl_sharedmem_set(&device->memstore, 0, 0, device->memstore.size);
 
 	wake_lock_init(&device->idle_wakelock, WAKE_LOCK_IDLE, device->name);
+	pm_qos_add_request(&device->pm_qos_req_dma, PM_QOS_CPU_DMA_LATENCY,
+				PM_QOS_DEFAULT_VALUE);
+
 	idr_init(&device->context_idr);
 
 	/* sysfs and debugfs initalization - failure here is non fatal */
@@ -1872,9 +1901,10 @@ int kgsl_device_platform_probe(struct kgsl_device *device,
 	int status = -EINVAL;
 	struct kgsl_memregion *regspace = NULL;
 	struct resource *res;
-	struct platform_device *pdev = device->pdev;
+	struct platform_device *pdev =
+		container_of(device->parentdev, struct platform_device, dev);
 
-	pm_runtime_enable(&pdev->dev);
+	pm_runtime_enable(device->parentdev);
 
 	status = kgsl_pwrctrl_init(device);
 	if (status)
@@ -1961,7 +1991,7 @@ void kgsl_device_platform_remove(struct kgsl_device *device)
 	}
 	kgsl_pwrctrl_close(device);
 
-	pm_runtime_disable(&device->pdev->dev);
+	pm_runtime_disable(device->parentdev);
 }
 EXPORT_SYMBOL(kgsl_device_platform_remove);
 

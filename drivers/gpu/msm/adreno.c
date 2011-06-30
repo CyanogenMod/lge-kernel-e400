@@ -13,10 +13,12 @@
 #include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
+#include <linux/ioctl.h>
 
 #include <mach/socinfo.h>
 
 #include "kgsl.h"
+#include "kgsl_pwrscale.h"
 #include "kgsl_cffdump.h"
 
 #include "adreno.h"
@@ -95,6 +97,13 @@ static struct adreno_device device_3d0 = {
 		.active_cnt = 0,
 		.iomemname = KGSL_3D0_REG_MEMORY,
 		.ftbl = &adreno_functable,
+		.display_off = {
+#ifdef CONFIG_HAS_EARLYSUSPEND
+			.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING,
+			.suspend = kgsl_early_suspend_driver,
+			.resume = kgsl_late_resume_driver,
+#endif
+		},
 	},
 	.gmemspace = {
 		.gpu_base = 0,
@@ -206,7 +215,7 @@ irqreturn_t adreno_isr(int irq, void *data)
 		if (device->pwrctrl.nap_allowed == true) {
 			device->requested_state = KGSL_STATE_NAP;
 			queue_work(device->work_queue, &device->idle_check_ws);
-		} else if (device->pwrctrl.idle_pass == true) {
+		} else if (device->pwrscale.policy != NULL) {
 			queue_work(device->work_queue, &device->idle_check_ws);
 		}
 	}
@@ -459,7 +468,7 @@ adreno_probe(struct platform_device *pdev)
 
 	device = (struct kgsl_device *)pdev->id_entry->driver_data;
 	adreno_dev = ADRENO_DEVICE(device);
-	device->pdev = pdev;
+	device->parentdev = &pdev->dev;
 
 	init_completion(&device->recovery_gate);
 
@@ -473,13 +482,16 @@ adreno_probe(struct platform_device *pdev)
 
 	adreno_debugfs_init(device);
 
+	kgsl_pwrscale_init(device);
+	kgsl_pwrscale_attach_policy(device, &kgsl_pwrscale_policy_tz);
+
 	device->flags &= ~KGSL_FLAGS_SOFT_RESET;
 	return 0;
 
 error_close_rb:
 	adreno_ringbuffer_close(&adreno_dev->ringbuffer);
 error:
-	device->pdev = NULL;
+	device->parentdev = NULL;
 	return status;
 }
 
@@ -490,6 +502,9 @@ static int __devexit adreno_remove(struct platform_device *pdev)
 
 	device = (struct kgsl_device *)pdev->id_entry->driver_data;
 	adreno_dev = ADRENO_DEVICE(device);
+
+	kgsl_pwrscale_detach_policy(device);
+	kgsl_pwrscale_close(device);
 
 	adreno_ringbuffer_close(&adreno_dev->ringbuffer);
 	kgsl_device_platform_remove(device);

@@ -21,6 +21,7 @@
 #include <mach/msm_reqs.h>
 #include <mach/msm_memtypes.h>
 #include <linux/interrupt.h>
+#include <linux/memory_alloc.h>
 #include <asm/sizes.h>
 #include "vidc.h"
 #include "vcd_res_tracker.h"
@@ -330,6 +331,10 @@ int res_trk_update_bus_perf_level(struct vcd_dev_ctxt *dev_ctxt, u32 perf_level)
 		bus_clk_index = 1;
 	else
 		bus_clk_index = 2;
+
+	if (dev_ctxt->reqd_perf_lvl + dev_ctxt->curr_perf_lvl == 0)
+		bus_clk_index = 2;
+
 	bus_clk_index = (bus_clk_index << 1) + (client_type + 1);
 	VCDRES_MSG_LOW("%s(), bus_clk_index = %d", __func__, bus_clk_index);
 	VCDRES_MSG_LOW("%s(),context.pcl = %x", __func__, resource_context.pcl);
@@ -358,6 +363,9 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 	}
 
 #endif
+	if (dev_ctxt->reqd_perf_lvl + dev_ctxt->curr_perf_lvl == 0)
+		req_perf_lvl = RESTRK_1080P_MAX_PERF_LEVEL;
+
 	if (req_perf_lvl <= RESTRK_1080P_VGA_PERF_LEVEL) {
 		vidc_freq = vidc_clk_table[0];
 		*pn_set_perf_lvl = RESTRK_1080P_VGA_PERF_LEVEL;
@@ -459,12 +467,22 @@ void res_trk_init(struct device *device, u32 irq)
 		}
 		resource_context.core_type = VCD_CORE_1080P;
 		if (resource_context.memtype == MEMTYPE_EBI1) {
-			resource_context.base_addr =
-				kmalloc(VIDC_FW_SIZE, GFP_KERNEL);
-			if (resource_context.base_addr)
-				resource_context.device_addr = (phys_addr_t)
-				virt_to_phys((void *)
-					resource_context.base_addr);
+			resource_context.device_addr =
+			(phys_addr_t)
+			allocate_contiguous_memory_nomap(VIDC_FW_SIZE,
+					resource_context.memtype, SZ_4K);
+			if (resource_context.device_addr) {
+				resource_context.base_addr = (u8 *)
+				ioremap((unsigned long)
+				resource_context.device_addr, VIDC_FW_SIZE);
+				if (!resource_context.base_addr) {
+					free_contiguous_memory_by_paddr(
+					(unsigned long)
+					resource_context.device_addr);
+					resource_context.device_addr =
+						(phys_addr_t)NULL;
+				}
+			}
 		}
 	}
 }

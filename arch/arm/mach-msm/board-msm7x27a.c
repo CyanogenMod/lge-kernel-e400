@@ -104,7 +104,7 @@ static struct sx150x_platform_data sx150x_data[] __initdata = {
 		.oscio_is_gpo		= false,
 		.io_pullup_ena		= 0,
 		.io_pulldn_ena		= 0,
-		.io_open_drain_ena	= 0,
+		.io_open_drain_ena	= 0xfef8,
 		.irq_summary		= -1,
 	},
 	[SX150X_CAM]	= {
@@ -112,7 +112,7 @@ static struct sx150x_platform_data sx150x_data[] __initdata = {
 		.oscio_is_gpo		= false,
 		.io_pullup_ena		= 0,
 		.io_pulldn_ena		= 0,
-		.io_open_drain_ena	= 0,
+		.io_open_drain_ena	= 0x23,
 		.irq_summary		= -1,
 	},
 };
@@ -725,7 +725,14 @@ static int bluetooth_power(int on)
 {
 	int pin, rc = 0;
 	const char *id = "BTPW";
+	int cid = 0;
 
+	cid = adie_get_detected_connectivity_type();
+	if (cid != BAHAMA_ID) {
+		pr_err("%s: unexpected adie connectivity type: %d\n",
+					__func__, cid);
+		return -ENODEV;
+	}
 	if (on) {
 		/*setup power for BT SOC*/
 		rc = bluetooth_switch_regulators(on);
@@ -855,7 +862,6 @@ static struct marimba_platform_data marimba_pdata = {
 static struct i2c_board_info core_exp_i2c_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("sx1509q", 0x3e),
-		.platform_data =  &sx150x_data[SX150X_CORE],
 	},
 };
 static struct i2c_board_info cam_exp_i2c_info[] __initdata = {
@@ -881,6 +887,12 @@ static void __init register_i2c_devices(void)
 	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,
 				cam_exp_i2c_info,
 				ARRAY_SIZE(cam_exp_i2c_info));
+
+	if (machine_is_msm7x27a_surf())
+		sx150x_data[SX150X_CORE].io_open_drain_ena = 0xe0f0;
+
+	core_exp_i2c_info[0].platform_data =
+			&sx150x_data[SX150X_CORE];
 
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 				core_exp_i2c_info,
@@ -948,7 +960,13 @@ static struct msm_i2c_platform_data msm_gsbi1_qup_i2c_pdata = {
 #ifdef CONFIG_ARCH_MSM7X27A
 #define MSM_PMEM_MDP_SIZE       0x1DD1000
 #define MSM_PMEM_ADSP_SIZE      0x1000000
-#define MSM_FB_SIZE             0x195000
+
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+#define MSM_FB_SIZE		0x260000
+#else
+#define MSM_FB_SIZE		0x195000
+#endif
+
 #endif
 
 static char *usb_functions_default[] = {
@@ -1188,6 +1206,10 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.chg_vbus_draw		 = hsusb_chg_vbus_draw,
 };
 #endif
+
+static struct msm_hsusb_gadget_platform_data msm_gadget_pdata = {
+	.is_phy_status_timer_on = 1,
+};
 
 static struct resource smc91x_resources[] = {
 	[0] = {
@@ -1452,7 +1474,12 @@ static struct mmc_platform_data sdc1_plat_data = {
 
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 static struct mmc_platform_data sdc2_plat_data = {
-	.ocr_mask	= MMC_VDD_28_29,
+	/*
+	 * SDC2 supports only 1.8V, claim for 2.85V range is just
+	 * for allowing buggy cards who advertise 2.8V even though
+	 * they can operate at 1.8V supply.
+	 */
+	.ocr_mask	= MMC_VDD_28_29 | MMC_VDD_165_195,
 	.translate_vdd  = msm_sdcc_setup_power,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 #ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
@@ -2820,13 +2847,13 @@ static int mipi_dsi_panel_power(int on)
 			return rc;
 		}
 
-		rc = gpio_direction_output(GPIO_DISPLAY_PWR_EN, 1);
-		if (rc < 0) {
-			pr_err("failed to enable display pwr\n");
-			goto fail_gpio1;
-		}
-
 		if (machine_is_msm7x27a_surf()) {
+			rc = gpio_direction_output(GPIO_DISPLAY_PWR_EN, 1);
+			if (rc < 0) {
+				pr_err("failed to enable display pwr\n");
+				goto fail_gpio1;
+			}
+
 			rc = gpio_request(GPIO_BACKLIGHT_EN, "gpio_bkl_en");
 			if (rc < 0) {
 				pr_err("failed to request gpio_bkl_en\n");
@@ -2861,9 +2888,25 @@ static int mipi_dsi_panel_power(int on)
 		dsi_gpio_initialized = 1;
 	}
 
-		gpio_set_value_cansleep(GPIO_DISPLAY_PWR_EN, on);
 		if (machine_is_msm7x27a_surf()) {
+			gpio_set_value_cansleep(GPIO_DISPLAY_PWR_EN, on);
 			gpio_set_value_cansleep(GPIO_BACKLIGHT_EN, on);
+		} else if (machine_is_msm7x27a_ffa()) {
+			if (on) {
+				/* This line drives an active low pin on FFA */
+				rc = gpio_direction_output(GPIO_DISPLAY_PWR_EN,
+					!on);
+				if (rc < 0)
+					pr_err("failed to set direction for "
+						"display pwr\n");
+			} else {
+				gpio_set_value_cansleep(GPIO_DISPLAY_PWR_EN,
+					!on);
+				rc = gpio_direction_input(GPIO_DISPLAY_PWR_EN);
+				if (rc < 0)
+					pr_err("failed to set direction for "
+						"display pwr\n");
+			}
 		}
 
 		if (on) {
@@ -3258,6 +3301,8 @@ static void __init msm7x2x_init(void)
 		[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency;
 		msm_device_otg.dev.platform_data = &msm_otg_pdata;
 #endif
+		msm_device_gadget_peripheral.dev.platform_data =
+							&msm_gadget_pdata;
 		msm7x27a_cfg_smsc911x();
 		platform_add_devices(surf_ffa_devices,
 				ARRAY_SIZE(surf_ffa_devices));
@@ -3276,6 +3321,13 @@ static void __init msm7x2x_init(void)
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	bt_power_init();
 #endif
+	if (cpu_is_msm7x25a()) {
+		atmel_ts_pdata.min_x = 0;
+		atmel_ts_pdata.max_x = 480;
+		atmel_ts_pdata.min_y = 0;
+		atmel_ts_pdata.max_y = 320;
+	}
+
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 		atmel_ts_i2c_info,
 		ARRAY_SIZE(atmel_ts_i2c_info));

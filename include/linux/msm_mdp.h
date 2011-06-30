@@ -51,6 +51,7 @@
 #define MSMFB_OVERLAY_3D       _IOWR(MSMFB_IOCTL_MAGIC, 146, \
 						struct msmfb_overlay_3d)
 
+#define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
 #define MSMFB_DRIVER_VERSION	0xF9E8D701
 
@@ -242,7 +243,10 @@ struct msmfb_overlay_3d {
 
 struct msmfb_overlay_blt {
 	uint32_t enable;
-	struct msmfb_data data;
+	uint32_t offset;
+	uint32_t width;
+	uint32_t height;
+	uint32_t bpp;
 };
 
 struct mdp_histogram {

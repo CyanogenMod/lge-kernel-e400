@@ -134,6 +134,19 @@ static struct mfd_cell gpio_cell __devinitdata = {
 	.num_resources	= ARRAY_SIZE(gpio_cell_resources),
 };
 
+static const struct resource adc_cell_resources[] __devinitconst = {
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_ADC_EOC_USR_IRQ),
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_ADC_BATT_TEMP_WARM_IRQ),
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_ADC_BATT_TEMP_COLD_IRQ),
+};
+
+static struct mfd_cell adc_cell __devinitdata = {
+	.name		= PM8921_ADC_DEV_NAME,
+	.id		= -1,
+	.resources	= adc_cell_resources,
+	.num_resources	= ARRAY_SIZE(adc_cell_resources),
+};
+
 static const struct resource mpp_cell_resources[] __devinitconst = {
 	{
 		.start	= PM8921_IRQ_BLOCK_BIT(PM8921_MPP_BLOCK_START, 0),
@@ -238,11 +251,33 @@ static const struct resource charger_cell_resources[] __devinitconst = {
 	SINGLE_IRQ_RESOURCE("DCIN_UV_IRQ", PM8921_DCIN_UV_IRQ),
 };
 
+static const struct resource bms_cell_resources[] __devinitconst = {
+	SINGLE_IRQ_RESOURCE("PM8921_BMS_SBI_WRITE_OK", PM8921_BMS_SBI_WRITE_OK),
+	SINGLE_IRQ_RESOURCE("PM8921_BMS_CC_THR", PM8921_BMS_CC_THR),
+	SINGLE_IRQ_RESOURCE("PM8921_BMS_VSENSE_THR", PM8921_BMS_VSENSE_THR),
+	SINGLE_IRQ_RESOURCE("PM8921_BMS_VSENSE_FOR_R", PM8921_BMS_VSENSE_FOR_R),
+	SINGLE_IRQ_RESOURCE("PM8921_BMS_OCV_FOR_R", PM8921_BMS_OCV_FOR_R),
+	SINGLE_IRQ_RESOURCE("PM8921_BMS_GOOD_OCV", PM8921_BMS_GOOD_OCV),
+	SINGLE_IRQ_RESOURCE("PM8921_BMS_VSENSE_AVG", PM8921_BMS_VSENSE_AVG),
+};
+
 static struct mfd_cell charger_cell __devinitdata = {
 	.name		= PM8921_CHARGER_DEV_NAME,
 	.id		= -1,
 	.resources	= charger_cell_resources,
 	.num_resources	= ARRAY_SIZE(charger_cell_resources),
+};
+
+static struct mfd_cell bms_cell __devinitdata = {
+	.name		= PM8921_BMS_DEV_NAME,
+	.id		= -1,
+	.resources	= bms_cell_resources,
+	.num_resources	= ARRAY_SIZE(bms_cell_resources),
+};
+
+static struct mfd_cell misc_cell __devinitdata = {
+	.name           = PM8XXX_MISC_DEV_NAME,
+	.id             = -1,
 };
 
 static int __devinit
@@ -340,6 +375,30 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 		}
 	}
 
+	if (pdata->adc_pdata) {
+		adc_cell.platform_data = pdata->adc_pdata;
+		adc_cell.data_size =
+			sizeof(struct pm8921_adc_platform_data);
+		ret = mfd_add_devices(pmic->dev, 0, &adc_cell, 1, NULL,
+					irq_base);
+		if (ret) {
+			pr_err("Failed to add regulator subdevices ret=%d\n",
+					ret);
+		}
+	}
+
+	if (pdata->bms_pdata) {
+		bms_cell.platform_data = pdata->bms_pdata;
+		bms_cell.data_size =
+				sizeof(struct pm8921_bms_platform_data);
+		ret = mfd_add_devices(pmic->dev, 0, &bms_cell, 1, NULL,
+					irq_base);
+		if (ret) {
+			pr_err("Failed to add bms subdevice ret=%d\n", ret);
+			goto bail;
+		}
+	}
+
 	/* Add one device for each regulator used by the board. */
 	if (pdata->num_regulators > 0 && pdata->regulator_pdatas) {
 		mfd_regulators = kzalloc(sizeof(struct mfd_cell)
@@ -382,6 +441,17 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 		goto bail;
 	}
 
+	if (pdata->misc_pdata) {
+		misc_cell.platform_data = pdata->misc_pdata;
+		misc_cell.data_size = sizeof(struct pm8xxx_misc_platform_data);
+		ret = mfd_add_devices(pmic->dev, 0, &misc_cell, 1, NULL,
+				      irq_base);
+		if (ret) {
+			pr_err("Failed to add  misc subdevice ret=%d\n", ret);
+			goto bail;
+		}
+	}
+
 	return 0;
 bail:
 	if (pmic->irq_chip) {
@@ -391,10 +461,20 @@ bail:
 	return ret;
 }
 
+static const char * const pm8921_rev_names[] = {
+	[PM8XXX_REVISION_8921_TEST]	= "test",
+	[PM8XXX_REVISION_8921_1p0]	= "1.0",
+	[PM8XXX_REVISION_8921_1p1]	= "1.1",
+	[PM8XXX_REVISION_8921_2p0]	= "2.0",
+};
+
 static int __devinit pm8921_probe(struct platform_device *pdev)
 {
 	const struct pm8921_platform_data *pdata = pdev->dev.platform_data;
+	const char *revision_name = "unknown";
 	struct pm8921 *pmic;
+	enum pm8xxx_version version;
+	int revision;
 	int rc;
 	u8 val;
 
@@ -431,6 +511,17 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 	pmic->dev = &pdev->dev;
 	pm8921_drvdata.pm_chip_data = pmic;
 	platform_set_drvdata(pdev, &pm8921_drvdata);
+
+	/* Print out human readable version and revision names. */
+	version = pm8xxx_get_version(pmic->dev);
+	if (version == PM8XXX_VERSION_8921) {
+		revision = pm8xxx_get_revision(pmic->dev);
+		if (revision >= 0 && revision < ARRAY_SIZE(pm8921_rev_names))
+			revision_name = pm8921_rev_names[revision];
+		pr_info("PMIC version: PM8921 rev %s\n", revision_name);
+	} else {
+		WARN_ON(version != PM8XXX_VERSION_8921);
+	}
 
 	rc = pm8921_add_subdevices(pdata, pmic);
 	if (rc) {
