@@ -20,6 +20,7 @@
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
 #include <mach/socinfo.h>
+#include <mach/msm_serial_hs.h>
 
 #include "devices.h"
 #include "timer.h"
@@ -94,6 +95,13 @@ static struct resource resources_uart3[] = {
 	},
 };
 
+#ifdef CONFIG_SERIAL_MSM_HS
+static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
+	.inject_rx_on_wakeup       = 1,
+	.rx_to_inject       = 0xFD,
+};
+#endif
+
 struct platform_device msm_device_uart3 = {
 	.name	= "msm_serial",
 	.id	= 2,
@@ -111,6 +119,7 @@ static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 static struct platform_device *m3eu_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
+	&msm_device_uart_dm1,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
 	&msm_kgsl_3d0,
@@ -153,6 +162,7 @@ static void __init msm7x27a_init_ebi2(void)
 	iounmap(ebi2_cfg_ptr);
 }
 
+#define UART1DM_RX_GPIO         45
 static void __init msm7x2x_init(void)
 {
 	if (socinfo_init() < 0)
@@ -166,6 +176,10 @@ static void __init msm7x2x_init(void)
 	msm_device_i2c_init();
 
 	msm7x27a_init_ebi2();
+#ifdef CONFIG_SERIAL_MSM_HS
+	msm_uart_dm1_pdata.wakeup_irq = gpio_to_irq(UART1DM_RX_GPIO);
+	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
+#endif
 
 	msm_add_pmem_devices();
 	msm_add_fb_device();
