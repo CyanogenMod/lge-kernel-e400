@@ -7,6 +7,25 @@
 
 #include "devices-msm7x2xa.h"
 
+#ifdef CONFIG_LGE_FUEL_GAUGE
+static u32 m3_spg_batt_capacity(u32 current_soc);
+
+static struct msm_psy_batt_pdata msm_psy_batt_data = {
+	.voltage_min_design	= 3200,
+	.voltage_max_design	= 4200,
+	.avail_chg_sources		= AC_CHG | USB_CHG,
+	.batt_technology		= POWER_SUPPLY_TECHNOLOGY_LION,
+	.calculate_capacity		= &m3_spg_batt_capacity,
+};
+
+static u32 m3_spg_batt_capacity(u32 current_soc)
+{
+	if(current_soc > 100)
+		current_soc = 100;
+
+	return current_soc;
+}
+#else
 static u32 msm_calculate_batt_capacity(u32 current_voltage);
 
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
@@ -25,6 +44,7 @@ static u32 msm_calculate_batt_capacity(u32 current_voltage)
 	return (current_voltage - low_voltage) * 100
 			/ (high_voltage - low_voltage);
 }
+#endif
 
 static struct platform_device msm_batt_device = {
 	.name               = "msm-battery",
