@@ -85,5 +85,12 @@ enum {
 /* connectivity gpio */
 #define BT_SYS_REST_EN		6
 
+/* camera gpio */
+#define GPIO_CAM_RESET      34
+#define GPIO_FLASH_EN       82
+#define GPIO_FLASH_I2C_SCL  26
+#define GPIO_FLASH_I2C_SDA  27
+#define FLASH_I2C_ADDRESS   0x53
+
 #endif
 
