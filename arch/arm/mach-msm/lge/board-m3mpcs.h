@@ -80,5 +80,12 @@ enum {
 #define GPIO_BUTTON_DETECT  86
 #define GPIO_MIC_MODE		127
 
+/* camera gpio */
+#define GPIO_CAM_RESET      34
+#define GPIO_FLASH_EN       13
+#define GPIO_FLASH_I2C_SCL  26
+#define GPIO_FLASH_I2C_SDA  27
+#define FLASH_I2C_ADDRESS   0x53
+
 #endif
 
