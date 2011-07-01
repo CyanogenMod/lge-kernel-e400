@@ -72,6 +72,11 @@ static struct lge_backlight_platform_data lm3530bl_data = {
 	.version = 3530,
 };
 
+/* REV_A workaround for camera flash driver */
+static struct led_flash_platform_data lm3559_flash_pdata = {
+	.gpio_flen = GPIO_FLASH_EN,
+};
+
 /* backlight, sub-pmic common device */
 static struct i2c_gpio_platform_data bl_subpm_i2c_pdata = {
 	.sda_is_open_drain = 0,
@@ -94,6 +99,10 @@ static struct i2c_board_info bl_subpm_i2c_bdinfo[] = {
 		I2C_BOARD_INFO("rt8053", 0x7D),
 		.type = "rt8053",
 		.platform_data = &rt8053_data,
+	},
+	[2] = {
+		I2C_BOARD_INFO("lm3559", FLASH_I2C_ADDRESS),
+		.platform_data = &lm3559_flash_pdata,
 	},
 };
 
