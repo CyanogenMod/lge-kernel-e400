@@ -150,6 +150,13 @@ config MSM_CAMERA_FLASH_LM2759
 	  supports spotlight and flash light modes with
 	  differrent current levels.
 
+config MSM_CAMERA_FLASH_LM3559
+	bool "MSM camera LM3559 flash support"
+	depends on MSM_CAMERA
+	default n
+	---help---
+	  Enable support for NSC LM3559 flash for msm camera.
+
 config IMX072
 	bool "Sensor imx072 (Sony 5M)"
 	default n

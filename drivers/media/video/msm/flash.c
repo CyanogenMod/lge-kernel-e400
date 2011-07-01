@@ -35,6 +35,14 @@ extern int lm2759_flash_set_led_state(int state);
 #endif
 //LGE: kiran.jainapure@lge.com
 
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
+/* LGE_CHANGE
+ * lm3559 flash led driver enable
+ * 2011-06-30, bongkyu.kim@lge.com
+ */
+extern int lm3559_flash_set_led_state(int state);
+#endif
+
 #if defined CONFIG_MSM_CAMERA_FLASH_SC628A
 static struct sc628a_work_t *sc628a_flash;
 static struct i2c_client *sc628a_client;
@@ -207,6 +215,31 @@ int msm_camera_flash_lm2759(unsigned led_state)
 #endif
 //LGE: kiran.jainapure@lge.com
 
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
+/* LGE_CHANGE
+ * lm3559 flash led driver enable
+ * 2011-06-30, bongkyu.kim@lge.com
+ */
+int msm_camera_flash_lm3559(unsigned led_state)
+{
+	int rc = 0;
+
+	switch (led_state) {
+	case MSM_CAMERA_LED_OFF:
+	case MSM_CAMERA_LED_LOW:
+	case MSM_CAMERA_LED_HIGH:
+		rc = lm3559_flash_set_led_state(led_state);
+		break;
+	default:
+		rc = -EFAULT;
+		break;
+	}
+
+	CDBG("%s: led_state = %d, return %d\n", __func__, led_state, rc);
+	return rc;
+}
+#endif
+
 int msm_camera_flash_current_driver(
 	struct msm_camera_sensor_flash_current_driver *current_driver,
 	unsigned led_state)
@@ -315,6 +348,15 @@ int msm_camera_flash_current_driver(
 	}
 #endif
 //LGE: kiran.jainapure@lge.com
+
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
+	/* LGE_CHANGE
+	 * lm3559 flash led driver enable
+	 * 2011-06-30, bongkyu.kim@lge.com
+	 */
+	rc = msm_camera_flash_lm3559(led_state);
+#endif
+
 	return rc;
 }
 
