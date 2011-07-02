@@ -17,7 +17,9 @@
 #include <linux/err.h>
 #include <linux/qcomwlan7x27a_pwrif.h>
 
-#define WLAN_GPIO_EXT_POR_N     134
+// TODO : set if defined condition
+#define WLAN_GPIO_EXT_POR_N     5
+//#define WLAN_GPIO_EXT_POR_N     134
 
 static const char *id = "WLAN";
 
