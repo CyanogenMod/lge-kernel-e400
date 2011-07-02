@@ -711,6 +711,15 @@ config MFD_PM8XXX_IRQ
 	  This is required to use certain other PM 8xxx features, such as GPIO
 	  and MPP.
 
+config MFD_PM8921_ADC
+	tristate "Support for Qualcomm PM8921 ADC"
+	depends on MFD_PM8921_CORE
+	help
+	  This is the ADC arbiter driver for Qualcomm PM8921 Chip.
+
+	  The driver supports reading the HKADC, XOADC and support to set and receive
+	  temperature threshold notifications using the Battery temperature module.
+
 config MFD_PM8XXX_DEBUG
 	tristate "Qualcomm PM8xxx debugfs support"
 	depends on MFD_PM8XXX && DEBUG_FS
@@ -730,6 +739,14 @@ config MFD_PM8XXX_PWM
 	  PM 8xxx PMIC chips. It can drive 8 channels of PWM output, and
 	  has a lookup table with size of 64 to be shared by any of the
 	  8 channels.
+
+config MFD_PM8XXX_MISC
+	tristate "Support for Qualcomm PM8xxx miscellaneous APIs"
+	depends on MFD_PM8XXX
+	default y if MFD_PM8XXX
+	help
+	  This driver implements several miscellaneous APIs that may be needed
+	  in order to control the PM8XXX PMIC chip.
 
 config WCD9310_CODEC
         tristate "WCD9310 Codec"

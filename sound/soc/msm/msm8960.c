@@ -45,7 +45,8 @@ struct tabla_mbhc_calibration tabla_cal = {
 	.mic_current = TABLA_PID_MIC_5_UA,
 	.mic_pid = 100,
 	.hph_current = TABLA_PID_MIC_5_UA,
-	.shutdown_plug_removal = 10,
+	.setup_plug_removal_delay = 1000000,
+	.shutdown_plug_removal = 100000,
 };
 
 static struct clk *codec_clk;
@@ -250,7 +251,39 @@ static struct snd_soc_dsp_link fe_media = {
 	},
 };
 
-static int slimbus_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+static const char *slimbus0_hl_be[] = {
+	LPASS_BE_SLIMBUS_0_RX,
+	LPASS_BE_SLIMBUS_0_TX,
+};
+
+static struct snd_soc_dsp_link slimbus0_hl_media = {
+	.supported_be = slimbus0_hl_be,
+	.num_be = ARRAY_SIZE(slimbus0_hl_be),
+	.fe_playback_channels = 2,
+	.fe_capture_channels = 2,
+	.trigger = {
+		SND_SOC_DSP_TRIGGER_POST,
+		SND_SOC_DSP_TRIGGER_POST
+	},
+};
+
+static const char *int_fm_hl_be[] = {
+	LPASS_BE_INT_FM_RX,
+	LPASS_BE_INT_FM_TX,
+};
+
+static struct snd_soc_dsp_link int_fm_hl_media = {
+	.supported_be = int_fm_hl_be,
+	.num_be = ARRAY_SIZE(int_fm_hl_be),
+	.fe_playback_channels = 2,
+	.fe_capture_channels = 2,
+	.trigger = {
+		SND_SOC_DSP_TRIGGER_POST,
+		SND_SOC_DSP_TRIGGER_POST
+	},
+};
+
+static int msm8960_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 			struct snd_pcm_hw_params *params)
 {
 	struct snd_interval *rate = hw_param_interval(params,
@@ -283,8 +316,8 @@ static void msm8960_shutdown(struct snd_pcm_substream *substream)
 {
 	clk_users--;
 	if (!clk_users) {
-		clk_set_rate(codec_clk, 0);
 		clk_disable(codec_clk);
+		clk_put(codec_clk);
 	}
 }
 
@@ -322,6 +355,7 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.dynamic = 1,
 		.dsp_link = &fe_media,
 		.be_id = MSM_FRONTEND_DAI_CS_VOICE,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 	},
 	{
 		.name = "MSM VoIP",
@@ -341,6 +375,27 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.dsp_link = &lpa_fe_media,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
 	},
+	/* Hostless PMC purpose */
+	{
+		.name = "SLIMBUS_0 Hostless",
+		.stream_name = "SLIMBUS_0 Hostless",
+		.cpu_dai_name	= "SLIMBUS0_HOSTLESS",
+		.platform_name  = "msm-pcm-hostless",
+		.dynamic = 1,
+		.dsp_link = &slimbus0_hl_media,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		/* .be_id = do not care */
+	},
+	{
+		.name = "INT_FM Hostless",
+		.stream_name = "INT_FM Hostless",
+		.cpu_dai_name	= "INT_FM_HOSTLESS",
+		.platform_name  = "msm-pcm-hostless",
+		.dynamic = 1,
+		.dsp_link = &int_fm_hl_media,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		/* .be_id = do not care */
+	},
 	/* Backend DAI Links */
 	{
 		.name = LPASS_BE_SLIMBUS_0_RX,
@@ -352,7 +407,7 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
 		.init = &msm8960_audrx_init,
-		.be_hw_params_fixup = slimbus_be_hw_params_fixup,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
 		.ops = &msm8960_be_ops,
 	},
 	{
@@ -364,13 +419,13 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.codec_dai_name	= "tabla_tx1",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
-		.be_hw_params_fixup = slimbus_be_hw_params_fixup,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
 		.ops = &msm8960_be_ops,
 	},
 	/* Backend BT/FM DAI Links */
 	{
 		.name = LPASS_BE_INT_BT_SCO_RX,
-		.stream_name = "Int BT-SCO Playback",
+		.stream_name = "Internal BT-SCO Playback",
 		.cpu_dai_name = "msm-dai-q6.12288",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
@@ -380,7 +435,7 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 	},
 	{
 		.name = LPASS_BE_INT_BT_SCO_TX,
-		.stream_name = "Int BT-SCO Capture",
+		.stream_name = "Internal BT-SCO Capture",
 		.cpu_dai_name = "msm-dai-q6.12289",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
@@ -390,26 +445,39 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 	},
 	{
 		.name = LPASS_BE_INT_FM_RX,
-		.stream_name = "Int FM Playback",
+		.stream_name = "Internal FM Playback",
 		.cpu_dai_name = "msm-dai-q6.12292",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-rx",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_INT_FM_RX,
-		.be_hw_params_fixup = slimbus_be_hw_params_fixup,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
 	},
 	{
 		.name = LPASS_BE_INT_FM_TX,
-		.stream_name = "Int FM Capture",
+		.stream_name = "Internal FM Capture",
 		.cpu_dai_name = "msm-dai-q6.12293",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-tx",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_INT_FM_TX,
-		.be_hw_params_fixup = slimbus_be_hw_params_fixup,
-	}
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+	},
+	/* HDMI BACK END DAI Link */
+	{
+		.name = LPASS_BE_HDMI,
+		.stream_name = "HDMI Playback",
+		.cpu_dai_name = "msm-dai-q6.8",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.no_codec = 1,
+		.be_id = MSM_BACKEND_DAI_HDMI_RX,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+	},
 };
 
 struct snd_soc_card snd_soc_card_msm8960 = {

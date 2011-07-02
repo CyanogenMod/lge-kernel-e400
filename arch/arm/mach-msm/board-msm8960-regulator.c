@@ -17,8 +17,7 @@
 #include "board-msm8960.h"
 
 #define VREG_CONSUMERS(_id) \
-	static struct regulator_consumer_supply \
-	vreg_consumers_##_id[] __devinitdata
+	static struct regulator_consumer_supply vreg_consumers_##_id[]
 
 /*
  * Consumer specific regulator names:
@@ -103,6 +102,7 @@ VREG_CONSUMERS(L22) = {
 VREG_CONSUMERS(L23) = {
 	REGULATOR_SUPPLY("8921_l23",		NULL),
 	REGULATOR_SUPPLY("dsi_vddio",	"mipi_dsi.1"),
+	REGULATOR_SUPPLY("hdmi_avdd",	"hdmi_msm.0"),
 };
 VREG_CONSUMERS(L24) = {
 	REGULATOR_SUPPLY("8921_l24",		NULL),
@@ -143,6 +143,7 @@ VREG_CONSUMERS(S4) = {
 	REGULATOR_SUPPLY("8921_s4",		NULL),
 	REGULATOR_SUPPLY("sdc_vccq",		"msm_sdcc.1"),
 	REGULATOR_SUPPLY("riva_vddpx",		"wcnss_wlan.0"),
+	REGULATOR_SUPPLY("hdmi_vcc",		"hdmi_msm.0"),
 };
 VREG_CONSUMERS(S5) = {
 	REGULATOR_SUPPLY("8921_s5",		NULL),
@@ -192,6 +193,7 @@ VREG_CONSUMERS(USB_OTG) = {
 };
 VREG_CONSUMERS(HDMI_MVS) = {
 	REGULATOR_SUPPLY("8921_hdmi_mvs",	NULL),
+	REGULATOR_SUPPLY("hdmi_mvs",	"hdmi_msm.0"),
 };
 VREG_CONSUMERS(NCP) = {
 	REGULATOR_SUPPLY("8921_ncp",		NULL),
@@ -305,28 +307,46 @@ VREG_CONSUMERS(EXT_L2) = {
 		.gpio		= _gpio, \
 	}
 
+#define SAW_VREG_INIT(_id, _name, _min_uV, _max_uV) \
+	{ \
+		.constraints = { \
+			.name		= _name, \
+			.valid_ops_mask	= REGULATOR_CHANGE_VOLTAGE, \
+			.min_uV		= _min_uV, \
+			.max_uV		= _max_uV, \
+		}, \
+		.num_consumer_supplies	= ARRAY_SIZE(vreg_consumers_##_id), \
+		.consumer_supplies	= vreg_consumers_##_id, \
+	}
+
+/* GPIO regulator constraints */
 struct gpio_regulator_platform_data msm_gpio_regulator_pdata[] __devinitdata = {
 	GPIO_VREG_INIT(EXT_5V, "ext_5v", "ext_5v_en", PM8921_MPP_PM_TO_SYS(7)),
 	GPIO_VREG_INIT(EXT_L2, "ext_l2", "ext_l2_en", 91),
 };
 
-/* Regulator constraints */
+/* SAW regulator constraints */
+struct regulator_init_data msm_saw_regulator_pdata_s5 =
+	/*	      ID  vreg_name	       min_uV   max_uV */
+	SAW_VREG_INIT(S5, "8921_s5",	       1050000, 1150000);
+struct regulator_init_data msm_saw_regulator_pdata_s6 =
+	SAW_VREG_INIT(S6, "8921_s6",	       1050000, 1150000);
+
+/* PM8921 regulator constraints */
 struct pm8921_regulator_platform_data
 msm_pm8921_regulator_pdata[] __devinitdata = {
 	/*		      ID  always_on pd min_uV   max_uV  supply sys_uA */
 	PM8921_VREG_INIT_SMPS(S1,	 1, 1, 1225000, 1225000, NULL, 100000),
 	PM8921_VREG_INIT_SMPS(S2,	 0, 1, 1300000, 1300000, NULL, 0),
-	PM8921_VREG_INIT_SMPS(S3,	 1, 1, 1050000, 1150000, NULL, 100000),
+	PM8921_VREG_INIT_SMPS(S3,	 1, 1, 1150000, 1150000, NULL, 100000),
 	PM8921_VREG_INIT_SMPS(S4,	 1, 1, 1800000, 1800000, NULL, 100000),
-	PM8921_VREG_INIT_FTSMPS(S5,	 0, 1, 1050000, 1150000, NULL, 100000),
-	PM8921_VREG_INIT_FTSMPS(S6,	 0, 1, 1050000, 1150000, NULL, 100000),
 	PM8921_VREG_INIT_SMPS(S7,	 0, 1, 1150000, 1150000, NULL, 100000),
 	PM8921_VREG_INIT_SMPS(S8,	 0, 1, 2200000, 2200000, NULL, 100000),
 
 	PM8921_VREG_INIT_LDO(L1,	 1, 1, 1050000, 1050000, "8921_s4", 0),
 	PM8921_VREG_INIT_LDO(L2,	 0, 1, 1200000, 1200000, "8921_s4", 0),
 	PM8921_VREG_INIT_LDO(L3,	 0, 1, 3075000, 3075000, NULL, 0),
-	PM8921_VREG_INIT_LDO(L4,	 0, 1, 1800000, 1800000, NULL, 0),
+	PM8921_VREG_INIT_LDO(L4,	 1, 1, 1800000, 1800000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L5,	 0, 1, 2950000, 2950000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L6,	 0, 1, 2950000, 2950000, NULL, 0),
 	PM8921_VREG_INIT_LDO(L7,	 1, 1, 1850000, 2950000, NULL, 0),
@@ -342,8 +362,8 @@ msm_pm8921_regulator_pdata[] __devinitdata = {
 	PM8921_VREG_INIT_LDO(L18,	 0, 1, 1300000, 1300000, "8921_s4", 0),
 	PM8921_VREG_INIT_LDO(L21,	 0, 1, 1900000, 1900000, "8921_s8", 0),
 	PM8921_VREG_INIT_LDO(L22,	 0, 1, 2750000, 2750000, NULL, 0),
-	PM8921_VREG_INIT_LDO(L23,	 0, 1, 1800000, 1800000, "8921_s8", 0),
-	PM8921_VREG_INIT_NLDO1200(L24,	 1, 1, 1050000, 1150000, "8921_s1",
+	PM8921_VREG_INIT_LDO(L23,	 1, 1, 1800000, 1800000, "8921_s8", 0),
+	PM8921_VREG_INIT_NLDO1200(L24,	 1, 1, 1150000, 1150000, "8921_s1",
 		10000),
 	PM8921_VREG_INIT_NLDO1200(L25,	 1, 1, 1225000, 1225000, "8921_s1", 0),
 	PM8921_VREG_INIT_NLDO1200(L26,	 0, 1, 1050000, 1050000, "8921_s7", 0),

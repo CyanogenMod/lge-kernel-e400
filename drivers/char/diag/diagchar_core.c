@@ -40,6 +40,9 @@ MODULE_VERSION("1.0");
 #define INIT	1
 #define EXIT	-1
 struct diagchar_dev *driver;
+struct diagchar_priv {
+	int pid;
+};
 /* The following variables can be specified by module options */
  /* for copy buffer */
 static unsigned int itemsize = 2048; /*Size of item in the mempool */
@@ -129,13 +132,24 @@ void diag_read_smd_wcnss_work_fn(struct work_struct *work)
 	__diag_smd_wcnss_send_req();
 }
 
+void diag_add_client(int i, struct file *file)
+{
+	struct diagchar_priv *diagpriv_data;
+
+	driver->client_map[i].pid = current->tgid;
+	diagpriv_data = kmalloc(sizeof(struct diagchar_priv),
+							GFP_KERNEL);
+	if (diagpriv_data)
+		diagpriv_data->pid = current->tgid;
+	file->private_data = diagpriv_data;
+	strncpy(driver->client_map[i].name, current->comm, 20);
+	driver->client_map[i].name[19] = '\0';
+}
+
 static int diagchar_open(struct inode *inode, struct file *file)
 {
 	int i = 0;
 	void *temp;
-
-	if (!strncmp(current->comm, "ATFWD-daemon", 12))
-		return -ENOMEM;
 
 	if (driver) {
 		mutex_lock(&driver->diagchar_mutex);
@@ -145,9 +159,7 @@ static int diagchar_open(struct inode *inode, struct file *file)
 				break;
 
 		if (i < driver->num_clients) {
-			driver->client_map[i].pid = current->tgid;
-			strncpy(driver->client_map[i].name, current->comm, 20);
-			driver->client_map[i].name[19] = '\0';
+			diag_add_client(i, file);
 		} else {
 			if (i < threshold_client_limit) {
 				driver->num_clients++;
@@ -165,25 +177,16 @@ static int diagchar_open(struct inode *inode, struct file *file)
 					goto fail;
 				else
 					driver->data_ready = temp;
-				driver->client_map[i].pid = current->tgid;
-				strncpy(driver->client_map[i].name,
-					current->comm, 20);
-				driver->client_map[i].name[19] = '\0';
+				diag_add_client(i, file);
 			} else {
 				mutex_unlock(&driver->diagchar_mutex);
-				if (driver->alert_count == 0 ||
-						 driver->alert_count == 10) {
-					printk(KERN_ALERT "Max client limit for"
-						 "DIAG driver reached\n");
-					printk(KERN_INFO "Cannot open handle %s"
+				pr_alert("Max client limit for DIAG reached\n");
+				pr_info("Cannot open handle %s"
 					   " %d", current->comm, current->tgid);
 				for (i = 0; i < driver->num_clients; i++)
-					printk(KERN_INFO "%d) %s PID=%d"
-					, i, driver->client_map[i].name,
-					 driver->client_map[i].pid);
-					driver->alert_count = 0;
-				}
-				driver->alert_count++;
+					pr_debug("%d) %s PID=%d", i, driver->
+						client_map[i].name,
+						driver->client_map[i].pid);
 				return -ENOMEM;
 			}
 		}
@@ -209,6 +212,13 @@ fail:
 static int diagchar_close(struct inode *inode, struct file *file)
 {
 	int i = 0;
+	struct diagchar_priv *diagpriv_data = file->private_data;
+
+	if (!(file->private_data)) {
+		pr_alert("diag: Invalid file pointer");
+		return -ENOMEM;
+	}
+
 #ifdef CONFIG_DIAG_OVER_USB
 	/* If the SD logging process exits, change logging to USB mode */
 	if (driver->logging_process_id == current->tgid) {
@@ -221,19 +231,22 @@ static int diagchar_close(struct inode *inode, struct file *file)
 			if (driver->table[i].process_id == current->tgid)
 					driver->table[i].process_id = 0;
 
-			if (driver) {
-				mutex_lock(&driver->diagchar_mutex);
-				driver->ref_count--;
-				/* On Client exit, try to destroy all 3 pools */
-				diagmem_exit(driver, POOL_TYPE_COPY);
-				diagmem_exit(driver, POOL_TYPE_HDLC);
-				diagmem_exit(driver, POOL_TYPE_WRITE_STRUCT);
-				for (i = 0; i < driver->num_clients; i++)
-					if (driver->client_map[i].pid ==
-					     current->tgid) {
-						driver->client_map[i].pid = 0;
-						break;
-					}
+	if (driver) {
+		mutex_lock(&driver->diagchar_mutex);
+		driver->ref_count--;
+		/* On Client exit, try to destroy all 3 pools */
+		diagmem_exit(driver, POOL_TYPE_COPY);
+		diagmem_exit(driver, POOL_TYPE_HDLC);
+		diagmem_exit(driver, POOL_TYPE_WRITE_STRUCT);
+		for (i = 0; i < driver->num_clients; i++) {
+			if (NULL != diagpriv_data && diagpriv_data->pid ==
+				 driver->client_map[i].pid) {
+				driver->client_map[i].pid = 0;
+				kfree(diagpriv_data);
+				diagpriv_data = NULL;
+				break;
+			}
+		}
 		mutex_unlock(&driver->diagchar_mutex);
 		return 0;
 	}
@@ -250,10 +263,10 @@ void diag_fill_reg_table(int j, struct bindpkt_params *params,
 	driver->table[j].cmd_code_hi = params->cmd_code_hi;
 	if (params->proc_id == APPS_PROC) {
 		driver->table[j].process_id = current->tgid;
-		driver->table[j].ch_id = NULL;
+		driver->table[j].client_id = APPS_PROC;
 	} else {
 		driver->table[j].process_id = NON_APPS_PROC;
-		driver->table[j].ch_id = (smd_channel_t *)params->client_id;
+		driver->table[j].client_id = params->client_id;
 	}
 	(*count_entries)++;
 }
@@ -268,15 +281,17 @@ long diagchar_ioctl(struct file *filp,
 	if (iocmd == DIAG_IOCTL_COMMAND_REG) {
 		struct bindpkt_params_per_process *pkt_params =
 			 (struct bindpkt_params_per_process *) ioarg;
-
+		mutex_lock(&driver->diagchar_mutex);
 		for (i = 0; i < diag_max_registration; i++) {
 			if (driver->table[i].process_id == 0) {
 				diag_fill_reg_table(i, pkt_params->params,
 						&success, &count_entries);
-				if (pkt_params->count > count_entries)
+				if (pkt_params->count > count_entries) {
 					pkt_params->params++;
-				else
+				} else {
+					mutex_unlock(&driver->diagchar_mutex);
 					return success;
+				}
 			}
 		}
 		if (i < diag_threshold_registration) {
@@ -294,6 +309,7 @@ long diagchar_ioctl(struct file *filp,
 				diag_max_registration -= pkt_params->count -
 							 count_entries;
 				pr_alert("diag: Insufficient memory for reg.");
+				mutex_unlock(&driver->diagchar_mutex);
 				return 0;
 			} else {
 				driver->table = temp_buf;
@@ -301,15 +317,18 @@ long diagchar_ioctl(struct file *filp,
 			for (j = i; j < diag_max_registration; j++) {
 				diag_fill_reg_table(j, pkt_params->params,
 						&success, &count_entries);
-				if (pkt_params->count > count_entries)
+				if (pkt_params->count > count_entries) {
 					pkt_params->params++;
-				else
+				} else {
+					mutex_unlock(&driver->diagchar_mutex);
 					return success;
+				}
 			}
-		} else
+		} else {
+			mutex_unlock(&driver->diagchar_mutex);
 			pr_err("Max size reached, Pkt Registration failed for"
 						" Process %d", current->tgid);
-
+		}
 		success = 0;
 	} else if (iocmd == DIAG_IOCTL_GET_DELAYED_RSP_ID) {
 		struct diagpkt_delay_params *delay_params =
@@ -885,7 +904,6 @@ static int __init diagchar_init(void)
 		driver->used = 0;
 		timer_in_progress = 0;
 		driver->debug_flag = 1;
-		driver->alert_count = 0;
 		setup_timer(&drain_timer, drain_timer_func, 1234);
 		driver->itemsize = itemsize;
 		driver->poolsize = poolsize;
@@ -936,7 +954,7 @@ static int __init diagchar_init(void)
 		goto fail;
 	}
 
-	printk(KERN_INFO "diagchar initialized\n");
+	pr_info("diagchar initialized now");
 	return 0;
 
 fail:

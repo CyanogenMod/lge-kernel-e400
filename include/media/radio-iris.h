@@ -33,8 +33,8 @@
 #include <linux/atomic.h>
 
 /* ---- HCI Packet structures ---- */
-#define RADIO_HCI_COMMAND_HDR_SIZE 4
-#define RADIO_HCI_EVENT_HDR_SIZE   3
+#define RADIO_HCI_COMMAND_HDR_SIZE sizeof(struct radio_hci_command_hdr)
+#define RADIO_HCI_EVENT_HDR_SIZE   sizeof(struct radio_hci_event_hdr)
 
 /* HCI data types */
 #define RADIO_HCI_COMMAND_PKT   0x11
@@ -43,19 +43,18 @@
 /* HCI timeouts */
 #define RADIO_HCI_TIMEOUT	(10000)	/* 10 seconds */
 
+#define TUNE_PARAM 16
 struct radio_hci_command_hdr {
-	__u8	protocol_byte; /*cmd or event*/
 	__le16	opcode;		/* OCF & OGF */
 	__u8	plen;
 } __packed;
 
 struct radio_hci_event_hdr {
-	__u8    protocol_byte;
 	__u8	evt;
 	__u8	plen;
 } __packed;
 
-struct hci_dev {
+struct radio_hci_dev {
 	char		name[8];
 	unsigned long	flags;
 	__u16		id;
@@ -86,28 +85,20 @@ struct hci_dev {
 	struct mutex		req_lock;
 	wait_queue_head_t	req_wait_q;
 
-	int (*open)(struct hci_dev *hdev);
-	int (*close)(struct hci_dev *hdev);
-	int (*flush)(struct hci_dev *hdev);
+	int (*open)(struct radio_hci_dev *hdev);
+	int (*close)(struct radio_hci_dev *hdev);
+	int (*flush)(struct radio_hci_dev *hdev);
 	int (*send)(struct sk_buff *skb);
-	void (*destruct)(struct hci_dev *hdev);
-	void (*notify)(struct hci_dev *hdev, unsigned int evt);
+	void (*destruct)(struct radio_hci_dev *hdev);
+	void (*notify)(struct radio_hci_dev *hdev, unsigned int evt);
 };
 
-int radio_hci_register_dev(struct hci_dev *hdev);
-int radio_hci_unregister_dev(struct hci_dev *hdev);
+int radio_hci_register_dev(struct radio_hci_dev *hdev);
+int radio_hci_unregister_dev(struct radio_hci_dev *hdev);
 int radio_hci_recv_frame(struct sk_buff *skb);
-int radio_hci_send_cmd(struct hci_dev *hdev, __u16 opcode, __u32 plen,
+int radio_hci_send_cmd(struct radio_hci_dev *hdev, __u16 opcode, __u32 plen,
 	void *param);
-void radio_hci_event_packet(struct hci_dev *hdev, struct sk_buff *skb);
-int hci_def_data_read(void __user *arg, struct hci_dev *hdev);
-int hci_def_data_write(void __user *arg, struct hci_dev *hdev);
-int hci_fm_do_calibration(void __user *arg, struct hci_dev *hdev);
-int hci_read_grp_counters(void __user *arg, struct hci_dev *hdev);
-int hci_peek_data(void __user *arg, struct hci_dev *hdev);
-int hci_poke_data(void __user *arg, struct hci_dev *hdev);
-int hci_ssbi_peek_reg(void __user *arg, struct hci_dev *hdev);
-int hci_ssbi_poke_reg(void __user *arg, struct hci_dev *hdev);
+void radio_hci_event_packet(struct radio_hci_dev *hdev, struct sk_buff *skb);
 
 /* Opcode OCF */
 /* HCI recv control commands opcode */
@@ -294,6 +285,7 @@ struct hci_fm_ssbi_req {
 #define HCI_REQ_STATUS    3
 
 struct hci_ev_tune_status {
+	__u8    sub_event;
 	__le32  station_freq;
 	__u8    serv_avble;
 	__u8    rssi;
@@ -360,12 +352,7 @@ struct hci_ev_srch_list_compl {
 /* ----- HCI Event Response ----- */
 struct hci_fm_conf_rsp {
 	__u8    status;
-	__u8    emphasis;
-	__u8    ch_spacing;
-	__u8    rds_std;
-	__u8    hlsi;
-	__le32   band_low_limit;
-	__le32   band_high_limit;
+	struct hci_fm_recv_conf_req recv_conf_rsp;
 } __packed;
 
 struct hci_fm_sig_threshold_rsp {
@@ -374,7 +361,6 @@ struct hci_fm_sig_threshold_rsp {
 } __packed;
 
 struct hci_fm_station_rsp {
-	__u8    status;
 	struct hci_ev_tune_status station_rsp;
 } __packed;
 
@@ -557,5 +543,16 @@ enum search_t {
 /* control options */
 #define CTRL_ON			(1)
 #define CTRL_OFF		(0)
+
+int hci_def_data_read(struct hci_fm_def_data_rd_req *arg,
+	struct radio_hci_dev *hdev);
+int hci_def_data_write(struct hci_fm_def_data_wr_req *arg,
+	struct radio_hci_dev *hdev);
+int hci_fm_do_calibration(__u8 *arg, struct radio_hci_dev *hdev);
+int hci_fm_do_calibration(__u8 *arg, struct radio_hci_dev *hdev);
+int hci_peek_data(struct hci_fm_peek_req *arg, struct radio_hci_dev *hdev);
+int hci_poke_data(struct hci_fm_poke_req *arg, struct radio_hci_dev *hdev);
+int hci_poke_data(struct hci_fm_poke_req *arg, struct radio_hci_dev *hdev);
+int hci_poke_data(struct hci_fm_poke_req *arg, struct radio_hci_dev *hdev);
 
 #endif /* __RADIO_HCI_CORE_H */

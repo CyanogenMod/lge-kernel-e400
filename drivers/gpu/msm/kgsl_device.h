@@ -31,10 +31,13 @@
 
 #include <linux/idr.h>
 #include <linux/wakelock.h>
+#include <linux/pm_qos_params.h>
+#include <linux/earlysuspend.h>
 
 #include "kgsl_mmu.h"
 #include "kgsl_pwrctrl.h"
 #include "kgsl_log.h"
+#include "kgsl_pwrscale.h"
 
 #define KGSL_TIMEOUT_NONE       0
 #define KGSL_TIMEOUT_DEFAULT    0xFFFFFFFF
@@ -155,10 +158,11 @@ struct kgsl_device {
 
 	wait_queue_head_t wait_queue;
 	struct workqueue_struct *work_queue;
-	struct platform_device *pdev;
+	struct device *parentdev;
 	struct completion recovery_gate;
 	struct dentry *d_debugfs;
 	struct idr context_idr;
+	struct early_suspend display_off;
 
 	/* Logging levels */
 	int cmd_log;
@@ -167,6 +171,9 @@ struct kgsl_device {
 	int mem_log;
 	int pwr_log;
 	struct wake_lock idle_wakelock;
+	struct kgsl_pwrscale pwrscale;
+	struct kobject pwrscale_kobj;
+	struct pm_qos_request_list pm_qos_req_dma;
 };
 
 struct kgsl_context {

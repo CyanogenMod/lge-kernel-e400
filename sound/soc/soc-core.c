@@ -39,7 +39,7 @@
 #include <sound/soc.h>
 #include <sound/soc-dsp.h>
 #include <sound/initval.h>
-
+#include <linux/dma-mapping.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/asoc.h>
 
@@ -868,6 +868,8 @@ int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (rtd->dai_link->no_host_mode == SND_SOC_DAI_LINK_NO_HOST) {
 		substream->dma_buffer.dev.type = SNDRV_DMA_TYPE_DEV;
 		substream->dma_buffer.dev.dev = &rtd->dev;
+		substream->dma_buffer.dev.dev->coherent_dma_mask =
+		DMA_BIT_MASK(32);
 		substream->dma_buffer.private_data = NULL;
 
 		ret = snd_pcm_lib_malloc_pages(substream, PAGE_SIZE);
@@ -2214,12 +2216,18 @@ static int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num)
 
 	/* setup any hostless PCMs - i.e. no host IO is performed */
 	if (rtd->dai_link->no_host_mode) {
-		substream[SNDRV_PCM_STREAM_PLAYBACK]->hw_no_buffer = 1;
-		substream[SNDRV_PCM_STREAM_CAPTURE]->hw_no_buffer = 1;
-		snd_soc_set_runtime_hwparams(substream[SNDRV_PCM_STREAM_PLAYBACK],
+		if (substream[SNDRV_PCM_STREAM_PLAYBACK]) {
+			substream[SNDRV_PCM_STREAM_PLAYBACK]->hw_no_buffer = 1;
+			snd_soc_set_runtime_hwparams(
+				substream[SNDRV_PCM_STREAM_PLAYBACK],
 				&no_host_hardware);
-		snd_soc_set_runtime_hwparams(substream[SNDRV_PCM_STREAM_CAPTURE],
+		}
+		if (substream[SNDRV_PCM_STREAM_CAPTURE]) {
+			substream[SNDRV_PCM_STREAM_CAPTURE]->hw_no_buffer = 1;
+			snd_soc_set_runtime_hwparams(
+				substream[SNDRV_PCM_STREAM_CAPTURE],
 				&no_host_hardware);
+		}
 	}
 
 	/* ASoC PCM operations */

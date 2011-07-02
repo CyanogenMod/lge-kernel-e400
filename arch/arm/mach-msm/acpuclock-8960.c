@@ -70,6 +70,8 @@
 #define HFPLL_LOW_VDD		1050000
 #define HFPLL_LOW_VDD_PLL_L_MAX	0x28
 
+#define SECCLKAGD		BIT(4)
+
 enum scalables {
 	CPU0 = 0,
 	CPU1,
@@ -329,6 +331,9 @@ static void set_pri_clk_src(struct scalable *sc, uint32_t pri_src_sel)
 	regval &= ~0x3;
 	regval |= (pri_src_sel & 0x3);
 	writel_cp15_l2ind(regval, sc->l2cpmr_iaddr);
+	/* Wait for switch to complete. */
+	mb();
+	udelay(1);
 }
 
 /* Set the selected source on secondary MUX. */
@@ -336,9 +341,22 @@ static void set_sec_clk_src(struct scalable *sc, uint32_t sec_src_sel)
 {
 	uint32_t regval;
 
+	/* Disable secondary source clock gating during switch. */
 	regval = readl_cp15_l2ind(sc->l2cpmr_iaddr);
+	regval |= SECCLKAGD;
+	writel_cp15_l2ind(regval, sc->l2cpmr_iaddr);
+
+	/* Program the MUX. */
 	regval &= ~(0x3 << 2);
 	regval |= ((sec_src_sel & 0x3) << 2);
+	writel_cp15_l2ind(regval, sc->l2cpmr_iaddr);
+
+	/* Wait for switch to complete. */
+	mb();
+	udelay(1);
+
+	/* Re-enable secondary source clock gating. */
+	regval &= ~SECCLKAGD;
 	writel_cp15_l2ind(regval, sc->l2cpmr_iaddr);
 }
 
@@ -774,13 +792,9 @@ static void __init init_clock_sources(struct scalable *sc,
 	}
 	hfpll_init(sc, tgt_s);
 
-	/*
-	 * Set PRI_SRC_SEL_HFPLL_DIV2 divider to div-2 and disable
-	 * auto-gating of secondary clock source.
-	 */
+	/* Set PRI_SRC_SEL_HFPLL_DIV2 divider to div-2. */
 	regval = readl_cp15_l2ind(sc->l2cpmr_iaddr);
 	regval &= ~(0x3 << 6);
-	regval |= BIT(4);
 	writel_cp15_l2ind(regval, sc->l2cpmr_iaddr);
 
 	/* Select PLL8 as AUX source input to the secondary MUX. */
@@ -869,12 +883,15 @@ static int __cpuinit acpuclock_cpu_callback(struct notifier_block *nfb,
 
 	switch (action) {
 	case CPU_DEAD:
+	case CPU_DEAD_FROZEN:
 		prev_khz[cpu] = acpuclk_get_rate(cpu);
 		/* Fall through. */
 	case CPU_UP_CANCELED:
+	case CPU_UP_CANCELED_FROZEN:
 		acpuclk_set_rate(cpu, HOT_UNPLUG_KHZ, SETRATE_HOTPLUG);
 		break;
 	case CPU_UP_PREPARE:
+	case CPU_UP_PREPARE_FROZEN:
 		if (WARN_ON(!prev_khz[cpu]))
 			prev_khz[cpu] = acpu_freq_tbl->speed.khz;
 		acpuclk_set_rate(cpu, prev_khz[cpu], SETRATE_HOTPLUG);

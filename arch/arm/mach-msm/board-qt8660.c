@@ -79,6 +79,7 @@
 #include "timer.h"
 #include "gpiomux.h"
 #include "gpiomux-8x60.h"
+#include "rpm_resources.h"
 
 #define MSM_SHARED_RAM_PHYS 0x40000000
 
@@ -344,6 +345,63 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 
 	{1, 1, "C1", "STANDALONE_POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
+};
+
+static struct msm_rpmrs_level msm_rpmrs_levels[] __initdata = {
+	{
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT,
+		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
+		true,
+		1, 8000, 100000, 1,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE,
+		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
+		true,
+		1500, 5000, 60100000, 3000,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
+		false,
+		1800, 5000, 60350000, 3500,
+	},
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, ACTIVE, MAX, ACTIVE),
+		false,
+		3800, 4500, 65350000, 5500,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, MAX, ACTIVE),
+		false,
+		2800, 2500, 66850000, 4800,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, MAX, ACTIVE),
+		false,
+		4800, 2000, 71850000, 6800,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, ACTIVE, RET_HIGH),
+		false,
+		6800, 500, 75850000, 8800,
+	},
+
+	{
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
+		MSM_RPMRS_LIMITS(OFF, HSFS_OPEN, RET_HIGH, RET_LOW),
+		false,
+		7800, 0, 76350000, 9800,
+	},
 };
 
 #if defined(CONFIG_USB_GADGET_MSM_72K) || defined(CONFIG_USB_EHCI_MSM_72K)
@@ -873,7 +931,9 @@ enum msm_cam_stat{
 	MSM_CAM_OFF,
 	MSM_CAM_ON,
 };
-
+#ifdef CONFIG_MT9D113
+static void msm_camera_add_clk_alias(void);
+#endif
 static int config_gpio_table(enum msm_cam_stat stat)
 {
 	int rc = 0, i = 0;
@@ -894,6 +954,20 @@ static int config_gpio_table(enum msm_cam_stat stat)
 	return rc;
 }
 
+#ifdef CONFIG_MT9D113
+static int config_camera_on_gpios(void)
+{
+	int rc = 0;
+	rc = config_gpio_table(MSM_CAM_ON);
+	if (rc < 0) {
+		printk(KERN_ERR "%s: CAMSENSOR gpio table request"
+		"failed\n", __func__);
+		return rc;
+	}
+	msm_camera_add_clk_alias();
+	return rc;
+}
+#else
 static int config_camera_on_gpios(void)
 {
 	int rc = 0;
@@ -905,6 +979,7 @@ static int config_camera_on_gpios(void)
 	}
 	return rc;
 }
+#endif
 
 static void config_camera_off_gpios(void)
 {
@@ -924,8 +999,9 @@ static int config_camera_on_gpios_web_cam(void)
 	rc = gpio_request(GPIO_WEB_CAMIF_STANDBY, "CAM_EN");
 	if (rc < 0) {
 		config_gpio_table(MSM_CAM_OFF);
-		pr_err(KERN_ERR "%s: CAMSENSOR gpio %d request"
-			"failed\n", __func__, GPIO_WEB_CAMIF_STANDBY);
+			pr_err(KERN_ERR "%s: CAMSENSOR gpio %d request"
+				"failed\n",
+				__func__, GPIO_WEB_CAMIF_STANDBY);
 		return rc;
 	}
 	gpio_direction_output(GPIO_WEB_CAMIF_STANDBY, 0);
@@ -950,6 +1026,19 @@ static struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioclk.vfe_clk_rate  = 228570000,
 };
 
+#ifdef CONFIG_MT9D113
+static struct msm_camera_device_platform_data msm_camera_device_front_cam = {
+	.camera_gpio_on  = config_camera_on_gpios,
+	.camera_gpio_off = config_camera_off_gpios,
+	.ioext.csiphy = 0x04900000,
+	.ioext.csisz  = 0x00000400,
+	.ioext.csiirq = CSI_1_IRQ,
+	.ioclk.mclk_clk_rate = 24000000,
+	.ioclk.vfe_clk_rate  = 228570000,
+};
+#endif
+
+#ifdef CONFIG_WEBCAM_OV7692
 static struct msm_camera_device_platform_data msm_camera_device_data_web_cam = {
 	.camera_gpio_on  = config_camera_on_gpios_web_cam,
 	.camera_gpio_off = config_camera_off_gpios_web_cam,
@@ -959,6 +1048,7 @@ static struct msm_camera_device_platform_data msm_camera_device_data_web_cam = {
 	.ioclk.mclk_clk_rate = 24000000,
 	.ioclk.vfe_clk_rate  = 228570000,
 };
+#endif
 
 static struct resource msm_camera_resources[] = {
 	{
@@ -1009,34 +1099,11 @@ static struct platform_device msm_camera_sensor_mt9e013 = {
 	},
 };
 #endif
-#ifdef CONFIG_WEBCAM_OV9726
-static struct msm_camera_sensor_flash_data flash_ov9726 = {
-	.flash_type	= MSM_CAMERA_FLASH_LED,
-	.flash_src	= &msm_flash_src
-};
-static struct msm_camera_sensor_info msm_camera_sensor_ov9726_data = {
-	.sensor_name	= "ov9726",
-	.sensor_reset	= 106,
-	.sensor_pwd	= 85,
-	.vcm_pwd	= 1,
-	.vcm_enable	= 0,
-	.pdata		= &msm_camera_device_data_web_cam,
-	.resource	= msm_camera_resources,
-	.num_resources	= ARRAY_SIZE(msm_camera_resources),
-	.flash_data	= &flash_ov9726,
-	.csi_if		= 1
-};
-static struct platform_device msm_camera_sensor_webcam_ov9726 = {
-	.name	= "msm_camera_ov9726",
-	.dev	= {
-		.platform_data = &msm_camera_sensor_ov9726_data,
-	},
-};
-#endif
+
 #ifdef CONFIG_WEBCAM_OV7692
 static struct msm_camera_sensor_flash_data flash_ov7692 = {
-	.flash_type		= MSM_CAMERA_FLASH_LED,
-	.flash_src		= &msm_flash_src
+	.flash_type	= MSM_CAMERA_FLASH_LED,
+	.flash_src	= &msm_flash_src
 };
 static struct msm_camera_sensor_info msm_camera_sensor_ov7692_data = {
 	.sensor_name	= "ov7692",
@@ -1051,29 +1118,65 @@ static struct msm_camera_sensor_info msm_camera_sensor_ov7692_data = {
 	.csi_if		= 1
 };
 
-static struct platform_device msm_camera_sensor_webcam_ov7692 = {
-	.name	= "msm_camera_ov7692",
-	.dev	= {
+static struct platform_device msm_camera_sensor_ov7692 = {
+	.name      = "msm_camera_ov7692",
+	.dev       = {
 		.platform_data = &msm_camera_sensor_ov7692_data,
 	},
 };
 #endif
+#ifdef CONFIG_MT9D113
+static struct msm_camera_sensor_flash_data flash_mt9d113 = {
+	.flash_type    = MSM_CAMERA_FLASH_LED,
+	.flash_src     = &msm_flash_src
+};
+static struct msm_camera_sensor_info msm_camera_sensor_mt9d113_data = {
+	.sensor_name    = "mt9d113",
+	.sensor_reset   = 106,
+	.sensor_pwd     = 105,
+	.vcm_pwd        = 1,
+	.vcm_enable     = 0,
+	.pdata          = &msm_camera_device_front_cam,
+	.resource       = msm_camera_resources,
+	.num_resources  = ARRAY_SIZE(msm_camera_resources),
+	.flash_data     = &flash_mt9d113,
+	.csi_if         = 1
+};
+
+static struct platform_device msm_camera_sensor_mt9d113 = {
+	.name       = "msm_camera_mt9d113",
+	.dev        = {
+		.platform_data = &msm_camera_sensor_mt9d113_data,
+	},
+};
+
+static void msm_camera_add_clk_alias(void)
+{
+	clk_add_alias("csi_clk", "msm_cam_mt9d113.0",
+		"csi_clk", &msm_camera_sensor_ov7692.dev);
+	clk_add_alias("csi_vfe_clk", "msm_cam_mt9d113.0",
+		"csi_vfe_clk", &msm_camera_sensor_ov7692.dev);
+	clk_add_alias("csi_pclk", "msm_cam_mt9d113.0",
+		"csi_pclk", &msm_camera_sensor_ov7692.dev);
+}
+#endif
+
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
-	#ifdef CONFIG_MT9E013
-	{
-		I2C_BOARD_INFO("mt9e013", 0x6C >> 2),
-	},
-	#endif
-	#ifdef CONFIG_WEBCAM_OV7692
-	{
-		I2C_BOARD_INFO("ov7692", 0x78),
-	},
-	#endif
-	#ifdef CONFIG_WEBCAM_OV9726
-	{
-		I2C_BOARD_INFO("ov9726", 0x10),
-	},
-	#endif
+#ifdef CONFIG_MT9E013
+{
+	I2C_BOARD_INFO("mt9e013", 0x6C >> 2),
+},
+#endif
+#ifdef CONFIG_WEBCAM_OV7692
+{
+	I2C_BOARD_INFO("ov7692", 0x78),
+},
+#endif
+#ifdef CONFIG_MT9D113
+{
+	I2C_BOARD_INFO("mt9d113", 0x78 >> 1),
+},
+#endif
 };
 #endif
 
@@ -1527,7 +1630,6 @@ static struct msm_charger_platform_data msm_charger_data = {
 	.update_time	= 1,
 	.max_voltage	= 4200,
 	.min_voltage	= 3200,
-	.resume_voltage = 4100,
 };
 
 static struct platform_device msm_charger_device = {
@@ -2260,10 +2362,10 @@ static struct platform_device *qt_devices[] __initdata = {
 	&msm_camera_sensor_mt9e013,
 #endif
 #ifdef CONFIG_WEBCAM_OV7692
-	&msm_camera_sensor_webcam_ov7692,
+	&msm_camera_sensor_ov7692,
 #endif
-#ifdef CONFIG_WEBCAM_OV9726
-	&msm_camera_sensor_webcam_ov9726,
+#ifdef CONFIG_MT9D113
+	&msm_camera_sensor_mt9d113,
 #endif
 #endif
 #ifdef CONFIG_MSM_GEMINI
@@ -5229,6 +5331,8 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 #ifdef CONFIG_MSM_RPM
 	BUG_ON(msm_rpm_init(&msm_rpm_data));
 #endif
+	BUG_ON(msm_rpmrs_levels_init(msm_rpmrs_levels,
+				ARRAY_SIZE(msm_rpmrs_levels)));
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
 

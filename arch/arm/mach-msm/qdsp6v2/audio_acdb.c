@@ -42,17 +42,26 @@ struct acdb_data {
 	struct acdb_cal_block	anc_cal;
 
 	/* AudProc Cal */
+	uint32_t		adm_topology;
+	uint32_t		asm_topology;
 	struct acdb_cal_block	audproc_cal[MAX_AUDPROC_TYPES];
 	struct acdb_cal_block	audstrm_cal[MAX_AUDPROC_TYPES];
 	struct acdb_cal_block	audvol_cal[MAX_AUDPROC_TYPES];
 
 	/* VocProc Cal */
+	uint32_t                voice_rx_topology;
+	uint32_t                voice_tx_topology;
 	struct acdb_cal_block	vocproc_cal[MAX_NETWORKS];
 	struct acdb_cal_block	vocstrm_cal[MAX_NETWORKS];
 	struct acdb_cal_block	vocvol_cal[MAX_NETWORKS];
+	/* size of cal block tables above*/
 	uint32_t		vocproc_cal_size;
 	uint32_t		vocstrm_cal_size;
 	uint32_t		vocvol_cal_size;
+	/* Total size of cal data for all networks */
+	uint32_t		vocproc_total_cal_size;
+	uint32_t		vocstrm_total_cal_size;
+	uint32_t		vocvol_total_cal_size;
 
 	/* Sidetone Cal */
 	struct sidetone_cal	sidetone_cal;
@@ -68,6 +77,84 @@ struct acdb_data {
 
 static struct acdb_data		acdb_data;
 static atomic_t usage_count;
+
+uint32_t get_voice_rx_topology(void)
+{
+	return acdb_data.voice_rx_topology;
+}
+
+void store_voice_rx_topology(uint32_t topology)
+{
+	acdb_data.voice_rx_topology = topology;
+}
+
+uint32_t get_voice_tx_topology(void)
+{
+	return acdb_data.voice_tx_topology;
+}
+
+void store_voice_tx_topology(uint32_t topology)
+{
+	acdb_data.voice_tx_topology = topology;
+}
+
+uint32_t get_adm_topology(void)
+{
+	return acdb_data.adm_topology;
+}
+
+void store_adm_topology(uint32_t topology)
+{
+	acdb_data.adm_topology = topology;
+}
+
+uint32_t get_asm_topology(void)
+{
+	return acdb_data.asm_topology;
+}
+
+void store_asm_topology(uint32_t topology)
+{
+	acdb_data.asm_topology = topology;
+}
+
+void get_all_voice_cal(struct acdb_cal_block *cal_block)
+{
+	cal_block->cal_kvaddr = acdb_data.vocproc_cal[0].cal_kvaddr;
+	cal_block->cal_paddr = acdb_data.vocproc_cal[0].cal_paddr;
+	cal_block->cal_size = acdb_data.vocproc_total_cal_size +
+				acdb_data.vocstrm_total_cal_size +
+				acdb_data.vocvol_total_cal_size;
+}
+
+void get_all_cvp_cal(struct acdb_cal_block *cal_block)
+{
+	cal_block->cal_kvaddr = acdb_data.vocproc_cal[0].cal_kvaddr;
+	cal_block->cal_paddr = acdb_data.vocproc_cal[0].cal_paddr;
+	cal_block->cal_size = acdb_data.vocproc_total_cal_size +
+				acdb_data.vocvol_total_cal_size;
+}
+
+void get_all_vocproc_cal(struct acdb_cal_block *cal_block)
+{
+	cal_block->cal_kvaddr = acdb_data.vocproc_cal[0].cal_kvaddr;
+	cal_block->cal_paddr = acdb_data.vocproc_cal[0].cal_paddr;
+	cal_block->cal_size = acdb_data.vocproc_total_cal_size;
+}
+
+void get_all_vocstrm_cal(struct acdb_cal_block *cal_block)
+{
+	cal_block->cal_kvaddr = acdb_data.vocstrm_cal[0].cal_kvaddr;
+	cal_block->cal_paddr = acdb_data.vocstrm_cal[0].cal_paddr;
+	cal_block->cal_size = acdb_data.vocstrm_total_cal_size;
+}
+
+void get_all_vocvol_cal(struct acdb_cal_block *cal_block)
+{
+	cal_block->cal_kvaddr = acdb_data.vocvol_cal[0].cal_kvaddr;
+	cal_block->cal_paddr = acdb_data.vocvol_cal[0].cal_paddr;
+	cal_block->cal_size = acdb_data.vocvol_total_cal_size;
+}
 
 void get_anc_cal(struct acdb_cal_block *cal_block)
 {
@@ -314,6 +401,7 @@ void store_vocproc_cal(int32_t len, struct cal_block *cal_blocks)
 
 	mutex_lock(&acdb_data.acdb_mutex);
 
+	acdb_data.vocproc_total_cal_size = 0;
 	for (i = 0; i < len; i++) {
 		if (cal_blocks[i].cal_offset > acdb_data.pmem_len) {
 			pr_err("%s: offset %d is > pmem_len %ld\n",
@@ -321,6 +409,8 @@ void store_vocproc_cal(int32_t len, struct cal_block *cal_blocks)
 				acdb_data.pmem_len);
 			acdb_data.vocproc_cal[i].cal_size = 0;
 		} else {
+			acdb_data.vocproc_total_cal_size +=
+				cal_blocks[i].cal_size;
 			acdb_data.vocproc_cal[i].cal_size =
 				cal_blocks[i].cal_size;
 			acdb_data.vocproc_cal[i].cal_paddr =
@@ -369,6 +459,7 @@ void store_vocstrm_cal(int32_t len, struct cal_block *cal_blocks)
 
 	mutex_lock(&acdb_data.acdb_mutex);
 
+	acdb_data.vocstrm_total_cal_size = 0;
 	for (i = 0; i < len; i++) {
 		if (cal_blocks[i].cal_offset > acdb_data.pmem_len) {
 			pr_err("%s: offset %d is > pmem_len %ld\n",
@@ -376,6 +467,8 @@ void store_vocstrm_cal(int32_t len, struct cal_block *cal_blocks)
 				acdb_data.pmem_len);
 			acdb_data.vocstrm_cal[i].cal_size = 0;
 		} else {
+			acdb_data.vocstrm_total_cal_size +=
+				cal_blocks[i].cal_size;
 			acdb_data.vocstrm_cal[i].cal_size =
 				cal_blocks[i].cal_size;
 			acdb_data.vocstrm_cal[i].cal_paddr =
@@ -424,6 +517,7 @@ void store_vocvol_cal(int32_t len, struct cal_block *cal_blocks)
 
 	mutex_lock(&acdb_data.acdb_mutex);
 
+	acdb_data.vocvol_total_cal_size = 0;
 	for (i = 0; i < len; i++) {
 		if (cal_blocks[i].cal_offset > acdb_data.pmem_len) {
 			pr_err("%s: offset %d is > pmem_len %ld\n",
@@ -431,6 +525,8 @@ void store_vocvol_cal(int32_t len, struct cal_block *cal_blocks)
 				acdb_data.pmem_len);
 			acdb_data.vocvol_cal[i].cal_size = 0;
 		} else {
+			acdb_data.vocvol_total_cal_size +=
+				cal_blocks[i].cal_size;
 			acdb_data.vocvol_cal[i].cal_size =
 				cal_blocks[i].cal_size;
 			acdb_data.vocvol_cal[i].cal_paddr =
@@ -568,6 +664,7 @@ static long acdb_ioctl(struct file *f,
 	s32			result = 0;
 	s32			audproc_path;
 	s32			size;
+	u32			topology;
 	struct cal_block	data[MAX_NETWORKS];
 	pr_debug("%s\n", __func__);
 
@@ -581,10 +678,12 @@ static long acdb_ioctl(struct file *f,
 		}
 
 		if (copy_from_user(&acdb_data.pmem_fd, (void *)arg,
-					sizeof(acdb_data.pmem_fd)))
+					sizeof(acdb_data.pmem_fd))) {
+			pr_err("%s: fail to copy pmem handle!\n", __func__);
 			result = -EFAULT;
-		else
+		} else {
 			result = register_pmem();
+		}
 		mutex_unlock(&acdb_data.acdb_mutex);
 		goto done;
 
@@ -593,6 +692,38 @@ static long acdb_ioctl(struct file *f,
 		mutex_lock(&acdb_data.acdb_mutex);
 		deregister_pmem();
 		mutex_unlock(&acdb_data.acdb_mutex);
+		goto done;
+	case AUDIO_SET_VOICE_RX_TOPOLOGY:
+		if (copy_from_user(&topology, (void *)arg,
+				sizeof(topology))) {
+			pr_err("%s: fail to copy topology!\n", __func__);
+			result = -EFAULT;
+		}
+		store_voice_rx_topology(topology);
+		goto done;
+	case AUDIO_SET_VOICE_TX_TOPOLOGY:
+		if (copy_from_user(&topology, (void *)arg,
+				sizeof(topology))) {
+			pr_err("%s: fail to copy topology!\n", __func__);
+			result = -EFAULT;
+		}
+		store_voice_tx_topology(topology);
+		goto done;
+	case AUDIO_SET_ADM_TOPOLOGY:
+		if (copy_from_user(&topology, (void *)arg,
+				sizeof(topology))) {
+			pr_err("%s: fail to copy topology!\n", __func__);
+			result = -EFAULT;
+		}
+		store_adm_topology(topology);
+		goto done;
+	case AUDIO_SET_ASM_TOPOLOGY:
+		if (copy_from_user(&topology, (void *)arg,
+				sizeof(topology))) {
+			pr_err("%s: fail to copy topology!\n", __func__);
+			result = -EFAULT;
+		}
+		store_asm_topology(topology);
 		goto done;
 	}
 
@@ -693,16 +824,24 @@ done:
 static int acdb_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int result = 0;
+	int size = vma->vm_end - vma->vm_start;
 
 	pr_debug("%s\n", __func__);
 
 	mutex_lock(&acdb_data.acdb_mutex);
 	if (acdb_data.pmem_fd) {
-		result = remap_pfn_range(vma,
-			    vma->vm_start,
-			    acdb_data.paddr >> PAGE_SHIFT,
-			    acdb_data.pmem_len,
-			    vma->vm_page_prot);
+		if (size <= acdb_data.pmem_len) {
+			vma->vm_page_prot = pgprot_noncached(
+						vma->vm_page_prot);
+			result = remap_pfn_range(vma,
+				vma->vm_start,
+				acdb_data.paddr >> PAGE_SHIFT,
+				size,
+				vma->vm_page_prot);
+		} else {
+			pr_err("%s: Not enough PMEM memory!\n", __func__);
+			result = -ENOMEM;
+		}
 	} else {
 		pr_err("%s: PMEM is not allocated, yet!\n", __func__);
 		result = -ENODEV;

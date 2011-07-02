@@ -34,6 +34,10 @@
 #ifdef CONFIG_MSM_MPM
 #include "mpm.h"
 #endif
+#ifdef CONFIG_MSM_DSPS
+#include <mach/msm_dsps.h>
+#endif
+
 
 /* Address of GSBI blocks */
 #define MSM_GSBI1_PHYS		0x16000000
@@ -69,8 +73,8 @@
 
 static struct resource resources_otg[] = {
 	{
-		.start	= MSM_HSUSB_PHYS,
-		.end	= MSM_HSUSB_PHYS + MSM_HSUSB_SIZE,
+		.start	= MSM8960_HSUSB_PHYS,
+		.end	= MSM8960_HSUSB_PHYS + MSM8960_HSUSB_SIZE,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -92,8 +96,8 @@ struct platform_device msm_device_otg = {
 
 static struct resource resources_hsusb[] = {
 	{
-		.start	= MSM_HSUSB_PHYS,
-		.end	= MSM_HSUSB_PHYS + MSM_HSUSB_SIZE,
+		.start	= MSM8960_HSUSB_PHYS,
+		.end	= MSM8960_HSUSB_PHYS + MSM8960_HSUSB_SIZE,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -115,8 +119,8 @@ struct platform_device msm_device_gadget_peripheral = {
 
 static struct resource resources_hsusb_host[] = {
 	{
-		.start  = MSM_HSUSB_PHYS,
-		.end    = MSM_HSUSB_PHYS + MSM_HSUSB_SIZE - 1,
+		.start  = MSM8960_HSUSB_PHYS,
+		.end    = MSM8960_HSUSB_PHYS + MSM8960_HSUSB_SIZE - 1,
 		.flags  = IORESOURCE_MEM,
 	},
 	{
@@ -448,7 +452,7 @@ struct platform_device msm_device_vidc = {
 };
 
 #define MSM_WCNSS_PHYS	0x03000000
-#define MSM_WCNSS_SIZE	0x01000000
+#define MSM_WCNSS_SIZE	0x280000
 
 static struct resource resources_wcnss_wlan[] = {
 	{
@@ -852,7 +856,6 @@ struct platform_device msm8960_device_qup_i2c_gsbi10 = {
 #ifdef CONFIG_MSM_CAMERA
 
 static int msm_cam_gpio_tbl[] = {
-	4, /*CAMIF_MCLK*/
 	5, /*CAMIF_MCLK*/
 	20, /*CAMIF_I2C_DATA*/
 	21, /*CAMIF_I2C_CLK*/
@@ -1068,6 +1071,11 @@ struct platform_device msm_cpudai1 = {
 	.id	= 0x4001,
 };
 
+struct platform_device msm_cpudai_hdmi_rx = {
+	.name	= "msm-dai-q6",
+	.id	= 8,
+};
+
 struct platform_device msm_cpudai_bt_rx = {
 	.name   = "msm-dai-q6",
 	.id     = 0x3000,
@@ -1111,6 +1119,11 @@ struct platform_device msm_voip = {
 struct platform_device msm_lpa_pcm = {
 	.name   = "msm-pcm-lpa",
 	.id     = -1,
+};
+
+struct platform_device msm_pcm_hostless = {
+	.name	= "msm-pcm-hostless",
+	.id	= -1,
 };
 
 #define FS(_id, _name) (&(struct platform_device){ \
@@ -2048,3 +2061,46 @@ struct platform_device msm_bus_cpss_fpb = {
 	.id    = MSM_BUS_FAB_CPSS_FPB,
 };
 #endif
+
+/* Sensors DSPS platform data */
+#ifdef CONFIG_MSM_DSPS
+
+#define PPSS_REG_PHYS_BASE	0x12080000
+
+static struct dsps_clk_info dsps_clks[] = {};
+static struct dsps_regulator_info dsps_regs[] = {};
+
+/*
+ * Note: GPIOs field is	intialized in run-time at the function
+ * msm8960_init_dsps().
+ */
+
+struct msm_dsps_platform_data msm_dsps_pdata = {
+	.clks = dsps_clks,
+	.clks_num = ARRAY_SIZE(dsps_clks),
+	.gpios = NULL,
+	.gpios_num = 0,
+	.regs = dsps_regs,
+	.regs_num = ARRAY_SIZE(dsps_regs),
+	.dsps_pwr_ctl_en = 1,
+	.signature = DSPS_SIGNATURE,
+};
+
+static struct resource msm_dsps_resources[] = {
+	{
+		.start = PPSS_REG_PHYS_BASE,
+		.end   = PPSS_REG_PHYS_BASE + SZ_8K - 1,
+		.name  = "ppss_reg",
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm_dsps_device = {
+	.name          = "msm_dsps",
+	.id            = 0,
+	.num_resources = ARRAY_SIZE(msm_dsps_resources),
+	.resource      = msm_dsps_resources,
+	.dev.platform_data = &msm_dsps_pdata,
+};
+
+#endif /* CONFIG_MSM_DSPS */

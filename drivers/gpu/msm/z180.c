@@ -157,6 +157,13 @@ static struct z180_device device_2d0 = {
 		.active_cnt = 0,
 		.iomemname = KGSL_2D0_REG_MEMORY,
 		.ftbl = &z180_functable,
+		.display_off = {
+#ifdef CONFIG_HAS_EARLYSUSPEND
+			.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING,
+			.suspend = kgsl_early_suspend_driver,
+			.resume = kgsl_late_resume_driver,
+#endif
+		},
 	},
 };
 
@@ -184,6 +191,13 @@ static struct z180_device device_2d1 = {
 		.active_cnt = 0,
 		.iomemname = KGSL_2D1_REG_MEMORY,
 		.ftbl = &z180_functable,
+		.display_off = {
+#ifdef CONFIG_HAS_EARLYSUSPEND
+			.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING,
+			.suspend = kgsl_early_suspend_driver,
+			.resume = kgsl_late_resume_driver,
+#endif
+		},
 	},
 };
 
@@ -494,7 +508,7 @@ static int __devinit z180_probe(struct platform_device *pdev)
 	struct z180_device *z180_dev;
 
 	device = (struct kgsl_device *)pdev->id_entry->driver_data;
-	device->pdev = pdev;
+	device->parentdev = &pdev->dev;
 
 	z180_dev = Z180_DEVICE(device);
 	spin_lock_init(&z180_dev->cmdwin_lock);
@@ -512,7 +526,7 @@ static int __devinit z180_probe(struct platform_device *pdev)
 error_close_ringbuffer:
 	z180_ringbuffer_close(device);
 error:
-	device->pdev = NULL;
+	device->parentdev = NULL;
 	return status;
 }
 

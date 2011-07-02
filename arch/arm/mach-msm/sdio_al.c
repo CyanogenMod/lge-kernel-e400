@@ -400,7 +400,7 @@ struct sdio_al_device {
  * sdio_al.debug_lpm_on=1 to enable the LPM debug messages
  * By default the LPM debug messages are turned off
  */
-static int debug_lpm_on = 1;
+static int debug_lpm_on;
 module_param(debug_lpm_on, int, 0);
 
 /*
@@ -2906,16 +2906,6 @@ static struct platform_driver msm_sdio_al_driver = {
 	},
 };
 
-
-/**
- *  Default platform device release function.
- *
- */
-static void default_sdio_al_release(struct device *dev)
-{
-	pr_info(MODULE_NAME ":platform device released.\n");
-}
-
 /**
  *  Initialize SDIO_AL channels.
  *
@@ -2956,17 +2946,28 @@ static int init_channels(struct sdio_al_device *sdio_al_dev)
 			       ch_name_size,
 			       SDIO_TEST_POSTFIX,
 			       SDIO_TEST_POSTFIX_SIZE);
-			sdio_al_dev->channel[i].pdev.name =
-				sdio_al_dev->channel[i].ch_test_name;
+			pr_debug(MODULE_NAME ":pdev.name = %s\n",
+				sdio_al_dev->channel[i].ch_test_name);
+			sdio_al_dev->channel[i].pdev = platform_device_alloc(
+				sdio_al_dev->channel[i].ch_test_name, -1);
 		} else {
-			sdio_al_dev->channel[i].pdev.name =
-				sdio_al_dev->channel[i].name;
+			pr_debug(MODULE_NAME ":pdev.name = %s\n",
+				sdio_al_dev->channel[i].name);
+			sdio_al_dev->channel[i].pdev = platform_device_alloc(
+				sdio_al_dev->channel[i].name, -1);
 		}
-		pr_info(MODULE_NAME ":pdev.name = %s\n",
-			sdio_al_dev->channel[i].pdev.name);
-		sdio_al_dev->channel[i].pdev.dev.release =
-			default_sdio_al_release;
-		platform_device_register(&sdio_al_dev->channel[i].pdev);
+		if (!sdio_al_dev->channel[i].pdev) {
+			pr_err(MODULE_NAME ":NULL platform device for ch %s",
+			       sdio_al_dev->channel[i].name);
+			sdio_al_dev->channel[i].is_valid = 0;
+			continue;
+		}
+		ret = platform_device_add(sdio_al_dev->channel[i].pdev);
+		if (ret) {
+			pr_err(MODULE_NAME ":platform_device_add failed, "
+					   "ret=%d\n", ret);
+			sdio_al_dev->channel[i].is_valid = 0;
+		}
 	}
 
 exit:
@@ -3215,7 +3216,8 @@ void sdio_al_card_remove(struct mmc_card *card)
 				if (!sdio_al_dev->channel[i].is_valid)
 					continue;
 				platform_device_unregister(
-					&sdio_al_dev->channel[i].pdev);
+					sdio_al_dev->channel[i].pdev);
+				sdio_al_dev->channel[i].signature = 0x0;
 			}
 		}
 	}
@@ -3593,11 +3595,12 @@ static void sdio_al_print_info(void)
 
 		/* Reading HW Mailbox */
 		hw_mailbox = sdio_al_dev->mailbox;
+		func1 = sdio_al_dev->card->sdio_func[0];
 
-		sdio_claim_host(sdio_al_dev->card->sdio_func[0]);
+		sdio_claim_host(func1);
 		ret = sdio_memcpy_fromio(func1, hw_mailbox,
 			HW_MAILBOX_ADDR, sizeof(*hw_mailbox));
-		sdio_release_host(sdio_al_dev->card->sdio_func[0]);
+		sdio_release_host(func1);
 
 		if (ret) {
 			pr_err(MODULE_NAME ": fail to read "
@@ -3635,7 +3638,6 @@ static struct sdio_driver sdio_al_sdiofn_driver = {
     .remove    = sdio_al_sdio_remove,
     .drv.pm    = &sdio_al_sdio_pm_ops,
 };
-
 
 #ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 /*
@@ -3714,7 +3716,7 @@ static int sdio_al_subsys_notifier_cb(struct notifier_block *this,
 				if (ret == 0) {
 					pr_info(MODULE_NAME ": %s: "
 							    "sdio_release_irq"
-							    "for card %d",
+							    " for card %d",
 						__func__,
 						sdio_al_dev->card->host->index);
 					sdio_release_irq(func1);
@@ -3735,7 +3737,7 @@ static int sdio_al_subsys_notifier_cb(struct notifier_block *this,
 				if (!sdio_al_dev->channel[j].is_valid)
 					continue;
 				platform_device_unregister(
-					&sdio_al_dev->channel[j].pdev);
+					sdio_al_dev->channel[j].pdev);
 				sdio_al_dev->channel[i].signature = 0x0;
 			}
 

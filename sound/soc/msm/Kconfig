@@ -68,6 +68,8 @@ config SND_SOC_MSM8X60
 	 audio sessions. The kcontols also does sesion management for
 	 voice calls
 
+config SND_SOC_MSM_HOSTLESS_PCM
+	tristate
 
 config SND_SOC_MSM8660_PCM
 	tristate
@@ -138,6 +140,7 @@ config SND_SOC_MSM8960
 	select SND_SOC_QDSP6
 	select SND_SOC_MSM_STUB
 	select SND_SOC_WCD9310
+	select SND_SOC_MSM_HOSTLESS_PCM
 	default n
 	help
 	 To add support for SoC audio on MSM8960 boards

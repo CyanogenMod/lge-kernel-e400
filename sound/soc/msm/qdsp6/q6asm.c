@@ -30,6 +30,7 @@
 #include <mach/memory.h>
 #include <mach/debug_mm.h>
 #include <mach/peripheral-loader.h>
+#include <mach/qdsp6v2/audio_acdb.h>
 #include <mach/qdsp6v2/rtac.h>
 #include <sound/apr_audio.h>
 #include <sound/q6asm.h>
@@ -460,8 +461,11 @@ static int32_t q6asm_mmapcallback(struct apr_client_data *data, void *priv)
 	uint32_t *payload = data->payload;
 
 	if (data->opcode == RESET_EVENTS) {
-		pr_debug("q6asm_mmapcallback: Reset event is received: %d %d\n",
-				data->reset_event, data->reset_proc);
+		pr_debug("%s: Reset event is received: %d %d apr[%p]\n",
+				__func__,
+				data->reset_event,
+				data->reset_proc,
+				this_mmap.apr);
 		apr_reset(this_mmap.apr);
 		this_mmap.apr = NULL;
 		atomic_set(&this_mmap.cmd_state, 0);
@@ -505,11 +509,6 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 	unsigned long dsp_flags;
 	uint32_t *payload;
 
-	if (data->opcode == RESET_EVENTS) {
-		pr_debug("q6asm_callback: Reset event is received: %d %d\n",
-				data->reset_event, data->reset_proc);
-		return 0;
-	}
 
 	if ((ac == NULL) || (data == NULL)) {
 		pr_err("ac or priv NULL\n");
@@ -518,10 +517,9 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 	payload = data->payload;
 
 	if (data->opcode == RESET_EVENTS) {
+		pr_debug("q6asm_callback: Reset event is received: %d %d apr[%p]\n",
+				data->reset_event, data->reset_proc, ac->apr);
 		apr_reset(ac->apr);
-		q6asm_session_free(ac);
-		pr_debug("q6asm_callback: Reset event is received: %d %d\n",
-				data->reset_event, data->reset_proc);
 		return 0;
 	}
 
@@ -822,7 +820,10 @@ int q6asm_open_read(struct audio_client *ac,
 	open.hdr.opcode = ASM_STREAM_CMD_OPEN_READ;
 	/* Stream prio : High, provide meta info with encoded frames */
 	open.src_endpoint = ASM_END_POINT_DEVICE_MATRIX;
-	open.pre_proc_top = DEFAULT_POPP_TOPOLOGY;
+
+	open.pre_proc_top = get_asm_topology();
+	if (open.pre_proc_top == 0)
+		open.pre_proc_top = DEFAULT_POPP_TOPOLOGY;
 
 	switch (format) {
 	case FORMAT_LINEAR_PCM:
@@ -886,7 +887,10 @@ int q6asm_open_write(struct audio_client *ac, uint32_t format)
 	/* source endpoint : matrix */
 	open.sink_endpoint = ASM_END_POINT_DEVICE_MATRIX;
 	open.stream_handle = 0x00;
-	open.post_proc_top = DEFAULT_POPP_TOPOLOGY;
+
+	open.post_proc_top = get_asm_topology();
+	if (open.post_proc_top == 0)
+		open.post_proc_top = DEFAULT_POPP_TOPOLOGY;
 
 	switch (format) {
 	case FORMAT_LINEAR_PCM:
@@ -944,7 +948,10 @@ int q6asm_open_read_write(struct audio_client *ac,
 	open.uMode = BUFFER_META_ENABLE | STREAM_PRIORITY_NORMAL |
 				 SR_CM_NOTIFY_ENABLE;
 	/* source endpoint : matrix */
-	open.post_proc_top = DEFAULT_POPP_TOPOLOGY;
+	open.post_proc_top = get_asm_topology();
+	if (open.post_proc_top == 0)
+		open.post_proc_top = DEFAULT_POPP_TOPOLOGY;
+
 	switch (wr_format) {
 	case FORMAT_LINEAR_PCM:
 		open.write_format = LINEAR_PCM;

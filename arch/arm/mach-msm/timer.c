@@ -247,7 +247,7 @@ static struct msm_clock msm_clocks[] = {
 	}
 };
 
-static struct clock_event_device *local_clock_event;
+static DEFINE_PER_CPU(struct clock_event_device*, local_clock_event);
 
 static DEFINE_PER_CPU(struct msm_clock_percpu_data[NR_TIMERS],
     msm_clocks_percpu);
@@ -258,7 +258,7 @@ static irqreturn_t msm_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = dev_id;
 	if (smp_processor_id() != 0)
-		evt = local_clock_event;
+		evt = __get_cpu_var(local_clock_event);
 	if (evt->event_handler == NULL)
 		return IRQ_HANDLED;
 	evt->event_handler(evt);
@@ -1061,6 +1061,7 @@ static void __init msm_timer_init(void)
 
 void __cpuinit local_timer_setup(struct clock_event_device *evt)
 {
+	unsigned long flags;
 	static bool first_boot = true;
 	struct msm_clock *clock = &msm_clocks[MSM_GLOBAL_TIMER];
 
@@ -1088,9 +1089,11 @@ void __cpuinit local_timer_setup(struct clock_event_device *evt)
 		clockevent_delta2ns(0xf0000000 >> clock->shift, evt);
 	evt->min_delta_ns = clockevent_delta2ns(4, evt);
 
-	local_clock_event = evt;
+	__get_cpu_var(local_clock_event) = evt;
 
-	/* gic_clear_spi_pending(clock->irq.irq); */
+	local_irq_save(flags);
+	gic_clear_spi_pending(clock->irq.irq);
+	local_irq_restore(flags);
 	gic_enable_ppi(clock->irq.irq);
 
 	clockevents_register_device(evt);
@@ -1099,14 +1102,6 @@ void __cpuinit local_timer_setup(struct clock_event_device *evt)
 int local_timer_ack(void)
 {
 	return 1;
-}
-#endif
-
-#ifdef CONFIG_HOTPLUG_CPU
-void __cpuexit local_timer_stop(void)
-{
-	local_clock_event->set_mode(CLOCK_EVT_MODE_SHUTDOWN, local_clock_event);
-	local_clock_event = NULL;
 }
 #endif
 
