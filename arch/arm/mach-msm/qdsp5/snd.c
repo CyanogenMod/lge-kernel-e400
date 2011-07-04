@@ -59,6 +59,7 @@ static struct snd_ctxt the_snd;
 
 #if defined (CONFIG_MACH_LGE)
 #define SND_SET_LOOPBACK_MODE_PROC 61
+#define SND_SET_RX_VOLUME_PROC 65
 #endif
 
 struct rpc_snd_set_device_args {
@@ -127,6 +128,27 @@ struct snd_set_loopback_mode_msg {
 	struct rpc_request_hdr hdr;
 	struct rpc_snd_set_loopback_mode_args args;
 };
+
+struct snd_set_rxvol_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_rxvol;
+}rrep;
+
+struct rpc_snd_set_rx_volume_param_args {
+	uint32_t device;
+	uint32_t method;
+	uint32_t idx;
+	int get_flag;	/* get_flag = 0 for set, get_flag = 1 for get */
+	int32_t param_val;
+
+	uint32_t cb_func;
+	uint32_t client_data;
+};
+
+struct snd_set_rx_volume_param_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_rx_volume_param_args args;
+};
 #endif
 
 struct snd_endpoint *get_snd_endpoints(int *size);
@@ -180,6 +202,8 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #if defined (CONFIG_MACH_LGE)
 	struct msm_snd_set_loopback_mode_param loopback;
 	struct snd_set_loopback_mode_msg lbmsg;
+	struct msm_snd_set_rx_volume_param rxvol;
+	struct snd_set_rx_volume_param_msg rmsg;
 #endif
 
 	int rc = 0;
@@ -295,34 +319,67 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 #if defined (CONFIG_MACH_LGE)
 	case SND_SET_LOOPBACK_MODE:
-	if (copy_from_user(&loopback, (void __user *) arg, sizeof(loopback))) {
-		pr_err("snd_ioctl set_loopback_mode: invalid pointer.\n");
-		rc = -EFAULT;
-		break;
-	}
-
-	lbmsg.args.mode = cpu_to_be32(loopback.mode);
-	lbmsg.args.cb_func = -1;
-	lbmsg.args.client_data = 0;
-
-
-	pr_info("set_loopback_mode %d \n", loopback.mode);
-
-	rc = msm_rpc_call(snd->ept,
-		SND_SET_LOOPBACK_MODE_PROC,
-		&lbmsg, sizeof(lbmsg), 5 * HZ);
-	
-	if (rc < 0) {
-		printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
-	} else {
-		loopback.get_param = be32_to_cpu(lrep.get_mode);
-		printk(KERN_INFO "%s:loopback mode ->%d\n", __func__, loopback.get_param);
-		if (copy_to_user((void __user *)arg, &loopback, sizeof(loopback))) {
-			pr_err("snd_ioctl get loopback mode: invalid write pointer.\n");
+		if (copy_from_user(&loopback, (void __user *) arg, sizeof(loopback))) {
+			pr_err("snd_ioctl set_loopback_mode: invalid pointer.\n");
 			rc = -EFAULT;
+			break;
 		}
-	}
+
+		lbmsg.args.mode = cpu_to_be32(loopback.mode);
+		lbmsg.args.cb_func = -1;
+		lbmsg.args.client_data = 0;
+
+
+		pr_info("set_loopback_mode %d \n", loopback.mode);
+
+		rc = msm_rpc_call(snd->ept,
+			SND_SET_LOOPBACK_MODE_PROC,
+			&lbmsg, sizeof(lbmsg), 5 * HZ);
+
+		if (rc < 0) {
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		} else {
+			loopback.get_param = be32_to_cpu(lrep.get_mode);
+			printk(KERN_INFO "%s:loopback mode ->%d\n", __func__, loopback.get_param);
+			if (copy_to_user((void __user *)arg, &loopback, sizeof(loopback))) {
+				pr_err("snd_ioctl get loopback mode: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
 	break;
+
+	case SND_SET_RX_VOLUME:
+		if (copy_from_user(&rxvol, (void __user *) arg, sizeof(rxvol))) {
+			pr_err("snd_ioctl set_rx_volume: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		rmsg.args.device = cpu_to_be32(rxvol.device);
+		rmsg.args.method = cpu_to_be32(rxvol.method);
+		rmsg.args.idx = cpu_to_be32(rxvol.idx);
+		rmsg.args.get_flag = cpu_to_be32(rxvol.get_flag);
+		rmsg.args.param_val = cpu_to_be32(rxvol.param_val);
+		rmsg.args.cb_func = -1;
+		rmsg.args.client_data = 0;
+		pr_info("set_rx_volume %d %d %d %d\n", rxvol.device,
+						 rxvol.method, rxvol.idx, rxvol.param_val);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_RX_VOLUME_PROC,
+			&rmsg, sizeof(rmsg),&rrep, sizeof(rrep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			rxvol.get_param = be32_to_cpu(rrep.get_rxvol);
+			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, rxvol.get_param);
+			if (copy_to_user((void __user *)arg, &rxvol, sizeof(rxvol))) {
+				pr_err("snd_ioctl get rx vol: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
 #endif
 
 	default:
