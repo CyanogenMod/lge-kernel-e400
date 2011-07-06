@@ -533,7 +533,14 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 	int ret = -1;		/* Return value. */
 	/*AKMDBG("%s (0x%08X).", __func__, cmd);*/
 	char accel_dev_path[30];
-
+/* LGE_CHANGE,
+ * add read accel tuning data ioctl for H/W accerleration sensor direction,
+ * based on [hyesung.shin@lge.com] for <Sensor driver structure>
+ *
+ * 2011-07-05
+ */
+	int fdata_sign[7];
+/* LGE_CHANGE end */
 	switch (cmd) {
 	case ECS_IOCTL_WRITE:
 	case ECS_IOCTL_READ:
@@ -626,8 +633,15 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 			break;
 		case ECS_IOCTL_GET_ACCEL_PATH:
 			break;
+/* LGE_CHANGE,
+ * add read accel tuning data ioctl for H/W accerleration sensor direction,
+ * based on [hyesung.shin@lge.com] for <Sensor driver structure>
+ *
+ * 2011-07-05
+ */
 		case ECS_IOCTL_ACCEL_INIT:
 		break;
+/* LGE_CHANGE end */
 	default:
 		return -ENOTTY;
 	}
@@ -663,6 +677,26 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 		if (copy_to_user(argp, accel_dev_path, sizeof(accel_dev_path)))
 			return -EFAULT;
 		break;
+
+/* LGE_CHANGE,
+ * add read accel tuning data ioctl for H/W accerleration sensor direction,
+ * based on [hyesung.shin@lge.com] for <Sensor driver structure>
+ *
+ * 2011-07-05
+ */
+	case ECS_IOCTL_ACCEL_INIT:
+		fdata_sign[0] = ecom_pdata->fdata_sign_x;
+        fdata_sign[1] = ecom_pdata->fdata_sign_y;
+        fdata_sign[2] = ecom_pdata->fdata_sign_z;
+        fdata_sign[3] = ecom_pdata->fdata_order0;
+        fdata_sign[4] = ecom_pdata->fdata_order1;
+        fdata_sign[5] = ecom_pdata->fdata_order2;
+        fdata_sign[6] = ecom_pdata->sensitivity1g;
+
+        if (copy_to_user(argp, fdata_sign, sizeof(fdata_sign)))
+            return -EFAULT;
+        break;
+/* LGE_CHANGE end */
 	default:
 		break;
 	}
