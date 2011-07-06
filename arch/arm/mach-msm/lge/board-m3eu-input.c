@@ -404,7 +404,7 @@ static struct ecom_platform_data ecom_pdata = {
     .fdata_order0 = 0,
     .fdata_order1 = 1,
     .fdata_order2 = 2,
-    .sensitivity1g = 256,
+    .sensitivity1g = 64,
 
 };
 
