@@ -92,5 +92,13 @@ enum {
 #define GPIO_FLASH_I2C_SDA  27
 #define FLASH_I2C_ADDRESS   0x53
 
+// 2011.06.24 kiwon.jeon@lge.com NFC
+#define NFC_GPIO_FIRM     	11		
+#define NFC_GPIO_I2C_SDA  	128
+#define NFC_GPIO_I2C_SCL  	129
+#define NFC_GPIO_IRQ      	42
+#define NFC_GPIO_VEN      	12
+#define NFC_I2C_SLAVE_ADDR	0x28
+
 #endif
 
