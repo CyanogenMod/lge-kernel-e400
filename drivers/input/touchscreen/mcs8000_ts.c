@@ -334,8 +334,8 @@ static void mcs8000_work(struct work_struct *work)
 				input_report_key(ts->input_dev, KEY_HOME, touchState ? PRESS_KEY : RELEASE_KEY);
 			if (keyID == 0x3)
 				input_report_key(ts->input_dev, KEY_BACK, touchState ? PRESS_KEY : RELEASE_KEY);
-		//	if (keyID == 0x4)
-				//input_report_key(ts->input_dev, KEY_SEARCH, touchState ? PRESS_KEY : RELEASE_KEY);			
+			if (keyID == 0x4)
+				input_report_key(ts->input_dev, KEY_SEARCH, touchState ? PRESS_KEY : RELEASE_KEY);			
 #if DEBUG_PRINT
 		printk(KERN_ERR "melfas_ts_work_func: keyID : %d, touchState: %d\n", keyID, touchState);
 #endif				
