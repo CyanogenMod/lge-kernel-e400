@@ -65,3 +65,8 @@ obj-$(CONFIG_PMIC8058_XOADC) += pmic8058-xoadc.o
 obj-$(CONFIG_PMIC8058_MISC) += pmic8058-misc.o
 obj-$(CONFIG_PMIC8058_BATTALARM) += pmic8058-batt-alarm.o
 obj-$(CONFIG_TZCOM) += tzcom.o
+# BEGIN: Mantis eternalblue@lge.com
+# 
+obj-y      	+= eve_at_class.o
+obj-y      	+= eve_at.o
+# END: Mantis eternalblue@lge.com 

@@ -19,6 +19,10 @@
 
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
+// BEGIN: eternalblue@lge.com:2009-11-11
+// 0001905: [ARM9] Sound related AT CMD & Hidden menu added 
+#include <linux/eve_at.h>
+// END: eternalblue@lge.com:2009-11-11
 #include <mach/socinfo.h>
 #include <mach/msm_serial_hs.h>
 
@@ -116,6 +120,20 @@ static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.max_axi_khz = 200000,
 };
 
+// BEGIN: eternalblue@lge.com:2009-11-11
+// 0001905: [ARM9] Sound related AT CMD & Hidden menu added 
+static struct atcmd_platform_data eve_atcmd_pdata = {
+	.name = "eve_atcmd",
+};
+
+static struct platform_device eve_atcmd_device = {
+	.name = "eve_atcmd",
+	.id = -1,
+	.dev    = {
+		.platform_data = &eve_atcmd_pdata
+	},
+}; 
+// END: eternalblue@lge.com:2009-11-11
 static struct platform_device *m3eu_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
@@ -123,6 +141,10 @@ static struct platform_device *m3eu_devices[] __initdata = {
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
 	&msm_kgsl_3d0,
+// BEGIN: eternalblue@lge.com:2009-11-11
+// 0001905: [ARM9] Sound related AT CMD & Hidden menu added 
+	&eve_atcmd_device, //vlc	
+// END: eternalblue@lge.com:2009-11-11
 };
 
 static void __init msm_device_i2c_init(void)
@@ -197,7 +219,10 @@ static void __init msm7x2x_init(void)
 	lge_add_camera_devices();
 	lge_add_pm_devices();
 	lge_add_usb_devices();
+	/* enable add connectivity devices function after connectivity bring up */
+#if 0
 	lge_add_connectivity_devices();
+#endif
 
 	/* gpio i2c devices should be registered at latest point */
 	lge_add_gpio_i2c_devices();

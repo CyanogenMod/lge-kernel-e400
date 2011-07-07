@@ -112,10 +112,16 @@ module_param_named(
 				msm_pm_smem_data->pending_irqs); \
 	} while (0)
 
+#define MAX_NR_CLKS 33
 
 /******************************************************************************
  * Sleep Modes and Parameters
  *****************************************************************************/
+// BEGIN: eternalblue@lge.com.2009-11-15
+// 0001956: [ARM9] operationg code added for AT%FRST
+int msm_pm_boot_complete = 0;
+module_param_named(boot_complete, msm_pm_boot_complete, int, S_IRUGO | S_IWUSR | S_IWGRP); 
+// END: eternalblue@lge.com.2009-11-15
 
 static int msm_pm_sleep_mode = CONFIG_MSM7X00A_SLEEP_MODE;
 module_param_named(

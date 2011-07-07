@@ -50,6 +50,9 @@ static struct snd_ctxt the_snd;
 #define RPC_SND_CB_PROG	0x31000002
 
 #define RPC_SND_VERS                    0x00020001
+// BEGIN: 0003950 eternalblue@lge.com:2010-02-11
+// MOD: 0003982: [ARM9] It matchs ARM9 audio related rpc proc with ARM11 kernel
+//#define RPC_SND_VERS                    0x00020003
 #define RPC_SND_VERS2                    0x00030001
 
 #define SND_SET_DEVICE_PROC 2
@@ -58,8 +61,21 @@ static struct snd_ctxt the_snd;
 #define SND_AGC_CTL_PROC 30
 
 #if defined (CONFIG_MACH_LGE)
+#define SND_SET_VOCCAL_PARAM_PROC	37
+#define SND_SET_VOCCAL_IIR_PARAM_PROC 38
+#define SND_SET_NEXT_EC_PARAM_PROC 39
+#define SND_SET_DTMF_VOLUME_PROC 41
+#define SND_SET_PAD_VALUE_PROC 42
 #define SND_SET_LOOPBACK_MODE_PROC 61
+#define SND_WRITE_EFS_PROC 44
+#define SND_SET_MICAMP_GAIN_PROC 45
+#define SND_SET_AMP_GAIN_PROC 46
+#define SND_WRITE_MEM_PROC 47
 #define SND_SET_RX_VOLUME_PROC 65
+#define SND_SET_VOICE_CLARITY_PROC 49
+#define SND_SET_POWER_OFF_PROC 50
+#define SND_SET_FM_RADIO_MULTI_SOUND_PROC 51
+// END: 0003950:eternalblue@lge.com:2010-02-11
 #endif
 
 struct rpc_snd_set_device_args {
