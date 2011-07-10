@@ -44,6 +44,12 @@ config LGE_FBCON_INACTIVE_CONSOLE
 	depends on MACH_LGE
 	help
 	 Choose if inactive console
+config LGE_SUPPORT_AT_CMD
+	bool "Support LGE AT_CMD system"
+	default n 
+	depends on MACH_LGE
+	help
+	 LGE AT_CMD Support
 endmenu
 
 endmenu

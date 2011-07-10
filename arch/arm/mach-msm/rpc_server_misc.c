@@ -519,32 +519,6 @@ int at_fkpd_cfg ( unsigned int type, int value)
 //LGE_CHANGE_E [antispoon@lge.com,diyu@lge.com] 2009-07-17 for AT+GKPD, FKPD
 
 // END: eternalblue@lge.com:2009-11-06
-// change little Endian to Big endian (there is not change function in Kernel)
-char cpu_to_be8_AT(char value)
-{
-#define BITS_NUM_PER_BYTE  8
-char c_value = 0;
-#if 0
-
-int loop = 0;
-int TOT_SIZE = sizeof(char)*BITS_NUM_PER_BYTE;
-
-for (loop = 0; loop < TOT_SIZE/2; loop++)
-{
-c_value |= (value & (1 << loop)) << (TOT_SIZE - loop -1);
-
-}
-// there is no ODD lengh 
-for (loop = TOT_SIZE/2; loop < TOT_SIZE; loop++)
-{
-c_value |= (value & (1 << loop)) >> (TOT_SIZE/2 - loop +1 );
-
-}
-#else
-c_value = value;
-#endif
-return c_value;
-}
 
 /* LGE_CHANGE_S [zugwan@lge.com] 2009-07-03, for AT%AVR */
 #define CAM_AVR_INITIAL     0
