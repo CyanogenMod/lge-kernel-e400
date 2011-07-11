@@ -186,6 +186,10 @@ static struct msm_camera_sensor_platform_info mt9p017_sensor_info = {
 	.mount_angle = 0
 };
 
+static struct msm_camera_sensor_flash_data led_flash_data = {
+	.flash_type = MSM_CAMERA_FLASH_NONE,
+};
+
 static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
 	.sensor_name    = "mt9p017",
 	.sensor_reset_enable = 1,
@@ -194,7 +198,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
 	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
 	.pdata          = &msm_camera_device_data_rear,
-	.flash_data     = 0,
+	.flash_data     = &led_flash_data,
 	.csi_if         = 1,
 	.sensor_platform_info = &mt9p017_sensor_info,
 };
