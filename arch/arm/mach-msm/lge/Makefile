@@ -22,6 +22,17 @@ obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += board-m3mpcs-pm.o
 obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += board-m3mpcs-usb.o
 obj-$(CONFIG_MACH_MSM7X27A_M3MPCS) += board-m3mpcs-connectivity.o
 
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-input.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-misc.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-mmc.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-sound.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-panel.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-camera.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-pm.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-usb.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-connectivity.o
+
 obj-$(CONFIG_MACH_MSM7X27A_HDK) += board-msm7x27a_hdk.o
 obj-$(CONFIG_MACH_MSM7X27A_HDK) += board-msm7x27a_hdk-input.o
 obj-$(CONFIG_MACH_MSM7X27A_HDK) += board-msm7x27a_hdk-misc.o
