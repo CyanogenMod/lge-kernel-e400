@@ -83,7 +83,7 @@ enum {
 #define GPIO_MIC_MODE		127
 
 /* connectivity gpio */
-#define BT_SYS_REST_EN		6
+#define BT_SYS_REST_EN		6  /* LGE_BT_FW, by bsp */
 
 /* camera gpio */
 #define GPIO_CAM_RESET      34

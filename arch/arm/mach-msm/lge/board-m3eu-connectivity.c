@@ -78,6 +78,7 @@ static unsigned fm_i2s_config_power_off[] = {
 	GPIO_CFG(71, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
+/* LGE_BT_FW by suhui.kim@lge.com */
 static unsigned bt_config_power_on[] = {
 	/*RFR*/
 	GPIO_CFG(43, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
@@ -331,6 +332,9 @@ static struct platform_device msm_bt_power_device = {
 	};
 static const char * const vregs_bahama_name[] = {
 	"msme1",
+	#if 0  /* LGE_BT_FW by suhui.kim@lge.com, power for MSM7x27A HDK only */	
+	"wlan2",
+	#endif
 	"bt",
 };
 static struct vreg *vregs_bahama[ARRAY_SIZE(vregs_bahama_name)];
@@ -495,8 +499,16 @@ static int bluetooth_switch_regulators(int on)
 			__func__, vregs_bahama_name[i], rc);
 			goto vreg_fail;
 		}
+
+		#if 1  /* LGE_BT_FW by suhui.kim@lge.com, power for M3 */
+		if(i == 0)
+			rc = vreg_set_level(vregs_bahama[i], 1800);
+		else
+			rc = vreg_set_level(vregs_bahama[i], 3000);
+		#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */
 		rc = on ? vreg_set_level(vregs_bahama[i], i ? 2900 :
 			1800) : 0;
+		#endif
 
 		if (rc < 0) {
 			pr_err("%s: vreg set level failed (%d)\n",
@@ -504,6 +516,28 @@ static int bluetooth_switch_regulators(int on)
 			goto vreg_set_level_fail;
 		}
 
+		#if 1 /* LGE_BT_FW by suhui.kim@lge.com */
+		if (on)
+		{
+			rc = vreg_enable(vregs_bahama[i]);
+			if (rc < 0) {
+				pr_err("%s: vreg %s %s failed(%d)\n",
+					__func__, vregs_bahama_name[i],
+					on ? "enable" : "disable", rc);
+				goto vreg_fail;
+			}
+		}
+		else
+		{
+			rc = vreg_disable(vregs_bahama[i]);
+			if (rc < 0) {
+				pr_err("%s: vreg %s %s failed(%d)\n",
+					__func__, vregs_bahama_name[i],
+					on ? "enable" : "disable", rc);
+				goto vreg_fail;
+			}
+		}
+		#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */
 		rc = on ? vreg_enable(vregs_bahama[i]) :
 			  vreg_disable(vregs_bahama[i]);
 
@@ -513,6 +547,7 @@ static int bluetooth_switch_regulators(int on)
 			       on ? "enable" : "disable", rc);
 			goto vreg_fail;
 			}
+		#endif
 	}
 	return rc;
 
@@ -524,6 +559,9 @@ vreg_fail:
 vreg_set_level_fail:
 	vreg_put(vregs_bahama[0]);
 	vreg_put(vregs_bahama[1]);
+	#if 0  /* LGE_BT_FW by suhui.kim@lge.com, power for MSM7x27A HDK only */
+	vreg_put(vregs_bahama[2]);
+	#endif
 	return rc;
 }
 
@@ -551,6 +589,7 @@ static unsigned int msm_bahama_setup_power(void)
 		goto vreg_fail;
 	}
 
+#if 1  /* LGE_BT_FW by bsp */
 	/*setup Bahama_sys_reset_n*/
 	rc = gpio_direction_output(BT_SYS_REST_EN, 1);
 	if (rc < 0) {
@@ -559,6 +598,25 @@ static unsigned int msm_bahama_setup_power(void)
 		goto vreg_fail;
 	}
 	return rc;
+#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */
+	/*setup Bahama_sys_reset_n*/
+	rc = gpio_request(GPIO_BT_SYS_REST_EN, "bahama sys_rst_n");
+	if (rc < 0) {
+		pr_err("%s: gpio_request %d = %d\n", __func__,
+			GPIO_BT_SYS_REST_EN, rc);
+		goto vreg_fail;
+	}
+	rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
+	if (rc < 0) {
+		pr_err("%s: gpio_direction_output %d = %d\n", __func__,
+			GPIO_BT_SYS_REST_EN, rc);
+		goto gpio_fail;
+	}
+	return rc;
+
+gpio_fail:
+	gpio_free(GPIO_BT_SYS_REST_EN);
+#endif
 
 vreg_fail:
 	vreg_put(vreg_s3);
@@ -630,7 +688,7 @@ static int bluetooth_power(int on)
 	const char *id = "BTPW";
 	int cid = 0;
 
-	cid = adie_get_detected_connectivity_type();
+	cid = adie_get_detected_connectivity_type();  /* LGE_BT_FW by bsp */
 	if (cid != BAHAMA_ID) {
 		pr_err("%s: unexpected adie connectivity type: %d\n",
 					__func__, cid);
@@ -772,13 +830,14 @@ static struct i2c_board_info bahama_devices[] = {
 #endif
 
 static struct platform_device *m3eu_connectivity_devices[] __initdata = {
-#ifdef CONFIG_BT
+#ifdef CONFIG_BT  /* LGE_BT_FW by suhui.kim@lge.com */
 	&msm_bt_power_device,
 #endif
 };
 
 void __init lge_add_connectivity_devices(void)
 {
+#if 1  /* LGE_BT_FW by bsp */
 	int rc;
 
 	rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
@@ -790,16 +849,39 @@ void __init lge_add_connectivity_devices(void)
 		if (rc)
 			printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
 	}
+#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Guide */
+	int rc;
+	if(BT_DEBUG) printk(KERN_ERR "board-m3eu-connectivity.c %s()\n", __func__); // suhui.kim@lge.com  test	   
+	
+ 	gpio_tlmm_config(GPIO_CFG(131, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_tlmm_config(GPIO_CFG(132, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_set_value(131, 1);
+	gpio_set_value(132, 1);
+
+	rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
+	if (rc) {
+		printk(KERN_ERR "%d gpio request is failed\n", BT_SYS_REST_EN);
+	} else {
+		rc = gpio_tlmm_config(GPIO_CFG(BT_SYS_REST_EN, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		if (rc)
+			printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
+	}
+
+	msleep(100);
+#endif
 
 	platform_add_devices(m3eu_connectivity_devices,
 		ARRAY_SIZE(m3eu_connectivity_devices));
 
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,  /* LGE_BT_FW by suhui.kim@lge.com, MSM7x27A HDK : MSM_GSBI0_QUP_I2C_BUS_ID */
 				bahama_devices,
 				ARRAY_SIZE(bahama_devices));
 #endif
-#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
+#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)  /* LGE_BT_FW by suhui.kim@lge.com */
 	bt_power_init();
 #endif
 }
