@@ -14,6 +14,29 @@
 #include <mach/board.h>
 #include <mach/board_lge.h>
 
+/* setting board revision information */
+int lge_bd_rev;
+
+static int __init board_revno_setup(char *rev_info)
+{
+	char *rev_str[] = { "evb", "rev_a", "rev_b", "rev_c", "rev_d", "rev_e",
+		"rev_f", "rev_g", "rev_10", "rev_11", "rev_12" };
+	int i;
+
+	lge_bd_rev = LGE_REV_TOT_NUM;
+
+	for (i = 0; i < LGE_REV_TOT_NUM; i++) 
+		if (!strncmp(rev_info, rev_str[i], 6)) {
+			lge_bd_rev = i;
+			break;
+		}
+
+	printk(KERN_INFO"BOARD: LGE %s\n", rev_str[lge_bd_rev]);
+	return 1;
+}
+
+__setup("lge.rev=", board_revno_setup);
+
 /* pmem devices */
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.name = "pmem_adsp",

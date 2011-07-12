@@ -26,6 +26,24 @@
 #define MSM_FB_SIZE             0x195000
 #endif
 
+/* board revision information */
+enum {
+	EVB = 0,
+	LGE_REV_A,
+	LGE_REV_B,
+	LGE_REV_C,
+	LGE_REV_D,
+	LGE_REV_E,
+	LGE_REV_F,
+	LGE_REV_G,
+	LGE_REV_10,
+	LGE_REV_11,
+	LGE_REV_12,
+	LGE_REV_TOT_NUM,
+};
+
+extern int lge_bd_rev;
+
 /* define gpio pin number of i2c-gpio */
 struct gpio_i2c_pin {
 	unsigned int sda_pin;
