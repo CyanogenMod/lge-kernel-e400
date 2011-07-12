@@ -688,9 +688,9 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 				
 			if(lc_option)       //QCTK_20110111_Load_LSC
 			{
-                                rc = mt9p017_i2c_write_w_table(mt9p017_regs.lensroff_tbl, mt9p017_regs.lensroff_size);
-                                if (rc < 0)
-                                                return rc;
+				rc = mt9p017_i2c_write_w_table(mt9p017_regs.lensroff_tbl, mt9p017_regs.lensroff_size);
+				if (rc < 0)
+					return rc;
 			}
 // LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
 #if 1
