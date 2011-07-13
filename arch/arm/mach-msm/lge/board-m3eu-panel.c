@@ -172,6 +172,14 @@ void __init msm7x27a_m3eu_init_i2c_backlight(int bus_num)
 	bl_i2c_device.id = bus_num;
 	bl_i2c_bdinfo[0].platform_data = &lm3530bl_data;
 
+	if (lge_bd_rev == LGE_REV_A) {
+		bl_i2c_pin.scl_pin = 122;
+		bl_i2c_pin.sda_pin = 123;
+	} else if (lge_bd_rev >= LGE_REV_B) {
+		bl_i2c_pin.scl_pin = 111;
+		bl_i2c_pin.sda_pin = 112;
+	}
+
 	/* workaround for HDK rev_a no pullup */
 	lge_init_gpio_i2c_pin_pullup(&bl_i2c_pdata, bl_i2c_pin, &bl_i2c_bdinfo[0]);
 	i2c_register_board_info(bus_num, &bl_i2c_bdinfo[0], 1);
