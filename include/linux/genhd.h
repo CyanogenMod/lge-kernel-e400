@@ -56,7 +56,10 @@ enum {
 	UNIXWARE_PARTITION = 0x63,	/* Same as GNU_HURD and SCO Unix */
 };
 
-#define DISK_MAX_PARTS			256
+// LGE_DEV_START kh.tak page allocation failure 
+#define DISK_MAX_PARTS			64	// #define DISK_MAX_PARTS			256
+// LGE_DEV_END kh.tak page allocation failure 
+
 #define DISK_NAME_LEN			32
 
 #include <linux/major.h>
