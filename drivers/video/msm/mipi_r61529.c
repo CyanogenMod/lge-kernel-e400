@@ -195,14 +195,44 @@ static int mipi_r61529_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
+ssize_t mipi_r61529_lcd_show_onoff(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        printk("%s : strat\n", __func__);
+        return 0;
+}
+
+ssize_t mipi_r61529_lcd_store_onoff(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+        //struct platform_device dummy_pdev;
+        int onoff;
+
+		sscanf(buf, "%d", &onoff);
+		printk("%s: onoff : %d\n", __func__, onoff);
+		if(onoff) {
+			mipi_r61529_lcd_on(NULL);
+		}
+		else {
+			mipi_r61529_lcd_off(NULL);
+		}
+        return count;
+}
+
+DEVICE_ATTR(lcd_onoff, 0664, mipi_r61529_lcd_show_onoff, mipi_r61529_lcd_store_onoff);
+
+
 static int __devinit mipi_r61529_lcd_probe(struct platform_device *pdev)
 {
+	int rc=0;
+	
 	if (pdev->id == 0) {
 		mipi_r61529_pdata = pdev->dev.platform_data;
 		return 0;
 	}
 
 	msm_fb_add_device(pdev);
+	//this for ATAT Command
+	rc=device_create_file(&pdev->dev, &dev_attr_lcd_onoff);
+	
 	return 0;
 }
 
@@ -269,5 +299,7 @@ static void mipi_ldp_lcd_panel_poweroff(void)
 	gpio_set_value(GPIO_HDK_LCD_RESET, 0);
 	mdelay(10);
 }
+
+
 
 module_init(mipi_r61529_lcd_init); 
