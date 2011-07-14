@@ -597,6 +597,9 @@ static unsigned int msm_bahama_setup_power(void)
 			BT_SYS_REST_EN, rc);
 		goto vreg_fail;
 	}
+
+	msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR#295572, added sleep to modify the issue for turning on BT */
+	
 	return rc;
 #else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */
 	/*setup Bahama_sys_reset_n*/
@@ -870,7 +873,7 @@ void __init lge_add_connectivity_devices(void)
 			printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
 	}
 
-	msleep(100);
+	//msleep(100);
 #endif
 
 	platform_add_devices(m3eu_connectivity_devices,
