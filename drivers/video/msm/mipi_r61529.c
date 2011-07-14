@@ -53,7 +53,7 @@ static char config_vcom[5] = {0xd1, 0x02, 0x1f, 0x1f, 0x38};
 static char config_backlight_ctrl1[21] = {0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 		                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static char config_backlight_ctrl2[5] = {0xb9, 0x00, 0x00, 0x00, 0x00};
-static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};
+//static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};
 
 static char config_nvm_access[5] = {0xe0, 0x00, 0x00, 0x00, 0x00};
 static char config_ddb_write[7] = {0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x70};
@@ -109,8 +109,8 @@ static struct dsi_cmd_desc r61529_init_on_cmds[] = {
 		sizeof(config_backlight_ctrl1), config_backlight_ctrl1},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_backlight_ctrl2), config_backlight_ctrl2},
-	{DTYPE_GEN_READ1, 1, 0, 0, R61529_CMD_DELAY,
-		sizeof(config_backlight_ctrl3), config_backlight_ctrl3},
+//	{DTYPE_GEN_READ1, 1, 0, 0, R61529_CMD_DELAY,
+//		sizeof(config_backlight_ctrl3), config_backlight_ctrl3},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_nvm_access), config_nvm_access},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
