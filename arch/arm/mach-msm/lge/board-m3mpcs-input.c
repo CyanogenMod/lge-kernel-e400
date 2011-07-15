@@ -131,27 +131,34 @@ static struct platform_device ts_i2c_device = {
 
 static int ts_set_vreg(unsigned char onoff)
 {
-	struct vreg *vreg_touch;
+	static struct regulator* ldo1 = NULL;
 	int rc;
+	static int init = 0;
 
-	printk("[Touch] %s() onoff:%d\n",__FUNCTION__, onoff);
-
-	vreg_touch = vreg_get(0, "bt");
-
-	if(IS_ERR(vreg_touch)) {
-		printk("[Touch] vreg_get fail : touch\n");
-		return -1;
+	ldo1 = regulator_get(NULL, "RT8053_LDO1");
+	if (ldo1 == NULL) {
+		pr_err("%s: regulator_get(ldo1) failed\n", __func__);
 	}
 
-	if (onoff) {
-		rc = vreg_set_level(vreg_touch, 2850);
-		if (rc != 0) {
-			printk("[Touch] vreg_set_level failed\n");
-			return -1;
+	if(onoff){
+		rc = regulator_set_voltage(ldo1, 3000000, 3000000);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo1) failed\n", __func__);
 		}
-		vreg_enable(vreg_touch);
-	} else {
-		vreg_disable(vreg_touch);
+		rc = regulator_enable(ldo1);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo1) failed\n", __func__);
+		}
+		init = 1;
+	}
+	else{
+		if(init > 0){
+			rc = regulator_disable(ldo1);
+			if (rc < 0) {
+				pr_err("%s: regulator_disble(ldo1) failed\n", __func__);
+			}
+			regulator_put(ldo1);
+		}
 	}
 
 	return 0;
