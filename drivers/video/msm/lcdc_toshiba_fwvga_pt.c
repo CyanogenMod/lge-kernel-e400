@@ -20,11 +20,8 @@
 #include <linux/module.h>
 #include <mach/gpio.h>
 #include <mach/pmic.h>
+#include <mach/socinfo.h>
 #include "msm_fb.h"
-
-#ifdef CONFIG_FB_MSM_TRY_MDDI_CATCH_LCDC_PRISM
-#include "mddihosti.h"
-#endif
 
 static int spi_cs0_N;
 static int spi_sclk;
@@ -103,6 +100,7 @@ static void toshiba_disp_on(void)
 		toshiba_spi_write(0x01, 0x01, 0);
 		toshiba_spi_write(0x40, 0x10, 1);
 
+#ifdef TOSHIBA_FWVGA_FULL_INIT
 		udelay(500);
 		toshiba_spi_write(0x01, 0x06, 0);
 		toshiba_spi_write(0x00, 0x00, 1);
@@ -130,7 +128,7 @@ static void toshiba_disp_on(void)
 		udelay(500);
 		toshiba_spi_write(0x00, 0x09, 0);
 		toshiba_spi_write(0x00, 0x0c, 1);
-
+#endif
 		udelay(500);
 		toshiba_spi_write(0x00, 0x0c, 0);
 		toshiba_spi_write(0x40, 0x10, 1);
@@ -167,6 +165,7 @@ static void toshiba_disp_on(void)
 		toshiba_spi_write(0x00, 0x28, 0);
 		toshiba_spi_write(0x76, 0x0c, 1);
 
+#ifdef TOSHIBA_FWVGA_FULL_INIT
 		udelay(500);
 		toshiba_spi_write(0x03, 0x00, 0);
 		toshiba_spi_write(0x00, 0x00, 1);
@@ -287,6 +286,7 @@ static void toshiba_disp_on(void)
 		toshiba_spi_write(0x03, 0x29, 0);
 		toshiba_spi_write(0x00, 0x02, 1);
 
+#endif
 		udelay(500);
 		toshiba_spi_write(0x01, 0x00, 0);
 		toshiba_spi_write(0x36, 0x3c, 1);
@@ -441,15 +441,28 @@ static int __init lcdc_toshiba_panel_init(void)
 	pinfo->bl_max = 100;
 	pinfo->bl_min = 1;
 
-	pinfo->lcdc.h_back_porch = 8;
-	pinfo->lcdc.h_front_porch = 16;
-	pinfo->lcdc.h_pulse_width = 8;
-	pinfo->lcdc.v_back_porch = 2;
-	pinfo->lcdc.v_front_porch = 2;
-	pinfo->lcdc.v_pulse_width = 2;
-	pinfo->lcdc.border_clr = 0;     /* blk */
-	pinfo->lcdc.underflow_clr = 0xff;       /* blue */
-	pinfo->lcdc.hsync_skew = 0;
+	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa()) {
+		pinfo->yres = 320;
+		pinfo->lcdc.h_back_porch = 10;
+		pinfo->lcdc.h_front_porch = 21;
+		pinfo->lcdc.h_pulse_width = 5;
+		pinfo->lcdc.v_back_porch = 8;
+		pinfo->lcdc.v_front_porch = 540;
+		pinfo->lcdc.v_pulse_width = 42;
+		pinfo->lcdc.border_clr = 0;     /* blk */
+		pinfo->lcdc.underflow_clr = 0xff;       /* blue */
+		pinfo->lcdc.hsync_skew = 0;
+	} else {
+		pinfo->lcdc.h_back_porch = 8;
+		pinfo->lcdc.h_front_porch = 16;
+		pinfo->lcdc.h_pulse_width = 8;
+		pinfo->lcdc.v_back_porch = 2;
+		pinfo->lcdc.v_front_porch = 2;
+		pinfo->lcdc.v_pulse_width = 2;
+		pinfo->lcdc.border_clr = 0;     /* blk */
+		pinfo->lcdc.underflow_clr = 0xff;       /* blue */
+		pinfo->lcdc.hsync_skew = 0;
+	}
 
 	ret = platform_device_register(&this_device);
 	if (ret) {

@@ -172,7 +172,7 @@ the interfaces.
 The following services are provided by the qce driver -
 
      qce_open(), qce_close(), qce_ablk_cipher_req(),
-     qce_hmac_support(), qce_process_sha_req()
+     qce_hw_support(), qce_process_sha_req()
 
   qce_open() is the first request from the client, ex. Qualcomm crypto
   driver (qcedev, qcrypto), to open a crypto engine. It is normally
@@ -192,12 +192,12 @@ The following services are provided by the qce driver -
   qce_close() is the last request from the client. Normally, it is
   called from the remove function of the client.
 
-  qce_hmac_support() allows the client to query if the
-  crypto engine has the capability to support hmac.
+  qce_hw_support() allows the client to query what is supported
+  by the crypto engine hardware.
 
   qce_ablk_cipher_req() provides ciphering service to the client.
   qce_process_sha_req() provide hashing service to the client.
-
+  qce_aead_req() provide aead service to the client.
 
 Module parameters:
 ==================

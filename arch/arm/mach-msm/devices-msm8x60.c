@@ -36,10 +36,13 @@
 #include <asm/clkdev.h>
 #include <mach/usbdiag.h>
 #include <mach/usb_gadget_fserial.h>
+#include <mach/msm_serial_hs_lite.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 #include <mach/socinfo.h>
 #include <mach/msm_memtypes.h>
+#include <mach/msm_tsif.h>
+#include <mach/scm-io.h>
 #ifdef CONFIG_MSM_DSPS
 #include <mach/msm_dsps.h>
 #endif
@@ -287,6 +290,12 @@ struct platform_device msm_device_uart_dm12 = {
 };
 
 #ifdef CONFIG_MSM_GSBI9_UART
+static struct msm_serial_hslite_platform_data uart_gsbi9_pdata = {
+	.config_gpio	= 1,
+	.uart_tx_gpio	= 67,
+	.uart_rx_gpio	= 66,
+};
+
 static struct resource msm_uart_gsbi9_resources[] = {
        {
 		.start	= MSM_UART9DM_PHYS,
@@ -307,13 +316,15 @@ static struct resource msm_uart_gsbi9_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
-
-struct platform_device msm_device_uart_gsbi9 = {
-	.name	= "msm_serial_hsl",
-	.id	= 1,
-	.num_resources	= ARRAY_SIZE(msm_uart_gsbi9_resources),
-	.resource	= msm_uart_gsbi9_resources,
-};
+struct platform_device *msm_device_uart_gsbi9;
+struct platform_device *msm_add_gsbi9_uart(void)
+{
+	return platform_device_register_resndata(NULL, "msm_serial_hsl",
+					1, msm_uart_gsbi9_resources,
+					ARRAY_SIZE(msm_uart_gsbi9_resources),
+					&uart_gsbi9_pdata,
+					sizeof(uart_gsbi9_pdata));
+}
 #endif
 
 static struct resource gsbi3_qup_i2c_resources[] = {
@@ -657,7 +668,6 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 		.nap_allowed = true,
 		.idle_pass = true,
 #endif
-		.pwrrail_first = true,
 	},
 	.clk = {
 		.name = {
@@ -718,7 +728,6 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 		.nap_allowed = true,
 #endif
-		.pwrrail_first = true,
 	},
 	.clk = {
 		.name = {
@@ -776,7 +785,6 @@ static struct kgsl_device_platform_data kgsl_2d1_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 		.nap_allowed = true,
 #endif
-		.pwrrail_first = true,
 	},
 	.clk = {
 		.name = {
@@ -1707,6 +1715,140 @@ struct platform_device usb_diag_mdm_device = {
 };
 #endif
 
+#define MSM_TSIF0_PHYS       (0x18200000)
+#define MSM_TSIF1_PHYS       (0x18201000)
+#define MSM_TSIF_SIZE        (0x200)
+#define TCSR_ADM_0_A_CRCI_MUX_SEL 0x0070
+
+#define TSIF_0_CLK       GPIO_CFG(93, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#define TSIF_0_EN        GPIO_CFG(94, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#define TSIF_0_DATA      GPIO_CFG(95, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#define TSIF_0_SYNC      GPIO_CFG(96, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#define TSIF_1_CLK       GPIO_CFG(97, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#define TSIF_1_EN        GPIO_CFG(98, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#define TSIF_1_DATA      GPIO_CFG(99, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#define TSIF_1_SYNC      GPIO_CFG(100, 1, GPIO_CFG_INPUT, \
+	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+
+static const struct msm_gpio tsif0_gpios[] = {
+	{ .gpio_cfg = TSIF_0_CLK,  .label =  "tsif_clk", },
+	{ .gpio_cfg = TSIF_0_EN,   .label =  "tsif_en", },
+	{ .gpio_cfg = TSIF_0_DATA, .label =  "tsif_data", },
+	{ .gpio_cfg = TSIF_0_SYNC, .label =  "tsif_sync", },
+};
+
+static const struct msm_gpio tsif1_gpios[] = {
+	{ .gpio_cfg = TSIF_1_CLK,  .label =  "tsif_clk", },
+	{ .gpio_cfg = TSIF_1_EN,   .label =  "tsif_en", },
+	{ .gpio_cfg = TSIF_1_DATA, .label =  "tsif_data", },
+	{ .gpio_cfg = TSIF_1_SYNC, .label =  "tsif_sync", },
+};
+
+static void tsif_release(struct device *dev)
+{
+}
+
+static void tsif_init1(struct msm_tsif_platform_data *data)
+{
+	int val;
+
+	/* configure mux to use correct tsif instance */
+	val = secure_readl(MSM_TCSR_BASE + TCSR_ADM_0_A_CRCI_MUX_SEL);
+	val |= 0x80000000;
+	secure_writel(val, MSM_TCSR_BASE + TCSR_ADM_0_A_CRCI_MUX_SEL);
+}
+
+struct msm_tsif_platform_data tsif1_platform_data = {
+	.num_gpios = ARRAY_SIZE(tsif1_gpios),
+	.gpios = tsif1_gpios,
+	.tsif_pclk = "tsif_pclk",
+	.tsif_ref_clk = "tsif_ref_clk",
+	.init = tsif_init1
+};
+
+struct resource tsif1_resources[] = {
+	[0] = {
+		.flags = IORESOURCE_IRQ,
+		.start = TSIF2_IRQ,
+		.end   = TSIF2_IRQ,
+	},
+	[1] = {
+		.flags = IORESOURCE_MEM,
+		.start = MSM_TSIF1_PHYS,
+		.end   = MSM_TSIF1_PHYS + MSM_TSIF_SIZE - 1,
+	},
+	[2] = {
+		.flags = IORESOURCE_DMA,
+		.start = DMOV_TSIF_CHAN,
+		.end   = DMOV_TSIF_CRCI,
+	},
+};
+
+static void tsif_init0(struct msm_tsif_platform_data *data)
+{
+	int val;
+
+	/* configure mux to use correct tsif instance */
+	val = secure_readl(MSM_TCSR_BASE + TCSR_ADM_0_A_CRCI_MUX_SEL);
+	val &= 0x7FFFFFFF;
+	secure_writel(val, MSM_TCSR_BASE + TCSR_ADM_0_A_CRCI_MUX_SEL);
+}
+
+struct msm_tsif_platform_data tsif0_platform_data = {
+	.num_gpios = ARRAY_SIZE(tsif0_gpios),
+	.gpios = tsif0_gpios,
+	.tsif_pclk = "tsif_pclk",
+	.tsif_ref_clk = "tsif_ref_clk",
+	.init = tsif_init0
+};
+struct resource tsif0_resources[] = {
+	[0] = {
+		.flags = IORESOURCE_IRQ,
+		.start = TSIF1_IRQ,
+		.end   = TSIF1_IRQ,
+	},
+	[1] = {
+		.flags = IORESOURCE_MEM,
+		.start = MSM_TSIF0_PHYS,
+		.end   = MSM_TSIF0_PHYS + MSM_TSIF_SIZE - 1,
+	},
+	[2] = {
+		.flags = IORESOURCE_DMA,
+		.start = DMOV_TSIF_CHAN,
+		.end   = DMOV_TSIF_CRCI,
+	},
+};
+
+struct platform_device msm_device_tsif[2] = {
+	{
+		.name          = "msm_tsif",
+		.id            = 0,
+		.num_resources = ARRAY_SIZE(tsif0_resources),
+		.resource      = tsif0_resources,
+		.dev = {
+			.release       = tsif_release,
+			.platform_data = &tsif0_platform_data
+		},
+	},
+	{
+		.name          = "msm_tsif",
+		.id            = 1,
+		.num_resources = ARRAY_SIZE(tsif1_resources),
+		.resource      = tsif1_resources,
+		.dev = {
+			.release       = tsif_release,
+			.platform_data = &tsif1_platform_data
+		},
+	}
+};
+
 #ifdef CONFIG_USB_F_SERIAL
 static struct usb_gadget_fserial_platform_data fserial_pdata = {
 	.no_ports	= 2,
@@ -2195,32 +2337,16 @@ struct platform_device asoc_mvs_dai1 = {
 };
 #endif
 
-#define FS(_id, _name) (&(struct platform_device){ \
-	.name	= "footswitch-msm8x60", \
-	.id	= (_id), \
-	.dev	= { \
-		.platform_data = &(struct regulator_init_data){ \
-			.constraints = { \
-				.valid_modes_mask = REGULATOR_MODE_NORMAL, \
-				.valid_ops_mask   = REGULATOR_CHANGE_STATUS, \
-			}, \
-			.num_consumer_supplies = 1, \
-			.consumer_supplies = \
-				&(struct regulator_consumer_supply) \
-				REGULATOR_SUPPLY((_name), NULL), \
-		} \
-	}, \
-})
 struct platform_device *msm_footswitch_devices[] = {
-	FS(FS_IJPEG,	"fs_ijpeg"),
-	FS(FS_MDP,	"fs_mdp"),
-	FS(FS_ROT,	"fs_rot"),
-	FS(FS_VED,	"fs_ved"),
-	FS(FS_VFE,	"fs_vfe"),
-	FS(FS_VPE,	"fs_vpe"),
-	FS(FS_GFX3D,	"fs_gfx3d"),
-	FS(FS_GFX2D0,	"fs_gfx2d0"),
-	FS(FS_GFX2D1,	"fs_gfx2d1"),
+	FS_8X60(FS_IJPEG,  "fs_ijpeg"),
+	FS_8X60(FS_MDP,    "fs_mdp"),
+	FS_8X60(FS_ROT,    "fs_rot"),
+	FS_8X60(FS_VED,    "fs_ved"),
+	FS_8X60(FS_VFE,    "fs_vfe"),
+	FS_8X60(FS_VPE,    "fs_vpe"),
+	FS_8X60(FS_GFX3D,  "fs_gfx3d"),
+	FS_8X60(FS_GFX2D0, "fs_gfx2d0"),
+	FS_8X60(FS_GFX2D1, "fs_gfx2d1"),
 };
 unsigned msm_num_footswitch_devices = ARRAY_SIZE(msm_footswitch_devices);
 

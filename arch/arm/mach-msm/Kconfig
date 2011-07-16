@@ -28,6 +28,7 @@ config ARCH_MSM7X27
 	select CPU_V7 if MSM_SOC_REV_A
 	select MSM_REMOTE_SPINLOCK_SWP if MSM_SOC_REV_NONE
 	select MSM_GPIOMUX
+	select REGULATOR
 
 config ARCH_MSM7X30
 	bool "MSM7x30"
@@ -115,7 +116,6 @@ config ARCH_MSM8X60
 config ARCH_MSM8960
 	bool "MSM8960"
 	select ARCH_MSM_KRAITMP
-	select MACH_MSM8960_SIM if (!MACH_MSM8960_RUMI3)
 	select ARM_GIC
 	select CPU_V7
 	select MSM_V2_TLMM
@@ -132,8 +132,15 @@ config ARCH_MSM8960
 	select MSM_SPM_V2
 	select MSM_L2_SPM
 	select MSM_NATIVE_RESTART
-	select MSM_PIL
-	select MSM_DSPS
+
+config ARCH_APQ8064
+	bool "APQ8064"
+	select ARCH_MSM_KRAITMP
+	select MACH_APQ8064_SIM
+	select MSM_V2_TLMM
+	select ARM_GIC
+	select CPU_V7
+	select MSM_SCM if SMP
 
 config ARCH_FSM9XXX
 	bool "FSM9XXX"
@@ -487,12 +494,27 @@ config MACH_MSM8960_FLUID
 	help
 	  Support for the Qualcomm MSM8960 FLUID device.
 
+config MSM_USE_TSIF1
+	depends on ARCH_MSM8X60
+	bool "MSM8x60 use TSIF1"
+	help
+	  Selects TSIF1 core to be used rather than TSIF0.
+	  The two TSIF cores share the same DM configuration
+	  so they cannot be used simultaneously.
+
+
 config MACH_MSM8X60_QT
 	depends on ARCH_MSM8X60
 	default n
 	bool "MSM8x60 QT"
 	help
 	  Support for the Qualcomm MSM8x60 QT board.
+
+config MACH_APQ8064_SIM
+	depends on ARCH_APQ8064
+	bool "APQ8064 Simulator"
+	help
+	  Support for the Qualcomm APQ8064 simulator.
 
 config MACH_FSM9XXX_SURF
 	depends on ARCH_FSM9XXX
@@ -518,6 +540,7 @@ config MSM_STACKED_MEMORY
 
 config PHYS_OFFSET
 	hex
+	default "0x80200000" if ARCH_APQ8064
 	default "0x80200000" if ARCH_MSM8960
 	default "0x10000000" if ARCH_FSM9XXX
 	default "0x00200000" if !MSM_STACKED_MEMORY
@@ -1385,6 +1408,14 @@ config MSM_SUBSYSTEM_RESTART
 	  This option enables the MSM subsystem restart driver, which provides
 	  a framework to handle subsystem crashes.
 
+config MSM_MODEM_8960
+	bool "MSM 8960 Modem driver"
+	depends on (ARCH_MSM8960)
+	help
+	 This option enables the modem driver for the MSM8960, which monitors
+	 modem hardware watchdog interrupt lines and plugs into the subsystem
+	 restart and PIL drivers.
+
 config SCORPION_Uni_45nm_BUG
 	bool "Scorpion Uni 45nm(SC45U): Workaround for ICIMVAU and BPIMVA"
 	depends on ARCH_MSM7X30 || (ARCH_QSD8X50 && MSM_SOC_REV_A)
@@ -1522,7 +1553,7 @@ config MSM_SHARED_GPIO_FOR_UART2DM
 
 config MSM_SHOW_RESUME_IRQ
 	bool "Enable logging of interrupts that could have caused resume"
-	depends on ARCH_MSM8X60
+	depends on (ARCH_MSM8X60 || ARCH_MSM8960)
 	default n
 	help
 		This option logs wake up interrupts that have triggered just before

@@ -27,7 +27,7 @@
 #include <linux/timer.h>
 #include <linux/err.h>
 #include <mach/board_lge.h>
-#include <../staging/android/timed_output.h>
+#include "../staging/android/timed_output.h"
 
 struct android_vibrator_platform_data *vibe_data = NULL;
 static atomic_t vibe_gain = ATOMIC_INIT(128); /* default max gain value is 128 */

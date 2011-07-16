@@ -141,7 +141,7 @@ static int msm_fb_get_lane_config(void)
 {
 	int rc = DSI_TWO_LANES;
 #if 0
-	if (cpu_is_msm7x25a()) {
+	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa()) {
 		rc = DSI_SINGLE_LANE;
 		pr_info("DSI Single Lane\n");
 	} else {

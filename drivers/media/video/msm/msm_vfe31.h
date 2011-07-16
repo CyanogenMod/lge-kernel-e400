@@ -161,7 +161,7 @@
 #define RS_ENABLE_MASK 0x00000100      /* bit 8  */
 #define CS_ENABLE_MASK 0x00000200      /* bit 9  */
 #define RS_CS_ENABLE_MASK 0x00000300   /* bit 8,9  */
-
+#define STATS_ENABLE_MASK 0x000483E0   /* bit 18,15,9,8,7,6,5*/
 
 #define VFE_REG_UPDATE_TRIGGER           1
 #define VFE_PM_BUF_MAX_CNT_MASK          0xFF
@@ -1093,7 +1093,6 @@ struct vfe31_ctrl_type {
 	uint32_t output2Period;
 	uint32_t vfeFrameSkipCount;
 	uint32_t vfeFrameSkipPeriod;
-	uint32_t rolloff_update;
 	uint32_t status_bits;
 	struct vfe_stats_control afStatsControl;
 	struct vfe_stats_control awbStatsControl;
@@ -1107,6 +1106,7 @@ struct vfe31_ctrl_type {
 	int8_t xbar_update_pending;
 	uint32_t xbar_cfg[2];
 	spinlock_t xbar_lock;
+	uint32_t while_stopping_mask;
 };
 
 #define statsAeNum      0

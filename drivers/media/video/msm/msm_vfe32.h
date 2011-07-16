@@ -124,6 +124,13 @@
 /* For BPC bit 1 and 2 are set to zero and other's 1 */
 #define ABF_MASK 0xFFFFFFF9
 
+
+/* For DBPC bit 0 is set to zero and other's 1 */
+#define DBPC_MASK 0xFFFFFFFE
+
+/* For DBPC bit 1 is set to zero and other's 1 */
+#define DBCC_MASK 0xFFFFFFFD
+
 /* For MCE enable bit 28 set to zero and other's 1 */
 #define MCE_EN_MASK 0xEFFFFFFF
 
@@ -138,6 +145,7 @@
 #define RS_CS_ENABLE_MASK 0x00000300   /* bit 8,9  */
 #define CLF_ENABLE_MASK 0x00002000     /* bit 13 */
 #define IHIST_ENABLE_MASK 0x00010000   /* bit 16 */
+#define STATS_ENABLE_MASK 0x000903E0   /* bit 19,16,9,8,7,6,5*/
 
 #define VFE_REG_UPDATE_TRIGGER           1
 #define VFE_PM_BUF_MAX_CNT_MASK          0xFF
@@ -285,6 +293,10 @@ enum  VFE_STATE {
 #define V32_DEMOSAICV3_DBCC_CFG       106
 #define V32_DEMOSAICV3_DBPC_CFG       107
 #define V32_DEMOSAICV3_ABF_CFG        108
+#define V32_DEMOSAICV3_ABCC_UPDATE    109
+#define V32_DEMOSAICV3_DBCC_UPDATE    110
+#define V32_DEMOSAICV3_DBPC_UPDATE    111
+#define V32_EZTUNE_CFG            112
 
 #define V32_CLF_CFG               118
 #define V32_CLF_UPDATE            119
@@ -405,17 +417,21 @@ enum  VFE_STATE {
 #define V32_DEMOSAICV3_OFF 0x00000298
 #define V32_DEMOSAICV3_LEN 4
 
-#define V32_DEMOSAICV3_DBPC_OFF1 0x0000029C
-#define V32_DEMOSAICV3_DBPC_LEN1 16
+#define V32_DEMOSAICV3_DBPC_CFG_OFF  0x0000029C
+#define V32_DEMOSAICV3_DBPC_LEN 4
 
-#define V32_DEMOSAICV3_DBPC_OFF2 0x0000029C
-#define V32_DEMOSAICV3_DBPC_LEN2 16
+#define V32_DEMOSAICV3_DBPC_CFG_OFF0 0x000002a0
+#define V32_DEMOSAICV3_DBPC_CFG_OFF1 0x00000604
+#define V32_DEMOSAICV3_DBPC_CFG_OFF2 0x00000608
 
 #define V32_DEMOSAICV3_DBCC_OFF 0x0000060C
-#define V32_DEMOSAICV3_DBCC_LEN 32
+#define V32_DEMOSAICV3_DBCC_LEN 16
 
 #define V32_DEMOSAICV3_ABF_OFF 0x0000029C
 #define V32_DEMOSAICV3_ABF_LEN
+
+#define V32_EZTUNE_CFG_OFF 0x00000010
+#define V32_EZTUNE_CFG_LEN 4
 
 struct vfe_cmd_hw_version {
 	uint32_t minorVersion;
@@ -864,15 +880,15 @@ struct vfe32_cmd_type {
 };
 
 struct vfe32_free_buf {
-	spinlock_t f_lock;
-	uint8_t available;
+	struct list_head node;
 	uint32_t paddr;
 	uint32_t y_off;
 	uint32_t cbcr_off;
 };
 
 struct vfe32_output_ch {
-	struct vfe32_free_buf free_buf;
+	struct list_head free_buf_queue;
+	spinlock_t free_buf_lock;
 	uint16_t output_fmt;
 	int8_t ch0;
 	int8_t ch1;
@@ -999,6 +1015,7 @@ struct vfe32_frame_extra {
 #define VFE_DMI_CFG                     0x00000598
 #define VFE_DMI_ADDR                    0x0000059C
 #define VFE_DMI_DATA_LO                 0x000005A4
+#define VFE_BUS_IO_FORMAT_CFG		0x000006F8
 #define VFE_PIXEL_IF_CFG                0x000006FC
 
 struct vfe_stats_control {

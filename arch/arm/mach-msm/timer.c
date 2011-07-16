@@ -24,7 +24,6 @@
 #include <linux/percpu.h>
 
 #include <asm/mach/time.h>
-#include <asm/sched_clock.h>
 #include <mach/msm_iomap.h>
 #include <mach/irqs.h>
 
@@ -40,7 +39,8 @@ static int msm_timer_debug_mask;
 module_param_named(debug_mask, msm_timer_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 #if defined(CONFIG_ARCH_MSM7X30) || defined(CONFIG_ARCH_MSM8X60) || \
-	defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_FSM9XXX)
+	defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_FSM9XXX) || \
+	defined(CONFIG_ARCH_APQ8064)
 #define MSM_GPT_BASE (MSM_TMR_BASE + 0x4)
 #define MSM_DGT_BASE (MSM_TMR_BASE + 0x24)
 #else
@@ -99,7 +99,8 @@ enum {
 #define DGT_HZ 4800000	/* Uses TCXO/4 (19.2 MHz / 4) */
 #elif defined(CONFIG_ARCH_MSM7X30)
 #define DGT_HZ 6144000	/* Uses LPXO/4 (24.576 MHz / 4) */
-#elif defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960)
+#elif defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960) || \
+	defined(CONFIG_ARCH_APQ8064)
 /* Uses PXO/4 (24.576 MHz / 4) on V1, (27 MHz / 4) on V2 */
 #define DGT_HZ 6750000
 #else
@@ -962,22 +963,34 @@ int __init msm_timer_init_time_sync(void (*timeout)(void))
 
 #endif
 
-static DEFINE_CLOCK_DATA(cd);
-
-unsigned long long notrace sched_clock(void)
+unsigned long long sched_clock(void)
 {
-	struct msm_clock *clock = &msm_clocks[MSM_GLOBAL_TIMER];
-	struct clocksource *cs = &clock->clocksource;
-	u32 cyc = cs->read(cs);
-	return cyc_to_sched_clock(&cd, cyc, (u32)~0);
-}
+	static cycle_t last_ticks;
+	static unsigned long long last_ns;
+	static DEFINE_SPINLOCK(msm_timer_sched_clock_lock);
 
-static void notrace msm_update_sched_clock(void)
-{
-	struct msm_clock *clock = &msm_clocks[MSM_GLOBAL_TIMER];
-	struct clocksource *cs = &clock->clocksource;
-	u32 cyc = cs->read(cs);
-	update_sched_clock(&cd, cyc, (u32)~0);
+	struct msm_clock *clock;
+	struct clocksource *cs;
+	cycle_t ticks, delta;
+	unsigned long irq_flags;
+
+	clock = &msm_clocks[MSM_GLOBAL_TIMER];
+	cs = &clock->clocksource;
+
+	ticks  = cs->read(cs);
+
+	spin_lock_irqsave(&msm_timer_sched_clock_lock, irq_flags);
+	delta = (ticks - last_ticks) & cs->mask;
+
+	if (delta < cs->mask/2) {
+		last_ticks += delta;
+		last_ns += clocksource_cyc2ns(delta, cs->mult, cs->shift);
+	}
+
+	ticks = last_ticks;
+	spin_unlock_irqrestore(&msm_timer_sched_clock_lock, irq_flags);
+
+	return last_ns;
 }
 
 #ifdef CONFIG_MSM_SMP
@@ -989,18 +1002,13 @@ int read_current_timer(unsigned long *timer_val)
 }
 #endif
 
-static void __init msm_sched_clock_init(void)
-{
-	struct msm_clock *clock = &msm_clocks[MSM_GLOBAL_TIMER];
-
-	init_sched_clock(&cd, msm_update_sched_clock, 32, clock->freq);
-}
 static void __init msm_timer_init(void)
 {
 	int i;
 	int res;
 
-#if defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960)
+#if defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960) || \
+	defined(CONFIG_ARCH_APQ8064)
 	__raw_writel(DGT_CLK_CTL_DIV_4, MSM_TMR_BASE + DGT_CLK_CTL);
 #endif
 
@@ -1050,7 +1058,6 @@ static void __init msm_timer_init(void)
 
 		clockevents_register_device(ce);
 	}
-	msm_sched_clock_init();
 #ifdef CONFIG_MSM_SMP
 	__raw_writel(1, msm_clocks[MSM_CLOCK_DGT].regbase + TIMER_ENABLE);
 	set_delay_fn(read_current_timer_delay_loop);

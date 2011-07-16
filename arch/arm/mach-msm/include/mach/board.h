@@ -67,6 +67,9 @@ struct msm_camera_device_platform_data {
 	struct msm_camera_io_ext ioext;
 	struct msm_camera_io_clk ioclk;
 	uint8_t csid_core;
+#ifdef CONFIG_MSM_BUS_SCALING
+	struct msm_bus_scale_pdata *cam_bus_scale_table;
+#endif
 	/* TODO: it is needed??? */
 	int (*camera_power_on) (void);
 	int (*camera_power_off)(void);
@@ -177,6 +180,8 @@ struct msm_camera_sensor_info {
 	struct msm_camera_sensor_strobe_flash_data *strobe_flash_data;
 	char *eeprom_data;
 };
+
+int __init msm_get_cam_resources(struct msm_camera_sensor_info *);
 
 struct clk;
 
@@ -296,12 +301,13 @@ struct mddi_platform_data {
 struct mipi_dsi_platform_data {
 	int vsync_gpio;
 	int (*dsi_power_save)(int on);
-#ifdef CONFIG_FB_MSM_MIPI_NOVATEK_3D_PANEL
-	int fpga_config_addr;
-#endif
 	int (*dsi_client_reset)(void);
 	int (*get_lane_config)(void);
 	int target_type;
+};
+
+struct mipi_dsi_novatek_platform_data {
+	int fpga_3d_config_addr;
 };
 
 struct msm_fb_platform_data {
@@ -362,6 +368,7 @@ void __init msm_map_common_io(void);
 void __init msm_map_qsd8x50_io(void);
 void __init msm_map_msm8x60_io(void);
 void __init msm_map_msm8960_io(void);
+void __init msm_map_apq8064_io(void);
 void __init msm_map_msm7x30_io(void);
 void __init msm_map_fsm9xxx_io(void);
 void __init msm_init_irq(void);

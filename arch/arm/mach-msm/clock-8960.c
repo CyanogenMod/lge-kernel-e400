@@ -26,10 +26,12 @@
 #include <mach/msm_iomap.h>
 #include <mach/clk.h>
 #include <mach/rpm-regulator.h>
+#include <mach/msm_xo.h>
 
 #include "clock-local.h"
 #include "clock-rpm.h"
 #include "clock-voter.h"
+#include "clock-dss-8960.h"
 
 #define REG(off)	(MSM_CLK_CTL_BASE + (off))
 #define REG_MM(off)	(MSM_MMSS_CLK_CTL_BASE + (off))
@@ -54,6 +56,7 @@
 #define GSBIn_UART_APPS_NS_REG(n)		REG(0x29D4+(0x20*((n)-1)))
 #define LPASS_XO_SRC_CLK_CTL_REG		REG(0x2EC0)
 #define PDM_CLK_NS_REG				REG(0x2CC0)
+#define BB_PLL_ENA_Q6_SW_REG			REG(0x3500)
 #define BB_PLL_ENA_SC0_REG			REG(0x34C0)
 #define BB_PLL0_STATUS_REG			REG(0x30D8)
 #define BB_PLL5_STATUS_REG			REG(0x30F8)
@@ -158,11 +161,6 @@
 #define MDP_NS_REG				REG_MM(0x00D0)
 #define MISC_CC_REG				REG_MM(0x0058)
 #define MISC_CC2_REG				REG_MM(0x005C)
-#define MM_PLL0_CONFIG_REG			REG_MM(0x0310)
-#define MM_PLL0_L_VAL_REG			REG_MM(0x0304)
-#define MM_PLL0_M_VAL_REG			REG_MM(0x0308)
-#define MM_PLL0_MODE_REG			REG_MM(0x0300)
-#define MM_PLL0_N_VAL_REG			REG_MM(0x030C)
 #define MM_PLL1_MODE_REG			REG_MM(0x031C)
 #define ROT_CC_REG				REG_MM(0x00E0)
 #define ROT_NS_REG				REG_MM(0x00E8)
@@ -200,7 +198,6 @@
 #define LCC_PCM_MD_REG				REG_LPA(0x0058)
 #define LCC_PCM_NS_REG				REG_LPA(0x0054)
 #define LCC_PCM_STATUS_REG			REG_LPA(0x005C)
-#define LCC_PLL0_MODE_REG			REG_LPA(0x0000)
 #define LCC_PLL0_STATUS_REG			REG_LPA(0x0018)
 #define LCC_PRI_PLL_CLK_CTL_REG			REG_LPA(0x00C4)
 #define LCC_PXO_SRC_CLK_CTL_REG			REG_LPA(0x00B4)
@@ -228,6 +225,7 @@
 #define pll8_to_mm_mux		2
 #define pll0_to_mm_mux		3
 #define gnd_to_mm_mux		4
+#define hdmi_pll_to_mm_mux	3
 #define cxo_to_xo_mux		0
 #define pxo_to_xo_mux		1
 #define gnd_to_xo_mux		3
@@ -318,19 +316,16 @@ struct pll_rate {
  * Clock Descriptions
  */
 
+static struct msm_xo_voter *xo_pxo, *xo_cxo;
+
 static int pxo_clk_enable(struct clk *clk)
 {
-	return 0;
-	/* TODO:
 	return msm_xo_mode_vote(xo_pxo, MSM_XO_MODE_ON);
-	*/
 }
 
 static void pxo_clk_disable(struct clk *clk)
 {
-	/* TODO:
 	 msm_xo_mode_vote(xo_pxo, MSM_XO_MODE_OFF);
-	*/
 }
 
 static struct clk_ops clk_ops_pxo = {
@@ -351,17 +346,12 @@ static struct fixed_clk pxo_clk = {
 
 static int cxo_clk_enable(struct clk *clk)
 {
-	return 0;
-	/* TODO:
 	return msm_xo_mode_vote(xo_cxo, MSM_XO_MODE_ON);
-	*/
 }
 
 static void cxo_clk_disable(struct clk *clk)
 {
-	/* TODO:
 	msm_xo_mode_vote(xo_cxo, MSM_XO_MODE_OFF);
-	*/
 }
 
 static struct clk_ops clk_ops_cxo = {
@@ -420,12 +410,6 @@ static struct pll_vote_clk pll8_clk = {
 /*
  * SoC-specific functions required by clock-local driver
  */
-/* Unlike other clocks, the TV rate is adjusted through PLL
- * re-programming. It is also routed through an MND divider. */
-static void set_rate_tv(struct rcg_clk *clk, struct clk_freq_tbl *nf)
-{
-	/* TODO: Reprogram the HDMI PHY PLL? */
-}
 
 /* Update the sys_vdd voltage given a level. */
 int soc_update_sys_vdd(enum sys_vdd_level level)
@@ -438,12 +422,6 @@ int soc_update_sys_vdd(enum sys_vdd_level level)
 
 	return rpm_vreg_set_voltage(RPM_VREG_ID_PM8921_S3, RPM_VREG_VOTER3,
 				    vdd_uv[level], vdd_uv[HIGH], 1);
-}
-
-/* Enable/disable a power rail associated with a clock. */
-int soc_set_pwr_rail(struct clk *clk, int enable)
-{
-	return 0;
 }
 
 static int soc_clk_reset(struct clk *clk, enum clk_reset_action action)
@@ -2754,7 +2732,43 @@ static struct rcg_clk rot_clk = {
 	},
 };
 
-#define F_TV(f, s, p_r, d, m, n, v) \
+static int hdmi_pll_clk_enable(struct clk *clk)
+{
+	int ret;
+	unsigned long flags;
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+	ret = hdmi_pll_enable();
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+	return ret;
+}
+
+static void hdmi_pll_clk_disable(struct clk *clk)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+	hdmi_pll_disable();
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+}
+
+static unsigned hdmi_pll_clk_get_rate(struct clk *clk)
+{
+	return hdmi_pll_get_rate();
+}
+
+static struct clk_ops clk_ops_hdmi_pll = {
+	.enable = hdmi_pll_clk_enable,
+	.disable = hdmi_pll_clk_disable,
+	.get_rate = hdmi_pll_clk_get_rate,
+	.is_local = local_clk_is_local,
+};
+
+static struct clk hdmi_pll_clk = {
+	.dbg_name = "hdmi_pll_clk",
+	.ops = &clk_ops_hdmi_pll,
+	CLK_INIT(hdmi_pll_clk),
+};
+
+#define F_TV_GND(f, s, p_r, d, m, n, v) \
 	{ \
 		.freq_hz = f, \
 		.src_clk = &s##_clk.c, \
@@ -2763,13 +2777,40 @@ static struct rcg_clk rot_clk = {
 		.ctl_val = CC(6, n), \
 		.mnd_en_mask = BIT(5) * !!(n), \
 		.sys_vdd = v, \
-		.extra_freq_data = p_r, \
+	}
+#define F_TV(f, s, p_r, d, m, n, v) \
+	{ \
+		.freq_hz = f, \
+		.src_clk = &s##_clk, \
+		.md_val = MD8(8, m, 0, n), \
+		.ns_val = NS_MM(23, 16, n, m, 15, 14, d, 2, 0, s##_to_mm_mux), \
+		.ctl_val = CC(6, n), \
+		.mnd_en_mask = BIT(5) * !!(n), \
+		.sys_vdd = v, \
+		.extra_freq_data = (void *)p_r, \
 	}
 /* Switching TV freqs requires PLL reconfiguration. */
 static struct clk_freq_tbl clk_tbl_tv[] = {
-	/* TODO */
+	F_TV_GND(    0,      gnd,          0, 1, 0, 0, NONE),
+	F_TV( 25200000, hdmi_pll,   25200000, 1, 0, 0, LOW),
+	F_TV( 27000000, hdmi_pll,   27000000, 1, 0, 0, LOW),
+	F_TV( 27030000, hdmi_pll,   27030000, 1, 0, 0, LOW),
+	F_TV( 74250000, hdmi_pll,   74250000, 1, 0, 0, NOMINAL),
+	F_TV(148500000, hdmi_pll,  148500000, 1, 0, 0, NOMINAL),
 	F_END
 };
+
+/*
+ * Unlike other clocks, the TV rate is adjusted through PLL
+ * re-programming. It is also routed through an MND divider.
+ */
+void set_rate_tv(struct rcg_clk *clk, struct clk_freq_tbl *nf)
+{
+	unsigned long pll_rate = (unsigned long)nf->extra_freq_data;
+	if (pll_rate)
+		hdmi_pll_set_rate(pll_rate);
+	set_rate_mnd(clk, nf);
+}
 
 static struct rcg_clk tv_src_clk = {
 	.ns_reg = TV_NS_REG,
@@ -2798,7 +2839,7 @@ static struct branch_clk tv_enc_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(0),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_bit = 8,
+		.halt_bit = 9,
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
@@ -2813,7 +2854,7 @@ static struct branch_clk tv_dac_clk = {
 		.ctl_reg = TV_CC_REG,
 		.en_mask = BIT(10),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_bit = 9,
+		.halt_bit = 10,
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
@@ -2830,7 +2871,7 @@ static struct branch_clk mdp_tv_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(4),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_bit = 11,
+		.halt_bit = 12,
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
@@ -2847,7 +2888,7 @@ static struct branch_clk hdmi_tv_clk = {
 		.reset_reg = SW_RESET_CORE_REG,
 		.reset_mask = BIT(1),
 		.halt_reg = DBG_BUS_VEC_D_REG,
-		.halt_bit = 10,
+		.halt_bit = 11,
 	},
 	.parent = &tv_src_clk.c,
 	.c = {
@@ -3678,6 +3719,7 @@ static struct clk measure_clk = {
 };
 
 struct clk_lookup msm_clocks_8960[] = {
+	CLK_LOOKUP("cxo",		cxo_clk.c,		NULL),
 	CLK_LOOKUP("pll2",		pll2_clk.c,		NULL),
 	CLK_LOOKUP("pll8",		pll8_clk.c,		NULL),
 	CLK_LOOKUP("pll4",		pll4_clk.c,		NULL),
@@ -3723,7 +3765,7 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi9_qup_clk.c,	NULL),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi10_qup_clk.c,	"qup_i2c.10"),
 	CLK_LOOKUP("gsbi_qup_clk",	gsbi11_qup_clk.c,	NULL),
-	CLK_LOOKUP("gsbi_qup_clk",	gsbi12_qup_clk.c,	NULL),
+	CLK_LOOKUP("gsbi_qup_clk",	gsbi12_qup_clk.c,	"qup_i2c.12"),
 	CLK_LOOKUP("pdm_clk",		pdm_clk.c,		NULL),
 	CLK_LOOKUP("pmem_clk",		pmem_clk.c,		NULL),
 	CLK_LOOKUP("prng_clk",		prng_clk.c,		NULL),
@@ -3757,7 +3799,7 @@ struct clk_lookup msm_clocks_8960[] = {
 	CLK_LOOKUP("gsbi_pclk",		gsbi9_p_clk.c,		NULL),
 	CLK_LOOKUP("gsbi_pclk",		gsbi10_p_clk.c,		"qup_i2c.10"),
 	CLK_LOOKUP("gsbi_pclk",		gsbi11_p_clk.c,		NULL),
-	CLK_LOOKUP("gsbi_pclk",		gsbi12_p_clk.c,		NULL),
+	CLK_LOOKUP("gsbi_pclk",		gsbi12_p_clk.c,		"qup_i2c.12"),
 	CLK_LOOKUP("tsif_pclk",		tsif_p_clk.c,		NULL),
 	CLK_LOOKUP("usb_fs_pclk",	usb_fs1_p_clk.c,	NULL),
 	CLK_LOOKUP("usb_fs_pclk",	usb_fs2_p_clk.c,	NULL),
@@ -3893,7 +3935,7 @@ unsigned msm_num_clocks_8960 = ARRAY_SIZE(msm_clocks_8960);
  */
 
 /* Read, modify, then write-back a register. */
-static void rmwreg(uint32_t val, void *reg, uint32_t mask)
+static void __init rmwreg(uint32_t val, void *reg, uint32_t mask)
 {
 	uint32_t regval = readl_relaxed(reg);
 	regval &= ~mask;
@@ -3901,13 +3943,13 @@ static void rmwreg(uint32_t val, void *reg, uint32_t mask)
 	writel_relaxed(regval, reg);
 }
 
-static void reg_init(void)
+static void __init reg_init(void)
 {
-	/* Enable PLL4 */
-	writel_relaxed(0x4, LCC_PLL0_MODE_REG);
-	udelay(10);
-	writel_relaxed(0x6, LCC_PLL0_MODE_REG);
-	writel_relaxed(0x7, LCC_PLL0_MODE_REG);
+	/* TODO: Remove once LPASS starts voting */
+	u32 reg;
+	reg = readl_relaxed(BB_PLL_ENA_Q6_SW_REG);
+	reg |= BIT(4);
+	writel_relaxed(reg, BB_PLL_ENA_Q6_SW_REG);
 
 	/* Setup LPASS toplevel muxes */
 	writel_relaxed(0x15, LPASS_XO_SRC_CLK_CTL_REG); /* Select PXO */
@@ -3991,11 +4033,6 @@ static void reg_init(void)
 	rmwreg(0x2, DSI2_BYTE_NS_REG, 0x7);
 }
 
-static int dummy_pll_clk_enable(struct clk *clk)
-{
-	return 0;
-}
-
 static int wr_pll_clk_enable(struct clk *clk)
 {
 	u32 mode;
@@ -4035,12 +4072,22 @@ static int wr_pll_clk_enable(struct clk *clk)
 /* Local clock driver initialization. */
 void __init msm_clk_soc_init(void)
 {
+	xo_pxo = msm_xo_get(MSM_XO_PXO, "clock-8960");
+	if (IS_ERR(xo_pxo)) {
+		pr_err("%s: msm_xo_get(PXO) failed.\n", __func__);
+		BUG();
+	}
+	xo_cxo = msm_xo_get(MSM_XO_TCXO_D0, "clock-8960");
+	if (IS_ERR(xo_cxo)) {
+		pr_err("%s: msm_xo_get(CXO) failed.\n", __func__);
+		BUG();
+	}
+
 	local_vote_sys_vdd(HIGH);
 
 	if (machine_is_msm8960_rumi3())
 		return;
 
-	clk_ops_pll_vote.enable = dummy_pll_clk_enable;
 	clk_ops_pll.enable = wr_pll_clk_enable;
 
 	/* Initialize clock registers. */
@@ -4075,7 +4122,7 @@ void __init msm_clk_soc_init(void)
 	}
 }
 
-static int msm_clk_soc_late_init(void)
+static int __init msm_clk_soc_late_init(void)
 {
 	return local_unvote_sys_vdd(HIGH);
 }

@@ -13,6 +13,8 @@
 #include <linux/slab.h>
 
 #include "kgsl.h"
+#include "kgsl_sharedmem.h"
+#include "kgsl_cffdump.h"
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
@@ -133,34 +135,12 @@ struct tmp_ctx {
 */
 unsigned int uint2float(unsigned int uintval)
 {
-	unsigned int exp = 0;
-	unsigned int frac = 0;
-	unsigned int u = uintval;
+	unsigned int exp, frac = 0;
 
-	/* Handle zero separately */
 	if (uintval == 0)
 		return 0;
-	/* Find log2 of u */
-	if (u >= 0x10000) {
-		exp += 16;
-		u >>= 16;
-	}
-	if (u >= 0x100) {
-		exp += 8;
-		u >>= 8;
-	}
-	if (u >= 0x10) {
-		exp += 4;
-		u >>= 4;
-	}
-	if (u >= 0x4) {
-		exp += 2;
-		u >>= 2;
-	}
-	if (u >= 0x2) {
-		exp += 1;
-		u >>= 1;
-	}
+
+	exp = ilog2(uintval);
 
 	/* Calculate fraction */
 	if (23 > exp)
@@ -596,13 +576,9 @@ static void build_regsave_cmds(struct adreno_device *adreno_dev,
 	*cmd++ = REG_TP0_CHICKEN;
 	*cmd++ = ctx->reg_values[1];
 
-	*cmd++ = pm4_type3_packet(PM4_REG_TO_MEM, 2);
-	*cmd++ = REG_RBBM_PM_OVERRIDE2;
-	*cmd++ = ctx->reg_values[2];
-
 	if (adreno_is_a220(adreno_dev)) {
 		unsigned int i;
-		unsigned int j = 3;
+		unsigned int j = 2;
 		for (i = REG_LEIA_VSC_BIN_SIZE; i <=
 				REG_LEIA_VSC_PIPE_DATA_LENGTH_7; i++) {
 			*cmd++ = pm4_type3_packet(PM4_REG_TO_MEM, 2);
@@ -804,23 +780,23 @@ static unsigned int *build_gmem2sys_cmds(struct adreno_device *adreno_dev,
 	*cmds++ = PM4_REG(REG_RB_MODECONTROL);
 	*cmds++ = 0x6;		/* EDRAM copy */
 
-	if (adreno_is_a220(adreno_dev)) {
-		*cmds++ = pm4_type3_packet(PM4_SET_CONSTANT, 2);
-		*cmds++ = PM4_REG(REG_LEIA_RB_LRZ_VSC_CONTROL);
-		*cmds++ = 0;
-	}
-
 	*cmds++ = pm4_type3_packet(PM4_SET_CONSTANT, 2);
 	*cmds++ = PM4_REG(REG_PA_CL_CLIP_CNTL);
 	*cmds++ = 0x00010000;
 
 	if (adreno_is_a220(adreno_dev)) {
-		*cmds++ = 0xc0043600; /* packet 3 3D_DRAW_INDX_2 */
-		*cmds++ = 0x0;
-		*cmds++ = 0x00004046; /* tristrip */
-		*cmds++ = 0x00000004; /* NUM_INDICES */
-		*cmds++ = 0x00010000; /* index: 0x00, 0x01 */
-		*cmds++ = 0x00030002; /* index: 0x02, 0x03 */
+		*cmds++ = pm4_type3_packet(PM4_SET_DRAW_INIT_FLAGS, 1);
+		*cmds++ = 0;
+
+		*cmds++ = pm4_type3_packet(PM4_SET_CONSTANT, 2);
+		*cmds++ = PM4_REG(REG_LEIA_RB_LRZ_VSC_CONTROL);
+		*cmds++ = 0x0000000;
+
+		*cmds++ = pm4_type3_packet(PM4_DRAW_INDX, 3);
+		*cmds++ = 0;           /* viz query info. */
+		/* PrimType=RectList, SrcSel=AutoIndex, VisCullMode=Ignore */
+		*cmds++ = 0x00004088;
+		*cmds++ = 3;	       /* NumIndices=3 */
 	} else {
 		/* queue the draw packet */
 		*cmds++ = pm4_type3_packet(PM4_DRAW_INDX, 2);
@@ -1023,23 +999,23 @@ static unsigned int *build_sys2gmem_cmds(struct adreno_device *adreno_dev,
 	/* draw pixels with color and depth/stencil component */
 	*cmds++ = 0x4;
 
-	if (adreno_is_a220(adreno_dev)) {
-		*cmds++ = pm4_type3_packet(PM4_SET_CONSTANT, 2);
-		*cmds++ = PM4_REG(REG_LEIA_RB_LRZ_VSC_CONTROL);
-		*cmds++ = 0;
-	}
-
 	*cmds++ = pm4_type3_packet(PM4_SET_CONSTANT, 2);
 	*cmds++ = PM4_REG(REG_PA_CL_CLIP_CNTL);
 	*cmds++ = 0x00010000;
 
 	if (adreno_is_a220(adreno_dev)) {
-		*cmds++ = 0xc0043600; /* packet 3 3D_DRAW_INDX_2 */
-		*cmds++ = 0x0;
-		*cmds++ = 0x00004046; /* tristrip */
-		*cmds++ = 0x00000004; /* NUM_INDICES */
-		*cmds++ = 0x00010000; /* index: 0x00, 0x01 */
-		*cmds++ = 0x00030002; /* index: 0x02, 0x03 */
+		*cmds++ = pm4_type3_packet(PM4_SET_DRAW_INIT_FLAGS, 1);
+		*cmds++ = 0;
+
+		*cmds++ = pm4_type3_packet(PM4_SET_CONSTANT, 2);
+		*cmds++ = PM4_REG(REG_LEIA_RB_LRZ_VSC_CONTROL);
+		*cmds++ = 0x0000000;
+
+		*cmds++ = pm4_type3_packet(PM4_DRAW_INDX, 3);
+		*cmds++ = 0;           /* viz query info. */
+		/* PrimType=RectList, SrcSel=AutoIndex, VisCullMode=Ignore */
+		*cmds++ = 0x00004088;
+		*cmds++ = 3;	       /* NumIndices=3 */
 	} else {
 		/* queue the draw packet */
 		*cmds++ = pm4_type3_packet(PM4_DRAW_INDX, 2);
@@ -1125,16 +1101,9 @@ static void build_regrestore_cmds(struct adreno_device *adreno_dev,
 	ctx->reg_values[1] = gpuaddr(cmd, &drawctxt->gpustate);
 	*cmd++ = 0x00000000;
 
-	*cmd++ = pm4_type0_packet(REG_RBBM_PM_OVERRIDE2, 1);
-	ctx->reg_values[2] = gpuaddr(cmd, &drawctxt->gpustate);
-	if (!adreno_is_a220(adreno_dev))
-		*cmd++ = 0x00000000;
-	else
-		*cmd++ = 0x80;
-
 	if (adreno_is_a220(adreno_dev)) {
 		unsigned int i;
-		unsigned int j = 3;
+		unsigned int j = 2;
 		for (i = REG_LEIA_VSC_BIN_SIZE; i <=
 				REG_LEIA_VSC_PIPE_DATA_LENGTH_7; i++) {
 			*cmd++ = pm4_type0_packet(i, 1);
@@ -1487,9 +1456,6 @@ int adreno_drawctxt_create(struct kgsl_device *device,
 	/* Save the shader instruction memory on context switching */
 	drawctxt->flags |= CTXT_FLAGS_SHADER_SAVE;
 
-	memset(&drawctxt->context_gmem_shadow.gmemshadow,
-			0, sizeof(struct kgsl_memdesc));
-
 	if (!(flags & KGSL_CONTEXT_NO_GMEM_ALLOC)) {
 		/* create gmem shadow */
 		ret = create_gmem_shadow(adreno_dev, drawctxt, &ctx);
@@ -1509,14 +1475,14 @@ err:
 
 /* destroy a drawing context */
 
-int adreno_drawctxt_destroy(struct kgsl_device *device,
+void adreno_drawctxt_destroy(struct kgsl_device *device,
 			  struct kgsl_context *context)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_context *drawctxt = context->devctxt;
 
 	if (drawctxt == NULL)
-		return -EINVAL;
+		return;
 
 	/* deactivate context */
 	if (adreno_dev->drawctxt_active == drawctxt) {
@@ -1538,23 +1504,17 @@ int adreno_drawctxt_destroy(struct kgsl_device *device,
 
 	kfree(drawctxt);
 	context->devctxt = NULL;
-
-	return 0;
 }
 
 /* set bin base offset */
-int adreno_drawctxt_set_bin_base_offset(struct kgsl_device *device,
+void adreno_drawctxt_set_bin_base_offset(struct kgsl_device *device,
 				      struct kgsl_context *context,
 				      unsigned int offset)
 {
 	struct adreno_context *drawctxt = context->devctxt;
 
-	if (drawctxt == NULL)
-		return -EINVAL;
-
-	drawctxt->bin_base_offset = offset;
-
-	return 0;
+	if (drawctxt)
+		drawctxt->bin_base_offset = offset;
 }
 
 /* switch drawing contexts */

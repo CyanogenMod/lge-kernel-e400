@@ -32,6 +32,7 @@
 #include <mach/peripheral-loader.h>
 #include <mach/qdsp6v2/audio_acdb.h>
 #include <mach/qdsp6v2/rtac.h>
+#include <mach/msm_subsystem_map.h>
 #include <sound/apr_audio.h>
 #include <sound/q6asm.h>
 #include <asm/atomic.h>
@@ -96,6 +97,7 @@ static void q6asm_session_free(struct audio_client *ac)
 	mutex_lock(&session_lock);
 	session[ac->session] = 0;
 	mutex_unlock(&session_lock);
+	ac->session = 0;
 	return;
 }
 
@@ -126,11 +128,22 @@ int q6asm_audio_client_buf_free(unsigned int dir,
 
 		while (cnt >= 0) {
 			if (port->buf[cnt].data) {
-				pr_debug("data[%p]phys[%p][%p] cnt[%d]\n",
-					   (void *)port->buf[cnt].data,
+				pr_debug("%s:data[%p]phys[%p][%p] cnt[%d]"
+					 "mem_buffer[%p]\n",
+					__func__, (void *)port->buf[cnt].data,
 					   (void *)port->buf[cnt].phys,
-					   (void *)&port->buf[cnt].phys, cnt);
-				iounmap(port->buf[cnt].data);
+					   (void *)&port->buf[cnt].phys, cnt,
+					   (void *)port->buf[cnt].mem_buffer);
+				if (IS_ERR((void *)port->buf[cnt].mem_buffer))
+					pr_err("%s:mem buffer invalid, error ="
+						 "%ld\n", __func__,
+				PTR_ERR((void *)port->buf[cnt].mem_buffer));
+				else {
+					if (msm_subsystem_unmap_buffer(
+						port->buf[cnt].mem_buffer) < 0)
+						pr_err("%s: unmap buffer"
+							" failed\n", __func__);
+				}
 				free_contiguous_memory_by_paddr(
 					port->buf[cnt].phys);
 
@@ -343,6 +356,7 @@ int q6asm_audio_client_buf_alloc(unsigned int dir,
 		while (cnt < bufcnt) {
 			if (bufsz > 0) {
 				if (!buf[cnt].data) {
+					unsigned int flags = 0;
 					buf[cnt].phys =
 					allocate_contiguous_ebi_nomap(bufsz,
 						SZ_4K);
@@ -353,16 +367,35 @@ int q6asm_audio_client_buf_alloc(unsigned int dir,
 						mutex_unlock(&ac->cmd_lock);
 						goto fail;
 					}
+					flags = MSM_SUBSYSTEM_MAP_KADDR |
+						MSM_SUBSYSTEM_MAP_CACHED;
+					buf[cnt].mem_buffer =
+					msm_subsystem_map_buffer(buf[cnt].phys,
+						bufsz, flags, NULL, 0);
+					if (IS_ERR(
+						(void *)buf[cnt].mem_buffer)) {
+						pr_err("%s:map_buffer failed,"
+							"error = %ld\n",
+				__func__, PTR_ERR((void *)buf[cnt].mem_buffer));
+						goto fail;
+					}
 					buf[cnt].data =
-						ioremap(buf[cnt].phys, bufsz);
+						buf[cnt].mem_buffer->vaddr;
+					if (!buf[cnt].data) {
+						pr_err("%s:invalid vaddr,"
+						" iomap failed\n", __func__);
+						goto fail;
+					}
 					buf[cnt].used = 1;
 					buf[cnt].size = bufsz;
 					buf[cnt].actual_size = bufsz;
-					pr_debug("%s data[%p]phys[%p][%p]\n",
+					pr_debug("%s data[%p]phys[%p][%p]"
+						 "mem_buffer[%p]\n",
 						__func__,
 					   (void *)buf[cnt].data,
 					   (void *)buf[cnt].phys,
-					   (void *)&buf[cnt].phys);
+					   (void *)&buf[cnt].phys,
+					   (void *)buf[cnt].mem_buffer);
 					cnt++;
 				}
 			}
@@ -514,6 +547,12 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		pr_err("ac or priv NULL\n");
 		return -EINVAL;
 	}
+	if (ac->session <= 0 || ac->session > 8) {
+		pr_err("%s:Session ID is invalid, session = %d\n", __func__,
+			ac->session);
+		return -EINVAL;
+	}
+
 	payload = data->payload;
 
 	if (data->opcode == RESET_EVENTS) {
@@ -549,7 +588,7 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		if (token != ac->session) {
 			pr_err("%s:Invalid session[%d] rxed expected[%d]",
 					__func__, token, ac->session);
-			break;
+			return -EINVAL;
 		}
 		case ASM_STREAM_CMD_OPEN_READ:
 		case ASM_STREAM_CMD_OPEN_WRITE:

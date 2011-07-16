@@ -1848,7 +1848,8 @@ static int msm_nand_read_oob_dualnandc(struct mtd_info *mtd, loff_t from,
 					/* empty blocks read 0x54 at
 					 * these offsets
 					 */
-					if (n % 516 == 3 && datbuf[n] == 0x54)
+					if ((n % 516 == 3 || n % 516 == 175)
+							&& datbuf[n] == 0x54)
 						datbuf[n] = 0xff;
 					if (datbuf[n] != 0xff) {
 						pageerr = rawerr;
@@ -6745,15 +6746,15 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 		|    (5 << 27)  /* 5 address cycles */
 		|    (0 << 30)  /* Do not read status before data */
 		|    (1 << 31)  /* Send read cmd */
-		/* 0 spare bytes for 16 bit nand or 1 spare bytes for 8 bit */
-		| ((wide_bus) ? (0 << 23) : (1 << 23));
+		/* 0 spare bytes for 16 bit nand or 1/2 spare bytes for 8 bit */
+		| (wide_bus ? 0 << 23 : (enable_bch_ecc ? 2 << 23 : 1 << 23));
 
 	chip->CFG1 = (0 <<  0)  /* Enable ecc */
 		|    (7 <<  2)  /* 8 recovery cycles */
 		|    (0 <<  5)  /* Allow CS deassertion */
 		/* Bad block marker location */
-		|  ((mtd_writesize - ((enable_bch_ecc ? (wide_bus ? 532 : 531)
-		: 528) * ((mtd_writesize >> 9) - 1)) + 1) <<  6)
+		|  ((mtd_writesize - ((enable_bch_ecc ? 532 : 528) * (
+					(mtd_writesize >> 9) - 1)) + 1) <<  6)
 		|    (0 << 16)  /* Bad block in user data area */
 		|    (2 << 17)  /* 6 cycle tWB/tRB */
 		| ((wide_bus) ? CFG1_WIDE_FLASH : 0); /* Wide flash bit */
