@@ -10,14 +10,9 @@ ifndef CONFIG_ARCH_MSM8X60
 	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o
 	obj-$(CONFIG_MSM_PROC_COMM) += vreg.o mpp.o
 	ifdef CONFIG_MSM_PROC_COMM
-		ifndef CONFIG_ARCH_FSM9XXX
-			   ifdef CONFIG_ARCH_7X30
-			   # LGE_CHANGE : Fix M3 camera timeout issue
-			   # footswitch-pcom is for 7x30
-			   # 2011-07-05, bongkyu.kim@lge.com
-				obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
-			endif
-		endif
+ifndef CONFIG_ARCH_FSM9XXX
+		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
+endif
 		obj-$(CONFIG_DEBUG_FS) += pmic_debugfs.o
 	endif
 endif
