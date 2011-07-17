@@ -262,6 +262,8 @@ static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
 		goto fm_gpio_config_fail;
 	}
 
+	msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR, added sleep to modify the issue for turning on FM, same as BT */
+
 	return 0;
 
 fm_gpio_config_fail:
@@ -615,6 +617,9 @@ static unsigned int msm_bahama_setup_power(void)
 			GPIO_BT_SYS_REST_EN, rc);
 		goto gpio_fail;
 	}
+
+	msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR#295572, added sleep to modify the issue for turning on BT */
+	
 	return rc;
 
 gpio_fail:
@@ -726,7 +731,12 @@ static int bluetooth_power(int on)
 			pr_err("Failed to vote for TCXO_D1 ON\n");
 			goto fail_clock;
 		}
+
+#if 1  /* LGE_BT_FW by suhui.kim@lge.com, QCT Guide */
+		msleep(100);
+#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */	
 		msleep(20);
+#endif
 
 		/*I2C config for Bahama*/
 		rc = bahama_bt(1);
@@ -840,28 +850,15 @@ static struct platform_device *m3eu_connectivity_devices[] __initdata = {
 
 void __init lge_add_connectivity_devices(void)
 {
-#if 1  /* LGE_BT_FW by bsp */
+#if 1  /* LGE_BT_FW by suhui.kim@lge.com, QCT Guide */
 	int rc;
-
-	rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
-	if (rc) {
-		printk(KERN_ERR "%d gpio request is failed\n", BT_SYS_REST_EN);
-	} else {
-		rc = gpio_tlmm_config(GPIO_CFG(BT_SYS_REST_EN, 0, GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		if (rc)
-			printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
-	}
-#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Guide */
-	int rc;
-	if(BT_DEBUG) printk(KERN_ERR "board-m3eu-connectivity.c %s()\n", __func__); // suhui.kim@lge.com  test	   
 	
- 	gpio_tlmm_config(GPIO_CFG(131, 0, GPIO_CFG_OUTPUT,
+ 	gpio_tlmm_config(GPIO_CFG(BT_GPIO_I2C_SCL, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-	gpio_tlmm_config(GPIO_CFG(132, 0, GPIO_CFG_OUTPUT,
+	gpio_tlmm_config(GPIO_CFG(BT_GPIO_I2C_SDA, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-	gpio_set_value(131, 1);
-	gpio_set_value(132, 1);
+	gpio_set_value(BT_GPIO_I2C_SCL, 1);
+	gpio_set_value(BT_GPIO_I2C_SDA, 1);
 
 	rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
 	if (rc) {
@@ -872,8 +869,18 @@ void __init lge_add_connectivity_devices(void)
 		if (rc)
 			printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
 	}
-
-	//msleep(100);
+#else  /* LGE_BT_FW by bsp */
+		int rc;
+	
+		rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
+		if (rc) {
+			printk(KERN_ERR "%d gpio request is failed\n", BT_SYS_REST_EN);
+		} else {
+			rc = gpio_tlmm_config(GPIO_CFG(BT_SYS_REST_EN, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			if (rc)
+				printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
+		}	
 #endif
 
 	platform_add_devices(m3eu_connectivity_devices,
