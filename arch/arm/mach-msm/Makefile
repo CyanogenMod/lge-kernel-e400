@@ -1,21 +1,18 @@
 obj-y += io.o dma.o memory.o timer.o
 obj-y += clock.o clock-voter.o clock-dummy.o
-obj-y += modem_notifier.o
+obj-y += modem_notifier.o subsystem_map.o
 obj-$(CONFIG_CPU_FREQ_MSM) += cpufreq.o
 obj-$(CONFIG_DEBUG_FS) += nohlt.o clock-debug.o
 obj-$(CONFIG_KEXEC) += msm_kexec.o
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
 ifndef CONFIG_ARCH_MSM8X60
-	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o internal_power_rail.o
+	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o
 	obj-$(CONFIG_MSM_PROC_COMM) += vreg.o mpp.o
 	ifdef CONFIG_MSM_PROC_COMM
-		ifdef CONFIG_ARCH_7X30
-		# LGE_CHANGE : Fix M3 camera timeout issue
-		# footswitch-pcom is for 7x30
-		# 2011-07-05, bongkyu.kim@lge.com
+ifndef CONFIG_ARCH_FSM9XXX
 		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
-		endif
+endif
 		obj-$(CONFIG_DEBUG_FS) += pmic_debugfs.o
 	endif
 endif
@@ -61,6 +58,7 @@ obj-$(CONFIG_ARCH_MSM8X60) += peripheral-reset.o
 obj-$(CONFIG_ARCH_MSM8960) += peripheral-reset-8960.o
 endif
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
+obj-$(CONFIG_ARCH_FSM9XXX) += sirc-fsm9xxx.o
 obj-$(CONFIG_MSM_FIQ_SUPPORT) += fiq_glue.o
 obj-$(CONFIG_MACH_TROUT) += board-trout-rfkill.o
 obj-$(CONFIG_MSM_SDIO_AL) += sdio_al.o
@@ -157,11 +155,17 @@ ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 	obj-y += ramdump.o
 	obj-$(CONFIG_ARCH_MSM8X60) += subsystem-fatal-8x60.o
 endif
+obj-$(CONFIG_MSM_MODEM_8960) += modem-8960.o
 
 ifdef CONFIG_CPU_IDLE
 	obj-$(CONFIG_ARCH_MSM8960) += cpuidle.o
 	obj-$(CONFIG_ARCH_MSM8X60) += cpuidle.o
 endif
+
+obj-$(CONFIG_ARCH_FSM9XXX) += devices-fsm9xxx.o
+obj-$(CONFIG_ARCH_FSM9XXX) += clock-fsm9xxx.o clock-local.o acpuclock-fsm9xxx.o
+obj-$(CONFIG_ARCH_FSM9XXX) += dfe-fsm9xxx.o rfic-fsm9xxx.o
+obj-$(CONFIG_ARCH_FSM9XXX) += restart-fsm9xxx.o
 
 obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog.o
 obj-$(CONFIG_MACH_MSM8X60_RUMI3) += board-msm8x60.o
@@ -192,15 +196,23 @@ obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o acpuclock-7x30.o
 obj-$(CONFIG_MACH_MSM7X25_SURF) += board-msm7x27.o devices-msm7x25.o
 obj-$(CONFIG_MACH_MSM7X25_FFA) += board-msm7x27.o devices-msm7x25.o
 obj-$(CONFIG_ARCH_MSM8960) += clock-local.o clock-dss-8960.o clock-8960.o clock-rpm.o
-obj-$(CONFIG_ARCH_MSM8960) += board-msm8960.o devices-8960.o footswitch-8x60.o
-obj-$(CONFIG_ARCH_MSM8960) += board-msm8960-regulator.o acpuclock-8960.o
+obj-$(CONFIG_ARCH_MSM8960) += footswitch-8x60.o
+obj-$(CONFIG_ARCH_MSM8960) += acpuclock-8960.o
 obj-$(CONFIG_ARCH_MSM8960) += saw-regulator.o rpm-regulator-8960.o
+obj-$(CONFIG_MACH_MSM8960_SIM) += board-msm8960.o devices-8960.o board-msm8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_RUMI3) += board-msm8960.o devices-8960.o board-msm8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_CDP) += board-msm8960.o devices-8960.o board-msm8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_MTP) += board-msm8960.o devices-8960.o board-msm8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_FLUID) += board-msm8960.o devices-8960.o board-msm8960-regulator.o
 obj-$(CONFIG_ARCH_MSM8960) += bms-batterydata.o
+obj-$(CONFIG_ARCH_APQ8064) += board-apq8064.o devices-8064.o
 
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-mmc.o board-sapphire-wifi.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
+
+obj-$(CONFIG_ARCH_FSM9XXX) += board-fsm9xxx.o
 
 obj-$(CONFIG_TROUT_BATTCHG) += htc_battery.o
 
@@ -216,7 +228,7 @@ obj-$(CONFIG_MSM_RPM_LOG) += rpm_log.o
 obj-$(CONFIG_MSM_XO) += msm_xo.o
 obj-$(CONFIG_MSM_BUS_SCALING) += msm_bus/
 
-obj-$(CONFIG_MSM_IOMMU)		+= iommu.o iommu_dev.o devices-iommu.o
+obj-$(CONFIG_MSM_IOMMU)		+= iommu.o iommu_dev.o devices-iommu.o iommu_domains.o
 
 ifdef CONFIG_VCM
 obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-vcm.o
@@ -228,11 +240,16 @@ obj-$(CONFIG_ARCH_QSD8X50) += gpiomux-8x50.o gpiomux-v1.o gpiomux.o
 obj-$(CONFIG_ARCH_MSM8X60) += gpiomux-8x60.o gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_MSM8960) += gpiomux-v2.o gpiomux.o
 
+ifdef CONFIG_FSM9XXX_TLMM
+obj-y   += gpio-fsm9xxx.o
+else
 ifdef CONFIG_MSM_V2_TLMM
 obj-y	+= gpio-v2.o
 else
 obj-y	+= gpio.o
 endif
+endif
+
 obj-$(CONFIG_MSM_SLEEP_STATS) += msm_rq_stats.o idle_stats.o
 obj-$(CONFIG_MSM_SHOW_RESUME_IRQ) += msm_show_resume_irq.o
 obj-$(CONFIG_BT_MSM_PINTEST)  += btpintest.o

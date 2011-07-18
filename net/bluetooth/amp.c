@@ -190,7 +190,7 @@ static void destroy_ctx(struct amp_ctx *ctx)
 	kfree(ctx);
 }
 
-static struct amp_ctx *get_ctx_type(struct amp_mgr *mgr, u8 type)
+static struct amp_ctx *get_ctx_mgr(struct amp_mgr *mgr, u8 type)
 {
 	struct amp_ctx *fnd = NULL;
 	struct amp_ctx *ctx;
@@ -198,6 +198,23 @@ static struct amp_ctx *get_ctx_type(struct amp_mgr *mgr, u8 type)
 	read_lock_bh(&mgr->ctx_list_lock);
 	list_for_each_entry(ctx, &mgr->ctx_list, list) {
 		if (ctx->type == type) {
+			fnd = ctx;
+			break;
+		}
+	}
+	read_unlock_bh(&mgr->ctx_list_lock);
+	return fnd;
+}
+
+static struct amp_ctx *get_ctx_type(struct amp_ctx *cur, u8 type)
+{
+	struct amp_mgr *mgr = cur->mgr;
+	struct amp_ctx *fnd = NULL;
+	struct amp_ctx *ctx;
+
+	read_lock_bh(&mgr->ctx_list_lock);
+	list_for_each_entry(ctx, &mgr->ctx_list, list) {
+		if ((ctx->type == type) && (ctx != cur)) {
 			fnd = ctx;
 			break;
 		}
@@ -386,7 +403,7 @@ static inline int discover_req(struct amp_mgr *mgr, struct sk_buff *skb)
 		efm = (u16 *) skb_pull(skb, sizeof(*efm));
 	}
 
-	rsp.mtu = cpu_to_le16(670);
+	rsp.mtu = cpu_to_le16(L2CAP_A2MP_DEFAULT_MTU);
 	rsp.ext_feat = 0;
 
 	mgr->discovered = 1;
@@ -505,7 +522,7 @@ static void accept_physical(struct l2cap_conn *lcon, u8 id, struct sock *sk)
 		remote_id = conn->dst_id;
 		goto ap_finished;
 	}
-	aplctx = get_ctx_type(mgr, AMP_ACCEPTPHYSLINK);
+	aplctx = get_ctx_mgr(mgr, AMP_ACCEPTPHYSLINK);
 	if (!aplctx)
 		goto ap_finished;
 	aplctx->sk = sk;
@@ -819,6 +836,7 @@ static u8 acceptphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 	struct hci_ev_phys_link_complete *ev;
 	struct a2mp_createphyslink_rsp rsp;
 	struct amp_ctx *cplctx;
+	struct amp_ctx *aplctx;
 	u16 frag_len;
 	struct hci_conn *conn;
 	int result;
@@ -852,7 +870,15 @@ static u8 acceptphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 			goto apl_finished;
 		}
 
-		cplctx = get_ctx_type(ctx->mgr, AMP_CREATEPHYSLINK);
+		aplctx = get_ctx_type(ctx, AMP_ACCEPTPHYSLINK);
+		if ((aplctx) &&
+			(aplctx->d.cpl.remote_id == ctx->d.apl.remote_id)) {
+			BT_DBG("deferred to %p", aplctx);
+			aplctx->deferred = ctx;
+			break;
+		}
+
+		cplctx = get_ctx_type(ctx, AMP_CREATEPHYSLINK);
 		if ((cplctx) &&
 			(cplctx->d.cpl.remote_id == ctx->d.apl.remote_id)) {
 			struct hci_conn *bcon = ctx->mgr->l2cap_conn->hcon;
@@ -1040,8 +1066,8 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 
 	switch (ctx->state) {
 	case AMP_CPL_INIT:
-		cplctx = get_ctx_type(ctx->mgr, AMP_CREATEPHYSLINK);
-		if ((cplctx) && (cplctx != ctx)) {
+		cplctx = get_ctx_type(ctx, AMP_CREATEPHYSLINK);
+		if (cplctx) {
 			BT_DBG("deferred to %p", cplctx);
 			cplctx->deferred = ctx;
 			break;
@@ -1049,7 +1075,7 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 		ctx->state = AMP_CPL_DISC_RSP;
 		ctx->evt_type = AMP_A2MP_RSP;
 		ctx->rsp_ident = next_ident(ctx->mgr);
-		dreq.mtu = cpu_to_le16(670);
+		dreq.mtu = cpu_to_le16(L2CAP_A2MP_DEFAULT_MTU);
 		dreq.ext_feat = 0;
 		send_a2mp_cmd(ctx->mgr, ctx->rsp_ident, A2MP_DISCOVER_REQ,
 							sizeof(dreq), &dreq);
@@ -1399,7 +1425,7 @@ static int disconnphyslink_req(struct amp_mgr *mgr, struct sk_buff *skb)
 	conn = hci_conn_hash_lookup_ba(hdev, ACL_LINK,
 					&mgr->l2cap_conn->hcon->dst);
 	if (!conn) {
-		aplctx = get_ctx_type(mgr, AMP_ACCEPTPHYSLINK);
+		aplctx = get_ctx_mgr(mgr, AMP_ACCEPTPHYSLINK);
 		if (aplctx) {
 			kill_ctx(aplctx);
 			rsp.status = 0;
@@ -1690,8 +1716,9 @@ static struct socket *open_fixed_channel(bdaddr_t *src, bdaddr_t *dst)
 	struct socket *sock;
 	struct sockaddr_l2 addr;
 	struct sock *sk;
-	struct l2cap_options opts = {670, 670,
-			L2CAP_DEFAULT_FLUSH_TO, L2CAP_MODE_ERTM, 1, 0xFF, 1};
+	struct l2cap_options opts = {L2CAP_A2MP_DEFAULT_MTU,
+			L2CAP_A2MP_DEFAULT_MTU, L2CAP_DEFAULT_FLUSH_TO,
+			L2CAP_MODE_ERTM, 1, 0xFF, 1};
 
 
 	err = sock_create_kern(PF_BLUETOOTH, SOCK_SEQPACKET,
@@ -1709,6 +1736,7 @@ static struct socket *open_fixed_channel(bdaddr_t *src, bdaddr_t *dst)
 	memset(&addr, 0, sizeof(addr));
 	bacpy(&addr.l2_bdaddr, src);
 	addr.l2_family = AF_BLUETOOTH;
+	addr.l2_cid = L2CAP_CID_A2MP;
 	err = kernel_bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (err) {
 		BT_ERR("kernel_bind failed %d", err);
@@ -1716,11 +1744,12 @@ static struct socket *open_fixed_channel(bdaddr_t *src, bdaddr_t *dst)
 		return NULL;
 	}
 
-	l2cap_fixed_channel_config(sk, &opts, L2CAP_CID_A2MP, 670);
+	l2cap_fixed_channel_config(sk, &opts);
 
 	memset(&addr, 0, sizeof(addr));
 	bacpy(&addr.l2_bdaddr, dst);
 	addr.l2_family = AF_BLUETOOTH;
+	addr.l2_cid = L2CAP_CID_A2MP;
 	err = kernel_connect(sock, (struct sockaddr *) &addr, sizeof(addr),
 							O_NONBLOCK);
 	if ((err == 0) || (err == -EINPROGRESS))

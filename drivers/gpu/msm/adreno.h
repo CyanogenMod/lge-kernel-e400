@@ -29,6 +29,7 @@
 #ifndef __ADRENO_H
 #define __ADRENO_H
 
+#include "kgsl_device.h"
 #include "adreno_drawctxt.h"
 #include "adreno_ringbuffer.h"
 
@@ -47,33 +48,22 @@
 #define KGSL_CONTEXT_TO_MEM_IDENTIFIER	0xDEADBEEF
 #define KGSL_CMD_IDENTIFIER		0xFEEDFACE
 
-struct adreno_device {
-	struct kgsl_device dev;    /* Must be first field in this struct */
-	unsigned int chip_id;
-	struct kgsl_memregion gmemspace;
-	struct adreno_context *drawctxt_active;
-	wait_queue_head_t ib1_wq;
-	unsigned int *pfp_fw;
-	size_t pfp_fw_size;
-	unsigned int *pm4_fw;
-	size_t pm4_fw_size;
-	struct adreno_ringbuffer ringbuffer;
-};
+#ifdef CONFIG_MSM_SCM
+#define ADRENO_DEFAULT_PWRSCALE_POLICY  (&kgsl_pwrscale_policy_tz)
+#else
+#define ADRENO_DEFAULT_PWRSCALE_POLICY  NULL
+#endif
 
-int adreno_idle(struct kgsl_device *device, unsigned int timeout);
-void adreno_regread(struct kgsl_device *device, unsigned int offsetwords,
-				unsigned int *value);
-void adreno_regwrite(struct kgsl_device *device, unsigned int offsetwords,
-				unsigned int value);
-void adreno_regread_isr(struct kgsl_device *device,
-			     unsigned int offsetwords,
-			     unsigned int *value);
-void adreno_regwrite_isr(struct kgsl_device *device,
-			      unsigned int offsetwords,
-			      unsigned int value);
-
-uint8_t *kgsl_sharedmem_convertaddr(struct kgsl_device *device,
-	unsigned int pt_base, unsigned int gpuaddr, unsigned int *size);
+#define KGSL_CP_INT_MASK \
+	(CP_INT_CNTL__SW_INT_MASK | \
+	CP_INT_CNTL__T0_PACKET_IN_IB_MASK | \
+	CP_INT_CNTL__OPCODE_ERROR_MASK | \
+	CP_INT_CNTL__PROTECTED_MODE_ERROR_MASK | \
+	CP_INT_CNTL__RESERVED_BIT_ERROR_MASK | \
+	CP_INT_CNTL__IB_ERROR_MASK | \
+	CP_INT_CNTL__IB2_INT_MASK | \
+	CP_INT_CNTL__IB1_INT_MASK | \
+	CP_INT_CNTL__RB_INT_MASK)
 
 enum adreno_gpurev {
 	ADRENO_REV_UNKNOWN = 0,
@@ -83,38 +73,60 @@ enum adreno_gpurev {
 	ADRENO_REV_A225 = 225,
 };
 
-enum adreno_gpurev adreno_get_rev(struct adreno_device *adreno_dev);
+struct adreno_device {
+	struct kgsl_device dev;    /* Must be first field in this struct */
+	unsigned int chip_id;
+	enum adreno_gpurev gpurev;
+	struct kgsl_memregion gmemspace;
+	struct adreno_context *drawctxt_active;
+	wait_queue_head_t ib1_wq;
+	unsigned int *pfp_fw;
+	size_t pfp_fw_size;
+	unsigned int *pm4_fw;
+	size_t pm4_fw_size;
+	struct adreno_ringbuffer ringbuffer;
+	unsigned int mharb;
+};
+
+int adreno_idle(struct kgsl_device *device, unsigned int timeout);
+void adreno_regread(struct kgsl_device *device, unsigned int offsetwords,
+				unsigned int *value);
+void adreno_regwrite(struct kgsl_device *device, unsigned int offsetwords,
+				unsigned int value);
+
+uint8_t *kgsl_sharedmem_convertaddr(struct kgsl_device *device,
+	unsigned int pt_base, unsigned int gpuaddr, unsigned int *size);
 
 static inline int adreno_is_a200(struct adreno_device *adreno_dev)
 {
-	return (adreno_get_rev(adreno_dev) == ADRENO_REV_A200);
+	return (adreno_dev->gpurev == ADRENO_REV_A200);
 }
 
 static inline int adreno_is_a205(struct adreno_device *adreno_dev)
 {
-	return (adreno_get_rev(adreno_dev) == ADRENO_REV_A200);
+	return (adreno_dev->gpurev == ADRENO_REV_A200);
 }
 
 static inline int adreno_is_a20x(struct adreno_device *adreno_dev)
 {
-	enum adreno_gpurev rev = adreno_get_rev(adreno_dev);
-	return (rev  == ADRENO_REV_A200 || rev == ADRENO_REV_A205);
+	return (adreno_dev->gpurev  == ADRENO_REV_A200 ||
+		adreno_dev->gpurev == ADRENO_REV_A205);
 }
 
 static inline int adreno_is_a220(struct adreno_device *adreno_dev)
 {
-	return (adreno_get_rev(adreno_dev) == ADRENO_REV_A220);
+	return (adreno_dev->gpurev == ADRENO_REV_A220);
 }
 
 static inline int adreno_is_a225(struct adreno_device *adreno_dev)
 {
-	return (adreno_get_rev(adreno_dev) == ADRENO_REV_A225);
+	return (adreno_dev->gpurev == ADRENO_REV_A225);
 }
 
 static inline int adreno_is_a22x(struct adreno_device *adreno_dev)
 {
-	enum adreno_gpurev rev = adreno_get_rev(adreno_dev);
-	return (rev  == ADRENO_REV_A220 || rev == ADRENO_REV_A225);
+	return (adreno_dev->gpurev  == ADRENO_REV_A220 ||
+		adreno_dev->gpurev == ADRENO_REV_A225);
 }
 
 #endif /*__ADRENO_H */

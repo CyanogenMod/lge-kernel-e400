@@ -17,6 +17,7 @@
 #include <linux/platform_device.h>
 #include <linux/errno.h>
 #include <linux/mfd/pm8xxx/pm8921-charger.h>
+#include <linux/mfd/pm8xxx/pm8921-bms.h>
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/interrupt.h>
 #include <linux/power_supply.h>
@@ -103,7 +104,6 @@ enum pmic_chg_interrupts {
 	COARSE_DET_LOW_IRQ,
 	VDD_LOOP_IRQ,
 	VREG_OV_IRQ,
-	VBAT_IRQ,
 	VBATDET_IRQ,
 	BATFET_IRQ,
 	PSI_IRQ,
@@ -236,6 +236,13 @@ static int pm_chg_auto_enable(struct pm8921_chg_chip *chip, int enable)
 {
 	return pm_chg_masked_write(chip, CHG_CNTRL_3, CHG_EN_BIT,
 				enable ? CHG_EN_BIT : 0);
+}
+
+#define CHG_CHARGE_DIS_BIT	BIT(1)
+static int pm_chg_charge_dis(struct pm8921_chg_chip *chip, int disable)
+{
+	return pm_chg_masked_write(chip, CHG_CNTRL, CHG_CHARGE_DIS_BIT,
+				disable ? CHG_CHARGE_DIS_BIT : 0);
 }
 
 #define PM8921_CHG_V_MIN_MV	3240
@@ -468,8 +475,7 @@ static int get_prop_battery_mvolts(struct pm8921_chg_chip *chip)
 
 static int get_prop_batt_capacity(struct pm8921_chg_chip *chip)
 {
-	/* TODO BMS api */
-	return 70;
+	return pm8921_bms_get_percent_charge();
 }
 
 static int get_prop_batt_health(struct pm8921_chg_chip *chip)
@@ -906,12 +912,6 @@ static irqreturn_t vreg_ov_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t vbat_irq_handler(int irq, void *data)
-{
-	pr_debug("fsm_state=%d\n", pm_chg_get_fsm_state(data));
-	return IRQ_HANDLED;
-}
-
 static irqreturn_t vbatdet_irq_handler(int irq, void *data)
 {
 	pr_debug("fsm_state=%d\n", pm_chg_get_fsm_state(data));
@@ -955,12 +955,10 @@ static int set_disable_status_param(const char *val, struct kernel_param *kp)
 		pr_err("error setting value %d\n", ret);
 		return ret;
 	}
-
+	pr_info("factory set disable param to %d\n", charging_disabled);
 	if (chip) {
-		if (charging_disabled)
-			pm_chg_auto_enable(chip, 0);
-		else
-			pm_chg_auto_enable(chip, 1);
+		pm_chg_auto_enable(chip, !charging_disabled);
+		pm_chg_charge_dis(chip, charging_disabled);
 	}
 	return 0;
 }
@@ -1056,7 +1054,6 @@ struct pm_chg_irq_init_data chg_irq_data[] = {
 						coarse_det_low_irq_handler),
 	CHG_IRQ(VDD_LOOP_IRQ, IRQF_TRIGGER_RISING, vdd_loop_irq_handler),
 	CHG_IRQ(VREG_OV_IRQ, IRQF_TRIGGER_RISING, vreg_ov_irq_handler),
-	CHG_IRQ(VBAT_IRQ, IRQF_TRIGGER_RISING, vbat_irq_handler),
 	CHG_IRQ(VBATDET_IRQ, IRQF_TRIGGER_RISING, vbatdet_irq_handler),
 	CHG_IRQ(BATFET_IRQ, IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 						batfet_irq_handler),
@@ -1201,10 +1198,15 @@ static int __devinit pm8921_chg_hw_init(struct pm8921_chg_chip *chip)
 		pm8xxx_writeb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, 0xD8);
 	}
 
+	rc = pm_chg_charge_dis(chip, charging_disabled);
+	if (rc) {
+		pr_err("Failed to disable CHG_CHARGE_DIS bit rc=%d\n", rc);
+		return rc;
+	}
+
 	rc = pm_chg_auto_enable(chip, !charging_disabled);
 	if (rc) {
-		pr_err("Failed to %s charging rc=%d\n",
-				charging_disabled ? "disable" : "enable", rc);
+		pr_err("Failed to enable charging rc=%d\n", rc);
 		return rc;
 	}
 

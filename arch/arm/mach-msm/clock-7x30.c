@@ -25,7 +25,6 @@
 
 #include <mach/msm_iomap.h>
 #include <mach/clk.h>
-#include <mach/internal_power_rail.h>
 
 #include "clock.h"
 #include "clock-local.h"
@@ -2394,31 +2393,6 @@ out:
 	return rc;
 }
 
-/* Enable/disable a power rail associated with a clock. */
-int soc_set_pwr_rail(struct clk *clk, int enable)
-{
-	int pwr_id = 0;
-
-	if (clk == &axi_rotator_clk.c)
-		pwr_id = PWR_RAIL_ROTATOR_CLK;
-	else if (clk == &grp_2d_clk.c)
-		pwr_id = PWR_RAIL_GRP_2D_CLK;
-	else if (clk == &grp_3d_clk.c)
-		pwr_id = PWR_RAIL_GRP_CLK;
-	else if (clk == &mdp_clk.c)
-		pwr_id = PWR_RAIL_MDP_CLK;
-	else if (clk == &mfc_clk.c)
-		pwr_id = PWR_RAIL_MFC_CLK;
-	else if (clk == &vfe_clk.c)
-		pwr_id = PWR_RAIL_VFE_CLK;
-	else if (clk == &vpe_clk.c)
-		pwr_id = PWR_RAIL_VPE_CLK;
-	else
-		return 0;
-
-	return internal_pwr_rail_ctl_auto(pwr_id, enable);
-}
-
 #ifdef CONFIG_DEBUG_FS
 
 #define CLK_TEST_2(s) (s)
@@ -2884,7 +2858,7 @@ static struct clk_local_ownership {
 struct clk_lookup msm_clocks_7x30[ARRAY_SIZE(ownership_map)];
 unsigned msm_num_clocks_7x30 = ARRAY_SIZE(msm_clocks_7x30);
 
-static void set_clock_ownership(void)
+static void __init set_clock_ownership(void)
 {
 	unsigned i;
 	struct clk_lookup *lk;

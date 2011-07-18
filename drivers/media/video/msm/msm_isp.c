@@ -29,7 +29,7 @@
 #include "msm.h"
 
 #ifdef CONFIG_MSM_CAMERA_DEBUG
-#define D(fmt, args...) printk(KERN_DEBUG "msm_isp: " fmt, ##args)
+#define D(fmt, args...) pr_debug("msm_isp: " fmt, ##args)
 #else
 #define D(fmt, args...) do {} while (0)
 #endif
@@ -38,6 +38,7 @@
 #define ERR_COPY_FROM_USER() ERR_USER_COPY(0)
 #define ERR_COPY_TO_USER() ERR_USER_COPY(1)
 
+#define MSM_FRAME_AXI_MAX_BUF 16
 /* This will enqueue ISP events or signal buffer completion */
 static int msm_isp_enqueue(struct msm_cam_media_controller *pmctl,
 				struct msm_vfe_resp *data,
@@ -49,7 +50,7 @@ static int msm_isp_enqueue(struct msm_cam_media_controller *pmctl,
 	struct msm_isp_stats_event_ctrl *isp_event;
 	isp_event = (struct msm_isp_stats_event_ctrl *)v4l2_evt.u.data;
 	if (!data) {
-		D("%s !!!!data = 0x%p\n", __func__, data);
+		pr_err("%s !!!!data = 0x%p\n", __func__, data);
 		return -EINVAL;
 	}
 
@@ -231,7 +232,7 @@ static int msm_isp_open(struct v4l2_subdev *sd, struct msm_sync *sync)
 	int rc = 0;
 	D("%s\n", __func__);
 	if (!sync) {
-		D("%s: param is NULL", __func__);
+		pr_err("%s: param is NULL", __func__);
 		return -EINVAL;
 	}
 
@@ -448,7 +449,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 	int rc = -EIO;
 	struct axidata axi_data;
 	void *data = &axi_data;
-	struct msm_pmem_region region[8];
+	struct msm_pmem_region region[MSM_FRAME_AXI_MAX_BUF];
 	int pmem_type;
 	int i = 0;
 	int idx = 0;
@@ -469,9 +470,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 		pmem_type = MSM_PMEM_PREVIEW;
 		axi_data.bufnum2 =
 			msm_pmem_region_lookup_3(sync->pcam_sync, idx,
-				&region[0], 0,
-			sync->pcam_sync->dev_inst[idx]->buf_count,
-			pmem_type);
+				&region[0], pmem_type);
 		if (!axi_data.bufnum2) {
 			pr_err("%s %d: pmem region 3 lookup error\n",
 				__func__, __LINE__);
@@ -491,9 +490,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 		pmem_type = MSM_PMEM_PREVIEW;
 		axi_data.bufnum1 =
 			msm_pmem_region_lookup_3(sync->pcam_sync, idx,
-				&region[0], 0,
-		sync->pcam_sync->dev_inst[idx]->buf_count,
-		pmem_type);
+				&region[0], pmem_type);
 		D("%s bufnum1 = %d\n", __func__, axi_data.bufnum1);
 		if (!axi_data.bufnum1) {
 			pr_err("%s %d: pmem region lookup error\n",
@@ -508,9 +505,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 			pmem_type = MSM_PMEM_VIDEO;
 			axi_data.bufnum2 =
 			msm_pmem_region_lookup_3(sync->pcam_sync, idx,
-				&region[axi_data.bufnum1],
-			0, sync->pcam_sync->dev_inst[idx]->buf_count,
-			pmem_type);
+				&region[axi_data.bufnum1], pmem_type);
 		D("%s bufnum2 = %d\n", __func__, axi_data.bufnum2);
 		if (!axi_data.bufnum2) {
 			pr_err("%s %d: pmem region lookup error\n",
@@ -530,9 +525,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 		pmem_type = MSM_PMEM_THUMBNAIL;
 		axi_data.bufnum1 =
 			msm_pmem_region_lookup_3(sync->pcam_sync, idx,
-				&region[0],
-			0, sync->pcam_sync->dev_inst[idx]->buf_count,
-			pmem_type);
+				&region[0], pmem_type);
 		if (!axi_data.bufnum1) {
 			pr_err("%s %d: pmem region lookup error\n",
 				__func__, __LINE__);
@@ -548,9 +541,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 		pmem_type = MSM_PMEM_MAINIMG;
 		axi_data.bufnum2 =
 		msm_pmem_region_lookup_3(sync->pcam_sync, idx,
-				&region[axi_data.bufnum1],
-		0, sync->pcam_sync->dev_inst[idx]->buf_count,
-		pmem_type);
+				&region[axi_data.bufnum1], pmem_type);
 		if (!axi_data.bufnum2) {
 			pr_err("%s %d: pmem region lookup error\n",
 				__func__, __LINE__);
@@ -568,9 +559,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 		pmem_type = MSM_PMEM_RAW_MAINIMG;
 		axi_data.bufnum2 =
 			msm_pmem_region_lookup_3(sync->pcam_sync, idx,
-				&region[0],
-		0, sync->pcam_sync->dev_inst[idx]->buf_count,
-		pmem_type);
+				&region[0], pmem_type);
 		if (!axi_data.bufnum2) {
 			pr_err("%s %d: pmem region lookup error\n",
 				__func__, __LINE__);
@@ -591,7 +580,7 @@ static int msm_frame_axi_cfg(struct v4l2_subdev *sd,
 	axi_data.region = &region[0];
 	D("%s bufnum1 = %d, bufnum2 = %d\n", __func__,
 	  axi_data.bufnum1, axi_data.bufnum2);
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < MSM_FRAME_AXI_MAX_BUF; i++) {
 		D("%s region %d paddr = 0x%p\n", __func__, i,
 					(void *)region[i].paddr);
 		D("%s region y_off = %d cbcr_off = %d\n", __func__,

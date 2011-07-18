@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/msm_kgsl.h>
+#include <linux/regulator/machine.h>
 #include <mach/irqs.h>
 #include <mach/msm_iomap.h>
 #include <mach/board.h>
@@ -29,6 +30,7 @@
 
 #include "devices.h"
 #include "devices-msm7x2xa.h"
+#include "footswitch.h"
 
 /* Address of GSBI blocks */
 #define MSM_GSBI0_PHYS		0xA1200000
@@ -332,6 +334,10 @@ struct platform_device msm_device_uart_dm2 = {
 };
 
 #define MSM_NAND_PHYS		0xA0A00000
+#define MSM_NANDC01_PHYS	0xA0A40000
+#define MSM_NANDC10_PHYS	0xA0A80000
+#define MSM_NANDC11_PHYS	0xA0AC0000
+#define EBI2_REG_BASE		0xA0D00000
 static struct resource resources_nand[] = {
 	[0] = {
 		.name   = "msm_nand_dmac",
@@ -343,6 +349,30 @@ static struct resource resources_nand[] = {
 		.name   = "msm_nand_phys",
 		.start  = MSM_NAND_PHYS,
 		.end    = MSM_NAND_PHYS + 0x7FF,
+		.flags  = IORESOURCE_MEM,
+	},
+	[2] = {
+		.name   = "msm_nandc01_phys",
+		.start  = MSM_NANDC01_PHYS,
+		.end    = MSM_NANDC01_PHYS + 0x7FF,
+		.flags  = IORESOURCE_MEM,
+	},
+	[3] = {
+		.name   = "msm_nandc10_phys",
+		.start  = MSM_NANDC10_PHYS,
+		.end    = MSM_NANDC10_PHYS + 0x7FF,
+		.flags  = IORESOURCE_MEM,
+	},
+	[4] = {
+		.name   = "msm_nandc11_phys",
+		.start  = MSM_NANDC11_PHYS,
+		.end    = MSM_NANDC11_PHYS + 0x7FF,
+		.flags  = IORESOURCE_MEM,
+	},
+	[5] = {
+		.name   = "ebi2_reg_base",
+		.start  = EBI2_REG_BASE,
+		.end    = EBI2_REG_BASE + 0x60,
 		.flags  = IORESOURCE_MEM,
 	},
 };
@@ -637,7 +667,7 @@ struct platform_device msm_kgsl_3d0 = {
 
 void __init msm7x25a_kgsl_3d0_init(void)
 {
-	if (cpu_is_msm7x25a()) {
+	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa()) {
 		kgsl_3d0_pdata.pwr_data.pwrlevel[0].gpu_freq = 133330000;
 		kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 200000000;
 		kgsl_3d0_pdata.pwr_data.pwrlevel[1].gpu_freq = 96000000;
@@ -679,30 +709,6 @@ void __init msm_fb_register_device(char *name, void *data)
 		printk(KERN_ERR "%s: unknown device! %s\n", __func__, name);
 }
 
-#ifdef CONFIG_CACHE_L2X0
-static int __init msm7x27x_cache_init(void)
-{
-	int aux_ctrl = 0;
-
-	/* Way Size 010(0x2) 32KB */
-	aux_ctrl = (0x1 << L2X0_AUX_CTRL_SHARE_OVERRIDE_SHIFT) | \
-		   (0x2 << L2X0_AUX_CTRL_WAY_SIZE_SHIFT) | \
-		   (0x1 << L2X0_AUX_CTRL_EVNT_MON_BUS_EN_SHIFT);
-
-	l2x0_init(MSM_L2CC_BASE, aux_ctrl, L2X0_AUX_CTRL_MASK);
-
-	return 0;
-}
-#else
-static int __init msm_cache_init(void){ return 0; }
-#endif
-
-void __init msm_common_io_init(void)
-{
-	msm_map_common_io();
-	msm7x27x_cache_init();
-}
-
 #define PERPH_WEB_BLOCK_ADDR (0xA9D00040)
 #define PDM0_CTL_OFFSET (0x04)
 #define SIZE_8B (0x08)
@@ -730,3 +736,50 @@ struct platform_device led_pdev = {
 		.platform_data	= &msm_kpbl_pdm_led_pdata,
 	},
 };
+
+static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
+	.acpu_switch_time_us = 50,
+	.max_speed_delta_khz = 400000,
+	.vdd_switch_time_us = 62,
+	.max_axi_khz = 200000,
+};
+
+int __init msm7x2x_misc_init(void)
+{
+	if (socinfo_init() < 0)
+		pr_err("%s: socinfo_init() failed!\n", __func__);
+
+	msm_clock_init(msm_clocks_7x27a, msm_num_clocks_7x27a);
+	msm_acpu_clock_init(&msm7x2x_clock_data);
+
+	return 0;
+}
+
+#ifdef CONFIG_CACHE_L2X0
+static int __init msm7x27x_cache_init(void)
+{
+	int aux_ctrl = 0;
+
+	/* Way Size 010(0x2) 32KB */
+	aux_ctrl = (0x1 << L2X0_AUX_CTRL_SHARE_OVERRIDE_SHIFT) | \
+		   (0x2 << L2X0_AUX_CTRL_WAY_SIZE_SHIFT) | \
+		   (0x1 << L2X0_AUX_CTRL_EVNT_MON_BUS_EN_SHIFT);
+
+	l2x0_init(MSM_L2CC_BASE, aux_ctrl, L2X0_AUX_CTRL_MASK);
+
+	return 0;
+}
+#else
+static int __init msm_cache_init(void){ return 0; }
+#endif
+
+void __init msm_common_io_init(void)
+{
+	msm_map_common_io();
+	msm7x27x_cache_init();
+}
+
+struct platform_device *msm_footswitch_devices[] = {
+	FS_PCOM(FS_GFX3D,  "fs_gfx3d"),
+};
+unsigned msm_num_footswitch_devices = ARRAY_SIZE(msm_footswitch_devices);

@@ -12,8 +12,12 @@
  */
 #include <linux/firmware.h>
 #include <linux/slab.h>
+#include <linux/sched.h>
+#include <linux/log2.h>
 
 #include "kgsl.h"
+#include "kgsl_sharedmem.h"
+#include "kgsl_cffdump.h"
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
@@ -29,17 +33,6 @@
 */
 #define GSL_RB_PROTECTED_MODE_CONTROL		0x200001F2
 
-#define GSL_CP_INT_MASK \
-	(CP_INT_CNTL__SW_INT_MASK | \
-	CP_INT_CNTL__T0_PACKET_IN_IB_MASK | \
-	CP_INT_CNTL__OPCODE_ERROR_MASK | \
-	CP_INT_CNTL__PROTECTED_MODE_ERROR_MASK | \
-	CP_INT_CNTL__RESERVED_BIT_ERROR_MASK | \
-	CP_INT_CNTL__IB_ERROR_MASK | \
-	CP_INT_CNTL__IB2_INT_MASK | \
-	CP_INT_CNTL__IB1_INT_MASK | \
-	CP_INT_CNTL__RB_INT_MASK)
-
 /* Firmware file names
  * Legacy names must remain but replacing macro names to
  * match current kgsl model.
@@ -50,19 +43,8 @@
 #define A200_PM4_FW "yamato_pm4.fw"
 #define A220_PFP_470_FW "leia_pfp_470.fw"
 #define A220_PM4_470_FW "leia_pm4_470.fw"
-
-/*  ringbuffer size log2 quadwords equivalent */
-inline unsigned int adreno_ringbuffer_sizelog2quadwords(unsigned int sizedwords)
-{
-	unsigned int sizelog2quadwords = 0;
-	int i = sizedwords >> 1;
-
-	while (i >>= 1)
-		sizelog2quadwords++;
-
-	return sizelog2quadwords;
-}
-
+#define A225_PFP_FW "a225_pfp.fw"
+#define A225_PM4_FW "a225_pm4.fw"
 
 /* functions */
 void kgsl_cp_intrcallback(struct kgsl_device *device)
@@ -71,11 +53,11 @@ void kgsl_cp_intrcallback(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 
-	adreno_regread_isr(device, REG_MASTER_INT_SIGNAL, &master_status);
+	adreno_regread(device, REG_MASTER_INT_SIGNAL, &master_status);
 	while (!status && (num_reads < VALID_STATUS_COUNT_MAX) &&
 		(master_status & MASTER_INT_SIGNAL__CP_INT_STAT)) {
-		adreno_regread_isr(device, REG_CP_INT_STATUS, &status);
-		adreno_regread_isr(device, REG_MASTER_INT_SIGNAL,
+		adreno_regread(device, REG_CP_INT_STATUS, &status);
+		adreno_regread(device, REG_MASTER_INT_SIGNAL,
 					&master_status);
 		num_reads++;
 	}
@@ -110,27 +92,27 @@ void kgsl_cp_intrcallback(struct kgsl_device *device)
 	if (status & CP_INT_CNTL__T0_PACKET_IN_IB_MASK) {
 		KGSL_CMD_CRIT(rb->device,
 			"ringbuffer TO packet in IB interrupt\n");
-		adreno_regwrite_isr(rb->device, REG_CP_INT_CNTL, 0);
+		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 	}
 	if (status & CP_INT_CNTL__OPCODE_ERROR_MASK) {
 		KGSL_CMD_CRIT(rb->device,
 			"ringbuffer opcode error interrupt\n");
-		adreno_regwrite_isr(rb->device, REG_CP_INT_CNTL, 0);
+		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 	}
 	if (status & CP_INT_CNTL__PROTECTED_MODE_ERROR_MASK) {
 		KGSL_CMD_CRIT(rb->device,
 			"ringbuffer protected mode error interrupt\n");
-		adreno_regwrite_isr(rb->device, REG_CP_INT_CNTL, 0);
+		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 	}
 	if (status & CP_INT_CNTL__RESERVED_BIT_ERROR_MASK) {
 		KGSL_CMD_CRIT(rb->device,
 			"ringbuffer reserved bit error interrupt\n");
-		adreno_regwrite_isr(rb->device, REG_CP_INT_CNTL, 0);
+		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 	}
 	if (status & CP_INT_CNTL__IB_ERROR_MASK) {
 		KGSL_CMD_CRIT(rb->device,
 			"ringbuffer IB error interrupt\n");
-		adreno_regwrite_isr(rb->device, REG_CP_INT_CNTL, 0);
+		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 	}
 	if (status & CP_INT_CNTL__SW_INT_MASK)
 		KGSL_CMD_INFO(rb->device, "ringbuffer software interrupt\n");
@@ -138,13 +120,13 @@ void kgsl_cp_intrcallback(struct kgsl_device *device)
 	if (status & CP_INT_CNTL__IB2_INT_MASK)
 		KGSL_CMD_INFO(rb->device, "ringbuffer ib2 interrupt\n");
 
-	if (status & (~GSL_CP_INT_MASK))
+	if (status & (~KGSL_CP_INT_MASK))
 		KGSL_CMD_WARN(rb->device,
 			"bad bits in REG_CP_INT_STATUS %08x\n", status);
 
 	/* only ack bits we understand */
-	status &= GSL_CP_INT_MASK;
-	adreno_regwrite_isr(device, REG_CP_INT_ACK, status);
+	status &= KGSL_CP_INT_MASK;
+	adreno_regwrite(device, REG_CP_INT_ACK, status);
 
 	if (status & (CP_INT_CNTL__IB1_INT_MASK | CP_INT_CNTL__RB_INT_MASK)) {
 		KGSL_CMD_WARN(rb->device, "ringbuffer ib1/rb interrupt\n");
@@ -165,8 +147,6 @@ static void adreno_ringbuffer_submit(struct adreno_ringbuffer *rb)
 	mb();
 
 	adreno_regwrite(rb->device, REG_CP_RB_WPTR, rb->wptr);
-
-	rb->flags |= KGSL_FLAGS_ACTIVE;
 }
 
 static int
@@ -282,10 +262,16 @@ static int adreno_ringbuffer_load_pm4_ucode(struct kgsl_device *device)
 	const char *fwfile;
 	int i, ret = 0;
 
-	if (adreno_is_a220(adreno_dev))
+	if (adreno_is_a220(adreno_dev)) {
 		fwfile =  A220_PM4_470_FW;
-	else
+	} else if (adreno_is_a225(adreno_dev)) {
+		fwfile =  A225_PM4_FW;
+	} else if (adreno_is_a20x(adreno_dev)) {
 		fwfile =  A200_PM4_FW;
+	} else {
+		KGSL_DRV_ERR(device, "Could not load PM4 file\n");
+		return -EINVAL;
+	}
 
 	if (adreno_dev->pm4_fw == NULL) {
 		int len;
@@ -324,10 +310,16 @@ static int adreno_ringbuffer_load_pfp_ucode(struct kgsl_device *device)
 	const char *fwfile;
 	int i, ret = 0;
 
-	if (adreno_is_a220(adreno_dev))
+	if (adreno_is_a220(adreno_dev)) {
 		fwfile =  A220_PFP_470_FW;
-	else
+	} else if (adreno_is_a225(adreno_dev)) {
+		fwfile =  A225_PFP_FW;
+	} else if (adreno_is_a20x(adreno_dev)) {
 		fwfile = A200_PFP_FW;
+	} else {
+		KGSL_DRV_ERR(device, "Could not load PFP firmware\n");
+		return -EINVAL;
+	}
 
 	if (adreno_dev->pfp_fw == NULL) {
 		int len;
@@ -392,11 +384,20 @@ int adreno_ringbuffer_start(struct adreno_ringbuffer *rb, unsigned int init_ram)
 	/*setup REG_CP_RB_CNTL */
 	adreno_regread(device, REG_CP_RB_CNTL, &rb_cntl);
 	cp_rb_cntl.val = rb_cntl;
-	/* size of ringbuffer */
-	cp_rb_cntl.f.rb_bufsz =
-		adreno_ringbuffer_sizelog2quadwords(rb->sizedwords);
-	/* quadwords to read before updating mem RPTR */
-	cp_rb_cntl.f.rb_blksz = rb->blksizequadwords;
+
+	/*
+	 * The size of the ringbuffer in the hardware is the log2
+	 * representation of the size in quadwords (sizedwords / 2)
+	 */
+	cp_rb_cntl.f.rb_bufsz = ilog2(rb->sizedwords >> 1);
+
+	/*
+	 * Specify the quadwords to read before updating mem RPTR.
+	 * Like above, pass the log2 representation of the blocksize
+	 * in quadwords.
+	*/
+	cp_rb_cntl.f.rb_blksz = ilog2(KGSL_RB_BLKSIZE >> 3);
+
 	cp_rb_cntl.f.rb_poll_en = GSL_RB_CNTL_POLL_EN; /* WPTR polling */
 	/* mem RPTR writebacks */
 	cp_rb_cntl.f.rb_no_update =  GSL_RB_CNTL_NO_UPDATE;
@@ -491,7 +492,6 @@ int adreno_ringbuffer_start(struct adreno_ringbuffer *rb, unsigned int init_ram)
 	/* idle device to validate ME INIT */
 	status = adreno_idle(device, KGSL_TIMEOUT_DEFAULT);
 
-	adreno_regwrite(rb->device, REG_CP_INT_CNTL, GSL_CP_INT_MASK);
 	if (status == 0)
 		rb->flags |= KGSL_FLAGS_STARTED;
 
@@ -501,8 +501,6 @@ int adreno_ringbuffer_start(struct adreno_ringbuffer *rb, unsigned int init_ram)
 int adreno_ringbuffer_stop(struct adreno_ringbuffer *rb)
 {
 	if (rb->flags & KGSL_FLAGS_STARTED) {
-		adreno_regwrite(rb->device, REG_CP_INT_CNTL, 0);
-
 		/* ME_HALT */
 		adreno_regwrite(rb->device, REG_CP_ME_CNTL, 0x10000000);
 
@@ -519,8 +517,12 @@ int adreno_ringbuffer_init(struct kgsl_device *device)
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 
 	rb->device = device;
-	rb->sizedwords = (2 << kgsl_cfg_rb_sizelog2quadwords);
-	rb->blksizequadwords = kgsl_cfg_rb_blksizequadwords;
+	/*
+	 * It is silly to convert this to words and then back to bytes
+	 * immediately below, but most of the rest of the code deals
+	 * in words, so we might as well only do the math once
+	 */
+	rb->sizedwords = KGSL_RB_SIZE >> 2;
 
 	/* allocate memory for ringbuffer */
 	status = kgsl_allocate_contiguous(&rb->buffer_desc,
@@ -552,16 +554,12 @@ int adreno_ringbuffer_close(struct adreno_ringbuffer *rb)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(rb->device);
 
-	if (rb->buffer_desc.hostptr)
-		kgsl_sharedmem_free(&rb->buffer_desc);
+	kgsl_sharedmem_free(&rb->buffer_desc);
+	kgsl_sharedmem_free(&rb->memptrs_desc);
 
-	if (rb->memptrs_desc.hostptr)
-		kgsl_sharedmem_free(&rb->memptrs_desc);
+	kfree(adreno_dev->pfp_fw);
+	kfree(adreno_dev->pm4_fw);
 
-	if (adreno_dev->pfp_fw != NULL)
-		kfree(adreno_dev->pfp_fw);
-	if (adreno_dev->pm4_fw != NULL)
-		kfree(adreno_dev->pm4_fw);
 	adreno_dev->pfp_fw = NULL;
 	adreno_dev->pm4_fw = NULL;
 

@@ -276,12 +276,6 @@ struct msmsdcc_sps_data {
 
 };
 
-struct msmsdcc_lpm_work {
-	struct msmsdcc_host *host;
-	bool enable;
-	struct work_struct work;
-};
-
 struct msmsdcc_host {
 	struct resource		*core_irqres;
 	struct resource		*bam_irqres;
@@ -309,6 +303,7 @@ struct msmsdcc_host {
 
 	unsigned int		clk_rate;	/* Current clock rate */
 	unsigned int		pclk_rate;
+	unsigned int		ddr_doubled_clk_rate;
 
 	u32			pwr;
 	struct mmc_platform_data *plat;
@@ -353,13 +348,12 @@ struct msmsdcc_host {
 	bool tuning_needed;
 	bool sdio_gpio_lpm;
 	bool irq_wake_enabled;
-	struct msmsdcc_lpm_work lpm_work;
 };
 
 int msmsdcc_set_pwrsave(struct mmc_host *mmc, int pwrsave);
+int msmsdcc_sdio_al_lpm(struct mmc_host *mmc, bool enable);
 
 #ifdef CONFIG_MSM_SDIO_AL
-int msmsdcc_sdio_al_lpm(struct mmc_host *mmc, bool enable);
 
 static inline int msmsdcc_lpm_enable(struct mmc_host *mmc)
 {

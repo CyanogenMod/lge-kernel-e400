@@ -41,7 +41,6 @@
 #define SUBSYS_FATAL_DEBUG
 
 #if defined(SUBSYS_FATAL_DEBUG)
-static void subsys_notif_reg_test_notifier(const char *subsys_name);
 static void debug_crash_modem_fn(struct work_struct *);
 static int reset_modem;
 
@@ -85,7 +84,7 @@ static void send_q6_nmi(void)
 	pr_info("subsystem-fatal-8x60: Q6 NMI was sent.\n");
 }
 
-int subsys_q6_shutdown(void)
+int subsys_q6_shutdown(const struct subsys_data *crashed_subsys)
 {
 	void __iomem *q6_wdog_addr =
 		ioremap_nocache(Q6SS_WDOG_ENABLE, 8);
@@ -99,10 +98,13 @@ int subsys_q6_shutdown(void)
 	pil_force_shutdown("q6");
 	disable_irq_nosync(LPASS_Q6SS_WDOG_EXPIRED);
 
+	if (get_restart_level() == RESET_SUBSYS_MIXED)
+		smsm_reset_modem(SMSM_RESET);
+
 	return 0;
 }
 
-int subsys_q6_powerup(void)
+int subsys_q6_powerup(const struct subsys_data *crashed_subsys)
 {
 	int ret = pil_force_boot("q6");
 	enable_irq(LPASS_Q6SS_WDOG_EXPIRED);
@@ -112,7 +114,8 @@ int subsys_q6_powerup(void)
 /* FIXME: Get address, size from PIL */
 static struct ramdump_segment q6_segments[] = { {0x46700000, 0x47F00000 -
 					0x46700000}, {0x28400000, 0x12800} };
-static int subsys_q6_ramdump(int enable)
+static int subsys_q6_ramdump(int enable,
+				const struct subsys_data *crashed_subsys)
 {
 	if (enable)
 		return do_ramdump(q6_ramdump_dev, q6_segments,
@@ -121,7 +124,7 @@ static int subsys_q6_ramdump(int enable)
 		return 0;
 }
 
-void subsys_q6_crash_shutdown(struct subsys_data *subsys)
+void subsys_q6_crash_shutdown(const struct subsys_data *crashed_subsys)
 {
 	send_q6_nmi();
 }
@@ -212,7 +215,7 @@ static int modem_notif_handler(struct notifier_block *this,
 	return NOTIFY_DONE;
 }
 
-static int subsys_modem_shutdown(void)
+static int subsys_modem_shutdown(const struct subsys_data *crashed_subsys)
 {
 	void __iomem *modem_wdog_addr;
 	int smsm_notif_unregistered = 0;
@@ -252,7 +255,7 @@ static int subsys_modem_shutdown(void)
 	return 0;
 }
 
-static int subsys_modem_powerup(void)
+static int subsys_modem_powerup(const struct subsys_data *crashed_subsys)
 {
 	int ret;
 
@@ -266,7 +269,8 @@ static int subsys_modem_powerup(void)
 static struct ramdump_segment modem_segments[] = {
 	{0x42F00000, 0x46000000 - 0x42F00000} };
 
-static int subsys_modem_ramdump(int enable)
+static int subsys_modem_ramdump(int enable,
+				const struct subsys_data *crashed_subsys)
 {
 	if (enable)
 		return do_ramdump(modem_ramdump_dev, modem_segments,
@@ -275,7 +279,8 @@ static int subsys_modem_ramdump(int enable)
 		return 0;
 }
 
-static void subsys_modem_crash_shutdown(struct subsys_data *subsys)
+static void subsys_modem_crash_shutdown(
+				const struct subsys_data *crashed_subsys)
 {
 	/* If modem hasn't already crashed, send SMSM_RESET. */
 	if (!(smsm_get_state(SMSM_MODEM_STATE) & SMSM_RESET)) {
@@ -340,11 +345,6 @@ static int __init subsystem_restart_8x60_init(void)
 	ssr_register_subsystem(&subsys_8x60_modem);
 	ssr_register_subsystem(&subsys_8x60_q6);
 
-#ifdef SUBSYS_FATAL_DEBUG
-	subsys_notif_reg_test_notifier("modem");
-	subsys_notif_reg_test_notifier("lpass");
-#endif
-
 	return 0;
 }
 
@@ -403,54 +403,6 @@ static void __exit subsystem_fatal_exit(void)
 }
 
 #ifdef SUBSYS_FATAL_DEBUG
-static const char *notif_to_string(enum subsys_notif_type notif_type)
-{
-	switch (notif_type) {
-
-	case	SUBSYS_BEFORE_SHUTDOWN:
-		return __stringify(SUBSYS_BEFORE_SHUTDOWN);
-
-	case	SUBSYS_AFTER_SHUTDOWN:
-		return __stringify(SUBSYS_AFTER_SHUTDOWN);
-
-	case	SUBSYS_BEFORE_POWERUP:
-		return __stringify(SUBSYS_BEFORE_POWERUP);
-
-	case	SUBSYS_AFTER_POWERUP:
-		return __stringify(SUBSYS_AFTER_POWERUP);
-
-	default:
-		return "unknown";
-	}
-}
-
-static int subsys_notifier_test_call(struct notifier_block *this,
-				  unsigned long code,
-				  void *data)
-{
-	switch (code) {
-
-	default:
-		pr_warn("%s: Notification %s from subsystem %p\n",
-			__func__, notif_to_string(code), data);
-	break;
-
-	}
-
-	return NOTIFY_DONE;
-}
-
-static struct notifier_block nb = {
-	.notifier_call = subsys_notifier_test_call,
-};
-
-static void subsys_notif_reg_test_notifier(const char *subsys_name)
-{
-	void *handle = subsys_notif_register_notifier(subsys_name, &nb);
-	pr_warn("%s: Registered test notifier, handle=%p",
-			__func__, handle);
-}
-
 static void debug_crash_modem_fn(struct work_struct *work)
 {
 	if (reset_modem == 1)

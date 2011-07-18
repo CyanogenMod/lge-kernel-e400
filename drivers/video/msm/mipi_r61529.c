@@ -53,7 +53,7 @@ static char config_vcom[5] = {0xd1, 0x02, 0x1f, 0x1f, 0x38};
 static char config_backlight_ctrl1[21] = {0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 		                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static char config_backlight_ctrl2[5] = {0xb9, 0x00, 0x00, 0x00, 0x00};
-static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};
+//static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};
 
 static char config_nvm_access[5] = {0xe0, 0x00, 0x00, 0x00, 0x00};
 static char config_ddb_write[7] = {0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x70};
@@ -109,8 +109,8 @@ static struct dsi_cmd_desc r61529_init_on_cmds[] = {
 		sizeof(config_backlight_ctrl1), config_backlight_ctrl1},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_backlight_ctrl2), config_backlight_ctrl2},
-	{DTYPE_GEN_READ1, 1, 0, 0, R61529_CMD_DELAY,
-		sizeof(config_backlight_ctrl3), config_backlight_ctrl3},
+//	{DTYPE_GEN_READ1, 1, 0, 0, R61529_CMD_DELAY,
+//		sizeof(config_backlight_ctrl3), config_backlight_ctrl3},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_nvm_access), config_nvm_access},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
@@ -195,14 +195,44 @@ static int mipi_r61529_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
+ssize_t mipi_r61529_lcd_show_onoff(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        printk("%s : strat\n", __func__);
+        return 0;
+}
+
+ssize_t mipi_r61529_lcd_store_onoff(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+        //struct platform_device dummy_pdev;
+        int onoff;
+
+		sscanf(buf, "%d", &onoff);
+		printk("%s: onoff : %d\n", __func__, onoff);
+		if(onoff) {
+			mipi_r61529_lcd_on(NULL);
+		}
+		else {
+			mipi_r61529_lcd_off(NULL);
+		}
+        return count;
+}
+
+DEVICE_ATTR(lcd_onoff, 0664, mipi_r61529_lcd_show_onoff, mipi_r61529_lcd_store_onoff);
+
+
 static int __devinit mipi_r61529_lcd_probe(struct platform_device *pdev)
 {
+	int rc=0;
+	
 	if (pdev->id == 0) {
 		mipi_r61529_pdata = pdev->dev.platform_data;
 		return 0;
 	}
 
 	msm_fb_add_device(pdev);
+	//this for ATAT Command
+	rc=device_create_file(&pdev->dev, &dev_attr_lcd_onoff);
+	
 	return 0;
 }
 
@@ -269,5 +299,7 @@ static void mipi_ldp_lcd_panel_poweroff(void)
 	gpio_set_value(GPIO_HDK_LCD_RESET, 0);
 	mdelay(10);
 }
+
+
 
 module_init(mipi_r61529_lcd_init); 

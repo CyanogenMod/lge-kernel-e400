@@ -237,10 +237,16 @@ static struct msm_spm_platform_data msm_spm_data[] __initdata = {
 static struct msm_acpu_clock_platform_data msm8x60_acpu_clock_data = {
 };
 
-static struct regulator_consumer_supply saw_s0_supply =
-	REGULATOR_SUPPLY("8901_s0", NULL);
-static struct regulator_consumer_supply saw_s1_supply =
-	REGULATOR_SUPPLY("8901_s1", NULL);
+/*
+ * Consumer specific regulator names:
+ *			 regulator name		consumer dev_name
+ */
+static struct regulator_consumer_supply vreg_consumers_8901_S0[] = {
+	REGULATOR_SUPPLY("8901_s0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_8901_S1[] = {
+	REGULATOR_SUPPLY("8901_s1",		NULL),
+};
 
 static struct regulator_init_data saw_s0_init_data = {
 		.constraints = {
@@ -249,8 +255,8 @@ static struct regulator_init_data saw_s0_init_data = {
 			.min_uV = 840000,
 			.max_uV = 1200000,
 		},
-		.num_consumer_supplies = 1,
-		.consumer_supplies = &saw_s0_supply,
+		.consumer_supplies = vreg_consumers_8901_S0,
+		.num_consumer_supplies = ARRAY_SIZE(vreg_consumers_8901_S0),
 };
 
 static struct regulator_init_data saw_s1_init_data = {
@@ -260,8 +266,8 @@ static struct regulator_init_data saw_s1_init_data = {
 			.min_uV = 840000,
 			.max_uV = 1200000,
 		},
-		.num_consumer_supplies = 1,
-		.consumer_supplies = &saw_s1_supply,
+		.consumer_supplies = vreg_consumers_8901_S1,
+		.num_consumer_supplies = ARRAY_SIZE(vreg_consumers_8901_S1),
 };
 
 static struct platform_device msm_device_saw_s0 = {
@@ -282,49 +288,55 @@ static struct platform_device msm_device_saw_s1 = {
 
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 4000,
 		.residency = 13000,
 	},
 
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 500,
 		.residency = 6000,
 	},
 
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
-		.supported = 1,
-		.suspend_enabled = 1,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 1,
+		.suspend_enabled = 1,
 		.latency = 2,
 		.residency = 0,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 600,
 		.residency = 7200,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 500,
 		.residency = 6000,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
-		.supported = 1,
-		.suspend_enabled = 1,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 1,
+		.suspend_enabled = 1,
 		.latency = 2,
 		.residency = 0,
 	},
@@ -1663,62 +1675,157 @@ static struct platform_device msm_rpm_log_device = {
 };
 #endif
 
-static struct regulator_consumer_supply rpm_vreg_supply[RPM_VREG_ID_MAX] = {
-	[RPM_VREG_ID_PM8058_L0]  = REGULATOR_SUPPLY("8058_l0", NULL),
-	[RPM_VREG_ID_PM8058_L1]  = REGULATOR_SUPPLY("8058_l1", NULL),
-	[RPM_VREG_ID_PM8058_L2]  = REGULATOR_SUPPLY("8058_l2", NULL),
-	[RPM_VREG_ID_PM8058_L3]  = REGULATOR_SUPPLY("8058_l3", NULL),
-	[RPM_VREG_ID_PM8058_L4]  = REGULATOR_SUPPLY("8058_l4", NULL),
-	[RPM_VREG_ID_PM8058_L5]  = REGULATOR_SUPPLY("8058_l5", NULL),
-	[RPM_VREG_ID_PM8058_L6]  = REGULATOR_SUPPLY("8058_l6", NULL),
-	[RPM_VREG_ID_PM8058_L7]  = REGULATOR_SUPPLY("8058_l7", NULL),
-	[RPM_VREG_ID_PM8058_L8]  = REGULATOR_SUPPLY("8058_l8", NULL),
-	[RPM_VREG_ID_PM8058_L9]  = REGULATOR_SUPPLY("8058_l9", NULL),
-	[RPM_VREG_ID_PM8058_L10] = REGULATOR_SUPPLY("8058_l10", NULL),
-	[RPM_VREG_ID_PM8058_L11] = REGULATOR_SUPPLY("8058_l11", NULL),
-	[RPM_VREG_ID_PM8058_L12] = REGULATOR_SUPPLY("8058_l12", NULL),
-	[RPM_VREG_ID_PM8058_L13] = REGULATOR_SUPPLY("8058_l13", NULL),
-	[RPM_VREG_ID_PM8058_L14] = REGULATOR_SUPPLY("8058_l14", NULL),
-	[RPM_VREG_ID_PM8058_L15] = REGULATOR_SUPPLY("8058_l15", NULL),
-	[RPM_VREG_ID_PM8058_L16] = REGULATOR_SUPPLY("8058_l16", NULL),
-	[RPM_VREG_ID_PM8058_L17] = REGULATOR_SUPPLY("8058_l17", NULL),
-	[RPM_VREG_ID_PM8058_L18] = REGULATOR_SUPPLY("8058_l18", NULL),
-	[RPM_VREG_ID_PM8058_L19] = REGULATOR_SUPPLY("8058_l19", NULL),
-	[RPM_VREG_ID_PM8058_L20] = REGULATOR_SUPPLY("8058_l20", NULL),
-	[RPM_VREG_ID_PM8058_L21] = REGULATOR_SUPPLY("8058_l21", NULL),
-	[RPM_VREG_ID_PM8058_L22] = REGULATOR_SUPPLY("8058_l22", NULL),
-	[RPM_VREG_ID_PM8058_L23] = REGULATOR_SUPPLY("8058_l23", NULL),
-	[RPM_VREG_ID_PM8058_L24] = REGULATOR_SUPPLY("8058_l24", NULL),
-	[RPM_VREG_ID_PM8058_L25] = REGULATOR_SUPPLY("8058_l25", NULL),
+/*
+ * Consumer specific regulator names:
+ *			 regulator name		consumer dev_name
+ */
+static struct regulator_consumer_supply vreg_consumers_PM8058_L0[] = {
+	REGULATOR_SUPPLY("8058_l0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L1[] = {
+	REGULATOR_SUPPLY("8058_l1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L2[] = {
+	REGULATOR_SUPPLY("8058_l2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L3[] = {
+	REGULATOR_SUPPLY("8058_l3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L4[] = {
+	REGULATOR_SUPPLY("8058_l4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L5[] = {
+	REGULATOR_SUPPLY("8058_l5",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L6[] = {
+	REGULATOR_SUPPLY("8058_l6",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L7[] = {
+	REGULATOR_SUPPLY("8058_l7",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L8[] = {
+	REGULATOR_SUPPLY("8058_l8",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L9[] = {
+	REGULATOR_SUPPLY("8058_l9",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L10[] = {
+	REGULATOR_SUPPLY("8058_l10",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L11[] = {
+	REGULATOR_SUPPLY("8058_l11",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L12[] = {
+	REGULATOR_SUPPLY("8058_l12",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L13[] = {
+	REGULATOR_SUPPLY("8058_l13",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L14[] = {
+	REGULATOR_SUPPLY("8058_l14",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L15[] = {
+	REGULATOR_SUPPLY("8058_l15",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L16[] = {
+	REGULATOR_SUPPLY("8058_l16",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L17[] = {
+	REGULATOR_SUPPLY("8058_l17",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L18[] = {
+	REGULATOR_SUPPLY("8058_l18",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L19[] = {
+	REGULATOR_SUPPLY("8058_l19",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L20[] = {
+	REGULATOR_SUPPLY("8058_l20",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L21[] = {
+	REGULATOR_SUPPLY("8058_l21",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L22[] = {
+	REGULATOR_SUPPLY("8058_l22",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L23[] = {
+	REGULATOR_SUPPLY("8058_l23",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L24[] = {
+	REGULATOR_SUPPLY("8058_l24",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L25[] = {
+	REGULATOR_SUPPLY("8058_l25",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S0[] = {
+	REGULATOR_SUPPLY("8058_s0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S1[] = {
+	REGULATOR_SUPPLY("8058_s1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S2[] = {
+	REGULATOR_SUPPLY("8058_s2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S3[] = {
+	REGULATOR_SUPPLY("8058_s3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S4[] = {
+	REGULATOR_SUPPLY("8058_s4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_LVS0[] = {
+	REGULATOR_SUPPLY("8058_lvs0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_LVS1[] = {
+	REGULATOR_SUPPLY("8058_lvs1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_NCP[] = {
+	REGULATOR_SUPPLY("8058_ncp",		NULL),
+};
 
-	[RPM_VREG_ID_PM8058_S0] = REGULATOR_SUPPLY("8058_s0", NULL),
-	[RPM_VREG_ID_PM8058_S1] = REGULATOR_SUPPLY("8058_s1", NULL),
-	[RPM_VREG_ID_PM8058_S2] = REGULATOR_SUPPLY("8058_s2", NULL),
-	[RPM_VREG_ID_PM8058_S3] = REGULATOR_SUPPLY("8058_s3", NULL),
-	[RPM_VREG_ID_PM8058_S4] = REGULATOR_SUPPLY("8058_s4", NULL),
-
-	[RPM_VREG_ID_PM8058_LVS0] = REGULATOR_SUPPLY("8058_lvs0", NULL),
-	[RPM_VREG_ID_PM8058_LVS1] = REGULATOR_SUPPLY("8058_lvs1", NULL),
-
-	[RPM_VREG_ID_PM8058_NCP] = REGULATOR_SUPPLY("8058_ncp", NULL),
-
-	[RPM_VREG_ID_PM8901_L0]  = REGULATOR_SUPPLY("8901_l0",  NULL),
-	[RPM_VREG_ID_PM8901_L1]  = REGULATOR_SUPPLY("8901_l1",  NULL),
-	[RPM_VREG_ID_PM8901_L2]  = REGULATOR_SUPPLY("8901_l2",  NULL),
-	[RPM_VREG_ID_PM8901_L3]  = REGULATOR_SUPPLY("8901_l3",  NULL),
-	[RPM_VREG_ID_PM8901_L4]  = REGULATOR_SUPPLY("8901_l4",  NULL),
-	[RPM_VREG_ID_PM8901_L5]  = REGULATOR_SUPPLY("8901_l5",  NULL),
-	[RPM_VREG_ID_PM8901_L6]  = REGULATOR_SUPPLY("8901_l6",  NULL),
-
-	[RPM_VREG_ID_PM8901_S2] = REGULATOR_SUPPLY("8901_s2", NULL),
-	[RPM_VREG_ID_PM8901_S3] = REGULATOR_SUPPLY("8901_s3", NULL),
-	[RPM_VREG_ID_PM8901_S4] = REGULATOR_SUPPLY("8901_s4", NULL),
-
-	[RPM_VREG_ID_PM8901_LVS0] = REGULATOR_SUPPLY("8901_lvs0", NULL),
-	[RPM_VREG_ID_PM8901_LVS1] = REGULATOR_SUPPLY("8901_lvs1", NULL),
-	[RPM_VREG_ID_PM8901_LVS2] = REGULATOR_SUPPLY("8901_lvs2", NULL),
-	[RPM_VREG_ID_PM8901_LVS3] = REGULATOR_SUPPLY("8901_lvs3", NULL),
-	[RPM_VREG_ID_PM8901_MVS0] = REGULATOR_SUPPLY("8901_mvs0", NULL),
+static struct regulator_consumer_supply vreg_consumers_PM8901_L0[] = {
+	REGULATOR_SUPPLY("8901_l0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L1[] = {
+	REGULATOR_SUPPLY("8901_l1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L2[] = {
+	REGULATOR_SUPPLY("8901_l2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L3[] = {
+	REGULATOR_SUPPLY("8901_l3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L4[] = {
+	REGULATOR_SUPPLY("8901_l4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L5[] = {
+	REGULATOR_SUPPLY("8901_l5",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L6[] = {
+	REGULATOR_SUPPLY("8901_l6",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_S2[] = {
+	REGULATOR_SUPPLY("8901_s2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_S3[] = {
+	REGULATOR_SUPPLY("8901_s3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_S4[] = {
+	REGULATOR_SUPPLY("8901_s4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS0[] = {
+	REGULATOR_SUPPLY("8901_lvs0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS1[] = {
+	REGULATOR_SUPPLY("8901_lvs1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS2[] = {
+	REGULATOR_SUPPLY("8901_lvs2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS3[] = {
+	REGULATOR_SUPPLY("8901_lvs3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_MVS0[] = {
+	REGULATOR_SUPPLY("8901_mvs0",		NULL),
 };
 
 #define RPM_VREG_INIT(_id, _min_uV, _max_uV, _modes, _ops, _apply_uV, \
@@ -1736,9 +1843,9 @@ static struct regulator_consumer_supply rpm_vreg_supply[RPM_VREG_ID_MAX] = {
 				.apply_uV = _apply_uV, \
 				.always_on = _always_on, \
 			}, \
-			.num_consumer_supplies = 1, \
-			.consumer_supplies = \
-				&rpm_vreg_supply[RPM_VREG_ID_##_id], \
+			.consumer_supplies = vreg_consumers_##_id, \
+			.num_consumer_supplies = \
+				ARRAY_SIZE(vreg_consumers_##_id), \
 		}, \
 		.default_uV = _default_uV, \
 		.peak_uA = _peak_uA, \
@@ -1833,9 +1940,9 @@ static struct rpm_vreg_pdata rpm_vreg_init_pdata[RPM_VREG_ID_MAX] = {
 	RPM_VREG_INIT_LDO(PM8058_L13, 0, 1, 0, 2050000, 2050000, LDO300HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L14, 0, 0, 0, 2850000, 2850000, LDO300HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L15, 0, 1, 0, 2850000, 2850000, LDO300HMIN, 0),
-	RPM_VREG_INIT_LDO(PM8058_L16, 1, 1, 1, 1800000, 1800000, LDO300HMIN, 0),
+	RPM_VREG_INIT_LDO(PM8058_L16, 1, 1, 0, 1800000, 1800000, LDO300HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L17, 0, 1, 0, 2600000, 2600000, LDO150HMIN, 0),
-	RPM_VREG_INIT_LDO(PM8058_L18, 0, 1, 1, 2200000, 2200000, LDO150HMIN, 0),
+	RPM_VREG_INIT_LDO(PM8058_L18, 0, 1, 0, 2200000, 2200000, LDO150HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L19, 0, 1, 0, 2500000, 2500000, LDO150HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L20, 0, 1, 0, 1800000, 1800000, LDO150HMIN, 0),
 	RPM_VREG_INIT_LDO_PF(PM8058_L21, 1, 1, 0, 1200000, 1200000, LDO150HMIN,
@@ -2085,33 +2192,69 @@ static void pmic8058_xoadc_mpp_config(void)
 		pr_err("%s: Config mpp10 on pmic 8058 failed\n", __func__);
 }
 
-static int pmic8058_xoadc_rpm_vreg_config(int on)
+static struct regulator *vreg_ldo18_adc;
+
+static int pmic8058_xoadc_vreg_config(int on)
 {
 	int rc;
 
-	rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8058_L18, RPM_VREG_VOTER3,
-			(on ? 2200000 : 0), 2200000, 0);
+	if (on) {
+		rc = regulator_enable(vreg_ldo18_adc);
+		if (rc)
+			pr_err("%s: Enable of regulator ldo18_adc "
+						"failed\n", __func__);
+	} else {
+		rc = regulator_disable(vreg_ldo18_adc);
+		if (rc)
+			pr_err("%s: Disable of regulator ldo18_adc "
+						"failed\n", __func__);
+	}
 
 	return rc;
 }
 
-/* usec. For this ADC,
- * this time represents clk rate @ txco w/ 1024 decimation ratio.
- * Each channel has different configuration, thus at the time of starting
- * the conversion, xoadc will return actual conversion time
- * */
+static int pmic8058_xoadc_vreg_setup(void)
+{
+	int rc;
+
+	vreg_ldo18_adc = regulator_get(NULL, "8058_l18");
+	if (IS_ERR(vreg_ldo18_adc)) {
+		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
+			__func__, PTR_ERR(vreg_ldo18_adc));
+		rc = PTR_ERR(vreg_ldo18_adc);
+		goto fail;
+	}
+
+	rc = regulator_set_voltage(vreg_ldo18_adc, 2200000, 2200000);
+	if (rc) {
+		pr_err("%s: unable to set ldo18 voltage to 2.2V\n", __func__);
+		goto fail;
+	}
+
+	return rc;
+fail:
+	regulator_put(vreg_ldo18_adc);
+	return rc;
+}
+
+static void pmic8058_xoadc_vreg_shutdown(void)
+{
+	regulator_put(vreg_ldo18_adc);
+}
+
 static struct adc_properties pm8058_xoadc_data = {
 	.adc_reference          = 2200, /* milli-voltage for this adc */
 	.bitresolution         = 15,
 	.bipolar                = 0,
-	.conversiontime         = 54,
 };
 
 static struct xoadc_platform_data xoadc_pdata = {
 	.xoadc_prop = &pm8058_xoadc_data,
 	.xoadc_mpp_config = pmic8058_xoadc_mpp_config,
-	.xoadc_vreg_set = pmic8058_xoadc_rpm_vreg_config,
+	.xoadc_vreg_set = pmic8058_xoadc_vreg_config,
 	.xoadc_num = XOADC_PMIC_0,
+	.xoadc_vreg_setup = pmic8058_xoadc_vreg_setup,
+	.xoadc_vreg_shutdown = pmic8058_xoadc_vreg_shutdown,
 };
 #endif
 
@@ -3252,15 +3395,23 @@ static struct resource pm8901_temp_alarm[] = {
 	},
 };
 
-static struct regulator_consumer_supply pm8901_vreg_supply[PM8901_VREG_MAX] = {
-	[PM8901_VREG_ID_MPP0] =     REGULATOR_SUPPLY("8901_mpp0",     NULL),
-	[PM8901_VREG_ID_USB_OTG]  = REGULATOR_SUPPLY("8901_usb_otg",  NULL),
-	[PM8901_VREG_ID_HDMI_MVS] = REGULATOR_SUPPLY("8901_hdmi_mvs", NULL),
+/*
+ * Consumer specific regulator names:
+ *			 regulator name		consumer dev_name
+ */
+static struct regulator_consumer_supply vreg_consumers_8901_MPP0[] = {
+	REGULATOR_SUPPLY("8901_mpp0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_8901_USB_OTG[] = {
+	REGULATOR_SUPPLY("8901_usb_otg",	NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_8901_HDMI_MVS[] = {
+	REGULATOR_SUPPLY("8901_hdmi_mvs",	NULL),
 };
 
 #define PM8901_VREG_INIT(_id, _min_uV, _max_uV, _modes, _ops, _apply_uV, \
 			 _always_on, _active_high) \
-	[_id] = { \
+	[PM8901_VREG_ID_##_id] = { \
 		.init_data = { \
 			.constraints = { \
 				.valid_modes_mask = _modes, \
@@ -3271,8 +3422,9 @@ static struct regulator_consumer_supply pm8901_vreg_supply[PM8901_VREG_MAX] = {
 				.apply_uV = _apply_uV, \
 				.always_on = _always_on, \
 			}, \
-			.num_consumer_supplies = 1, \
-			.consumer_supplies = &pm8901_vreg_supply[_id], \
+			.consumer_supplies = vreg_consumers_8901_##_id, \
+			.num_consumer_supplies = \
+				ARRAY_SIZE(vreg_consumers_8901_##_id), \
 		}, \
 		.active_high = _active_high, \
 	}
@@ -3286,10 +3438,10 @@ static struct regulator_consumer_supply pm8901_vreg_supply[PM8901_VREG_MAX] = {
 			REGULATOR_CHANGE_STATUS, 0, 0, 0)
 
 static struct pm8901_vreg_pdata pm8901_vreg_init_pdata[PM8901_VREG_MAX] = {
-	PM8901_VREG_INIT_MPP(PM8901_VREG_ID_MPP0, 1),
+	PM8901_VREG_INIT_MPP(MPP0, 1),
 
-	PM8901_VREG_INIT_VS(PM8901_VREG_ID_USB_OTG),
-	PM8901_VREG_INIT_VS(PM8901_VREG_ID_HDMI_MVS),
+	PM8901_VREG_INIT_VS(USB_OTG),
+	PM8901_VREG_INIT_VS(HDMI_MVS),
 };
 
 #define PM8901_VREG(_id) { \

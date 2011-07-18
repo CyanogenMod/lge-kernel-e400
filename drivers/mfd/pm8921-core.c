@@ -21,11 +21,20 @@
 #include <linux/mfd/core.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/mfd/pm8xxx/core.h>
+#include <linux/leds-pm8xxx.h>
 
 #define REG_HWREV		0x002  /* PMIC4 revision */
 #define REG_HWREV_2		0x0E8  /* PMIC4 revision 2 */
 
 #define REG_MPP_BASE		0x050
+
+#define REG_TEMP_ALARM_CTRL	0x1B
+#define REG_TEMP_ALARM_PWM	0x9B
+
+#define REG_BATT_ALARM_THRESH	0x023
+#define REG_BATT_ALARM_CTRL1	0x024
+#define REG_BATT_ALARM_CTRL2	0x0AA
+#define REG_BATT_ALARM_PWM_CTRL	0x0A3
 
 #define PM8921_VERSION_MASK	0xFFF0
 #define PM8921_VERSION_VALUE	0x06F0
@@ -242,7 +251,6 @@ static const struct resource charger_cell_resources[] __devinitconst = {
 	SINGLE_IRQ_RESOURCE("COARSE_DET_LOW_IRQ", PM8921_COARSE_DET_LOW_IRQ),
 	SINGLE_IRQ_RESOURCE("VDD_LOOP_IRQ", PM8921_VDD_LOOP_IRQ),
 	SINGLE_IRQ_RESOURCE("VREG_OV_IRQ", PM8921_VREG_OV_IRQ),
-	SINGLE_IRQ_RESOURCE("VBAT_IRQ", PM8921_VBAT_IRQ),
 	SINGLE_IRQ_RESOURCE("VBATDET_IRQ", PM8921_VBATDET_IRQ),
 	SINGLE_IRQ_RESOURCE("BATFET_IRQ", PM8921_BATFET_IRQ),
 	SINGLE_IRQ_RESOURCE("PSI_IRQ", PM8921_PSI_IRQ),
@@ -278,6 +286,56 @@ static struct mfd_cell bms_cell __devinitdata = {
 static struct mfd_cell misc_cell __devinitdata = {
 	.name           = PM8XXX_MISC_DEV_NAME,
 	.id             = -1,
+};
+
+static struct mfd_cell leds_cell __devinitdata = {
+	.name		= PM8XXX_LEDS_DEV_NAME,
+	.id		= -1,
+};
+
+static const struct resource thermal_alarm_cell_resources[] __devinitconst = {
+	SINGLE_IRQ_RESOURCE("pm8921_tempstat_irq", PM8921_TEMPSTAT_IRQ),
+	SINGLE_IRQ_RESOURCE("pm8921_overtemp_irq", PM8921_OVERTEMP_IRQ),
+};
+
+static struct pm8xxx_tm_core_data thermal_alarm_cdata = {
+	.adc_channel =			CHANNEL_DIE_TEMP,
+	.adc_type =			PM8XXX_TM_ADC_PM8921_ADC,
+	.reg_addr_temp_alarm_ctrl =	REG_TEMP_ALARM_CTRL,
+	.reg_addr_temp_alarm_pwm =	REG_TEMP_ALARM_PWM,
+	.tm_name =			"pm8921_tz",
+	.irq_name_temp_stat =		"pm8921_tempstat_irq",
+	.irq_name_over_temp =		"pm8921_overtemp_irq",
+};
+
+static struct mfd_cell thermal_alarm_cell __devinitdata = {
+	.name		= PM8XXX_TM_DEV_NAME,
+	.id		= -1,
+	.resources	= thermal_alarm_cell_resources,
+	.num_resources	= ARRAY_SIZE(thermal_alarm_cell_resources),
+	.platform_data	= &thermal_alarm_cdata,
+	.data_size	= sizeof(struct pm8xxx_tm_core_data),
+};
+
+static const struct resource batt_alarm_cell_resources[] __devinitconst = {
+	SINGLE_IRQ_RESOURCE("pm8921_batt_alarm_irq", PM8921_BATT_ALARM_IRQ),
+};
+
+static struct pm8xxx_batt_alarm_core_data batt_alarm_cdata = {
+	.irq_name		= "pm8921_batt_alarm_irq",
+	.reg_addr_threshold	= REG_BATT_ALARM_THRESH,
+	.reg_addr_ctrl1		= REG_BATT_ALARM_CTRL1,
+	.reg_addr_ctrl2		= REG_BATT_ALARM_CTRL2,
+	.reg_addr_pwm_ctrl	= REG_BATT_ALARM_PWM_CTRL,
+};
+
+static struct mfd_cell batt_alarm_cell __devinitdata = {
+	.name		= PM8XXX_BATT_ALARM_DEV_NAME,
+	.id		= -1,
+	.resources	= batt_alarm_cell_resources,
+	.num_resources	= ARRAY_SIZE(batt_alarm_cell_resources),
+	.platform_data	= &batt_alarm_cdata,
+	.data_size	= sizeof(struct pm8xxx_batt_alarm_core_data),
 };
 
 static int __devinit
@@ -450,6 +508,41 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 			pr_err("Failed to add  misc subdevice ret=%d\n", ret);
 			goto bail;
 		}
+	}
+
+	if (pdata->leds_pdata) {
+		/* PM8921 supports only 4 LED DRVs */
+		for (i = 0; i < pdata->leds_pdata->num_leds; i++) {
+			if (pdata->leds_pdata->leds[i].flags >
+						PM8XXX_ID_LED_2) {
+				pr_err("%s: LED %d not supported\n", __func__,
+					pdata->leds_pdata->leds[i].flags);
+				goto bail;
+			}
+		}
+		leds_cell.platform_data = pdata->leds_pdata;
+		leds_cell.data_size = sizeof(struct led_platform_data);
+		ret = mfd_add_devices(pmic->dev, 0, &leds_cell, 1, NULL, 0);
+		if (ret) {
+			pr_err("Failed to add leds subdevice ret=%d\n", ret);
+			goto bail;
+		}
+	}
+
+	ret = mfd_add_devices(pmic->dev, 0, &thermal_alarm_cell, 1, NULL,
+				irq_base);
+	if (ret) {
+		pr_err("Failed to add thermal alarm subdevice ret=%d\n",
+			ret);
+		goto bail;
+	}
+
+	ret = mfd_add_devices(pmic->dev, 0, &batt_alarm_cell, 1, NULL,
+				irq_base);
+	if (ret) {
+		pr_err("Failed to add battery alarm subdevice ret=%d\n",
+			ret);
+		goto bail;
 	}
 
 	return 0;

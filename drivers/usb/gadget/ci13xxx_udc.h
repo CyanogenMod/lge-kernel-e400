@@ -129,6 +129,10 @@ struct ci13xxx {
 	u32                        ep0_dir;    /* ep0 direction */
 #define ep0out ci13xxx_ep[0]
 #define ep0in  ci13xxx_ep[16]
+	u8                         remote_wakeup; /* Is remote wakeup feature
+							enabled by the host? */
+	u8                         suspended;  /* suspended by the host */
+	u8                         test_mode;  /* the selected test mode */
 
 	struct usb_gadget_driver  *driver;     /* 3rd party gadget driver */
 	struct ci13xxx_udc_driver *udc_driver; /* device controller driver */
@@ -171,6 +175,7 @@ struct ci13xxx {
 #define DEVICEADDR_USBADR     (0x7FUL << 25)
 
 /* PORTSC */
+#define PORTSC_FPR            BIT(6)
 #define PORTSC_SUSP           BIT(7)
 #define PORTSC_HSP            BIT(9)
 #define PORTSC_PTC            (0x0FUL << 16)

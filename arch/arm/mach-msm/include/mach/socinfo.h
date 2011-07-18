@@ -32,6 +32,8 @@
 
 #include <linux/init.h>
 
+#include <asm/cputype.h>
+#include <asm/mach-types.h>
 /*
  * SOC version type with major number in the upper 16 bits and minor
  * number in the lower 16 bits.  For example:
@@ -55,6 +57,9 @@ enum msm_cpu {
 	MSM_CPU_7X27A,
 	FSM_CPU_9XXX,
 	MSM_CPU_7X25A,
+	MSM_CPU_7X25AA,
+	MSM_CPU_8064,
+	MSM_CPU_8X30,
 };
 
 enum msm_cpu socinfo_get_msm_cpu(void);
@@ -65,6 +70,50 @@ uint32_t socinfo_get_platform_type(void);
 uint32_t socinfo_get_platform_subtype(void);
 uint32_t socinfo_get_platform_version(void);
 int __init socinfo_init(void) __must_check;
+
+static inline int get_core_count(void)
+{
+	if (!(read_cpuid_mpidr() & BIT(31)))
+		return 1;
+
+	if (read_cpuid_mpidr() & BIT(30) &&
+		!machine_is_msm8960_sim() &&
+		!machine_is_apq8064_sim())
+		return 1;
+
+	/* 1 + the PART[1:0] field of MIDR */
+	return ((read_cpuid_id() >> 4) & 3) + 1;
+}
+
+static inline int read_msm_cpu_type(void)
+{
+	if (machine_is_msm8960_sim())
+		return MSM_CPU_8960;
+
+	switch (read_cpuid_id()) {
+	case 0x510F02D0:
+	case 0x510F02D2:
+	case 0x510F02D4:
+		return MSM_CPU_8X60;
+
+	case 0x510F04D0:
+	case 0x510F04D1:
+	case 0x510F04D2:
+		return MSM_CPU_8960;
+
+	case 0x511F04D0:
+		if (get_core_count() == 2)
+			return MSM_CPU_8960;
+		else
+			return MSM_CPU_8X30;
+
+	case 0x510F06F0:
+		return MSM_CPU_8064;
+
+	default:
+		return MSM_CPU_UNKNOWN;
+	};
+}
 
 static inline int cpu_is_msm7x01(void)
 {
@@ -106,6 +155,14 @@ static inline int cpu_is_msm7x25a(void)
 	return cpu == MSM_CPU_7X25A;
 }
 
+static inline int cpu_is_msm7x25aa(void)
+{
+	enum msm_cpu cpu = socinfo_get_msm_cpu();
+
+	BUG_ON(cpu == MSM_CPU_UNKNOWN);
+	return cpu == MSM_CPU_7X25AA;
+}
+
 static inline int cpu_is_msm7x30(void)
 {
 	enum msm_cpu cpu = socinfo_get_msm_cpu();
@@ -132,18 +189,22 @@ static inline int cpu_is_msm8x55(void)
 
 static inline int cpu_is_msm8x60(void)
 {
-	enum msm_cpu cpu = socinfo_get_msm_cpu();
-
-	BUG_ON(cpu == MSM_CPU_UNKNOWN);
-	return cpu == MSM_CPU_8X60;
+	return read_msm_cpu_type() == MSM_CPU_8X60;
 }
 
 static inline int cpu_is_msm8960(void)
 {
-	enum msm_cpu cpu = socinfo_get_msm_cpu();
+	return read_msm_cpu_type() == MSM_CPU_8960;
+}
 
-	BUG_ON(cpu == MSM_CPU_UNKNOWN);
-	return cpu == MSM_CPU_8960;
+static inline int cpu_is_apq8064(void)
+{
+	return read_msm_cpu_type() == MSM_CPU_8064;
+}
+
+static inline int cpu_is_msm8x30(void)
+{
+	return read_msm_cpu_type() == MSM_CPU_8X30;
 }
 
 static inline int cpu_is_fsm9xxx(void)

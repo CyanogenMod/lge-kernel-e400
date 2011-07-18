@@ -75,7 +75,6 @@
 #endif
 #include <mach/msm_xo.h>
 #include <mach/msm_bus_board.h>
-#include <mach/msm_tsif.h>
 #include <mach/socinfo.h>
 #include <linux/i2c/isl9519.h>
 #ifdef CONFIG_USB_ANDROID
@@ -398,10 +397,16 @@ static struct msm_spm_platform_data msm_spm_data[] __initdata = {
 static struct msm_acpu_clock_platform_data msm8x60_acpu_clock_data = {
 };
 
-static struct regulator_consumer_supply saw_s0_supply =
-	REGULATOR_SUPPLY("8901_s0", NULL);
-static struct regulator_consumer_supply saw_s1_supply =
-	REGULATOR_SUPPLY("8901_s1", NULL);
+/*
+ * Consumer specific regulator names:
+ *			 regulator name		consumer dev_name
+ */
+static struct regulator_consumer_supply vreg_consumers_8901_S0[] = {
+	REGULATOR_SUPPLY("8901_s0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_8901_S1[] = {
+	REGULATOR_SUPPLY("8901_s1",		NULL),
+};
 
 static struct regulator_init_data saw_s0_init_data = {
 		.constraints = {
@@ -410,8 +415,8 @@ static struct regulator_init_data saw_s0_init_data = {
 			.min_uV = 840000,
 			.max_uV = 1250000,
 		},
-		.num_consumer_supplies = 1,
-		.consumer_supplies = &saw_s0_supply,
+		.consumer_supplies = vreg_consumers_8901_S0,
+		.num_consumer_supplies = ARRAY_SIZE(vreg_consumers_8901_S0),
 };
 
 static struct regulator_init_data saw_s1_init_data = {
@@ -421,8 +426,8 @@ static struct regulator_init_data saw_s1_init_data = {
 			.min_uV = 840000,
 			.max_uV = 1250000,
 		},
-		.num_consumer_supplies = 1,
-		.consumer_supplies = &saw_s1_supply,
+		.consumer_supplies = vreg_consumers_8901_S1,
+		.num_consumer_supplies = ARRAY_SIZE(vreg_consumers_8901_S1),
 };
 
 static struct platform_device msm_device_saw_s0 = {
@@ -440,70 +445,6 @@ static struct platform_device msm_device_saw_s1 = {
 		.platform_data = &saw_s1_init_data,
 	},
 };
-
-/* TSIF begin */
-#if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
-#define MSM_TSIF_PHYS        (0x18200000)
-#define MSM_TSIF_SIZE        (0x200)
-#define TSIF_B_SYNC      GPIO_CFG(96, 1, GPIO_CFG_INPUT, \
-	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-#define TSIF_B_DATA      GPIO_CFG(95, 1, GPIO_CFG_INPUT, \
-	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-#define TSIF_B_EN        GPIO_CFG(94, 1, GPIO_CFG_INPUT, \
-	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-#define TSIF_B_CLK       GPIO_CFG(93, 1, GPIO_CFG_INPUT, \
-	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-
-static const struct msm_gpio tsif_gpios[] = {
-	{ .gpio_cfg = TSIF_B_CLK,  .label =  "tsif_clk", },
-	{ .gpio_cfg = TSIF_B_EN,   .label =  "tsif_en", },
-	{ .gpio_cfg = TSIF_B_DATA, .label =  "tsif_data", },
-	{ .gpio_cfg = TSIF_B_SYNC, .label =  "tsif_sync", },
-};
-
-static struct resource tsif_resources[] = {
-	[0] = {
-		.flags = IORESOURCE_IRQ,
-		.start = TSIF1_IRQ,
-		.end   = TSIF2_IRQ,
-	},
-	[1] = {
-		.flags = IORESOURCE_MEM,
-		.start = MSM_TSIF_PHYS,
-		.end   = MSM_TSIF_PHYS + MSM_TSIF_SIZE - 1,
-	},
-	[2] = {
-		.flags = IORESOURCE_DMA,
-		.start = DMOV_TSIF_CHAN,
-		.end   = DMOV_TSIF_CRCI,
-	},
-};
-
-static struct msm_tsif_platform_data tsif_platform_data = {
-	.num_gpios = ARRAY_SIZE(tsif_gpios),
-	.gpios = tsif_gpios,
-	/* .tsif_clk = "tsif_clk", */
-	.tsif_pclk = "tsif_pclk",
-	.tsif_ref_clk = "tsif_ref_clk",
-};
-
-static void tsif_release(struct device *dev)
-{
-	dev_info(dev, "release\n");
-}
-
-struct platform_device msm_device_tsif = {
-	.name          = "msm_tsif",
-	.id            = 0,
-	.num_resources = ARRAY_SIZE(tsif_resources),
-	.resource      = tsif_resources,
-	.dev = {
-		.release       = tsif_release,
-		.platform_data = &tsif_platform_data
-	},
-};
-#endif /* defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE) */
-/* TSIF end   */
 
 /*
  * The smc91x configuration varies depending on platform.
@@ -836,49 +777,55 @@ static struct i2c_board_info msm_bq27520_board_info[] = {
 
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 4000,
 		.residency = 13000,
 	},
 
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 500,
 		.residency = 6000,
 	},
 
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
-		.supported = 1,
-		.suspend_enabled = 1,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 1,
+		.suspend_enabled = 1,
 		.latency = 2,
 		.residency = 0,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 600,
 		.residency = 7200,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 500,
 		.residency = 6000,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
-		.supported = 1,
-		.suspend_enabled = 1,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 1,
+		.suspend_enabled = 1,
 		.latency = 2,
 		.residency = 0,
 	},
@@ -1901,10 +1848,27 @@ static struct msm_camera_sensor_platform_info sensor_board_info = {
 	.mount_angle = 0
 };
 
-#define CAM_BOOSTER_MPP	(0)
+/*external regulator VREG_5V*/
+static struct regulator *reg_flash_5V;
+
 static int config_camera_on_gpios_fluid(void)
 {
 	int rc = 0;
+
+	reg_flash_5V = regulator_get(NULL, "8901_mpp0");
+	if (IS_ERR(reg_flash_5V)) {
+		pr_err("'%s' regulator not found, rc=%ld\n",
+				"8901_mpp0", IS_ERR(reg_flash_5V));
+		return -ENODEV;
+	}
+
+	rc = regulator_enable(reg_flash_5V);
+	if (rc) {
+		pr_err("'%s' regulator enable failed, rc=%d\n",
+			"8901_mpp0", rc);
+		regulator_put(reg_flash_5V);
+		return rc;
+	}
 
 #ifdef CONFIG_IMX074
 	sensor_board_info.mount_angle = 90;
@@ -1920,6 +1884,8 @@ static int config_camera_on_gpios_fluid(void)
 	if (rc < 0) {
 		printk(KERN_ERR "%s: CAMSENSOR gpio %d request"
 			"failed\n", __func__, GPIO_EXT_CAMIF_PWR_EN);
+		regulator_disable(reg_flash_5V);
+		regulator_put(reg_flash_5V);
 		return rc;
 	}
 	gpio_direction_output(GPIO_EXT_CAMIF_PWR_EN, 0);
@@ -1933,6 +1899,8 @@ static int config_camera_on_gpios_fluid(void)
 		printk(KERN_ERR "%s: CAMSENSOR gpio %d request"
 			"failed\n", __func__, GPIO_LED_FLASH_EN);
 
+		regulator_disable(reg_flash_5V);
+		regulator_put(reg_flash_5V);
 		config_gpio_table(MSM_CAM_OFF);
 		gpio_set_value_cansleep(GPIO_EXT_CAMIF_PWR_EN, 0);
 		gpio_free(GPIO_EXT_CAMIF_PWR_EN);
@@ -1940,53 +1908,17 @@ static int config_camera_on_gpios_fluid(void)
 	}
 	gpio_direction_output(GPIO_LED_FLASH_EN, 1);
 	msleep(20);
-
-	/* FLUID: turn on 5V booster */
-	rc = pm8901_mpp_config_digital_out(CAM_BOOSTER_MPP,
-		PM8901_MPP_DIG_LEVEL_MSMIO, 1);
-
-	if (rc) {
-		pr_err("%s: CAM_5V_BOOST_EN failed\n", __func__);
-
-		gpio_direction_output(GPIO_LED_FLASH_EN, 0);
-		gpio_free(GPIO_LED_FLASH_EN);
-		config_gpio_table(MSM_CAM_OFF);
-		gpio_set_value_cansleep(GPIO_EXT_CAMIF_PWR_EN, 0);
-		gpio_free(GPIO_EXT_CAMIF_PWR_EN);
-		return  rc;
-	}
-
-	rc = gpio_request(PM8901_GPIO_PM_TO_SYS(CAM_BOOSTER_MPP),
-		"CAM_5V_BOOST_EN");
-
-	if (rc) {
-		pr_err("%s: camera 5V booster gpio pm8901 mpp1 request"
-		"failed\n", __func__);
-		pm8901_mpp_config_digital_out(CAM_BOOSTER_MPP,
-		PM8901_MPP_DIG_LEVEL_MSMIO, 0);
-		gpio_direction_output(GPIO_LED_FLASH_EN, 0);
-		gpio_free(GPIO_LED_FLASH_EN);
-		config_gpio_table(MSM_CAM_OFF);
-		gpio_set_value_cansleep(GPIO_EXT_CAMIF_PWR_EN, 0);
-		gpio_free(GPIO_EXT_CAMIF_PWR_EN);
-		return rc;
-	}
-
-	gpio_direction_output(PM8901_GPIO_PM_TO_SYS(CAM_BOOSTER_MPP), 1);
-	gpio_set_value(PM8901_GPIO_PM_TO_SYS(CAM_BOOSTER_MPP), 1);
 	return rc;
 }
 
+
 static void config_camera_off_gpios_fluid(void)
 {
+	regulator_disable(reg_flash_5V);
+	regulator_put(reg_flash_5V);
+
 	gpio_direction_output(GPIO_LED_FLASH_EN, 0);
 	gpio_free(GPIO_LED_FLASH_EN);
-
-
-	pm8901_mpp_config_digital_out(CAM_BOOSTER_MPP,
-	PM8901_MPP_DIG_LEVEL_MSMIO, 0);
-	gpio_set_value(PM8901_GPIO_PM_TO_SYS(CAM_BOOSTER_MPP), 0);
-	gpio_free(PM8901_GPIO_PM_TO_SYS(CAM_BOOSTER_MPP));
 
 	config_gpio_table(MSM_CAM_OFF);
 
@@ -2160,6 +2092,318 @@ static void config_camera_off_gpios_web_cam(void)
 	return;
 }
 
+#ifdef CONFIG_MSM_BUS_SCALING
+static struct msm_bus_vectors cam_init_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+};
+
+static struct msm_bus_vectors cam_preview_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 283115520,
+		.ib  = 452984832,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+};
+
+static struct msm_bus_vectors cam_video_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 283115520,
+		.ib  = 452984832,
+	},
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 283115520,
+		.ib  = 452984832,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 319610880,
+		.ib  = 511377408,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+};
+
+static struct msm_bus_vectors cam_snapshot_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 566231040,
+		.ib  = 905969664,
+	},
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 69984000,
+		.ib  = 111974400,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 320864256,
+		.ib  = 513382810,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 320864256,
+		.ib  = 513382810,
+	},
+};
+
+static struct msm_bus_vectors cam_zsl_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 566231040,
+		.ib  = 905969664,
+	},
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 706199040,
+		.ib  = 1129918464,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 320864256,
+		.ib  = 513382810,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 320864256,
+		.ib  = 513382810,
+	},
+};
+
+static struct msm_bus_vectors cam_stereo_video_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 212336640,
+		.ib  = 339738624,
+	},
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 25090560,
+		.ib  = 40144896,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 239708160,
+		.ib  = 383533056,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 79902720,
+		.ib  = 127844352,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+};
+
+static struct msm_bus_vectors cam_stereo_snapshot_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 300902400,
+		.ib  = 481443840,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 230307840,
+		.ib  = 368492544,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 245113344,
+		.ib  = 392181351,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_SMI,
+		.ab  = 106536960,
+		.ib  = 170459136,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 106536960,
+		.ib  = 170459136,
+	},
+};
+
+static struct msm_bus_paths cam_bus_client_config[] = {
+	{
+		ARRAY_SIZE(cam_init_vectors),
+		cam_init_vectors,
+	},
+	{
+		ARRAY_SIZE(cam_preview_vectors),
+		cam_preview_vectors,
+	},
+	{
+		ARRAY_SIZE(cam_video_vectors),
+		cam_video_vectors,
+	},
+	{
+		ARRAY_SIZE(cam_snapshot_vectors),
+		cam_snapshot_vectors,
+	},
+	{
+		ARRAY_SIZE(cam_zsl_vectors),
+		cam_zsl_vectors,
+	},
+	{
+		ARRAY_SIZE(cam_stereo_video_vectors),
+		cam_stereo_video_vectors,
+	},
+	{
+		ARRAY_SIZE(cam_stereo_snapshot_vectors),
+		cam_stereo_snapshot_vectors,
+	},
+};
+
+static struct msm_bus_scale_pdata cam_bus_client_pdata = {
+		cam_bus_client_config,
+		ARRAY_SIZE(cam_bus_client_config),
+		.name = "msm_camera",
+};
+#endif
+
 struct msm_camera_device_platform_data msm_camera_device_data = {
 	.camera_gpio_on  = config_camera_on_gpios,
 	.camera_gpio_off = config_camera_off_gpios,
@@ -2168,6 +2412,9 @@ struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioext.csiirq = CSI_0_IRQ,
 	.ioclk.mclk_clk_rate = 24000000,
 	.ioclk.vfe_clk_rate  = 228570000,
+#ifdef CONFIG_MSM_BUS_SCALING
+	.cam_bus_scale_table = &cam_bus_client_pdata,
+#endif
 };
 
 #ifdef CONFIG_QS_S5K4E1
@@ -2179,6 +2426,9 @@ struct msm_camera_device_platform_data msm_camera_device_data_qs_cam = {
 	.ioext.csiirq = CSI_0_IRQ,
 	.ioclk.mclk_clk_rate = 24000000,
 	.ioclk.vfe_clk_rate  = 228570000,
+#ifdef CONFIG_MSM_BUS_SCALING
+	.cam_bus_scale_table = &cam_bus_client_pdata,
+#endif
 };
 #endif
 
@@ -2190,6 +2440,9 @@ struct msm_camera_device_platform_data msm_camera_device_data_web_cam = {
 	.ioext.csiirq = CSI_1_IRQ,
 	.ioclk.mclk_clk_rate = 24000000,
 	.ioclk.vfe_clk_rate  = 228570000,
+#ifdef CONFIG_MSM_BUS_SCALING
+	.cam_bus_scale_table = &cam_bus_client_pdata,
+#endif
 };
 
 struct resource msm_camera_resources[] = {
@@ -2583,10 +2836,12 @@ static void __init msm8x60_init_dsps(void)
  * tvout = 720 x 576 x 2(bpp) x 2(pages)
  * Note: must be multiple of 4096 */
 #define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE + 0x195000 + \
-			MSM_FB_DSUB_PMEM_ADDER, 4096)
+			MSM_FB_WRITEBACK_SIZE + MSM_FB_DSUB_PMEM_ADDER, 4096)
 #else /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-#define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE + MSM_FB_DSUB_PMEM_ADDER, 4096)
+#define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE +  \
+			MSM_FB_WRITEBACK_SIZE + MSM_FB_DSUB_PMEM_ADDER, 4096)
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
+
 #define MSM_PMEM_SF_SIZE 0x4000000 /* 64 Mbytes */
 
 #define MSM_PMEM_KERNEL_EBI1_SIZE  0x600000
@@ -2914,6 +3169,20 @@ static struct platform_device mipi_dsi_toshiba_panel_device = {
 	.name = "mipi_toshiba",
 	.id = 0,
 };
+
+#define FPGA_3D_GPIO_CONFIG_ADDR	0x1D00017A
+
+static struct mipi_dsi_novatek_platform_data novatek_pdata = {
+	.fpga_3d_config_addr  = FPGA_3D_GPIO_CONFIG_ADDR,
+};
+
+static struct platform_device mipi_dsi_novatek_panel_device = {
+	.name = "mipi_novatek",
+	.id = 0,
+	.dev = {
+		.platform_data = &novatek_pdata,
+	}
+};
 #endif
 
 static void __init msm8x60_allocate_memory_regions(void)
@@ -2964,33 +3233,34 @@ static struct kobject *properties_kobj;
 
 
 
-#define FLUID_CYTTSP_TS_GPIO_IRQ	61
-static int cyttsp_fluid_platform_init(struct i2c_client *client)
+#define CYTTSP_TS_GPIO_IRQ	61
+static int cyttsp_platform_init(struct i2c_client *client)
 {
 	int rc = -EINVAL;
-	struct regulator *pm8058_l5, *pm8058_s3;
+	struct regulator *pm8058_l5 = NULL, *pm8058_s3;
 
-	pm8058_l5 = regulator_get(NULL, "8058_l5");
-	if (IS_ERR(pm8058_l5)) {
-		pr_err("%s: regulator get of 8058_l5 failed (%ld)\n",
-			__func__, PTR_ERR(pm8058_l5));
-		rc = PTR_ERR(pm8058_l5);
-		return rc;
-	}
-	rc = regulator_set_voltage(pm8058_l5, 2850000, 2850000);
-	if (rc) {
-		pr_err("%s: regulator_set_voltage of 8058_l5 failed(%d)\n",
-			__func__, rc);
-		goto reg_l5_put;
-	}
+	if (machine_is_msm8x60_fluid()) {
+		pm8058_l5 = regulator_get(NULL, "8058_l5");
+		if (IS_ERR(pm8058_l5)) {
+			pr_err("%s: regulator get of 8058_l5 failed (%ld)\n",
+				__func__, PTR_ERR(pm8058_l5));
+			rc = PTR_ERR(pm8058_l5);
+			return rc;
+		}
+		rc = regulator_set_voltage(pm8058_l5, 2850000, 2850000);
+		if (rc) {
+			pr_err("%s: regulator_set_voltage of 8058_l5 failed(%d)\n",
+				__func__, rc);
+			goto reg_l5_put;
+		}
 
-	rc = regulator_enable(pm8058_l5);
-	if (rc) {
-		pr_err("%s: regulator_enable of 8058_l5 failed(%d)\n",
-			__func__, rc);
-		goto reg_l5_put;
+		rc = regulator_enable(pm8058_l5);
+		if (rc) {
+			pr_err("%s: regulator_enable of 8058_l5 failed(%d)\n",
+				__func__, rc);
+			goto reg_l5_put;
+		}
 	}
-
 	/* vote for s3 to enable i2c communication lines */
 	pm8058_s3 = regulator_get(NULL, "8058_s3");
 	if (IS_ERR(pm8058_s3)) {
@@ -3025,16 +3295,17 @@ static int cyttsp_fluid_platform_init(struct i2c_client *client)
 	}
 
 	/* virtual keys */
-	tma300_vkeys_attr.attr.name = "virtualkeys.cyttsp-i2c";
-	properties_kobj = kobject_create_and_add("board_properties",
-				NULL);
-	if (properties_kobj)
-		rc = sysfs_create_group(properties_kobj,
-			&tma300_properties_attr_group);
-	if (!properties_kobj || rc)
-		pr_err("%s: failed to create board_properties\n",
-				__func__);
-
+	if (machine_is_msm8x60_fluid()) {
+		tma300_vkeys_attr.attr.name = "virtualkeys.cyttsp-i2c";
+		properties_kobj = kobject_create_and_add("board_properties",
+					NULL);
+		if (properties_kobj)
+			rc = sysfs_create_group(properties_kobj,
+				&tma300_properties_attr_group);
+		if (!properties_kobj || rc)
+			pr_err("%s: failed to create board_properties\n",
+					__func__);
+	}
 	return CY_OK;
 
 reg_s3_disable:
@@ -3042,13 +3313,15 @@ reg_s3_disable:
 reg_s3_put:
 	regulator_put(pm8058_s3);
 reg_l5_disable:
-	regulator_disable(pm8058_l5);
+	if (machine_is_msm8x60_fluid())
+		regulator_disable(pm8058_l5);
 reg_l5_put:
-	regulator_put(pm8058_l5);
+	if (machine_is_msm8x60_fluid())
+		regulator_put(pm8058_l5);
 	return rc;
 }
 
-static int cyttsp_fluid_platform_resume(struct i2c_client *client)
+static int cyttsp_platform_resume(struct i2c_client *client)
 {
 	/* add any special code to strobe a wakeup pin or chip reset */
 	msleep(10);
@@ -3085,11 +3358,52 @@ static struct cyttsp_platform_data cyttsp_fluid_pdata = {
 	.lp_intrvl = CY_LP_INTRVL_DFLT,
 	.sleep_gpio = -1,
 	.resout_gpio = -1,
-	.irq_gpio = FLUID_CYTTSP_TS_GPIO_IRQ,
-	.resume = cyttsp_fluid_platform_resume,
-	.init = cyttsp_fluid_platform_init,
+	.irq_gpio = CYTTSP_TS_GPIO_IRQ,
+	.resume = cyttsp_platform_resume,
+	.init = cyttsp_platform_init,
 };
 
+static struct cyttsp_platform_data cyttsp_tmg240_pdata = {
+	.panel_maxx = 1083,
+	.panel_maxy = 659,
+	.disp_minx = 30,
+	.disp_maxx = 1053,
+	.disp_miny = 30,
+	.disp_maxy = 629,
+	.correct_fw_ver = 8,
+	.fw_fname = "cyttsp_8660_ffa.hex",
+	.flags = 0x00,
+	.gen = CY_GEN2,	/* or */
+	.use_st = CY_USE_ST,
+	.use_mt = CY_USE_MT,
+	.use_hndshk = CY_SEND_HNDSHK,
+	.use_trk_id = CY_USE_TRACKING_ID,
+	.use_sleep = CY_USE_SLEEP,
+	.use_gestures = CY_USE_GESTURES,
+	/* activate up to 4 groups
+	 * and set active distance
+	 */
+	.gest_set = CY_GEST_GRP1 | CY_GEST_GRP2 |
+				CY_GEST_GRP3 | CY_GEST_GRP4 |
+				CY_ACT_DIST,
+	/* change act_intrvl to customize the Active power state
+	 * scanning/processing refresh interval for Operating mode
+	 */
+	.act_intrvl = CY_ACT_INTRVL_DFLT,
+	/* change tch_tmout to customize the touch timeout for the
+	 * Active power state for Operating mode
+	 */
+	.tch_tmout = CY_TCH_TMOUT_DFLT,
+	/* change lp_intrvl to customize the Low Power power state
+	 * scanning/processing refresh interval for Operating mode
+	 */
+	.lp_intrvl = CY_LP_INTRVL_DFLT,
+	.sleep_gpio = -1,
+	.resout_gpio = -1,
+	.irq_gpio = CYTTSP_TS_GPIO_IRQ,
+	.resume = cyttsp_platform_resume,
+	.init = cyttsp_platform_init,
+};
 static void cyttsp_set_params(void)
 {
 	if (SOCINFO_VERSION_MAJOR(socinfo_get_platform_version()) < 3) {
@@ -3119,7 +3433,17 @@ static struct i2c_board_info cyttsp_fluid_info[] __initdata = {
 		I2C_BOARD_INFO(CY_I2C_NAME, 0x24),
 		.platform_data = &cyttsp_fluid_pdata,
 #ifndef CY_USE_TIMER
-		.irq = MSM_GPIO_TO_INT(FLUID_CYTTSP_TS_GPIO_IRQ),
+		.irq = MSM_GPIO_TO_INT(CYTTSP_TS_GPIO_IRQ),
+#endif /* CY_USE_TIMER */
+	},
+};
+
+static struct i2c_board_info cyttsp_ffa_info[] __initdata = {
+	{
+		I2C_BOARD_INFO(CY_I2C_NAME, 0x3b),
+		.platform_data = &cyttsp_tmg240_pdata,
+#ifndef CY_USE_TIMER
+		.irq = MSM_GPIO_TO_INT(CYTTSP_TS_GPIO_IRQ),
 #endif /* CY_USE_TIMER */
 	},
 };
@@ -3233,13 +3557,6 @@ static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 };
 #endif
 
-#ifdef CONFIG_MSM_GSBI9_UART
-static struct msm_serial_hslite_platform_data msm_uart_gsbi9_pdata = {
-	.config_gpio	= 1,
-	.uart_tx_gpio	= 67,
-	.uart_rx_gpio	= 66,
-};
-#endif
 
 #if defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)
 
@@ -3400,62 +3717,157 @@ static struct platform_device msm_charger_device = {
 };
 #endif
 
-static struct regulator_consumer_supply rpm_vreg_supply[RPM_VREG_ID_MAX] = {
-	[RPM_VREG_ID_PM8058_L0]  = REGULATOR_SUPPLY("8058_l0", NULL),
-	[RPM_VREG_ID_PM8058_L1]  = REGULATOR_SUPPLY("8058_l1", NULL),
-	[RPM_VREG_ID_PM8058_L2]  = REGULATOR_SUPPLY("8058_l2", NULL),
-	[RPM_VREG_ID_PM8058_L3]  = REGULATOR_SUPPLY("8058_l3", NULL),
-	[RPM_VREG_ID_PM8058_L4]  = REGULATOR_SUPPLY("8058_l4", NULL),
-	[RPM_VREG_ID_PM8058_L5]  = REGULATOR_SUPPLY("8058_l5", NULL),
-	[RPM_VREG_ID_PM8058_L6]  = REGULATOR_SUPPLY("8058_l6", NULL),
-	[RPM_VREG_ID_PM8058_L7]  = REGULATOR_SUPPLY("8058_l7", NULL),
-	[RPM_VREG_ID_PM8058_L8]  = REGULATOR_SUPPLY("8058_l8", NULL),
-	[RPM_VREG_ID_PM8058_L9]  = REGULATOR_SUPPLY("8058_l9", NULL),
-	[RPM_VREG_ID_PM8058_L10] = REGULATOR_SUPPLY("8058_l10", NULL),
-	[RPM_VREG_ID_PM8058_L11] = REGULATOR_SUPPLY("8058_l11", NULL),
-	[RPM_VREG_ID_PM8058_L12] = REGULATOR_SUPPLY("8058_l12", NULL),
-	[RPM_VREG_ID_PM8058_L13] = REGULATOR_SUPPLY("8058_l13", NULL),
-	[RPM_VREG_ID_PM8058_L14] = REGULATOR_SUPPLY("8058_l14", NULL),
-	[RPM_VREG_ID_PM8058_L15] = REGULATOR_SUPPLY("8058_l15", NULL),
-	[RPM_VREG_ID_PM8058_L16] = REGULATOR_SUPPLY("8058_l16", NULL),
-	[RPM_VREG_ID_PM8058_L17] = REGULATOR_SUPPLY("8058_l17", NULL),
-	[RPM_VREG_ID_PM8058_L18] = REGULATOR_SUPPLY("8058_l18", NULL),
-	[RPM_VREG_ID_PM8058_L19] = REGULATOR_SUPPLY("8058_l19", NULL),
-	[RPM_VREG_ID_PM8058_L20] = REGULATOR_SUPPLY("8058_l20", NULL),
-	[RPM_VREG_ID_PM8058_L21] = REGULATOR_SUPPLY("8058_l21", NULL),
-	[RPM_VREG_ID_PM8058_L22] = REGULATOR_SUPPLY("8058_l22", NULL),
-	[RPM_VREG_ID_PM8058_L23] = REGULATOR_SUPPLY("8058_l23", NULL),
-	[RPM_VREG_ID_PM8058_L24] = REGULATOR_SUPPLY("8058_l24", NULL),
-	[RPM_VREG_ID_PM8058_L25] = REGULATOR_SUPPLY("8058_l25", NULL),
+/*
+ * Consumer specific regulator names:
+ *			 regulator name		consumer dev_name
+ */
+static struct regulator_consumer_supply vreg_consumers_PM8058_L0[] = {
+	REGULATOR_SUPPLY("8058_l0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L1[] = {
+	REGULATOR_SUPPLY("8058_l1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L2[] = {
+	REGULATOR_SUPPLY("8058_l2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L3[] = {
+	REGULATOR_SUPPLY("8058_l3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L4[] = {
+	REGULATOR_SUPPLY("8058_l4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L5[] = {
+	REGULATOR_SUPPLY("8058_l5",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L6[] = {
+	REGULATOR_SUPPLY("8058_l6",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L7[] = {
+	REGULATOR_SUPPLY("8058_l7",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L8[] = {
+	REGULATOR_SUPPLY("8058_l8",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L9[] = {
+	REGULATOR_SUPPLY("8058_l9",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L10[] = {
+	REGULATOR_SUPPLY("8058_l10",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L11[] = {
+	REGULATOR_SUPPLY("8058_l11",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L12[] = {
+	REGULATOR_SUPPLY("8058_l12",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L13[] = {
+	REGULATOR_SUPPLY("8058_l13",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L14[] = {
+	REGULATOR_SUPPLY("8058_l14",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L15[] = {
+	REGULATOR_SUPPLY("8058_l15",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L16[] = {
+	REGULATOR_SUPPLY("8058_l16",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L17[] = {
+	REGULATOR_SUPPLY("8058_l17",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L18[] = {
+	REGULATOR_SUPPLY("8058_l18",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L19[] = {
+	REGULATOR_SUPPLY("8058_l19",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L20[] = {
+	REGULATOR_SUPPLY("8058_l20",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L21[] = {
+	REGULATOR_SUPPLY("8058_l21",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L22[] = {
+	REGULATOR_SUPPLY("8058_l22",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L23[] = {
+	REGULATOR_SUPPLY("8058_l23",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L24[] = {
+	REGULATOR_SUPPLY("8058_l24",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_L25[] = {
+	REGULATOR_SUPPLY("8058_l25",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S0[] = {
+	REGULATOR_SUPPLY("8058_s0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S1[] = {
+	REGULATOR_SUPPLY("8058_s1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S2[] = {
+	REGULATOR_SUPPLY("8058_s2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S3[] = {
+	REGULATOR_SUPPLY("8058_s3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_S4[] = {
+	REGULATOR_SUPPLY("8058_s4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_LVS0[] = {
+	REGULATOR_SUPPLY("8058_lvs0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_LVS1[] = {
+	REGULATOR_SUPPLY("8058_lvs1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8058_NCP[] = {
+	REGULATOR_SUPPLY("8058_ncp",		NULL),
+};
 
-	[RPM_VREG_ID_PM8058_S0] = REGULATOR_SUPPLY("8058_s0", NULL),
-	[RPM_VREG_ID_PM8058_S1] = REGULATOR_SUPPLY("8058_s1", NULL),
-	[RPM_VREG_ID_PM8058_S2] = REGULATOR_SUPPLY("8058_s2", NULL),
-	[RPM_VREG_ID_PM8058_S3] = REGULATOR_SUPPLY("8058_s3", NULL),
-	[RPM_VREG_ID_PM8058_S4] = REGULATOR_SUPPLY("8058_s4", NULL),
-
-	[RPM_VREG_ID_PM8058_LVS0] = REGULATOR_SUPPLY("8058_lvs0", NULL),
-	[RPM_VREG_ID_PM8058_LVS1] = REGULATOR_SUPPLY("8058_lvs1", NULL),
-
-	[RPM_VREG_ID_PM8058_NCP] = REGULATOR_SUPPLY("8058_ncp", NULL),
-
-	[RPM_VREG_ID_PM8901_L0]  = REGULATOR_SUPPLY("8901_l0",  NULL),
-	[RPM_VREG_ID_PM8901_L1]  = REGULATOR_SUPPLY("8901_l1",  NULL),
-	[RPM_VREG_ID_PM8901_L2]  = REGULATOR_SUPPLY("8901_l2",  NULL),
-	[RPM_VREG_ID_PM8901_L3]  = REGULATOR_SUPPLY("8901_l3",  NULL),
-	[RPM_VREG_ID_PM8901_L4]  = REGULATOR_SUPPLY("8901_l4",  NULL),
-	[RPM_VREG_ID_PM8901_L5]  = REGULATOR_SUPPLY("8901_l5",  NULL),
-	[RPM_VREG_ID_PM8901_L6]  = REGULATOR_SUPPLY("8901_l6",  NULL),
-
-	[RPM_VREG_ID_PM8901_S2] = REGULATOR_SUPPLY("8901_s2", NULL),
-	[RPM_VREG_ID_PM8901_S3] = REGULATOR_SUPPLY("8901_s3", NULL),
-	[RPM_VREG_ID_PM8901_S4] = REGULATOR_SUPPLY("8901_s4", NULL),
-
-	[RPM_VREG_ID_PM8901_LVS0] = REGULATOR_SUPPLY("8901_lvs0", NULL),
-	[RPM_VREG_ID_PM8901_LVS1] = REGULATOR_SUPPLY("8901_lvs1", NULL),
-	[RPM_VREG_ID_PM8901_LVS2] = REGULATOR_SUPPLY("8901_lvs2", NULL),
-	[RPM_VREG_ID_PM8901_LVS3] = REGULATOR_SUPPLY("8901_lvs3", NULL),
-	[RPM_VREG_ID_PM8901_MVS0] = REGULATOR_SUPPLY("8901_mvs0", NULL),
+static struct regulator_consumer_supply vreg_consumers_PM8901_L0[] = {
+	REGULATOR_SUPPLY("8901_l0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L1[] = {
+	REGULATOR_SUPPLY("8901_l1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L2[] = {
+	REGULATOR_SUPPLY("8901_l2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L3[] = {
+	REGULATOR_SUPPLY("8901_l3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L4[] = {
+	REGULATOR_SUPPLY("8901_l4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L5[] = {
+	REGULATOR_SUPPLY("8901_l5",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_L6[] = {
+	REGULATOR_SUPPLY("8901_l6",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_S2[] = {
+	REGULATOR_SUPPLY("8901_s2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_S3[] = {
+	REGULATOR_SUPPLY("8901_s3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_S4[] = {
+	REGULATOR_SUPPLY("8901_s4",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS0[] = {
+	REGULATOR_SUPPLY("8901_lvs0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS1[] = {
+	REGULATOR_SUPPLY("8901_lvs1",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS2[] = {
+	REGULATOR_SUPPLY("8901_lvs2",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_LVS3[] = {
+	REGULATOR_SUPPLY("8901_lvs3",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_PM8901_MVS0[] = {
+	REGULATOR_SUPPLY("8901_mvs0",		NULL),
 };
 
 #define RPM_VREG_INIT(_id, _min_uV, _max_uV, _modes, _ops, _apply_uV, \
@@ -3473,9 +3885,9 @@ static struct regulator_consumer_supply rpm_vreg_supply[RPM_VREG_ID_MAX] = {
 				.apply_uV = _apply_uV, \
 				.always_on = _always_on, \
 			}, \
-			.num_consumer_supplies = 1, \
-			.consumer_supplies = \
-				&rpm_vreg_supply[RPM_VREG_ID_##_id], \
+			.consumer_supplies = vreg_consumers_##_id, \
+			.num_consumer_supplies = \
+				ARRAY_SIZE(vreg_consumers_##_id), \
 		}, \
 		.default_uV = _default_uV, \
 		.peak_uA = _peak_uA, \
@@ -3571,9 +3983,9 @@ static struct rpm_vreg_pdata rpm_vreg_init_pdata[RPM_VREG_ID_MAX] = {
 	RPM_VREG_INIT_LDO(PM8058_L13, 0, 1, 0, 2050000, 2050000, LDO300HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L14, 0, 0, 0, 2850000, 2850000, LDO300HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L15, 0, 1, 0, 2850000, 2850000, LDO300HMIN, 0),
-	RPM_VREG_INIT_LDO(PM8058_L16, 1, 1, 1, 1800000, 1800000, LDO300HMIN, 0),
+	RPM_VREG_INIT_LDO(PM8058_L16, 1, 1, 0, 1800000, 1800000, LDO300HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L17, 0, 1, 0, 2600000, 2600000, LDO150HMIN, 0),
-	RPM_VREG_INIT_LDO(PM8058_L18, 0, 1, 1, 2200000, 2200000, LDO150HMIN, 0),
+	RPM_VREG_INIT_LDO(PM8058_L18, 0, 1, 0, 2200000, 2200000, LDO150HMIN, 0),
 	RPM_VREG_INIT_LDO(PM8058_L19, 0, 1, 0, 2500000, 2500000, LDO150HMIN, 0),
 	RPM_VREG_INIT_LDO_PF(PM8058_L20, 0, 1, 0, 1800000, 1800000, LDO150HMIN,
 		RPM_VREG_PIN_CTRL_NONE, RPM_VREG_PIN_FN_SLEEP_B),
@@ -4618,6 +5030,7 @@ static struct platform_device *surf_devices[] __initdata = {
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
 #ifdef CONFIG_FB_MSM_MIPI_DSI
 	&mipi_dsi_toshiba_panel_device,
+	&mipi_dsi_novatek_panel_device,
 #endif
 #ifdef CONFIG_MSM_CAMERA
 #ifdef CONFIG_MT9E013
@@ -4724,8 +5137,12 @@ static struct platform_device *surf_devices[] __initdata = {
 #endif
 
 #if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
-	&msm_device_tsif,
-#endif
+#ifdef CONFIG_MSM_USE_TSIF1
+	&msm_device_tsif[1],
+#else
+	&msm_device_tsif[0],
+#endif /* CONFIG_MSM_USE_TSIF1 */
+#endif /* CONFIG_TSIF */
 
 #ifdef CONFIG_HW_RANDOM_MSM
 	&msm_device_rng,
@@ -5104,7 +5521,7 @@ static const unsigned int ffa_keymap[] = {
 	KEY(4, 3, KEY_HOME),	  /* Right switch: MIC Bd */
 	KEY(4, 4, KEY_FN_F3),	  /* Reserved MIC */
 
-	KEY(5, 0, KEY_CAMERA_SNAPSHOT), /* RS - PUSH2 */
+	KEY(5, 0, KEY_CAMERA), /* RS - PUSH2 */
 	KEY(5, 1, KEY_RIGHT),	  /* USER_RIGHT */
 	KEY(5, 2, KEY_DOWN),	  /* USER_DOWN */
 	KEY(5, 3, KEY_BACK),	  /* Left switch: MIC */
@@ -5295,6 +5712,8 @@ static struct othc_n_switch_config switch_config = {
 	.adc_channel = CHANNEL_ADC_HDSET,
 	.switch_info = switch_info,
 	.num_keys = ARRAY_SIZE(switch_info),
+	.default_sw_en = true,
+	.default_sw_idx = 0,
 };
 
 static struct hsed_bias_config hsed_bias_config = {
@@ -6213,15 +6632,23 @@ static struct resource pm8901_temp_alarm[] = {
 	},
 };
 
-static struct regulator_consumer_supply pm8901_vreg_supply[PM8901_VREG_MAX] = {
-	[PM8901_VREG_ID_MPP0] =     REGULATOR_SUPPLY("8901_mpp0",     NULL),
-	[PM8901_VREG_ID_USB_OTG]  = REGULATOR_SUPPLY("8901_usb_otg",  NULL),
-	[PM8901_VREG_ID_HDMI_MVS] = REGULATOR_SUPPLY("8901_hdmi_mvs", NULL),
+/*
+ * Consumer specific regulator names:
+ *			 regulator name		consumer dev_name
+ */
+static struct regulator_consumer_supply vreg_consumers_8901_MPP0[] = {
+	REGULATOR_SUPPLY("8901_mpp0",		NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_8901_USB_OTG[] = {
+	REGULATOR_SUPPLY("8901_usb_otg",	NULL),
+};
+static struct regulator_consumer_supply vreg_consumers_8901_HDMI_MVS[] = {
+	REGULATOR_SUPPLY("8901_hdmi_mvs",	NULL),
 };
 
 #define PM8901_VREG_INIT(_id, _min_uV, _max_uV, _modes, _ops, _apply_uV, \
 			 _always_on, _active_high) \
-	[_id] = { \
+	[PM8901_VREG_ID_##_id] = { \
 		.init_data = { \
 			.constraints = { \
 				.valid_modes_mask = _modes, \
@@ -6232,8 +6659,9 @@ static struct regulator_consumer_supply pm8901_vreg_supply[PM8901_VREG_MAX] = {
 				.apply_uV = _apply_uV, \
 				.always_on = _always_on, \
 			}, \
-			.num_consumer_supplies = 1, \
-			.consumer_supplies = &pm8901_vreg_supply[_id], \
+			.consumer_supplies = vreg_consumers_8901_##_id, \
+			.num_consumer_supplies = \
+				ARRAY_SIZE(vreg_consumers_8901_##_id), \
 		}, \
 		.active_high = _active_high, \
 	}
@@ -6247,10 +6675,10 @@ static struct regulator_consumer_supply pm8901_vreg_supply[PM8901_VREG_MAX] = {
 			REGULATOR_CHANGE_STATUS, 0, 0, 0)
 
 static struct pm8901_vreg_pdata pm8901_vreg_init_pdata[PM8901_VREG_MAX] = {
-	PM8901_VREG_INIT_MPP(PM8901_VREG_ID_MPP0, 1),
+	PM8901_VREG_INIT_MPP(MPP0, 1),
 
-	PM8901_VREG_INIT_VS(PM8901_VREG_ID_USB_OTG),
-	PM8901_VREG_INIT_VS(PM8901_VREG_ID_HDMI_MVS),
+	PM8901_VREG_INIT_VS(USB_OTG),
+	PM8901_VREG_INIT_VS(HDMI_MVS),
 };
 
 #define PM8901_VREG(_id) { \
@@ -6321,7 +6749,7 @@ static u8 read_bahama_ver(void)
 		printk(KERN_ERR
 			 "%s: version read failed: %d\n",
 			__func__, rc);
-			return rc;
+			return VER_UNSUPPORTED;
 	} else {
 		printk(KERN_INFO
 		"%s: version read got: 0x%x\n",
@@ -6681,6 +7109,12 @@ static struct i2c_registry msm8x60_i2c_devices[] __initdata = {
 		cyttsp_fluid_info,
 		ARRAY_SIZE(cyttsp_fluid_info),
 	},
+	{
+		I2C_FFA | I2C_SURF,
+		MSM_GSBI3_QUP_I2C_BUS_ID,
+		cyttsp_ffa_info,
+		ARRAY_SIZE(cyttsp_ffa_info),
+	},
 #endif
 #ifdef CONFIG_MSM_CAMERA
     {
@@ -6938,9 +7372,10 @@ static void __init msm8x60_init_buses(void)
 #endif
 #ifdef CONFIG_MSM_GSBI9_UART
 	if (machine_is_msm8x60_fusion() || machine_is_msm8x60_fusn_ffa()) {
-		msm_device_uart_gsbi9.dev.platform_data =
-					&msm_uart_gsbi9_pdata;
-		platform_device_register(&msm_device_uart_gsbi9);
+		msm_device_uart_gsbi9 = msm_add_gsbi9_uart();
+		if (IS_ERR(msm_device_uart_gsbi9))
+			pr_err("%s(): Failed to create uart gsbi9 device\n",
+								__func__);
 	}
 #endif
 
@@ -8505,6 +8940,7 @@ static int lcdc_panel_power(int on)
 
 	return 0;
 }
+
 #ifdef CONFIG_MSM_BUS_SCALING
 #ifdef CONFIG_FB_MSM_LCDC_DSUB
 static struct msm_bus_vectors mdp_init_vectors[] = {
@@ -8810,9 +9246,6 @@ static struct lcdc_platform_data lcdc_pdata = {
 
 
 #define MDP_VSYNC_GPIO			28
-#ifdef CONFIG_FB_MSM_MIPI_NOVATEK_3D_PANEL
-#define FPGA_3D_GPIO_CONFIG_ADDR	0x1D00017A
-#endif
 
 /*
  * MIPI_DSI only use 8058_LDO0 which need always on
@@ -8871,9 +9304,6 @@ out:
 static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.vsync_gpio = MDP_VSYNC_GPIO,
 	.dsi_power_save   = mipi_dsi_panel_power,
-#ifdef CONFIG_FB_MSM_MIPI_NOVATEK_3D_PANEL
-	.fpga_config_addr  = FPGA_3D_GPIO_CONFIG_ADDR,
-#endif
 };
 
 #ifdef CONFIG_FB_MSM_TVOUT
@@ -8921,12 +9351,22 @@ static int atv_dac_power(int on)
 }
 #endif
 
+#ifdef CONFIG_FB_MSM_MIPI_DSI
+int mdp_core_clk_rate_table[] = {
+	85330000,
+	85330000,
+	160000000,
+	200000000,
+};
+#else
 int mdp_core_clk_rate_table[] = {
 	59080000,
 	59080000,
 	85330000,
 	200000000,
 };
+#endif
+
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = MDP_VSYNC_GPIO,
 	.mdp_core_clk_rate = 59080000,

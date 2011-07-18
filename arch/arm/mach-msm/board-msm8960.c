@@ -30,6 +30,8 @@
 #include <linux/cyttsp.h>
 #include <linux/dma-mapping.h>
 #include <linux/platform_data/qcom_crypto_device.h>
+#include <linux/leds.h>
+#include <linux/leds-pm8xxx.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -53,10 +55,7 @@
 #include <mach/msm_bus_board.h>
 #include <mach/msm_memtypes.h>
 #include <mach/dma.h>
-#ifdef CONFIG_MSM_DSPS
 #include <mach/msm_dsps.h>
-#include "peripheral-loader.h"
-#endif
 #include <mach/msm_xo.h>
 
 #ifdef CONFIG_WCD9310_CODEC
@@ -226,6 +225,12 @@ static struct gpiomux_setting gsbi10 = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting gsbi12 = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 static struct gpiomux_setting cdc_mclk = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -336,6 +341,18 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 		.gpio      = 25,	/* GSBI5 UART2 */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gsbi5,
+		},
+	},
+	{
+		.gpio      = 44,	/* GSBI12 I2C QUP SDA */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi12,
+		},
+	},
+	{
+		.gpio      = 45,	/* GSBI12 I2C QUP SCL */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi12,
 		},
 	},
 	{
@@ -724,6 +741,138 @@ static void __init msm8960_reserve(void)
 	msm_reserve();
 }
 
+#ifdef CONFIG_MSM_CAMERA
+
+static int msm_cam_gpio_tbl[] = {
+	5, /*CAMIF_MCLK*/
+	20, /*CAMIF_I2C_DATA*/
+	21, /*CAMIF_I2C_CLK*/
+};
+
+#ifdef CONFIG_IMX074
+static struct msm_camera_sensor_platform_info sensor_board_info = {
+	.mount_angle = 0
+};
+#endif
+
+static int config_gpio_table(int gpio_en)
+{
+	int rc = 0, i = 0;
+	if (gpio_en) {
+		for (i = 0; i < ARRAY_SIZE(msm_cam_gpio_tbl); i++) {
+			rc = gpio_request(msm_cam_gpio_tbl[i], "CAM_GPIO");
+			if (rc < 0) {
+				pr_err("%s not able to get gpio\n", __func__);
+				for (i--; i >= 0; i--)
+					gpio_free(msm_cam_gpio_tbl[i]);
+					break;
+			}
+		}
+	} else {
+		for (i = 0; i < ARRAY_SIZE(msm_cam_gpio_tbl); i++)
+			gpio_free(msm_cam_gpio_tbl[i]);
+	}
+	return rc;
+}
+
+static int config_camera_on_gpios(void)
+{
+	int rc = 0;
+
+	rc = config_gpio_table(1);
+	if (rc < 0) {
+		printk(KERN_ERR "%s: CAMSENSOR gpio table request"
+			"failed\n", __func__);
+		return rc;
+	}
+	return rc;
+}
+
+static void config_camera_off_gpios(void)
+{
+	config_gpio_table(0);
+}
+
+struct msm_camera_device_platform_data msm_camera_csi0_device_data = {
+	.camera_gpio_on  = config_camera_on_gpios,
+	.camera_gpio_off = config_camera_off_gpios,
+	.ioclk.mclk_clk_rate = 24000000,
+	.ioclk.vfe_clk_rate  = 228570000,
+	.csid_core = 0,
+};
+
+struct msm_camera_device_platform_data msm_camera_csi1_device_data = {
+	.camera_gpio_on  = config_camera_on_gpios,
+	.camera_gpio_off = config_camera_off_gpios,
+	.ioclk.mclk_clk_rate = 24000000,
+	.ioclk.vfe_clk_rate  = 228570000,
+	.csid_core = 1,
+};
+
+#ifdef CONFIG_IMX074
+static struct msm_camera_sensor_flash_data flash_imx074 = {
+	.flash_type	= MSM_CAMERA_FLASH_LED,
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_imx074_data = {
+	.sensor_name	= "imx074",
+	.sensor_reset	= 107,
+	.sensor_pwd	= 85,
+	.vcm_pwd	= 0,
+	.vcm_enable	= 1,
+	.pdata	= &msm_camera_csi0_device_data,
+	.flash_data	= &flash_imx074,
+	.sensor_platform_info = &sensor_board_info,
+	.csi_if	= 1
+};
+
+struct platform_device msm8960_camera_sensor_imx074 = {
+	.name	= "msm_camera_imx074",
+	.dev	= {
+		.platform_data = &msm_camera_sensor_imx074_data,
+	},
+};
+#endif
+#ifdef CONFIG_OV2720
+static struct msm_camera_sensor_flash_data flash_ov2720 = {
+	.flash_type	= MSM_CAMERA_FLASH_LED,
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_ov2720_data = {
+	.sensor_name	= "ov2720",
+	.sensor_reset	= 76,
+	.sensor_pwd	= 85,
+	.vcm_pwd	= 0,
+	.vcm_enable	= 1,
+	.pdata	= &msm_camera_csi1_device_data,
+	.flash_data	= &flash_ov2720,
+	.csi_if	= 1
+};
+
+struct platform_device msm8960_camera_sensor_ov2720 = {
+	.name	= "msm_camera_ov2720",
+	.dev	= {
+		.platform_data = &msm_camera_sensor_ov2720_data,
+	},
+};
+#endif
+static void __init msm8960_init_cam(void)
+{
+	int i;
+	struct platform_device *cam_dev[] = {
+		&msm8960_camera_sensor_imx074,
+		&msm8960_camera_sensor_ov2720,
+	};
+
+	for (i = 0; i < ARRAY_SIZE(cam_dev); i++) {
+		struct msm_camera_sensor_info *s_info;
+		s_info = cam_dev[i]->dev.platform_data;
+		msm_get_cam_resources(s_info);
+		platform_device_register(cam_dev[i]);
+	}
+}
+#endif
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 /* prim = 608 x 1024 x 4(bpp) x 3(pages) */
 #define MSM_FB_PRIM_BUF_SIZE 0x720000
@@ -1041,14 +1190,6 @@ static struct msm_bus_paths mdp_bus_scale_usecases[] = {
 	{
 		ARRAY_SIZE(mdp_init_vectors),
 		mdp_init_vectors,
-	},
-	{
-		ARRAY_SIZE(mdp_sd_smi_vectors),
-		mdp_sd_smi_vectors,
-	},
-	{
-		ARRAY_SIZE(mdp_sd_ebi_vectors),
-		mdp_sd_ebi_vectors,
 	},
 	{
 		ARRAY_SIZE(mdp_vga_vectors),
@@ -2313,10 +2454,10 @@ static ssize_t tma340_vkeys_show(struct kobject *kobj,
 			struct kobj_attribute *attr, char *buf)
 {
 	return snprintf(buf, 200,
-	__stringify(EV_KEY) ":" __stringify(KEY_BACK) ":90:1057:97:120"
-	":" __stringify(EV_KEY) ":" __stringify(KEY_MENU) ":220:1057:97:120"
-	":" __stringify(EV_KEY) ":" __stringify(KEY_HOME) ":370:1057:97:120"
-	":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":520:1057:97:120"
+	__stringify(EV_KEY) ":" __stringify(KEY_BACK) ":73:1120:97:97"
+	":" __stringify(EV_KEY) ":" __stringify(KEY_MENU) ":230:1120:97:97"
+	":" __stringify(EV_KEY) ":" __stringify(KEY_HOME) ":389:1120:97:97"
+	":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":544:1120:97:97"
 	"\n");
 }
 
@@ -2386,6 +2527,7 @@ static struct cyttsp_platform_data cyttsp_pdata = {
 	.use_trk_id = CY_USE_TRACKING_ID,
 	.use_sleep = CY_USE_SLEEP,
 	.use_gestures = CY_USE_GESTURES,
+	.fw_fname = "cyttsp_8960_cdp.hex",
 	/* activate up to 4 groups
 	 * and set active distance
 	 */
@@ -2443,6 +2585,14 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi3_pdata = {
 };
 
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi10_pdata = {
+	.clk_freq = 100000,
+	.src_clk_rate = 24000000,
+	.clk = "gsbi_qup_clk",
+	.pclk = "gsbi_pclk",
+	.msm_i2c_config_gpio = gsbi_qup_i2c_gpio_config,
+};
+
+static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi12_pdata = {
 	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
 	.clk = "gsbi_qup_clk",
@@ -2527,6 +2677,9 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_qup_i2c_gsbi3,
 	&msm8960_device_qup_i2c_gsbi4,
 	&msm8960_device_qup_i2c_gsbi10,
+#ifndef CONFIG_MSM_DSPS
+	&msm8960_device_qup_i2c_gsbi12,
+#endif
 	&msm_slim_ctrl,
 	&msm_device_wcnss_wlan,
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
@@ -2566,13 +2719,11 @@ static struct platform_device *sim_devices[] __initdata = {
 	&usb_gadget_fserial_device,
 	&msm_device_vidc,
 	&mipi_dsi_simulator_panel_device,
-#ifdef CONFIG_MSM_BUS_SCALING
 	&msm_bus_apps_fabric,
 	&msm_bus_sys_fabric,
 	&msm_bus_mm_fabric,
 	&msm_bus_sys_fpb,
 	&msm_bus_cpss_fpb,
-#endif
 	&msm_pcm,
 	&msm_pcm_routing,
 	&msm_cpudai0,
@@ -2640,12 +2791,6 @@ static struct platform_device *cdp_devices[] __initdata = {
 #ifdef CONFIG_MSM_GEMINI
 	&msm8960_gemini_device,
 #endif
-#ifdef CONFIG_IMX074
-	&msm8960_camera_sensor_imx074,
-#endif
-#ifdef CONFIG_OV2720
-	&msm8960_camera_sensor_ov2720,
-#endif
 	&msm_voice,
 	&msm_voip,
 	&msm_lpa_pcm,
@@ -2653,6 +2798,11 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&hdmi_msm_device,
 #endif
 	&msm_pcm_hostless,
+	&msm_bus_apps_fabric,
+	&msm_bus_sys_fabric,
+	&msm_bus_mm_fabric,
+	&msm_bus_sys_fpb,
+	&msm_bus_cpss_fpb,
 };
 
 static void __init msm8960_i2c_init(void)
@@ -2665,6 +2815,9 @@ static void __init msm8960_i2c_init(void)
 
 	msm8960_device_qup_i2c_gsbi10.dev.platform_data =
 					&msm8960_i2c_qup_gsbi10_pdata;
+
+	msm8960_device_qup_i2c_gsbi12.dev.platform_data =
+					&msm8960_i2c_qup_gsbi12_pdata;
 }
 
 static struct pm8xxx_irq_platform_data pm8xxx_irq_pdata __devinitdata = {
@@ -2689,7 +2842,6 @@ static struct pm8xxx_pwrkey_platform_data pm8xxx_pwrkey_pdata = {
 	.pull_up		= 1,
 	.kpd_trigger_delay_us	= 970,
 	.wakeup			= 1,
-	.pwrkey_time_ms		= 500,
 };
 
 static const unsigned int keymap[] = {
@@ -2872,6 +3024,18 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.batt_data		= &palladium_1500_data,
 };
 
+static struct led_info pm8921_led_info[] = {
+	[0] = {
+		.name		= "led:drv1",
+		.flags		= PM8XXX_ID_LED_1,
+	},
+};
+
+static struct led_platform_data pm8xxx_leds_pdata = {
+	.num_leds = ARRAY_SIZE(pm8921_led_info),
+	.leds = pm8921_led_info,
+};
+
 static struct pm8921_platform_data pm8921_platform_data __devinitdata = {
 	.irq_pdata		= &pm8xxx_irq_pdata,
 	.gpio_pdata		= &pm8xxx_gpio_pdata,
@@ -2884,6 +3048,7 @@ static struct pm8921_platform_data pm8921_platform_data __devinitdata = {
 	.charger_pdata		= &pm8921_chg_pdata,
 	.bms_pdata		= &pm8921_bms_pdata,
 	.adc_pdata		= &pm8921_adc_pdata,
+	.leds_pdata		= &pm8xxx_leds_pdata,
 };
 
 static struct msm_ssbi_platform_data msm8960_ssbi_pm8921_pdata __devinitdata = {
@@ -2968,49 +3133,55 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 4000,
 		.residency = 13000,
 	},
 
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 500,
 		.residency = 6000,
 	},
 
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
-		.supported = 1,
-		.suspend_enabled = 1,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 1,
+		.suspend_enabled = 1,
 		.latency = 2,
 		.residency = 0,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 0,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 600,
 		.residency = 7200,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.supported = 1,
-		.suspend_enabled = 0,
+		.idle_supported = 1,
+		.suspend_supported = 1,
 		.idle_enabled = 0,
+		.suspend_enabled = 0,
 		.latency = 500,
 		.residency = 6000,
 	},
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
-		.supported = 1,
-		.suspend_enabled = 1,
+		.idle_supported = 1,
+		.suspend_supported = 0,
 		.idle_enabled = 1,
+		.suspend_enabled = 0,
 		.latency = 2,
 		.residency = 0,
 	},
@@ -3115,12 +3286,9 @@ static void __init msm8960_init_dsps(void)
 #ifdef CONFIG_MSM_DSPS
 	struct msm_dsps_platform_data *pdata =
 		msm_dsps_device.dev.platform_data;
-	peripheral_dsps.name = DSPS_PIL_GENERIC_NAME;
 	pdata->pil_name = DSPS_PIL_GENERIC_NAME;
 	pdata->gpios = NULL;
 	pdata->gpios_num = 0;
-
-	msm_pil_add_device(&peripheral_dsps);
 
 	platform_device_register(&msm_dsps_device);
 #endif /* CONFIG_MSM_DSPS */
@@ -3178,6 +3346,7 @@ static void __init msm8960_sim_init(void)
 	BUG_ON(msm_rpm_init(&msm_rpm_data));
 	BUG_ON(msm_rpmrs_levels_init(msm_rpmrs_levels,
 				ARRAY_SIZE(msm_rpmrs_levels)));
+	regulator_suppress_info_printing();
 	msm_clock_init(msm_clocks_8960, msm_num_clocks_8960);
 	msm8960_device_ssbi_pm8921.dev.platform_data =
 				&msm8960_ssbi_pm8921_pdata;
@@ -3224,6 +3393,7 @@ static void __init msm8960_rumi3_init(void)
 	BUG_ON(msm_rpm_init(&msm_rpm_data));
 	BUG_ON(msm_rpmrs_levels_init(msm_rpmrs_levels,
 				ARRAY_SIZE(msm_rpmrs_levels)));
+	regulator_suppress_info_printing();
 	msm_clock_init(msm_clocks_8960_dummy, msm_num_clocks_8960_dummy);
 	gpiomux_init();
 	ethernet_init();
@@ -3259,6 +3429,7 @@ static void __init msm8960_cdp_init(void)
 	BUG_ON(msm_rpm_init(&msm_rpm_data));
 	BUG_ON(msm_rpmrs_levels_init(msm_rpmrs_levels,
 				ARRAY_SIZE(msm_rpmrs_levels)));
+	regulator_suppress_info_printing();
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
 	msm_clock_init(msm_clocks_8960, msm_num_clocks_8960);
@@ -3276,9 +3447,13 @@ static void __init msm8960_cdp_init(void)
 	msm8960_i2c_init();
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
 	msm_spm_l2_init(msm_spm_l2_data);
+	msm8960_init_buses();
+	platform_add_devices(msm_footswitch_devices,
+		msm_num_footswitch_devices);
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	pm8921_gpio_mpp_init();
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
+	msm8960_init_cam();
 	msm8960_init_mmc();
 	msm_acpu_clock_init(&msm8960_acpu_clock_data);
 	register_i2c_devices();

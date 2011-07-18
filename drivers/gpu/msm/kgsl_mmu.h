@@ -28,7 +28,6 @@
  */
 #ifndef __KGSL_MMU_H
 #define __KGSL_MMU_H
-#include "kgsl_sharedmem.h"
 
 /* Identifier for the global page table */
 /* Per process page tables will probably pass in the thread group
@@ -81,6 +80,17 @@
 #define MH_INTERRUPT_MASK__AXI_READ_ERROR                  0x00000001L
 #define MH_INTERRUPT_MASK__AXI_WRITE_ERROR                 0x00000002L
 #define MH_INTERRUPT_MASK__MMU_PAGE_FAULT                  0x00000004L
+
+#ifdef CONFIG_MSM_KGSL_MMU
+#define KGSL_MMU_INT_MASK \
+	(MH_INTERRUPT_MASK__AXI_READ_ERROR | \
+	 MH_INTERRUPT_MASK__AXI_WRITE_ERROR | \
+	 MH_INTERRUPT_MASK__MMU_PAGE_FAULT)
+#else
+#define KGSL_MMU_INT_MASK \
+	(MH_INTERRUPT_MASK__AXI_READ_ERROR | \
+	 MH_INTERRUPT_MASK__AXI_WRITE_ERROR)
+#endif
 
 /* Macros to manage TLB flushing */
 #define GSL_TLBFLUSH_FILTER_ENTRY_NUMBITS     (sizeof(unsigned char) * 8)
@@ -152,15 +162,6 @@ struct kgsl_ptpool_chunk {
 
 	unsigned long *bitmap;
 	struct list_head list;
-};
-
-struct kgsl_ptpool {
-	size_t ptsize;
-	struct mutex lock;
-	struct list_head list;
-	int entries;
-	int static_entries;
-	int chunks;
 };
 
 struct kgsl_pagetable *kgsl_mmu_getpagetable(unsigned long name);

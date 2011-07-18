@@ -19,6 +19,7 @@
 #include <asm/cputype.h>
 #include <asm/mach-types.h>
 
+#include <mach/socinfo.h>
 #include <mach/smp.h>
 #include <mach/hardware.h>
 #include <mach/msm_iomap.h>
@@ -31,12 +32,6 @@
 
 int pen_release = -1;
 
-static inline int get_core_count(void)
-{
-	/* 1 + the PART[1:0] field of MIDR */
-	return ((read_cpuid_id() >> 4) & 3) + 1;
-}
-
 /* Initialize the present map (cpu_set(i, cpu_present_map)). */
 void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 {
@@ -46,7 +41,7 @@ void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 		cpu_set(i, cpu_present_map);
 }
 
-void smp_init_cpus(void)
+void __init smp_init_cpus(void)
 {
 	unsigned int i, ncores = get_core_count();
 
@@ -54,9 +49,11 @@ void smp_init_cpus(void)
 		cpu_set(i, cpu_possible_map);
 }
 
-static void release_secondary(void)
+static void __cpuinit release_secondary(unsigned int cpu)
 {
 	void *base_ptr;
+
+	BUG_ON(cpu >= get_core_count());
 
 	/* KraitMP or ScorpionMP ? */
 	if ((read_cpuid_id() & 0xFF0) >> 4 != 0x2D) {
@@ -66,7 +63,7 @@ static void release_secondary(void)
 			    machine_is_msm8960_rumi3()) {
 				writel_relaxed(0x10, base_ptr+0x04);
 				writel_relaxed(0x80, base_ptr+0x04);
-			} else {
+			} else if (get_core_count() == 2) {
 				writel_relaxed(0x109, base_ptr+0x04);
 				writel_relaxed(0x101, base_ptr+0x04);
 				ndelay(300);
@@ -102,7 +99,7 @@ static void release_secondary(void)
    as well as when a CPU is coming out of shutdown induced by echo 0 >
    /sys/devices/.../cpuX.
 */
-int boot_secondary(unsigned int cpu, struct task_struct *idle)
+int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	static int cold_boot_done;
 	int cnt = 0;
@@ -118,7 +115,7 @@ int boot_secondary(unsigned int cpu, struct task_struct *idle)
 					virt_to_phys(msm_secondary_startup),
 					SCM_FLAG_COLDBOOT_CPU1);
 		if (ret == 0)
-			release_secondary();
+			release_secondary(cpu);
 		else
 			printk(KERN_DEBUG "Failed to set secondary core boot "
 					  "address\n");
@@ -150,7 +147,7 @@ int boot_secondary(unsigned int cpu, struct task_struct *idle)
 /* Initialization routine for secondary CPUs after they are brought out of
  * reset.
 */
-void platform_secondary_init(unsigned int cpu)
+void __cpuinit platform_secondary_init(unsigned int cpu)
 {
 	pr_debug("CPU%u: Booted secondary processor\n", cpu);
 

@@ -25,12 +25,15 @@
 #include <linux/mfd/pm8xxx/rtc.h>
 #include <linux/mfd/pm8xxx/pwm.h>
 #include <linux/mfd/pm8xxx/misc.h>
+#include <linux/mfd/pm8xxx/tm.h>
+#include <linux/mfd/pm8xxx/batt-alarm.h>
 #include <linux/input/pmic8xxx-pwrkey.h>
 #include <linux/input/pmic8xxx-keypad.h>
 #include <linux/regulator/pm8921-regulator.h>
 #include <linux/mfd/pm8xxx/pm8921-charger.h>
 #include <linux/mfd/pm8921-adc.h>
 #include <linux/mfd/pm8xxx/pm8921-bms.h>
+#include <linux/leds.h>
 
 #define PM8921_NR_IRQS		256
 
@@ -50,6 +53,7 @@
 
 /* PMIC Interrupts */
 #define PM8921_RTC_ALARM_IRQ		PM8921_IRQ_BLOCK_BIT(4, 7)
+#define PM8921_BATT_ALARM_IRQ		PM8921_IRQ_BLOCK_BIT(5, 6)
 #define PM8921_PWRKEY_REL_IRQ		PM8921_IRQ_BLOCK_BIT(6, 2)
 #define PM8921_PWRKEY_PRESS_IRQ		PM8921_IRQ_BLOCK_BIT(6, 3)
 #define PM8921_KEYPAD_IRQ		PM8921_IRQ_BLOCK_BIT(9, 2)
@@ -84,7 +88,6 @@
 #define PM8921_COARSE_DET_LOW_IRQ	PM8921_IRQ_BLOCK_BIT(3, 1)
 #define PM8921_VDD_LOOP_IRQ		PM8921_IRQ_BLOCK_BIT(3, 0)
 #define PM8921_VREG_OV_IRQ		PM8921_IRQ_BLOCK_BIT(5, 7)
-#define PM8921_VBAT_IRQ			PM8921_IRQ_BLOCK_BIT(5, 6)
 #define PM8921_VBATDET_IRQ		PM8921_IRQ_BLOCK_BIT(5, 5)
 #define PM8921_BATFET_IRQ		PM8921_IRQ_BLOCK_BIT(5, 4)
 #define PM8921_PSI_IRQ			PM8921_IRQ_BLOCK_BIT(5, 3)
@@ -100,6 +103,9 @@
 #define PM8921_BMS_GOOD_OCV		PM8921_IRQ_BLOCK_BIT(15, 2)
 #define PM8921_BMS_VSENSE_AVG		PM8921_IRQ_BLOCK_BIT(15, 1)
 #define PM8921_BMS_CCADC_EOC		PM8921_IRQ_BLOCK_BIT(15, 0)
+
+#define PM8921_OVERTEMP_IRQ		PM8921_IRQ_BLOCK_BIT(4, 2)
+#define PM8921_TEMPSTAT_IRQ		PM8921_IRQ_BLOCK_BIT(6, 7)
 
 /* PMIC I/O Resources */
 #define PM8921_RTC_BASE 0x11D
@@ -118,6 +124,7 @@ struct pm8921_platform_data {
 	struct pm8921_regulator_platform_data	*regulator_pdatas;
 	int					num_regulators;
 	struct pm8921_adc_platform_data		*adc_pdata;
+	struct led_platform_data		*leds_pdata;
 };
 
 #endif

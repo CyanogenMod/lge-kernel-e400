@@ -35,8 +35,14 @@
 #define MSM8960_SPK_ON 1
 #define MSM8960_SPK_OFF 0
 
+#define msm8960_SLIM_0_RX_MAX_CHANNELS		2
+#define msm8960_SLIM_0_TX_MAX_CHANNELS		4
+
+
 static int msm8960_spk_control;
 static int msm8960_pamp_on;
+static int msm8960_slim_0_rx_ch = 1;
+static int msm8960_slim_0_tx_ch = 1;
 
 struct tabla_mbhc_calibration tabla_cal = {
 	.bias = TABLA_MICBIAS2,
@@ -161,10 +167,22 @@ static int msm8960_spkramp_event(struct snd_soc_dapm_widget *w,
 
 static const struct snd_soc_dapm_widget msm8960_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Ext Spk", msm8960_spkramp_event),
+	SND_SOC_DAPM_MIC("Handset Mic", NULL),
+	SND_SOC_DAPM_MIC("Headset Mic", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
 };
 
 static const struct snd_soc_dapm_route audio_map[] = {
+	/* Speaker path */
 	{"Ext Spk", NULL, "LINEOUT"},
+
+	/* Microphone path */
+	{"AMIC1", NULL, "MIC BIAS1 Internal"},
+	{"DMIC1 IN", NULL, "MIC BIAS1 External"},
+	{"AMIC2", NULL, "MIC BIAS2 External"},
+	{"MIC BIAS1 Internal", NULL, "Handset Mic"},
+	{"MIC BIAS1 External", NULL, "Digital Mic1"},
+	{"MIC BIAS2 External", NULL, "Headset Mic"},
 };
 
 static const char *spk_function[] = {"Off", "On"};
@@ -172,9 +190,54 @@ static const struct soc_enum msm8960_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, spk_function),
 };
 
+static int msm8960_slim_0_rx_ch_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm8960_slim_0_rx_ch  = %d", __func__,
+			msm8960_slim_0_rx_ch);
+	ucontrol->value.integer.value[0] = msm8960_slim_0_rx_ch;
+	return 0;
+}
+
+static int msm8960_slim_0_rx_ch_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	msm8960_slim_0_rx_ch = ucontrol->value.integer.value[0];
+
+	pr_debug("%s: msm8960_slim_0_tx_ch = %d\n", __func__,
+			msm8960_slim_0_rx_ch);
+	return 1;
+}
+
+static int msm8960_slim_0_tx_ch_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm8960_slim_0_tx_ch  = %d", __func__,
+			msm8960_slim_0_tx_ch);
+	ucontrol->value.integer.value[0] = msm8960_slim_0_tx_ch;
+	return 0;
+}
+
+static int msm8960_slim_0_tx_ch_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	msm8960_slim_0_tx_ch = ucontrol->value.integer.value[0];
+
+	pr_debug("%s: msm8960_slim_0_tx_ch = %d\n", __func__,
+			msm8960_slim_0_tx_ch);
+	return 1;
+}
+
+
 static const struct snd_kcontrol_new tabla_msm8960_controls[] = {
 	SOC_ENUM_EXT("Speaker Function", msm8960_enum[0], msm8960_get_spk,
 		msm8960_set_spk),
+	SOC_SINGLE_EXT("SLIM_0_RX Channels", 0, 0,
+			msm8960_SLIM_0_RX_MAX_CHANNELS, 0,
+			msm8960_slim_0_rx_ch_get, msm8960_slim_0_rx_ch_put),
+	SOC_SINGLE_EXT("SLIM_0_TX Channels", 0, 0,
+			msm8960_SLIM_0_TX_MAX_CHANNELS, 0,
+			msm8960_slim_0_tx_ch_get, msm8960_slim_0_tx_ch_put),
 };
 
 static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
@@ -185,8 +248,6 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	pr_debug("%s()\n", __func__);
 
-	snd_soc_dapm_enable_pin(dapm, "Ext Spk");
-
 	err = snd_soc_add_controls(codec, tabla_msm8960_controls,
 				ARRAY_SIZE(tabla_msm8960_controls));
 	if (err < 0)
@@ -196,6 +257,8 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 				ARRAY_SIZE(msm8960_dapm_widgets));
 
 	snd_soc_dapm_add_routes(dapm, audio_map, ARRAY_SIZE(audio_map));
+
+	snd_soc_dapm_enable_pin(dapm, "Ext Spk");
 
 	snd_soc_dapm_sync(dapm);
 
@@ -282,6 +345,38 @@ static struct snd_soc_dsp_link int_fm_hl_media = {
 		SND_SOC_DSP_TRIGGER_POST
 	},
 };
+
+static int msm8960_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+	SNDRV_PCM_HW_PARAM_RATE);
+
+	struct snd_interval *channels = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s()\n", __func__);
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = msm8960_slim_0_rx_ch;
+
+	return 0;
+}
+
+static int msm8960_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+	SNDRV_PCM_HW_PARAM_RATE);
+
+	struct snd_interval *channels = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s()\n", __func__);
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = msm8960_slim_0_tx_ch;
+
+	return 0;
+}
 
 static int msm8960_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 			struct snd_pcm_hw_params *params)
@@ -407,7 +502,7 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
 		.init = &msm8960_audrx_init,
-		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+		.be_hw_params_fixup = msm8960_slim_0_rx_be_hw_params_fixup,
 		.ops = &msm8960_be_ops,
 	},
 	{
@@ -419,7 +514,7 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.codec_dai_name	= "tabla_tx1",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
-		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+		.be_hw_params_fixup = msm8960_slim_0_tx_be_hw_params_fixup,
 		.ops = &msm8960_be_ops,
 	},
 	/* Backend BT/FM DAI Links */

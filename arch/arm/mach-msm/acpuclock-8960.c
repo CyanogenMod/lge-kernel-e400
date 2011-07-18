@@ -31,6 +31,7 @@
 #include <mach/rpm-regulator.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
+#include <mach/socinfo.h>
 
 #include "acpuclock.h"
 
@@ -124,6 +125,7 @@ struct scalable {
 	struct core_speed *current_speed;
 	struct l2_level *l2_vote;
 	struct vreg vreg[NUM_VREG];
+	bool first_set_call;
 };
 
 static struct scalable scalable[] = {
@@ -316,7 +318,7 @@ static void writel_cp15_l2ind(uint32_t regval, uint32_t addr)
 /* Get the selected source on primary MUX. */
 static int get_pri_clk_src(struct scalable *sc)
 {
-	uint32_t regval = 0;
+	uint32_t regval;
 
 	regval = readl_cp15_l2ind(sc->l2cpmr_iaddr);
 	return regval & 0x3;
@@ -334,6 +336,15 @@ static void set_pri_clk_src(struct scalable *sc, uint32_t pri_src_sel)
 	/* Wait for switch to complete. */
 	mb();
 	udelay(1);
+}
+
+/* Get the selected source on secondary MUX. */
+static int get_sec_clk_src(struct scalable *sc)
+{
+	uint32_t regval;
+
+	regval = readl_cp15_l2ind(sc->l2cpmr_iaddr);
+	return (regval >> 2) & 0x3;
 }
 
 /* Set the selected source on secondary MUX. */
@@ -658,7 +669,7 @@ int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason)
 	strt_acpu_s = scalable[cpu].current_speed;
 
 	/* Return early if rate didn't change. */
-	if (rate == strt_acpu_s->khz)
+	if (rate == strt_acpu_s->khz && scalable[cpu].first_set_call == false)
 		goto out;
 
 	/* Find target frequency. */
@@ -712,6 +723,7 @@ int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason)
 	/* Drop VDD levels if we can. */
 	decrease_vdd(cpu, vdd_core, vdd_mem, vdd_dig, reason);
 
+	scalable[cpu].first_set_call = false;
 	dprintk("ACPU%d speed change complete\n", cpu);
 
 out:
@@ -733,8 +745,8 @@ static void __init hfpll_init(struct scalable *sc, struct core_speed *tgt_s)
 	writel_relaxed(0, sc->hfpll_base + HFPLL_M_VAL);
 	writel_relaxed(1, sc->hfpll_base + HFPLL_N_VAL);
 
-	/* Set up droop controller. TODO: Enable droop controller. */
-	writel_relaxed(0x0100C000, sc->hfpll_base + HFPLL_DROOP_CTL);
+	/* Program droop controller. */
+	writel_relaxed(0x0108C000, sc->hfpll_base + HFPLL_DROOP_CTL);
 
 	/* Set an initial rate and enable the PLL. */
 	hfpll_set_rate(sc, tgt_s);
@@ -802,6 +814,12 @@ static void __init init_clock_sources(struct scalable *sc,
 
 	set_pri_clk_src(sc, tgt_s->pri_src_sel);
 	sc->current_speed = tgt_s;
+
+	/*
+	 * Set this flag so that the first call to acpuclk_set_rate() can drop
+	 * voltages and set initial bus bandwidth requests.
+	 */
+	sc->first_set_call = true;
 }
 
 /* Perform CPU0-specific setup. */
@@ -809,6 +827,7 @@ int __init msm_acpu_clock_early_init(void)
 {
 	init_clock_sources(&scalable[L2],   &l2_freq_tbl[L2_BOOT_IDX].speed);
 	init_clock_sources(&scalable[CPU0], &acpu_freq_tbl[CPU_BOOT_IDX].speed);
+	scalable[CPU0].l2_vote = &l2_freq_tbl[L2_BOOT_IDX];
 
 	return 0;
 }
@@ -823,6 +842,7 @@ void __cpuinit acpuclock_secondary_init(void)
 		return;
 
 	init_clock_sources(&scalable[CPU1], &acpu_freq_tbl[CPU_BOOT_IDX].speed);
+	scalable[CPU1].l2_vote = &l2_freq_tbl[L2_BOOT_IDX];
 
 	/* Secondary CPU has booted, don't repeat for subsequent warm boots. */
 	warm_boot = true;
@@ -831,11 +851,18 @@ void __cpuinit acpuclock_secondary_init(void)
 /* Register with bus driver. */
 static void __init bus_init(void)
 {
+	int ret;
+
 	bus_perf_client = msm_bus_scale_register_client(&bus_client_pdata);
 	if (!bus_perf_client) {
 		pr_err("unable to register bus client\n");
 		BUG();
 	}
+
+	ret = msm_bus_scale_client_update_request(bus_perf_client,
+		(ARRAY_SIZE(bw_level_tbl)-1));
+	if (ret)
+		pr_err("initial bandwidth request failed (%d)\n", ret);
 }
 
 #ifdef CONFIG_CPU_FREQ_MSM
@@ -879,9 +906,28 @@ static int __cpuinit acpuclock_cpu_callback(struct notifier_block *nfb,
 					    unsigned long action, void *hcpu)
 {
 	static int prev_khz[NR_CPUS];
+	static int prev_pri_src[NR_CPUS];
+	static int prev_sec_src[NR_CPUS];
 	int cpu = (int)hcpu;
+	uint32_t soc_platform_version = socinfo_get_platform_version();
 
 	switch (action) {
+	case CPU_DYING:
+	case CPU_DYING_FROZEN:
+		/*
+		 * 8960 HW versions < 2.1 must set their primary and secondary
+		 * mux source selections to QSB before L2 power collapse and
+		 * restore it after.
+		 */
+		if (SOCINFO_VERSION_MAJOR(soc_platform_version) < 2 ||
+		   (SOCINFO_VERSION_MAJOR(soc_platform_version) == 2 &&
+		    SOCINFO_VERSION_MINOR(soc_platform_version) < 1)) {
+			prev_sec_src[cpu] = get_sec_clk_src(&scalable[cpu]);
+			prev_pri_src[cpu] = get_pri_clk_src(&scalable[cpu]);
+			set_sec_clk_src(&scalable[cpu], SEC_SRC_SEL_QSB);
+			set_pri_clk_src(&scalable[cpu], PRI_SRC_SEL_SEC_SRC);
+		}
+		break;
 	case CPU_DEAD:
 	case CPU_DEAD_FROZEN:
 		prev_khz[cpu] = acpuclk_get_rate(cpu);
@@ -895,6 +941,15 @@ static int __cpuinit acpuclock_cpu_callback(struct notifier_block *nfb,
 		if (WARN_ON(!prev_khz[cpu]))
 			prev_khz[cpu] = acpu_freq_tbl->speed.khz;
 		acpuclk_set_rate(cpu, prev_khz[cpu], SETRATE_HOTPLUG);
+		break;
+	case CPU_STARTING:
+	case CPU_STARTING_FROZEN:
+		if (SOCINFO_VERSION_MAJOR(soc_platform_version) < 2 ||
+		   (SOCINFO_VERSION_MAJOR(soc_platform_version) == 2 &&
+		    SOCINFO_VERSION_MINOR(soc_platform_version) < 1)) {
+			set_sec_clk_src(&scalable[cpu], prev_sec_src[cpu]);
+			set_pri_clk_src(&scalable[cpu], prev_pri_src[cpu]);
+		}
 		break;
 	default:
 		break;

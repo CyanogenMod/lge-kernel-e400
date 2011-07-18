@@ -79,7 +79,7 @@ static void charm_enable_irqs(void)
 	enable_irq(charm_status_irq);
 }
 
-static int charm_subsys_shutdown(void)
+static int charm_subsys_shutdown(const struct subsys_data *crashed_subsys)
 {
 	charm_disable_irqs();
 	power_down_charm();
@@ -87,7 +87,7 @@ static int charm_subsys_shutdown(void)
 	return 0;
 }
 
-static int charm_subsys_powerup(void)
+static int charm_subsys_powerup(const struct subsys_data *crashed_subsys)
 {
 	power_on_charm();
 	boot_type = CHARM_NORMAL_BOOT;
@@ -99,7 +99,8 @@ static int charm_subsys_powerup(void)
 	return charm_boot_status;
 }
 
-static int charm_subsys_ramdumps(int want_dumps)
+static int charm_subsys_ramdumps(int want_dumps,
+				const struct subsys_data *crashed_subsys)
 {
 	charm_ram_dump_status = 0;
 	if (want_dumps) {
@@ -283,14 +284,13 @@ static int charm_debugfs_init(void)
 static int gsbi9_uart_notifier_cb(struct notifier_block *this,
 					unsigned long code, void *_cmd)
 {
-	struct clk *uart_clk;
-
 	switch (code) {
 	case SUBSYS_AFTER_SHUTDOWN:
-		uart_clk = clk_get(&msm_device_uart_gsbi9.dev, "gsbi_uart_clk");
-		clk_set_rate(uart_clk, 0);
-		clk_set_rate(uart_clk, 1843200);
-		clk_put(uart_clk);
+		platform_device_unregister(msm_device_uart_gsbi9);
+		msm_device_uart_gsbi9 = msm_add_gsbi9_uart();
+		if (IS_ERR(msm_device_uart_gsbi9))
+			pr_err("%s(): Failed to create uart gsbi9 device\n",
+								__func__);
 	default:
 		break;
 	}

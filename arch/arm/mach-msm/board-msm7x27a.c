@@ -1531,30 +1531,34 @@ static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 #endif
 static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
-					.supported = 1,
-					.suspend_enabled = 1,
+					.idle_supported = 1,
+					.suspend_supported = 1,
 					.idle_enabled = 1,
+					.suspend_enabled = 1,
 					.latency = 16000,
 					.residency = 20000,
 	},
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_NO_XO_SHUTDOWN] = {
-					.supported = 1,
-					.suspend_enabled = 1,
+					.idle_supported = 1,
+					.suspend_supported = 1,
 					.idle_enabled = 1,
+					.suspend_enabled = 1,
 					.latency = 12000,
 					.residency = 20000,
 	},
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT] = {
-					.supported = 1,
-					.suspend_enabled = 1,
+					.idle_supported = 1,
+					.suspend_supported = 1,
 					.idle_enabled = 0,
+					.suspend_enabled = 1,
 					.latency = 2000,
 					.residency = 0,
 	},
 	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT] = {
-					.supported = 1,
-					.suspend_enabled = 1,
+					.idle_supported = 1,
+					.suspend_supported = 1,
 					.idle_enabled = 1,
+					.suspend_enabled = 1,
 					.latency = 2,
 					.residency = 0,
 	},
@@ -2183,14 +2187,10 @@ static void msm7x27a_cfg_smsc911x(void)
 
 #ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
-	GPIO_CFG(61, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
 static uint32_t camera_on_gpio_table[] = {
-	GPIO_CFG(61, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	GPIO_CFG(60, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
@@ -2569,13 +2569,6 @@ static void msm7x27a_cfg_uart2dm_serial(void)
 static void msm7x27a_cfg_uart2dm_serial(void) { }
 #endif
 
-static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
-	.acpu_switch_time_us = 50,
-	.max_speed_delta_khz = 400000,
-	.vdd_switch_time_us = 62,
-	.max_axi_khz = 200000,
-};
-
 static struct platform_device *rumi_sim_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
@@ -2753,7 +2746,7 @@ static int msm_fb_get_lane_config(void)
 {
 	int rc = DSI_TWO_LANES;
 
-	if (cpu_is_msm7x25a()) {
+	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa()) {
 		rc = DSI_SINGLE_LANE;
 		pr_info("DSI Single Lane\n");
 	} else {
@@ -2820,13 +2813,11 @@ gpio_error:
 static const char * const msm_fb_dsi_vreg[] = {
 	"gp2",
 	"msme1",
-	"mddi"
 };
 
 static const int msm_fb_dsi_vreg_mV[] = {
 	2850,
 	1800,
-	1200
 };
 
 static struct vreg *dsi_vreg[ARRAY_SIZE(msm_fb_dsi_vreg)];
@@ -3273,12 +3264,6 @@ static struct platform_device hs_pdev = {
 #define UART1DM_RX_GPIO		45
 static void __init msm7x2x_init(void)
 {
-	if (socinfo_init() < 0)
-		printk(KERN_ERR "%s: socinfo_init() failed!\n",
-		       __func__);
-
-	msm_clock_init(msm_clocks_7x27a, msm_num_clocks_7x27a);
-	msm_acpu_clock_init(&msm7x2x_clock_data);
 
 	/* Common functions for SURF/FFA/RUMI3 */
 	msm_device_i2c_init();
@@ -3304,6 +3289,8 @@ static void __init msm7x2x_init(void)
 		msm_device_gadget_peripheral.dev.platform_data =
 							&msm_gadget_pdata;
 		msm7x27a_cfg_smsc911x();
+		platform_add_devices(msm_footswitch_devices,
+			     msm_num_footswitch_devices);
 		platform_add_devices(surf_ffa_devices,
 				ARRAY_SIZE(surf_ffa_devices));
 		msm_fb_add_devices();
@@ -3321,7 +3308,7 @@ static void __init msm7x2x_init(void)
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	bt_power_init();
 #endif
-	if (cpu_is_msm7x25a()) {
+	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa()) {
 		atmel_ts_pdata.min_x = 0;
 		atmel_ts_pdata.max_x = 480;
 		atmel_ts_pdata.min_y = 0;
@@ -3357,6 +3344,7 @@ static void __init msm7x2x_init(void)
 
 static void __init msm7x2x_init_early(void)
 {
+	msm7x2x_misc_init();
 	msm_msm7x2x_allocate_memory_regions();
 }
 
