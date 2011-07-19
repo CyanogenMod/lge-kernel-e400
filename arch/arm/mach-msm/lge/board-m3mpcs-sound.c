@@ -156,6 +156,7 @@ static struct platform_device msm_device_adspdec = {
 static char *ear_state_string[] = {
 	"0",
 	"1",
+	"2",
 };
 
 enum {
@@ -207,10 +208,12 @@ static char *m3mpcs_gpio_earsense_print_name(int state)
 
 static char *m3mpcs_gpio_earsense_print_state(int state)
 {
-	if (state == 0)
-		return ear_state_string[0];
-	else
+	if (state == SW_HEADPHONE_INSERT)
+		return ear_state_string[2];
+	else if (state == SW_MICROPHONE_INSERT)
 		return ear_state_string[1];
+	else
+		return ear_state_string[0];
 }
 
 static int m3mpcs_gpio_earsense_sysfs_store(const char *buf, size_t size)
