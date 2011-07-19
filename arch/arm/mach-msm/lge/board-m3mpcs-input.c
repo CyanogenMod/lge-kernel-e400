@@ -131,6 +131,30 @@ static struct platform_device ts_i2c_device = {
 
 static int ts_set_vreg(unsigned char onoff)
 {
+	if(lge_bd_rev == LGE_REV_A){
+		struct vreg *vreg_touch;
+		int rc;
+
+		printk("[Touch] %s() onoff:%d\n",__FUNCTION__, onoff);
+
+		vreg_touch = vreg_get(0, "bt");
+
+		if(IS_ERR(vreg_touch)) {
+			printk("[Touch] vreg_get fail : touch\n");
+			return -1;
+		}
+
+		if (onoff) {
+			rc = vreg_set_level(vreg_touch, 2850);
+			if (rc != 0) {
+				printk("[Touch] vreg_set_level failed\n");
+				return -1;
+			}
+			vreg_enable(vreg_touch);
+		} else {
+			vreg_disable(vreg_touch);
+		}
+	}else if(lge_bd_rev >= LGE_REV_B){
 	static struct regulator* ldo1 = NULL;
 	int rc;
 	static int init = 0;
@@ -160,7 +184,7 @@ static int ts_set_vreg(unsigned char onoff)
 			regulator_put(ldo1);
 		}
 	}
-
+	}
 	return 0;
 }
 
@@ -187,6 +211,31 @@ static struct i2c_board_info ts_i2c_bdinfo[] = {
 static int init_gpio_i2c_pin_touch(struct i2c_gpio_platform_data *i2c_adap_pdata,
 		struct gpio_i2c_pin gpio_i2c_pin, struct i2c_board_info *i2c_board_info_data)
 {
+	if(lge_bd_rev == LGE_REV_A){
+		i2c_adap_pdata->sda_pin = 120;
+		i2c_adap_pdata->scl_pin = 119;
+
+		gpio_tlmm_config(GPIO_CFG(120, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(119, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_set_value(120, 1);
+		gpio_set_value(119, 1);
+
+		if (gpio_i2c_pin.reset_pin) {
+			gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.reset_pin, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			gpio_set_value(gpio_i2c_pin.reset_pin, 1);
+		}
+
+		if (gpio_i2c_pin.irq_pin) {
+			gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.irq_pin, 0, GPIO_CFG_INPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			i2c_board_info_data->irq =
+				MSM_GPIO_TO_INT(gpio_i2c_pin.irq_pin);
+		}
+	}
+	else if(lge_bd_rev >= LGE_REV_B){
 	i2c_adap_pdata->sda_pin = gpio_i2c_pin.sda_pin;
 	i2c_adap_pdata->scl_pin = gpio_i2c_pin.scl_pin;
 
@@ -209,7 +258,7 @@ static int init_gpio_i2c_pin_touch(struct i2c_gpio_platform_data *i2c_adap_pdata
 		i2c_board_info_data->irq =
 			MSM_GPIO_TO_INT(gpio_i2c_pin.irq_pin);
 	}
-
+	}
 	return 0;
 }
 
