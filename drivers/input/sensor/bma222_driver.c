@@ -48,10 +48,16 @@
 #define BMA222_BLOCK_IOCTL_CHECK 1
 
 /* #define BMA222_DEBUG */   
+/* #define LGE_DEBUG */
 
 #ifdef BMA222_MODULES 
 #include "bma222.c"
 #endif
+
+/* LGE_CHANGE_S [adwardk.kim@lge.com] 2011-03-25 */
+#define BMA222_BUFSIZE 256
+static atomic_t bma222_report_enabled = ATOMIC_INIT(0);
+/* LGE_CHANGE_E [adwardk.kim@lge.com] 2011-03-25 */
 
 
 #ifdef BMA222_HAS_EARLYSUSPEND
@@ -60,7 +66,7 @@ static void bma222_late_resume(struct early_suspend *h);
 #endif
 
 /* LGE_CHANGE_S */
-struct acceleration_platform_data *bma222_pdata;
+struct acceleration_platform_data *accel_pdata;
 /* LGE_CHANGE_E */
 
 /* i2c operation for bma222 API */
@@ -246,6 +252,84 @@ static unsigned int bma222_poll(struct file *file, poll_table *wait)
     return mask;
 }
 
+
+/* LGE_CHANGE_S [adwardk.kim@lge.com] 2011-03-25 */
+static ssize_t show_bma222_enable(struct device *dev,
+								  struct device_attribute *attr, char *buf)
+{
+    char strbuf[BMA222_BUFSIZE];
+    sprintf(strbuf, "%d", atomic_read(&bma222_report_enabled));
+    return sprintf(buf, "%s\n", strbuf);
+}
+
+static ssize_t store_bma222_enable(struct device *dev,
+								   struct device_attribute *attr, const char *buf, size_t count)
+{
+    int mode=0;
+
+    sscanf(buf, "%d", &mode);
+
+    if(mode){
+		/* LGE_CHANGE, 
+		 * if already mode normal, pass this routine.
+		 * 2011-07-18, jihyun.seong@lge.com
+		 */
+		if(atomic_read(&bma222_report_enabled) == 0) {
+		bma222_set_mode(bma222_MODE_NORMAL);
+		atomic_set(&bma222_report_enabled, 1);
+#ifdef LGE_DEBUG
+		printk(KERN_INFO "ACCEL_Power On\n");
+#endif
+		/* turn on vreg power */
+		accel_pdata->power(1);
+		} else { /* alreadt power on state */ }
+	}
+    else {
+		bma222_set_mode(bma222_MODE_SUSPEND);
+		atomic_set(&bma222_report_enabled, 0);
+#ifdef LGE_DEBUG
+		printk(KERN_INFO "ACCEL_Power Off\n");
+#endif
+		/* turn off vreg power */
+		accel_pdata->power(0);
+    }
+    return 0;
+}
+
+
+static ssize_t show_bma222_sensordata(struct device *dev,
+									  struct device_attribute *attr, char *buf)
+{
+    char strbuf[BMA222_BUFSIZE];
+    int x=0,y=0,z=0;
+
+    bma222acc_t acc;
+
+    bma222_read_accel_xyz(&acc);
+
+    memset(strbuf, 0x00, BMA222_BUFSIZE);
+
+    //sprintf(strbuf, "%d %d %d", (int)acc.x, (int)acc.y, (int)acc.z);
+    x=((int)acc.x);
+    y=((int)acc.y);
+    z=((int)acc.z);
+    sprintf(strbuf, "%d %d %d", x, y, z);
+    return sprintf(buf, "%s\n", strbuf);
+}
+
+static DEVICE_ATTR(bma222_enable, S_IRUGO | S_IWUGO, show_bma222_enable, store_bma222_enable);
+static DEVICE_ATTR(bma222_sensordata, S_IRUGO, show_bma222_sensordata, NULL);
+
+static struct attribute *bma222_attributes[] = {
+    &dev_attr_bma222_enable.attr,
+    &dev_attr_bma222_sensordata.attr,
+    NULL,
+};
+
+static struct attribute_group bma222_attribute_group = {
+    .attrs = bma222_attributes
+};
+/* LGE_CHANGE_E [adwardk.kim@lge.com] 2011-03-25 */
 
 /*	open command for BMA222 device file	*/
 static int bma222_open(struct inode *inode, struct file *file)
@@ -2120,8 +2204,7 @@ static int bma222_probe(struct i2c_client *client,
 	int err = 0;
 	int tempvalue;
 	struct bma222_data *data;
-/* LGE_CAHNGE, insert platform data */
-	struct acceleration_platform_data *pdata;
+
 #ifdef BMA222_DEBUG
 	printk(KERN_INFO "%s\n",__FUNCTION__);
 #endif
@@ -2137,10 +2220,13 @@ static int bma222_probe(struct i2c_client *client,
 		goto exit;
 	}		
 /* LGE_CHANGE_S */
-	pdata = client->dev.platform_data;
-    bma222_pdata = pdata;
-    pdata->power(1);
-    mdelay(1);
+	accel_pdata = client->dev.platform_data;
+    
+    accel_pdata->power(1);
+    
+	mdelay(1);
+
+	atomic_set(&bma222_report_enabled, 1);
 /* LGE_CHANGE_E */
 
 	/* read chip id */
@@ -2174,6 +2260,15 @@ static int bma222_probe(struct i2c_client *client,
 		printk(KERN_ERR "bma222 device register failed\n");
 		goto kfree_exit;
 	}
+
+/* LGE_CHANGE_S [adwardk.kim@lge.com] 2011-03-25 */
+    /* Register sysfs hooks */
+    err = sysfs_create_group(&client->dev.kobj, &bma222_attribute_group);
+    if (err) {
+        printk(KERN_ERR "bma222 sysfs register failed\n");
+        goto exit_sysfs_create_group_failed;
+    }
+/* LGE_CHANGE_E [adwardk.kim@lge.com] 2011-03-25 */
 	
 
 	printk(KERN_INFO "bma222 device create ok\n");
@@ -2224,6 +2319,12 @@ static int bma222_probe(struct i2c_client *client,
 exit_dereg:
     misc_deregister(&bma_device);
 #endif
+
+/* LGE_CHANGE_S [adwardk.kim@lge.com] 2011-03-25 */
+exit_sysfs_create_group_failed:
+    sysfs_remove_group(&client->dev.kobj, &bma222_attribute_group);
+/* LGE_CHANGE_E [adwardk.kim@lge.com] 2011-03-25 */
+
 kfree_exit:
 	kfree(data);
 exit:
@@ -2268,6 +2369,10 @@ static int bma222_resume(struct i2c_client *client)
 static int bma222_remove(struct i2c_client *client)
 {
 	struct bma222_data *data = i2c_get_clientdata(client);
+/* LGE_CHANGE_S [adwardk.kim@lge.com] 2011-03-25 */
+    sysfs_remove_group(&client->dev.kobj, &bma222_attribute_group);
+/* LGE_CHANGE_E [adwardk.kim@lge.com] 2011-03-25 */
+
 #ifdef BMA222_DEBUG
 	printk(KERN_INFO "%s\n",__FUNCTION__);
 #endif	
