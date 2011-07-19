@@ -67,6 +67,8 @@ static void bma222_late_resume(struct early_suspend *h);
 
 /* LGE_CHANGE_S */
 struct acceleration_platform_data *accel_pdata;
+static u8 bandwidth;
+static int set_bandwidth = 3;
 /* LGE_CHANGE_E */
 
 /* i2c operation for bma222 API */
@@ -275,14 +277,18 @@ static ssize_t store_bma222_enable(struct device *dev,
 		 * 2011-07-18, jihyun.seong@lge.com
 		 */
 		if(atomic_read(&bma222_report_enabled) == 0) {
-		bma222_set_mode(bma222_MODE_NORMAL);
-		atomic_set(&bma222_report_enabled, 1);
+			/* turn on vreg power */
+			accel_pdata->power(1);
+			mdelay(1);
+			bma222_set_mode(bma222_MODE_NORMAL);
+			bma222_set_bandwidth( (u8)set_bandwidth );//bandwidth set
+			atomic_set(&bma222_report_enabled, 1);
 #ifdef LGE_DEBUG
-		printk(KERN_INFO "ACCEL_Power On\n");
+			printk(KERN_INFO "ACCEL_Power On\n");
 #endif
-		/* turn on vreg power */
-		accel_pdata->power(1);
-		} else { /* alreadt power on state */ }
+		} else { /* already power on state */ 
+			bma222_set_bandwidth( (u8)set_bandwidth );//bandwidth set
+		}
 	}
     else {
 		bma222_set_mode(bma222_MODE_SUSPEND);
@@ -295,7 +301,6 @@ static ssize_t store_bma222_enable(struct device *dev,
     }
     return 0;
 }
-
 
 static ssize_t show_bma222_sensordata(struct device *dev,
 									  struct device_attribute *attr, char *buf)
@@ -313,16 +318,42 @@ static ssize_t show_bma222_sensordata(struct device *dev,
     x=((int)acc.x);
     y=((int)acc.y);
     z=((int)acc.z);
-    sprintf(strbuf, "%d %d %d", x, y, z);
+    sprintf(strbuf, "%-8d %-8d %-8d", x, y, z);
     return sprintf(buf, "%s\n", strbuf);
+}
+
+/* LGE_CHANGE, 
+ * add bandwidth node.
+ * 2011-07-19, jihyun.seong@lge.com
+ */
+static ssize_t show_bma222_bandwidth(struct device *dev,
+								  struct device_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", bandwidth);
+}
+
+static ssize_t store_bma222_bandwidth(struct device *dev,
+								   struct device_attribute *attr, const char *buf, size_t count)
+{
+    int value=0;
+
+    sscanf(buf, "%d", &value);
+	bandwidth = (u8)value;
+	bma222_set_bandwidth( bandwidth );
+   
+    return 0;
 }
 
 static DEVICE_ATTR(bma222_enable, S_IRUGO | S_IWUGO, show_bma222_enable, store_bma222_enable);
 static DEVICE_ATTR(bma222_sensordata, S_IRUGO, show_bma222_sensordata, NULL);
+/* add bandwidth node */
+static DEVICE_ATTR(bma222_bandwidth, S_IRUGO | S_IWUGO, show_bma222_bandwidth, store_bma222_bandwidth);
 
 static struct attribute *bma222_attributes[] = {
     &dev_attr_bma222_enable.attr,
     &dev_attr_bma222_sensordata.attr,
+/* add bandwidth node */
+	&dev_attr_bma222_bandwidth.attr,
     NULL,
 };
 
@@ -2279,7 +2310,16 @@ static int bma222_probe(struct i2c_client *client,
 	data->bma222.delay_msec = bma222_i2c_delay;
 	bma222_init(&data->bma222);
 
+	/* LGE_CHANGE,
+	 * To reduce shaking output data
+	 * 2011-07-19, jihyun.seong@lge.com
+	 */
+	bma222_set_bandwidth((u8)set_bandwidth);		
+	
+#if 0 // originial
 	bma222_set_bandwidth(5);		//bandwidth 250Hz
+#endif
+
 	bma222_set_range(0);			//range +/-2G
 
 
