@@ -14,7 +14,11 @@
  * 2010-03-03, cleaneye.kim@lge.com
  */
 #define MSM7X27_EBI1_CS0_BASE	PHYS_OFFSET
-#define LGE_RAM_CONSOLE_SIZE    (128 * SZ_1K * 2)
+#define LGE_RAM_CONSOLE_SIZE    (124 * SZ_1K * 2)
+#endif
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#define LGE_CRASH_LOG_SIZE              (4 * SZ_1K)
 #endif
 
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
@@ -264,5 +268,8 @@ void __init lge_add_connectivity_devices(void);
 void __init lge_add_gpio_i2c_device(gpio_i2c_init_func_t *init_func);
 
 void __init lge_add_ramconsole_devices(void);
-
+#if defined(CONFIG_ANDROID_RAM_CONSOLE) && defined(CONFIG_LGE_HANDLE_PANIC)
+void __init lge_add_panic_handler_devices(void);
+void lge_set_reboot_reason(unsigned int reason);
+#endif
 #endif

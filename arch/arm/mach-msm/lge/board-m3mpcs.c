@@ -210,6 +210,9 @@ static void __init msm7x2x_init(void)
 	lge_add_gpio_i2c_devices();
 
 	lge_add_ramconsole_devices();
+#if defined(CONFIG_ANDROID_RAM_CONSOLE) && defined(CONFIG_LGE_HANDLE_PANIC)
+	lge_add_panic_handler_devices();
+#endif
 }
 
 static void __init msm7x2x_init_early(void)

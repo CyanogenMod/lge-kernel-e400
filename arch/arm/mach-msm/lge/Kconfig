@@ -58,6 +58,15 @@ config LGE_SUPPORT_AT_CMD
 	depends on MACH_LGE
 	help
 	 LGE AT_CMD Support
+
+config LGE_HANDLE_PANIC
+	tristate "Support LGE Kernel Panic Handler"
+	default n 
+	depends on MACH_LGE
+	depends on ANDROID_RAM_CONSOLE
+	help
+	 LGE crash handler
+
 endmenu
 
 endmenu

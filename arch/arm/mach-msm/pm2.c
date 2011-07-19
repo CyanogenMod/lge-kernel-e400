@@ -1756,7 +1756,15 @@ static void msm_pm_power_off(void)
 static void msm_pm_restart(char str, const char *cmd)
 {
 	msm_rpcrouter_close();
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#define CRASH_REBOOT    0x618E1000
+	if (restart_reason == CRASH_REBOOT)
+		msm_proc_comm(PCOM_RESET_CHIP_IMM, &restart_reason, 0);
+	else
+		msm_proc_comm(PCOM_RESET_CHIP, &restart_reason, 0);
+#else
 	msm_proc_comm(PCOM_RESET_CHIP, &restart_reason, 0);
+#endif
 
 	for (;;)
 		;
@@ -1789,6 +1797,14 @@ static struct notifier_block msm_reboot_notifier = {
 	.notifier_call = msm_reboot_call,
 };
 
+#if defined(CONFIG_MACH_LGE)
+void lge_set_reboot_reason(unsigned int reason)
+{
+	restart_reason = reason;
+
+	return;
+}
+#endif
 
 /******************************************************************************
  *
