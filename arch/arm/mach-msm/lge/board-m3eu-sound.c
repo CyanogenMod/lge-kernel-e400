@@ -29,6 +29,8 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(HANDSET_VR, 20),
 	SND(HEADSET_VR, 21),
 	SND(BT_VR, 23),
+	SND(HEADSET_WITHOUT_MIC, 4),
+	SND(HEADSET_WITHOUT_MIC_VR, 22),
 	SND(CURRENT, 30),
 };
 #undef SND
