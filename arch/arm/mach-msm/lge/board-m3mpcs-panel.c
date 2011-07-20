@@ -141,6 +141,7 @@ static int msm_fb_get_lane_config(void)
 
 #define GPIO_LCD_RESET 125
 static int dsi_gpio_initialized;
+static int Isfirstbootend=0;
 
 static int mipi_dsi_panel_power(int on)
 {
@@ -189,12 +190,17 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("%s: gpio_direction_output failed for lcd_reset\n", __func__);
 			goto vreg_put_dsi_v28;
 		}
-
-		mdelay(10);
-		gpio_set_value(GPIO_LCD_RESET, 0);
-		mdelay(10);
-		gpio_set_value(GPIO_LCD_RESET, 1);
-		mdelay(10);		
+		if(Isfirstbootend){
+			printk("gpio lcd reset on...\n");
+			mdelay(10);
+			gpio_set_value(GPIO_LCD_RESET, 0);
+			mdelay(10);
+			gpio_set_value(GPIO_LCD_RESET, 1);
+		}
+		else{
+			Isfirstbootend = 1;
+		}
+		mdelay(10); 
 	} else {
 		rc = vreg_disable(vreg_mipi_dsi_v28);
 		if (rc) {
