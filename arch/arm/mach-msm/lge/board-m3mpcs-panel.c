@@ -59,7 +59,7 @@ static struct rt8053_platform_data rt8053_data = {
 
 /* REV_A workaround for camera flash driver */
 static struct led_flash_platform_data lm3559_flash_pdata = {
-	.gpio_flen = GPIO_FLASH_EN,
+	.gpio_flen = 13,
 };
 #endif /* CONFIG_MACH_MSM7X27A_M3MPCS_REV_A */
 
