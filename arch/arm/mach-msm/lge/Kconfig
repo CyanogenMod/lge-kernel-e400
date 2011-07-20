@@ -44,6 +44,16 @@ config LGE_FBCON_INACTIVE_CONSOLE
 	depends on MACH_LGE
 	help
 	 Choose if inactive console
+
+config MACH_MSM7X27A_M3MPCS_REV_A
+	bool "LGE MSM7x27A MPCS REV_A support"
+	default n
+	depends on MACH_LGE
+	depends on MACH_MSM7X27A_M3MPCS
+	help
+	  This patch is used for MSM7x27A MPCS REV_A support.
+	  Because MPCS REV_B has GPIO big changes.
+
 endmenu
 
 endmenu
