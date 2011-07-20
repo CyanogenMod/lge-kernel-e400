@@ -1,7 +1,5 @@
 #include <linux/err.h>
 #include <linux/gpio.h>
-#include <linux/regulator/rt8053.h>
-#include <linux/regulator/consumer.h>
 
 #include <asm/mach-types.h>
 
@@ -14,12 +12,11 @@
 #include <mach/board_lge.h>
 #include <mach/vreg.h>
 
-/* Sub-PMIC */
-static struct gpio_i2c_pin subpm_i2c_pin = {
-	.sda_pin = 123,
-	.scl_pin = 122,
-};
+#ifdef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
+#include <linux/regulator/rt8053.h>
+#include <linux/regulator/consumer.h>
 
+/* Sub-PMIC */
 static struct regulator_consumer_supply rt8053_vreg_supply[] = {
 	REGULATOR_SUPPLY("RT8053_LDO1", NULL),
 	REGULATOR_SUPPLY("RT8053_LDO2", NULL),
@@ -60,6 +57,12 @@ static struct rt8053_platform_data rt8053_data = {
 	.regulators = rt8053_regulators,
 };
 
+/* REV_A workaround for camera flash driver */
+static struct led_flash_platform_data lm3559_flash_pdata = {
+	.gpio_flen = GPIO_FLASH_EN,
+};
+#endif /* CONFIG_MACH_MSM7X27A_M3MPCS_REV_A */
+
 /* backlight device */
 static struct gpio_i2c_pin bl_i2c_pin = {
 	.sda_pin = 123,
@@ -67,34 +70,29 @@ static struct gpio_i2c_pin bl_i2c_pin = {
 	.reset_pin = 124,
 };
 
-static struct lge_backlight_platform_data lm3530bl_data = {
-	.gpio = 124,
-	.version = 3530,
-};
-
-/* REV_A workaround for camera flash driver */
-static struct led_flash_platform_data lm3559_flash_pdata = {
-	.gpio_flen = GPIO_FLASH_EN,
-};
-
-/* backlight, sub-pmic common device */
-static struct i2c_gpio_platform_data bl_subpm_i2c_pdata = {
+static struct i2c_gpio_platform_data bl_i2c_pdata = {
 	.sda_is_open_drain = 0,
 	.scl_is_open_drain = 0,
 	.udelay = 2,
 };
 
-static struct platform_device bl_subpm_i2c_device = {
+static struct platform_device bl_i2c_device = {
 	.name = "i2c-gpio",
-	.dev.platform_data = &bl_subpm_i2c_pdata,
+	.dev.platform_data = &bl_i2c_pdata,
+};
+ 
+static struct lge_backlight_platform_data lm3530bl_data = {
+	.gpio = 124,
+	.version = 3530,
 };
 
-static struct i2c_board_info bl_subpm_i2c_bdinfo[] = {
+static struct i2c_board_info bl_i2c_bdinfo[] = {
 	[0] = {
 		I2C_BOARD_INFO("lm3530bl", 0x38),
 		.type = "lm3530bl",
 		.platform_data = &lm3530bl_data,
 	},
+#ifdef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
 	[1] = {
 		I2C_BOARD_INFO("rt8053", 0x7D),
 		.type = "rt8053",
@@ -104,18 +102,8 @@ static struct i2c_board_info bl_subpm_i2c_bdinfo[] = {
 		I2C_BOARD_INFO("lm3559", FLASH_I2C_ADDRESS),
 		.platform_data = &lm3559_flash_pdata,
 	},
+#endif /* CONFIG_MACH_MSM7X27A_M3MPCS_REV_A */
 };
-
-void __init msm7x27a_m3_init_i2c_backlight_subpm(int bus_num)
-{
-	bl_subpm_i2c_device.id = bus_num;
-
-	/* workaround for HDK rev_a no pullup */
-	lge_init_gpio_i2c_pin_pullup(&bl_subpm_i2c_pdata, bl_i2c_pin, &bl_subpm_i2c_bdinfo[0]);
-	lge_init_gpio_i2c_pin(&bl_subpm_i2c_pdata, subpm_i2c_pin, &bl_subpm_i2c_bdinfo[1]);
-	i2c_register_board_info(bus_num, bl_subpm_i2c_bdinfo, ARRAY_SIZE(bl_subpm_i2c_bdinfo));
-	platform_device_register(&bl_subpm_i2c_device);
-}
 
 static struct platform_device mipi_dsi_r61529_panel_device = {
 	.name = "mipi_r61529",
@@ -160,7 +148,7 @@ static int mipi_dsi_panel_power(int on)
 	struct vreg *vreg_mipi_dsi_v28;
 
 	printk("mipi_dsi_panel_power : %d \n",on);
-	
+
 	if (!dsi_gpio_initialized) {
 
 		// Resetting LCD Panel
@@ -177,13 +165,13 @@ static int mipi_dsi_panel_power(int on)
 
 		dsi_gpio_initialized = 1;
 	}
- 
+
 	vreg_mipi_dsi_v28 = vreg_get(0, "emmc");
 	if (IS_ERR(vreg_mipi_dsi_v28)) {
 		pr_err("%s: vreg_get for emmc failed\n", __func__);
 		return PTR_ERR(vreg_mipi_dsi_v28);
 	}
-	
+
 	if (on) {
 		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800); 
 		if (rc) {
@@ -201,7 +189,7 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("%s: gpio_direction_output failed for lcd_reset\n", __func__);
 			goto vreg_put_dsi_v28;
 		}
-		
+
 		mdelay(10);
 		gpio_set_value(GPIO_LCD_RESET, 0);
 		mdelay(10);
@@ -217,7 +205,7 @@ static int mipi_dsi_panel_power(int on)
 
 vreg_put_dsi_v28:
 	vreg_put(vreg_mipi_dsi_v28);
-	
+
 	return rc;
 }
 
@@ -241,10 +229,19 @@ static void __init msm_fb_add_devices(void)
 	msm_fb_register_device("mipi_dsi", &mipi_dsi_pdata);
 }
 
+void __init msm7x27a_m3_init_i2c_backlight(int bus_num)
+{
+	bl_i2c_device.id = bus_num;
+
+	lge_init_gpio_i2c_pin(&bl_i2c_pdata, bl_i2c_pin, &bl_i2c_bdinfo[0]);
+	i2c_register_board_info(bus_num, bl_i2c_bdinfo, ARRAY_SIZE(bl_i2c_bdinfo));
+	platform_device_register(&bl_i2c_device);
+}
+
 void __init lge_add_lcd_devices(void)
 {
 	platform_add_devices(m3_panel_devices, ARRAY_SIZE(m3_panel_devices));
 	msm_fb_add_devices();
-	lge_add_gpio_i2c_device(msm7x27a_m3_init_i2c_backlight_subpm);
+	lge_add_gpio_i2c_device(msm7x27a_m3_init_i2c_backlight);
 }
 

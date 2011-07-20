@@ -173,8 +173,7 @@ static void __init msm7x2x_init(void)
 	lge_add_sound_devices();
 	lge_add_lcd_devices();
 	lge_add_camera_devices();
-	/* enable add pm devices function after sperate i2c pin from backlight i2c */
-#if 0
+#ifndef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
 	lge_add_pm_devices();
 #endif
 	lge_add_usb_devices();
