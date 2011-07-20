@@ -338,20 +338,20 @@ void __show_regs(struct pt_regs *regs)
 	print_symbol("PC is at %s\n", instruction_pointer(regs));
 	print_symbol("LR is at %s\n", regs->ARM_lr);
 #ifdef CONFIG_LGE_HANDLE_PANIC
-	printk("pc : %08lx    lr : %08lx    psr: %08lx\n"
+	printk("pc :%05lx    lr :%05lx    psr:%05lx\n"
 #else
 	printk("pc : [<%08lx>]    lr : [<%08lx>]    psr: %08lx\n"
 #endif
-	       "sp : %08lx  ip : %08lx  fp : %08lx\n",
+	       "sp :%05lx  ip :%05lx  fp :%05lx\n",
 		regs->ARM_pc, regs->ARM_lr, regs->ARM_cpsr,
 		regs->ARM_sp, regs->ARM_ip, regs->ARM_fp);
-	printk("r10: %08lx  r9 : %08lx  r8 : %08lx\n",
+	printk("r10:%05lx r9 :%05lx r8 :%05lx\n",
 		regs->ARM_r10, regs->ARM_r9,
 		regs->ARM_r8);
-	printk("r7 : %08lx  r6 : %08lx  r5 : %08lx  r4 : %08lx\n",
+	printk("r7 :%05lx r6 :%05lx r5 :%05lx r4 :%05lx\n",
 		regs->ARM_r7, regs->ARM_r6,
 		regs->ARM_r5, regs->ARM_r4);
-	printk("r3 : %08lx  r2 : %08lx  r1 : %08lx  r0 : %08lx\n",
+	printk("r3 :%05lx r2 :%05lx r1 :%05lx r0 :%05lx\n",
 		regs->ARM_r3, regs->ARM_r2,
 		regs->ARM_r1, regs->ARM_r0);
 #ifdef CONFIG_LGE_HANDLE_PANIC
