@@ -207,7 +207,7 @@ static struct android_usb_product usb_products[] = {
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 
 struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns      = 1,
+	.nluns      = 2,
 	.vendor     = "LGE",
 	.product    = "Android Platform",
 	.release    = 0x0100,
