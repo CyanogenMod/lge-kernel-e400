@@ -65,8 +65,13 @@ static struct led_flash_platform_data lm3559_flash_pdata = {
 
 /* backlight device */
 static struct gpio_i2c_pin bl_i2c_pin = {
+#ifdef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
 	.sda_pin = 123,
 	.scl_pin = 122,
+#else
+	.sda_pin = 112,
+	.scl_pin = 111,
+#endif
 	.reset_pin = 124,
 };
 
@@ -111,7 +116,7 @@ static struct platform_device mipi_dsi_r61529_panel_device = {
 };
 
 /* input platform device */
-static struct platform_device *m3_panel_devices[] __initdata = {
+static struct platform_device *m3mpcs_panel_devices[] __initdata = {
 	&mipi_dsi_r61529_panel_device,
 };
 
@@ -235,7 +240,7 @@ static void __init msm_fb_add_devices(void)
 	msm_fb_register_device("mipi_dsi", &mipi_dsi_pdata);
 }
 
-void __init msm7x27a_m3_init_i2c_backlight(int bus_num)
+void __init msm7x27a_m3mpcs_init_i2c_backlight(int bus_num)
 {
 	bl_i2c_device.id = bus_num;
 
@@ -246,8 +251,8 @@ void __init msm7x27a_m3_init_i2c_backlight(int bus_num)
 
 void __init lge_add_lcd_devices(void)
 {
-	platform_add_devices(m3_panel_devices, ARRAY_SIZE(m3_panel_devices));
+	platform_add_devices(m3mpcs_panel_devices, ARRAY_SIZE(m3mpcs_panel_devices));
 	msm_fb_add_devices();
-	lge_add_gpio_i2c_device(msm7x27a_m3_init_i2c_backlight);
+	lge_add_gpio_i2c_device(msm7x27a_m3mpcs_init_i2c_backlight);
 }
 
