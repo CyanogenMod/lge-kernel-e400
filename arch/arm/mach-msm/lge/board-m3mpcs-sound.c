@@ -174,7 +174,7 @@ enum {
 static unsigned hook_key_gpios[] = {
 	GPIO_BUTTON_DETECT_EVB,
 	GPIO_BUTTON_DETECT_REV_A,
-	GPIO_BUTTON_DETECT_ERV_B,
+	GPIO_BUTTON_DETECT_REV_B,
 };
 
 static int m3mpcs_gpio_earsense_work_func(int *value)
