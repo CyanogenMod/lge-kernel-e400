@@ -67,8 +67,22 @@ static void bma222_late_resume(struct early_suspend *h);
 
 /* LGE_CHANGE_S */
 struct acceleration_platform_data *accel_pdata;
-static u8 bandwidth;
-static int set_bandwidth = 3;
+/*  bandwidth Possible Values :
+ *               unsigned char BW
+ *
+ *               bw       Selected Bandwidth[Hz]       Tupdate [?s]
+ *              =================================================
+ *               0            7.81                       64000
+ *               1            15.63                      32000
+ *               2            31.25                      16000
+ *               3            62.50                      8000
+ *               4            125                        4000
+ *               5            250                        2000
+ *               6            500                        1000
+ *               7            1000                       500
+ *
+ */
+static u8 bandwidth = 2; /* 31.25 Hz */
 /* LGE_CHANGE_E */
 
 /* i2c operation for bma222 API */
@@ -281,13 +295,13 @@ static ssize_t store_bma222_enable(struct device *dev,
 			accel_pdata->power(1);
 			mdelay(1);
 			bma222_set_mode(bma222_MODE_NORMAL);
-			bma222_set_bandwidth( (u8)set_bandwidth );//bandwidth set
+			bma222_set_bandwidth( bandwidth );//bandwidth set
 			atomic_set(&bma222_report_enabled, 1);
 #ifdef LGE_DEBUG
 			printk(KERN_INFO "ACCEL_Power On\n");
 #endif
 		} else { /* already power on state */ 
-			bma222_set_bandwidth( (u8)set_bandwidth );//bandwidth set
+			bma222_set_bandwidth( bandwidth );//bandwidth set
 		}
 	}
     else {
@@ -2314,7 +2328,7 @@ static int bma222_probe(struct i2c_client *client,
 	 * To reduce shaking output data
 	 * 2011-07-19, jihyun.seong@lge.com
 	 */
-	bma222_set_bandwidth((u8)set_bandwidth);		
+	bma222_set_bandwidth(bandwidth);		
 	
 #if 0 // originial
 	bma222_set_bandwidth(5);		//bandwidth 250Hz
