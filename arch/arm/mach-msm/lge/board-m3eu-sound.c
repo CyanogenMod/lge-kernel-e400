@@ -239,9 +239,7 @@ static unsigned m3eu_earsense_gpios[] = {
 
 /* especially to address gpio key */
 static unsigned m3eu_hook_key_gpios[] = {
-	GPIO_BUTTON_DETECT_EVB,
-	GPIO_BUTTON_DETECT_REV_A,
-	GPIO_BUTTON_DETECT_REV_B,
+	GPIO_BUTTON_DETECT,
 };
 
 static int m3eu_gpio_hook_key_work_func(int *value)
@@ -268,8 +266,8 @@ static struct lge_gpio_switch_platform_data m3eu_earsense_data = {
 	.sysfs_store = m3eu_gpio_earsense_sysfs_store,
 
 	/* especially to address gpio key */
-	.key_gpios = &m3eu_hook_key_gpios[lge_bd_rev],
-	.num_key_gpios = 1,
+	.key_gpios = m3eu_hook_key_gpios,
+	.num_key_gpios = ARRAY_SIZE(m3eu_hook_key_gpios),
 	.key_work_func = m3eu_gpio_hook_key_work_func,
 };
 
