@@ -160,9 +160,9 @@ static unsigned short pp2106_keycode[PP2106_KEYPAD_ROW][PP2106_KEYPAD_COL] = {
 	{KEY_V, KEY_B, KEY_U, KEY_Y, KEY_H, KEY_UNKNOWN, KEY_UNKNOWN },
 	{KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN, KEY_UNKNOWN },
 };
-
 static int pp2106_vreg_set(unsigned char onoff)
 {
+	/*
 	int rc = 0;
 	struct vreg *vreg_l12 = NULL;
 
@@ -190,12 +190,14 @@ static int pp2106_vreg_set(unsigned char onoff)
 			goto vreg_fail;
 		}
 	}
-
+	
 	return rc;
 
 vreg_fail:
 	vreg_put(vreg_l12);
 	return rc;
+	*/
+	return 0;
 }
 
 static struct pp2106_platform_data pp2106_pdata = {
