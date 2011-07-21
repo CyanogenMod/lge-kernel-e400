@@ -24,6 +24,7 @@
 #include <linux/eve_at.h>
 // END: eternalblue@lge.com:2009-11-11
 #include <mach/socinfo.h>
+#include <mach/msm_serial_hs.h>
 
 #include "devices.h"
 #include "timer.h"
@@ -38,6 +39,10 @@ static struct msm_gpio qup_i2c_gpios_io[] = {
 		"qup_scl" },
 	{ GPIO_CFG(61, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 		"qup_sda" },
+	{ GPIO_CFG(131, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
+		"qup_scl" },
+	{ GPIO_CFG(132, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
+		"qup_sda" },
 };
 
 static struct msm_gpio qup_i2c_gpios_hw[] = {
@@ -45,20 +50,32 @@ static struct msm_gpio qup_i2c_gpios_hw[] = {
 		"qup_scl" },
 	{ GPIO_CFG(61, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 		"qup_sda" },
+	{ GPIO_CFG(131, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
+		"qup_scl" },
+	{ GPIO_CFG(132, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
+		"qup_sda" },
 };
 
 static void gsbi_qup_i2c_gpio_config(int adap_id, int config_type)
 {
 	int rc;
 
-	if (adap_id < 0 || adap_id > 0)
-		return;
+	if (lge_bd_rev == LGE_REV_A) {
+		if (adap_id < 0 || adap_id > 0)
+			return;
+	} else if (lge_bd_rev == LGE_REV_B) {
+		if (adap_id < 0 || adap_id > 1)
+			return;
+	} else {
+		if (adap_id < 0 || adap_id > 1)
+			return;
+	}
 
 	/* Each adapter gets 2 lines from the table */
 	if (config_type)
-		rc = msm_gpios_request_enable(&qup_i2c_gpios_hw[adap_id], 2);
+		rc = msm_gpios_request_enable(&qup_i2c_gpios_hw[adap_id * 2], 2);
 	else
-		rc = msm_gpios_request_enable(&qup_i2c_gpios_io[adap_id], 2);
+		rc = msm_gpios_request_enable(&qup_i2c_gpios_io[adap_id * 2], 2);
 	if (rc < 0)
 		pr_err("QUP GPIO request/enable failed: %d\n", rc);
 }
@@ -89,6 +106,13 @@ static struct resource resources_uart3[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
+
+#ifdef CONFIG_SERIAL_MSM_HS
+static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
+	.inject_rx_on_wakeup       = 1,
+	.rx_to_inject       = 0xFD,
+};
+#endif
 
 struct platform_device msm_device_uart3 = {
 	.name	= "msm_serial",
@@ -121,6 +145,7 @@ static struct platform_device eve_atcmd_device = {
 static struct platform_device *m3_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
+	&msm_device_uart_dm1,
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
 	&msm_kgsl_3d0,
@@ -167,6 +192,7 @@ static void __init msm7x27a_init_ebi2(void)
 	iounmap(ebi2_cfg_ptr);
 }
 
+#define UART1DM_RX_GPIO         45
 static void __init msm7x2x_init(void)
 {
 	if (socinfo_init() < 0)
@@ -180,6 +206,10 @@ static void __init msm7x2x_init(void)
 	msm_device_i2c_init();
 
 	msm7x27a_init_ebi2();
+#ifdef CONFIG_SERIAL_MSM_HS
+	msm_uart_dm1_pdata.wakeup_irq = gpio_to_irq(UART1DM_RX_GPIO);
+	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
+#endif
 
 	msm_add_pmem_devices();
 	msm_add_fb_device();
@@ -195,16 +225,11 @@ static void __init msm7x2x_init(void)
 	lge_add_sound_devices();
 	lge_add_lcd_devices();
 	lge_add_camera_devices();
-	/* enable add pm devices function after sperate i2c pin from backlight i2c */
-#if 0
+#ifndef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
 	lge_add_pm_devices();
 #endif
 	lge_add_usb_devices();
-
-	/* enable add connectivity devices function after connectivity bring up */
-#if 0
 	lge_add_connectivity_devices();
-#endif
 
 	/* gpio i2c devices should be registered at latest point */
 	lge_add_gpio_i2c_devices();

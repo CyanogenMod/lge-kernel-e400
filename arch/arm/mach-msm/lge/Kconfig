@@ -67,6 +67,26 @@ config LGE_HANDLE_PANIC
 	help
 	 LGE crash handler
 
+config LGE_GRAM_REFRESH_PATCH
+	bool "LGE gram refresh patch"
+	default n
+	help
+	  This patch is added for gram-embedded device like mddi.
+	  because, when suspend state, power of mddi is off usually,
+	  gram of DDI chip has garbage data until data of gram is refreshed.
+	  this can cause displaying broken screen in time of turning backlight on.
+	  for preventing this problem, add refreshing routine before turning 
+	  backlight on by using late resume mechanism.
+
+config MACH_MSM7X27A_M3MPCS_REV_A
+	bool "LGE MSM7x27A MPCS REV_A support"
+	default n
+	depends on MACH_LGE
+	depends on MACH_MSM7X27A_M3MPCS
+	help
+	  This patch is used for MSM7x27A MPCS REV_A support.
+	  Because MPCS REV_B has GPIO big changes.
+
 endmenu
 
 endmenu

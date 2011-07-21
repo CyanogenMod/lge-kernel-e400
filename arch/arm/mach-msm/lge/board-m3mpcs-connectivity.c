@@ -552,22 +552,14 @@ static unsigned int msm_bahama_setup_power(void)
 	}
 
 	/*setup Bahama_sys_reset_n*/
-	rc = gpio_request(GPIO_BT_SYS_REST_EN, "bahama sys_rst_n");
-	if (rc < 0) {
-		pr_err("%s: gpio_request %d = %d\n", __func__,
-			GPIO_BT_SYS_REST_EN, rc);
-		goto vreg_fail;
-	}
-	rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
+	rc = gpio_direction_output(BT_SYS_REST_EN, 1);
 	if (rc < 0) {
 		pr_err("%s: gpio_direction_output %d = %d\n", __func__,
-			GPIO_BT_SYS_REST_EN, rc);
-		goto gpio_fail;
+			BT_SYS_REST_EN, rc);
+		goto vreg_fail;
 	}
 	return rc;
 
-gpio_fail:
-	gpio_free(GPIO_BT_SYS_REST_EN);
 vreg_fail:
 	vreg_put(vreg_s3);
 	return rc;
@@ -787,6 +779,18 @@ static struct platform_device *m3mpcs_connectivity_devices[] __initdata = {
 
 void __init lge_add_connectivity_devices(void)
 {
+	int rc;
+
+	rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
+	if (rc) {
+		printk(KERN_ERR "%d gpio request is failed\n", BT_SYS_REST_EN);
+	} else {
+		rc = gpio_tlmm_config(GPIO_CFG(BT_SYS_REST_EN, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		if (rc)
+			printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
+	}
+
 	platform_add_devices(m3mpcs_connectivity_devices,
 		ARRAY_SIZE(m3mpcs_connectivity_devices));
 

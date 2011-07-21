@@ -44,20 +44,22 @@ enum {
 #define TS_GPIO_IRQ		39
 #define TS_I2C_SLAVE_ADDR	0x48	/* MELFAS Mcs8000(mms-128) addr is 0x48 */
 
-/* common sensor i2c */
-#define SENSOR_GPIO_I2C_SCL  	131
-#define SENSOR_GPIO_I2C_SDA  	132
-
 /* accelerometer */
-#define ACCEL_GPIO_INT	 		28
+#define ACCEL_GPIO_I2C_SCL  	49
+#define ACCEL_GPIO_I2C_SDA  	48
+#define ACCEL_GPIO_INT	 		94
 #define ACCEL_I2C_ADDRESS		0x08 /* slave address 7bit - BMA222 */
 
 /* Ecompass */
-#define ECOM_GPIO_INT			18 /* DRDY */
+#define ECOM_GPIO_I2C_SCL		38
+#define ECOM_GPIO_I2C_SDA		35
+#define ECOM_GPIO_INT			130 /* DRDY */
 #define ECOM_I2C_ADDRESS		0x0C /* slave address 7bit - AK8975C */
 
 /* proximity sensor */
-#define PROXI_GPIO_DOUT		29
+#define PROXI_GPIO_I2C_SCL	16   
+#define PROXI_GPIO_I2C_SDA 	30   
+#define PROXI_GPIO_DOUT		17
 #define PROXI_I2C_ADDRESS	0x44 /* slave address 7bit - GP2AP002 */
 #define PROXI_LDO_NO_VCC	1
 
@@ -76,13 +78,18 @@ enum {
 #endif
 
 /* ear sense gpio */
-#define GPIO_EAR_SENSE		41
-#define GPIO_BUTTON_DETECT  86
-#define GPIO_MIC_MODE		127
+#define GPIO_EAR_SENSE				41
+#define GPIO_BUTTON_DETECT_EVB		86
+#define GPIO_BUTTON_DETECT_REV_A	86
+#define GPIO_BUTTON_DETECT_REV_B	28
+#define GPIO_MIC_MODE				127
+
+/* connectivity gpio */
+#define BT_SYS_REST_EN		6
 
 /* camera gpio */
 #define GPIO_CAM_RESET      34
-#define GPIO_FLASH_EN       13
+#define GPIO_FLASH_EN       82
 #define GPIO_FLASH_I2C_SCL  26
 #define GPIO_FLASH_I2C_SDA  27
 #define FLASH_I2C_ADDRESS   0x53

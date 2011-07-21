@@ -9,8 +9,8 @@
 
 /* Sub-PMIC */
 static struct gpio_i2c_pin subpm_i2c_pin = {
-	.sda_pin = 76,
-	.scl_pin = 77,
+	.sda_pin = 13,
+	.scl_pin = 14,
 };
 
 static struct i2c_gpio_platform_data subpm_i2c_pdata = {
@@ -60,7 +60,7 @@ static struct rt8053_regulator_subdev rt8053_regulators[] = {
 
 static struct rt8053_platform_data rt8053_data = {
 	.num_regulators = 6,
-	.enable_gpio = 58,
+	.enable_gpio = 23,
 	.regulators = rt8053_regulators,
 };
 
@@ -80,7 +80,7 @@ void __init msm7x27a_m3_init_i2c_subpm(int bus_num)
 	platform_device_register(&subpm_i2c_device);
 }
 
-/* main interface */
+/* common interface */
 void __init lge_add_pm_devices(void)
 {
 	lge_add_gpio_i2c_device(msm7x27a_m3_init_i2c_subpm);

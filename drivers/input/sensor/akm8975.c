@@ -35,19 +35,19 @@
 
 #include <mach/board_lge.h> /* platform data */
 
-#define LGE_DEBUG 0
+/* #define LGE_DEBUG */
 #define AKM8975_DEBUG		0
 #define AKM8975_DEBUG_MSG	0
 #define AKM8975_DEBUG_FUNC	0
 #define AKM8975_DEBUG_DATA	0
 #define MAX_FAILURE_COUNT	3
 #define AKM8975_RETRY_COUNT	10
-#define AKM8975_DEFAULT_DELAY	100
+#define AKM8975_DEFAULT_DELAY  100
 
 
 #if AKM8975_DEBUG_MSG
 #define AKMDBG(format, ...)	\
-		printk(KERN_INFO "AKM8975 " format "\n", ## __VA_ARGS__)
+		printk(KERN_INFO "AKM8975 c" format "\n", ## __VA_ARGS__)
 #else
 #define AKMDBG(format, ...)
 #endif
@@ -91,6 +91,55 @@ static short akmd_delay = AKM8975_DEFAULT_DELAY;
 
 static atomic_t suspend_flag = ATOMIC_INIT(0);
 static struct ecom_platform_data* ecom_pdata;
+
+/* LGE_CHANGE,
+ * for power down routine
+ * 2011-07-15, jihyun.seong@lge.com
+ */
+static atomic_t vreg_check = ATOMIC_INIT(0);
+static void lge_akm8975_early_resume(void);
+static void lge_akm8975_early_suspend(void);
+
+static ssize_t 
+ak8975_enable_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", atomic_read(&vreg_check));
+}
+
+static ssize_t 
+ak8975_enable_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode = 0;
+
+	sscanf(buf, "%d", &mode);
+
+    if(mode)
+    {
+		lge_akm8975_early_resume();
+#ifdef LGE_DEBUG
+		printk(KERN_INFO "Ecompass_Power On\n");
+#endif
+    }
+    else {
+		lge_akm8975_early_suspend();
+#ifdef LGE_DEBUG
+		printk(KERN_INFO "Ecompass_Power Off\n");
+#endif
+    }
+    return 0;
+
+}
+
+static DEVICE_ATTR(ak8975_enable, S_IRUGO | S_IWUGO, ak8975_enable_show, ak8975_enable_store);
+static struct attribute *ak8975_attributes[] = {
+    &dev_attr_ak8975_enable.attr,
+    NULL,
+};
+
+static struct attribute_group ak8975_attribute_group = {
+    .attrs = ak8975_attributes
+};
+/* LGE_CHANGE end */
 
 static int AKI2C_RxData(char *rxData, int length)
 {
@@ -248,6 +297,7 @@ static int AKECS_SetMode(char mode)
 		ret = AKECS_SetMode_PowerDown();
 		/* wait at least 100us after changing mode */
 		udelay(100);
+		
 		break;
 	default:
 		AKMDBG("%s: Unknown mode(%d)", __func__, mode);
@@ -414,7 +464,7 @@ akm_aot_ioctl(struct file *file,
 	case ECS_IOCTL_APP_SET_MFLAG:
 	case ECS_IOCTL_APP_SET_AFLAG:
 	case ECS_IOCTL_APP_SET_MVFLAG:
-		case ECS_IOCTL_APP_SET_PFLAG:
+	case ECS_IOCTL_APP_SET_PFLAG:
 		if (copy_from_user(&flag, argp, sizeof(flag))) {
 			return -EFAULT;
 		}
@@ -756,8 +806,8 @@ static void akm8975_early_suspend(struct early_suspend *handler)
 	wake_up(&open_wq);
 	disable_irq(this_client->irq);
 	AKMDBG("suspended with flag=%d",
-	       atomic_read(&reserve_open_flag));
-}
+	       atomic_read(&reserve_open_flag));	
+ }
 
 static void akm8975_early_resume(struct early_suspend *handler)
 {
@@ -770,7 +820,38 @@ static void akm8975_early_resume(struct early_suspend *handler)
 	       atomic_read(&reserve_open_flag));
 }
 #endif
+
 /* LGE_CHANGE_E */
+
+/* LGE_CHANGE,
+ * for power down routine
+ * 2011-07-15, jihyun.seong@lge.com
+ */
+static void lge_akm8975_early_suspend()
+{
+	atomic_set(&suspend_flag, 1);
+	atomic_set(&reserve_open_flag, atomic_read(&open_flag));
+	atomic_set(&open_flag, 0);
+	wake_up(&open_wq);
+	disable_irq(this_client->irq);
+
+	ecom_pdata->power(0);
+	atomic_set(&vreg_check, 0);
+ }
+
+static void lge_akm8975_early_resume()
+{
+	if (atomic_read(&vreg_check) == 0) {
+		ecom_pdata->power(1);
+		atomic_set(&vreg_check, 1);
+		
+		enable_irq(this_client->irq);
+		atomic_set(&suspend_flag, 0);
+		atomic_set(&open_flag, atomic_read(&reserve_open_flag));
+		wake_up(&open_wq);
+	} else {/* already power on state */}
+}
+/* LGE_CHANGE end */
 
 /*********************************************/
 static struct file_operations akmd_fops = {
@@ -843,6 +924,8 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	ecom_pdata = client->dev.platform_data;
 	
 	ecom_pdata->power(1);
+
+	atomic_set(&vreg_check, 1);
 
 /* LGE_CHANGE_E */
  
@@ -922,6 +1005,17 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto exit8;
 	}
 
+/* LGE_CHANGE,
+ * register sysfs nodes group
+ * 2011-07-15, jihyun.seong@lge.com
+ */
+	err = sysfs_create_group(&client->dev.kobj, &ak8975_attribute_group);
+    if (err) {
+        printk(KERN_ERR "ak8975 sysfs register failed\n");
+        goto exit_sysfs_create_group_failed;
+    }
+/* LGE_CHANGE end */
+
 	mutex_init(&sense_data_mutex);
 
 	init_waitqueue_head(&data_ready_wq);
@@ -947,6 +1041,10 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 
 	return 0;
+/* LGE_CHANGE, unregister sysfs nodes group, jihyun.seong@lge.com */
+exit_sysfs_create_group_failed:
+    sysfs_remove_group(&client->dev.kobj, &ak8975_attribute_group);
+/* LGE_CHANGE end */
 
 exit8:
 	misc_deregister(&akmd_device);
@@ -969,6 +1067,9 @@ static int akm8975_remove(struct i2c_client *client)
 {
 	struct akm8975_data *akm = i2c_get_clientdata(client);
 	AKMFUNC("akm8975_remove");
+/* LGE_CHANGE, unregister sysfs nodes group, jihyun.seong@lge.com */
+    sysfs_remove_group(&client->dev.kobj, &ak8975_attribute_group);
+/* LGE_CHANGE end */
 	unregister_early_suspend(&akm->akm_early_suspend);
 	misc_deregister(&akm_aot_device);
 	misc_deregister(&akmd_device);

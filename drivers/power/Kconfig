@@ -212,6 +212,13 @@ config BATTERY_MSM
 	help
 	  Say Y to enable support for the battery in Qualcomm MSM.
 
+config LGE_FUEL_GAUGE
+	bool "LGE Fuel Gauge IC"
+	depends on (BATTERY_MSM && MACH_LGE)
+	default N
+	help
+	  Say Y to use the fuel gauge ic on AMSS in Qualcomm MSM.
+
 config FUELGAUGE_MAXIM17040
 	tristate "MAXIM17040 for test purpose (HDK)"
 	depends on ARCH_MSM

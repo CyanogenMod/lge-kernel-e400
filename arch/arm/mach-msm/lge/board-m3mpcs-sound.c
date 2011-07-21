@@ -171,6 +171,12 @@ enum {
 	EAR_INJECT = 1,
 };
 
+static unsigned hook_key_gpios[] = {
+	GPIO_BUTTON_DETECT_EVB,
+	GPIO_BUTTON_DETECT_REV_A,
+	GPIO_BUTTON_DETECT_REV_B,
+};
+
 static int m3mpcs_gpio_earsense_work_func(int *value)
 {
 	int state;
@@ -186,7 +192,7 @@ static int m3mpcs_gpio_earsense_work_func(int *value)
 		gpio_set_value(GPIO_MIC_MODE, 0);
 	} else {
 		state = EAR_STATE_INJECT;
-		gpio_value = gpio_get_value(GPIO_BUTTON_DETECT);
+		gpio_value = gpio_get_value(hook_key_gpios[lge_bd_rev]);
 		if (gpio_value) {
 			printk(KERN_INFO "headphone was inserted!\n");
 			*value = SW_HEADPHONE_INSERT;
@@ -238,7 +244,7 @@ static unsigned m3mpcs_earsense_gpios[] = {
 
 /* especially to address gpio key */
 static unsigned m3mpcs_hook_key_gpios[] = {
-	GPIO_BUTTON_DETECT,
+	GPIO_BUTTON_DETECT_EVB,
 };
 
 static int m3mpcs_gpio_hook_key_work_func(int *value)
@@ -246,7 +252,7 @@ static int m3mpcs_gpio_hook_key_work_func(int *value)
 	int gpio_value;
 
 	*value = KEY_MEDIA;
-	gpio_value = gpio_get_value(GPIO_BUTTON_DETECT);
+	gpio_value = gpio_get_value(hook_key_gpios[lge_bd_rev]);
 	printk(KERN_INFO "%s: hook key detected : %s\n", __func__,
 		gpio_value ? "pressed" : "released");
 
@@ -299,6 +305,9 @@ void __init lge_add_sound_devices(void)
 		if (rc)
 			printk(KERN_ERR "%d gpio tlmm config is failed\n", GPIO_MIC_MODE);
 	}
+
+	m3mpcs_earsense_data.key_gpios = &hook_key_gpios[lge_bd_rev];
+	m3mpcs_earsense_data.num_key_gpios = 1;
 
 	platform_add_devices(m3mpcs_sound_devices, ARRAY_SIZE(m3mpcs_sound_devices));
 }
