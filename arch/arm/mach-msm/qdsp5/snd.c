@@ -60,6 +60,7 @@ static struct snd_ctxt the_snd;
 #if defined (CONFIG_MACH_LGE)
 #define SND_SET_LOOPBACK_MODE_PROC 61
 #define SND_SET_RX_VOLUME_PROC 65
+#define SND_SET_DTMF_VOLUME_PROC 66
 #endif
 
 struct rpc_snd_set_device_args {
@@ -149,6 +150,27 @@ struct snd_set_rx_volume_param_msg {
     struct rpc_request_hdr hdr;
     struct rpc_snd_set_rx_volume_param_args args;
 };
+
+struct snd_set_dtmfvol_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_dtmfvol;
+}frep;
+
+struct rpc_snd_set_dtmf_volume_param_args {
+	uint32_t device;
+	uint32_t method;
+	uint32_t idx;
+	int get_flag;	/* get_flag = 0 for set, get_flag = 1 for get */
+	int32_t param_val;
+
+	uint32_t cb_func;
+	uint32_t client_data;
+};
+
+struct snd_set_dtmf_volume_param_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_dtmf_volume_param_args args;
+};
 #endif
 
 struct snd_endpoint *get_snd_endpoints(int *size);
@@ -204,6 +226,8 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct snd_set_loopback_mode_msg lbmsg;
 	struct msm_snd_set_rx_volume_param rxvol;
 	struct snd_set_rx_volume_param_msg rmsg;
+	struct msm_snd_set_dtmf_volume_param dtmfvol;
+	struct snd_set_dtmf_volume_param_msg fmsg;
 #endif
 
 	int rc = 0;
@@ -376,6 +400,39 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, rxvol.get_param);
 			if (copy_to_user((void __user *)arg, &rxvol, sizeof(rxvol))) {
 				pr_err("snd_ioctl get rx vol: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+
+	case SND_SET_DTMF_VOLUME:
+		if (copy_from_user(&dtmfvol, (void __user *) arg, sizeof(dtmfvol))) {
+			pr_err("snd_ioctl set_dtmf_volume: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		fmsg.args.device = cpu_to_be32(dtmfvol.device);
+		fmsg.args.method = cpu_to_be32(dtmfvol.method);
+		fmsg.args.idx = cpu_to_be32(dtmfvol.idx);
+		fmsg.args.get_flag = cpu_to_be32(dtmfvol.get_flag);
+		fmsg.args.param_val = cpu_to_be32(dtmfvol.param_val);
+		fmsg.args.cb_func = -1;
+		fmsg.args.client_data = 0;
+		pr_info("set_dtmf_volume %d %d %d %d\n", dtmfvol.device,
+						 dtmfvol.method, dtmfvol.idx, dtmfvol.param_val);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_DTMF_VOLUME_PROC,
+			&fmsg, sizeof(fmsg),&frep, sizeof(frep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			dtmfvol.get_param = be32_to_cpu(frep.get_dtmfvol);
+			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, dtmfvol.get_param);
+			if (copy_to_user((void __user *)arg, &dtmfvol, sizeof(dtmfvol))) {
+				pr_err("snd_ioctl get dtmf vol: invalid write pointer.\n");
 				rc = -EFAULT;
 			}
 		}
