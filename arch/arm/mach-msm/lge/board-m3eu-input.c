@@ -402,10 +402,10 @@ static struct ecom_platform_data ecom_pdata = {
  * 2011-07-05
  */
 	.fdata_sign_x = -1,
-    .fdata_sign_y = 1,
+    .fdata_sign_y = -1,
     .fdata_sign_z = -1,
-    .fdata_order0 = 0,
-    .fdata_order1 = 1,
+    .fdata_order0 = 1,
+    .fdata_order1 = 0,
     .fdata_order2 = 2,
     .sensitivity1g = 64,
 
