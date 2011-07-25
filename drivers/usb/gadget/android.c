@@ -37,19 +37,26 @@
 
 #include "gadget_chips.h"
 
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+#include "u_lgeusb.h"
+#endif
 
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
-#include <mach/vreg.h>
-#include "gadget_chips.h"
-#include "u_lgeusb.h"
-#include <mach/rpc_hsusb.h>
+//hyunjin2.lim
+//using ADB test & changed default PID 618E -> 61FC
+#define M3_DEFENSE_CODE
 #endif
 
-
-#ifdef CONFIG_LGE_USB_SUPPORT_ANDROID_AUTORUN
-#include <linux/time.h>
-#endif
-
+/* LGE_CHANGE
+ * USB dev class set define.
+ * 2011-02-10, hyunhui.park@lge.com
+ */
+#define set_device_class(desc, class, subclass, protocol)	\
+	do {													\
+		desc.bDeviceClass = class;						\
+		desc.bDeviceSubClass = subclass;					\
+		desc.bDeviceProtocol = protocol;					\
+	} while (0)
 
 /*
  * Kbuild is not very cooperative with respect to linking separately
@@ -68,56 +75,6 @@ MODULE_DESCRIPTION("Android Composite USB Driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0");
 
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-/* product id */
-u16 product_id;
-int android_set_pid(const char *val, struct kernel_param *kp);
-static int android_get_pid(char *buffer, struct kernel_param *kp);
-module_param_call(product_id, android_set_pid, android_get_pid,
-					&product_id, 0664);
-MODULE_PARM_DESC(product_id, "USB device product id");
-#endif
-
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-const u16 lg_default_pid	= 0x618E;
-#define lg_default_pid_string "618E"
-
-const u16 lg_ums_pid		= 0x6209;
-#define lg_ums_pid_string "6209"
-
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-static int cable;
-int switch_cable;
-#endif
-
-/* [yk.kim@lge.com] 2011-01-05, workaround flag, FIX ME */
-
-//hyunjin tmp for compile  static int switch_flag = 0;
-
-int set_pid_flag = 0;
-#ifndef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-int hidden_pid = 0;	/* switching UMS pid */
-#endif 
-#endif /*CONFIG_LGE_USB_GADGET_DRIVER */
-
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO
-const u16 lg_charge_only_pid = 0xFFFF;
-#define lg_charge_only_pid_string "FFFF"
-#endif
-	
-static char autorun_serial_number[MAX_SERIAL_LEN] = "LGANDROIDVS760";
-static u16 autorun_user_mode;
-static int android_set_usermode(const char *val, struct kernel_param *kp);
-module_param_call(user_mode, android_set_usermode, param_get_string,
-					&autorun_user_mode, 0664);
-MODULE_PARM_DESC(user_mode, "USB Autorun user mode");
-#endif /*CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN*/
-
-
-
-
 static const char longname[] = "Gadget Android";
 
 /* Default vendor and product IDs, overridden by platform data */
@@ -134,63 +91,20 @@ struct android_dev {
 
 	int product_id;
 	int version;
-
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-	struct mutex lock;
-#endif
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-    unique_usb_function unique_function;
-#endif
 };
 
 static struct android_dev *_android_dev;
 
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-const u16 lg_autorun_pid	= 0x620B;
-#define lg_autorun_pid_string "620B"
-/* 2011.05.13 jaeho.cho@lge.com generate ADB USB uevent for gingerbread*/
-int adb_disable = 1;
-#endif
-
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+/*  LGE Android use IMEI as serial number. */
+#define MAX_STR_LEN		20
+#else
 #define MAX_STR_LEN		16
-/* string IDs are assigned dynamically */
+#endif
 
 #define STRING_MANUFACTURER_IDX		0
 #define STRING_PRODUCT_IDX		1
 #define STRING_SERIAL_IDX		2
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-const u16 lg_factory_pid = 0x6000;
-extern struct android_usb_platform_data android_usb_pdata_factory;
-
-int lg_manual_test_mode = 0;
-u8 manual_test_mode;
-static int android_get_manual_test_mode(char *buffer, struct kernel_param *kp);
-module_param_call(manual_test_mode, NULL, android_get_manual_test_mode,
-					&manual_test_mode, 0444);
-MODULE_PARM_DESC(manual_test_mode, "Manual Test Mode");
-#endif
-
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-char serial_number[MAX_SERIAL_LEN] = "\0";
-char user_serial_number[MAX_SERIAL_LEN];
-#else
-char serial_number[MAX_STR_LEN];
-#endif
-
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-const u16 lg_ndis_pid = 0x61A1;
-#define lg_ndis_pid_string "61A1"
-
-#elif defined(CONFIG_LGE_USB_GADGET_ECM_DRIVER)
-
-const u16 lg_ecm_pid = 0x6208;
-#define lg_ecm_pid_string "6208"
-
-#elif defined(CONFIG_LGE_USB_GADGET_RNDIS_DRIVER)
-
-const u16 lg_rndis_pid = 0x6208;
-#define lg_rndis_pid_string "0x6208"
-#endif /*CONFIG_LGE_USB_GADGET_NDIS_DRIVER*/
 
 char serial_number[MAX_STR_LEN];
 /* String Table */
@@ -198,12 +112,7 @@ static struct usb_string strings_dev[] = {
 	/* These dummy values should be overridden by platform data */
 	[STRING_MANUFACTURER_IDX].s = "Android",
 	[STRING_PRODUCT_IDX].s = "Android",
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-	[STRING_SERIAL_IDX].s = "\0",
-#else
 	[STRING_SERIAL_IDX].s = "0123456789ABCDEF",
-#endif
-
 	{  }			/* end of list */
 };
 
@@ -241,16 +150,11 @@ static const struct usb_descriptor_header *otg_desc[] = {
 };
 
 static struct list_head _functions = LIST_HEAD_INIT(_functions);
+
 static bool _are_functions_bound;
 
-static void android_set_default_product(int pid);
 
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-extern void diag_set_serial_number(char *serial_number);
-#endif
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-void android_set_device_class(u16 pid);
-#endif
+static void android_set_default_product(int product_id);
 
 void android_usb_set_connected(int connected)
 {
@@ -417,51 +321,13 @@ static int product_matches_functions(struct android_usb_product *p)
 	return 1;
 }
 
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-static int product_matches_unique_functions(struct android_dev *dev, struct android_usb_product *p)
-{
-    if(p->unique_function == dev->unique_function)
-		return 1;
-	else
-		return 0;
-}
-
-static int get_init_product_id(struct android_dev *dev)
-{
-	struct android_usb_product *p = dev->products;
-	int count = dev->num_products;
-	int i;
-	
-    if (p) {
-		for (i = 0; i < count; i++, p++) {  
-			if (product_matches_unique_functions(dev,p))
-			{
-				USB_DBG("dev->product_id 0x%x\n", p->product_id);
-				return p->product_id;
-			}
-		}
-    }
-
-	USB_DBG("dev->product_id 0x%x\n", dev->product_id);
-	/* use default product ID */
-	return dev->product_id;
-}
-
-#endif
-
 static int get_product_id(struct android_dev *dev)
 {
 	struct android_usb_product *p = dev->products;
 	int count = dev->num_products;
 	int i;
 
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-	if(product_id == lg_factory_pid)
-		return product_id;
-	else if(p) {
-#else
 	if (p) {
-#endif
 		for (i = 0; i < count; i++, p++) {
 			if (product_matches_functions(p))
 				return p->product_id;
@@ -469,89 +335,6 @@ static int get_product_id(struct android_dev *dev)
 	}
 	/* use default product ID */
 	return dev->product_id;
-}
-
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-static int lge_bind_config(u16 pid)
-{
-	int ret = 0;
-
-	if (pid == lg_factory_pid) 
-	{
-		serial_number[0] = '\0';
-		msm_hsusb_is_serial_num_null(1); 
-		device_desc.iSerialNumber = 0; 
-	}
-	else
-	{
-	    sprintf(serial_number, "%s", user_serial_number);
-		ret = lge_get_usb_serial_number(serial_number);
-
-		/* Send Serial number to A9 for software download */
-		if (serial_number[0] != '\0') {
-			msm_hsusb_is_serial_num_null(0);
-			msm_hsusb_send_serial_number(serial_number);
-		} else {
-			/* If error to get serial number, we check the
-			 * pdata's serial number. If pdata's serial number
-			 * (e.g. default serial number) is set, we use the 
-			 * serial number.
-			 */
-			/* TEMP : [yk.kim@lge.com] 2010-12-27, for user cable multi-download */
-			//if (user_serial_number == NULL) {
-				serial_number[0] = '\0';
-				msm_hsusb_is_serial_num_null(1); 
-				device_desc.iSerialNumber = 0; 
-			//} else {
-			//	msm_hsusb_is_serial_num_null(0);
-			//	msm_hsusb_send_serial_number(serial_number);
-			//}
-		}
-	}
-
-	if (pid)
-		msm_hsusb_send_productID(pid);
-
-	android_config_driver.bmAttributes |= USB_CONFIG_ATT_SELFPOWER;
-	android_config_driver.bMaxPower = 0xFA; /* 500 mA */
-
-    return ret;
-	
-}
-#endif
-
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-static char random_serial_number[14];
-static void __init set_random_serial_number()
-{
-	struct timeval tv;
-	do_gettimeofday(&tv);
-	sprintf(random_serial_number,"123456789%5d", tv.tv_usec % 100000);
-	pr_info("random_serial_number[%s]\n", random_serial_number);
-	return;
-}
-#endif
-
-static int is_msc_only_comp(int pid)
-{
-	struct android_dev *dev = _android_dev;
-	struct android_usb_product *up = dev->products;
-	int count;
-	char **functions;
-	int index;
-
-	for (index = 0; index < dev->num_products; index++, up++) {
-		if (pid == up->product_id)
-			break;
-	}
-
-	count = up->num_functions;
-	functions = up->functions;
-
-	if (count == 1 && !strncmp(*functions, "usb_mass_storage", 32))
-		return true;
-	else
-		return false;
 }
 
 static int __devinit android_bind(struct usb_composite_dev *cdev)
@@ -593,10 +376,20 @@ static int __devinit android_bind(struct usb_composite_dev *cdev)
 	 * doesn't make sense, since there is no notifications that
 	 * that can be sent from mass storage during suspend.
 	 */
-	if (gadget->ops->wakeup && !is_msc_only_comp((dev->product_id)))
+	 
+//hyunjin2.lim check.  if (gadget->ops->wakeup && !is_msc_only_comp((dev->product_id)))
+	if (gadget->ops->wakeup)
 		android_config_driver.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
 	else
 		android_config_driver.bmAttributes &= ~USB_CONFIG_ATT_WAKEUP;
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	/* LGE_CHANGE
+	 * Set serial number to 0 with factory cable.
+	 * 2011-02-22, hyunhui.park@lge.com
+	 */
+	if (lgeusb_detect_factory_cable())
+		device_desc.iSerialNumber = 0;
+#endif
 
 
 	/* register our configuration */
@@ -624,63 +417,22 @@ static int __devinit android_bind(struct usb_composite_dev *cdev)
 
 	usb_gadget_set_selfpowered(gadget);
 	dev->cdev = cdev;
-	
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-	product_id = get_init_product_id(dev);
-#else
 	product_id = get_product_id(dev);
-#endif
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-	ret = lge_bind_config(product_id);
-#endif
-
 	device_desc.idProduct = __constant_cpu_to_le16(product_id);
 	cdev->desc.idProduct = device_desc.idProduct;
 
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-	if(product_id == lg_autorun_pid)
-	{	   
-	  strings_dev[STRING_SERIAL_IDX].s = autorun_serial_number;
-	}
-	else
-	{
-	  strings_dev[STRING_SERIAL_IDX].s = serial_number;
-	}
-#endif
-
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-	if(product_id == lg_ndis_pid)
-	{
-		device_desc.bDeviceClass		 = USB_CLASS_MISC;
-		device_desc.bDeviceSubClass 	 = 0x02;
-		device_desc.bDeviceProtocol 	 = 0x01;
-	}
-	else
-	{
-		device_desc.bDeviceClass		 = USB_CLASS_COMM;
-		device_desc.bDeviceSubClass 	 = 0x00;
-		device_desc.bDeviceProtocol 	 = 0x00;
-	}
-#else
-	/* BEGIN:0010739 [yk.kim@lge.com] 2010-11-11 */
-	/* ADD:0010739 set device desc. */
-	device_desc.bDeviceClass		 = USB_CLASS_COMM;
-	device_desc.bDeviceSubClass 	 = 0x00;
-	device_desc.bDeviceProtocol 	 = 0x00;
-	/* END:0010739 [yk.kim@lge.com] 2010-11-11 */
-#endif
-
+	//lgeusb_info(" product_id : %x \n", product_id);
+	
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
+	/* Set default device class */
+#ifdef M3_DEFENSE_CODE
+ 	if (product_id == LGE_FACTORY_PID)//hyunjin2.lim.default pid = 0x61fc
 #else
-	/* workaround pid flag */
-	hidden_pid = product_id;
+	if ((product_id == LGE_DEFAULT_PID) || (product_id == LGE_FACTORY_PID))
 #endif
-#endif
-
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-	if (serial_number[0] == '\0')
-		set_random_serial_number();
+		set_device_class(device_desc, USB_CLASS_COMM, 0x00, 0x00);
+	else
+		set_device_class(device_desc, USB_CLASS_MISC, 0x02, 0x01);
 #endif
 
 	return 0;
@@ -693,24 +445,33 @@ static struct usb_composite_driver android_usb_driver = {
 	.enable_function = android_enable_function,
 };
 
-static bool is_func_supported(struct android_usb_function *f)
-{
-	char **functions = _android_dev->functions;
-	int count = _android_dev->num_functions;
-	const char *name = f->name;
-	int i;
-
-	for (i = 0; i < count; i++) {
-		if (!strcmp(*functions++, name))
-			return true;
-	}
-	return false;
-}
-
 void android_register_function(struct android_usb_function *f)
 {
 	struct android_dev *dev = _android_dev;
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	int lge_pid;
 
+	list_add_tail(&f->list, &_functions);
+	if (dev && should_bind_functions(dev)) {
+		lgeusb_debug("bind_functions() is called\n");
+		bind_functions(dev);
+		android_set_default_product(dev->product_id);
+
+		/* Without USB S/W reset */
+		lge_pid = lgeusb_set_current_mode(0);
+
+		if (serial_number[0] != '\0')
+			strings_dev[STRING_SERIAL_IDX].s = serial_number;
+
+		lgeusb_info("LGE Android Gadget global configuration:\n\t"
+				"product_id -- %x, serial no. -- %s\n", lge_pid,
+				((serial_number[0] != '\0') ? serial_number : "NULL"));
+#ifdef M3_DEFENSE_CODE	
+		if (dev->cdev && dev->cdev->gadget)
+			usb_gadget_connect(dev->cdev->gadget);
+#endif
+	}
+#else /* below is original */
 	pr_debug("%s: %s\n", __func__, f->name);
 
 	if (!is_func_supported(f))
@@ -725,7 +486,7 @@ void android_register_function(struct android_usb_function *f)
 		if (dev->cdev && dev->cdev->gadget)
 			usb_gadget_connect(dev->cdev->gadget);
 	}
-
+#endif
 }
 
 /**
@@ -738,43 +499,11 @@ static void android_set_function_mask(struct android_usb_product *up)
 {
 	int index, found = 0;
 	struct usb_function *func;
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-	static int autorun_started = 0;
-#endif
 
 	list_for_each_entry(func, &android_config_driver.functions, list) {
 		/* adb function enable/disable handled separetely */
-		if (!strcmp(func->name, "adb") && !func->disabled)
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-		{
-			if(autorun_started)
-			{
-				if(up->product_id == lg_ndis_pid)
-				{
-					usb_function_set_enabled(func,!adb_disable);
-				}
-				else
-				{
-					usb_function_set_enabled(func,0);
-				}
-
-				continue;
-			}
-			else
-			{
-				if(up->product_id != lg_ndis_pid && up->product_id != lg_factory_pid)
-				{
-					autorun_started = 1;
-				}
-				else
-				{
-					continue;
-				}
-			}
-		}
-#else
+		if (!strcmp(func->name, "adb"))
 			continue;
-#endif
 
 		for (index = 0; index < up->num_functions; index++) {
 			if (!strcmp(up->functions[index], func->name)) {
@@ -814,8 +543,12 @@ static void android_set_default_product(int pid)
 		if (pid == up->product_id)
 			break;
 	}
+	
+	//lgeusb_info("USB PID : %x \n", pid);
+	
 	android_set_function_mask(up);
 	device_desc.idProduct = __constant_cpu_to_le16(pid);
+	
 	if (dev->cdev)
 		dev->cdev->desc.idProduct = device_desc.idProduct;
 }
@@ -835,271 +568,106 @@ static void android_config_functions(struct usb_function *f, int enable)
 	struct android_dev *dev = _android_dev;
 	struct android_usb_product *up = dev->products;
 	int index;
+	char **functions;
 
-	/* Searches for product id having function */
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	/*  Change to search product id at all index 	 */
+	int f_index, f_found;
+
+	/* Searches for product id having function at all index */
 	if (enable) {
 		for (index = 0; index < dev->num_products; index++, up++) {
-			if (product_has_function(up, f))
+			functions = up->functions;
+			f_found = 0;
+			for (f_index = 0; f_index < up->num_functions; f_index++) {
+				if (!strcmp(up->functions[f_index], f->name)) {
+					f_found = 1;
+					break;
+				}
+			}
+			if (f_found)
 				break;
 		}
 		android_set_function_mask(up);
 	} else
 		android_set_default_product(dev->product_id);
+#else /* below is original */
+	/* Searches for product id having function at first index */
+	if (enable) {
+		for (index = 0; index < dev->num_products; index++, up++) {
+			functions = up->functions;
+			if (!strcmp(*functions, f->name))
+				break;
+		}
+		android_set_function_mask(up);
+	} else
+		android_set_default_product(dev->product_id);
+#endif
 }
 #endif
 
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO
-extern void usb_charge_only_softconnect(void);
-#endif
-
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
-int android_switch_composition(u16 pid)
+static void android_set_class_product(int pid, int class_code)
 {
-	
 	struct android_dev *dev = _android_dev;
-	int ret = -EINVAL;
-	
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-    android_set_device_class(pid);
-#endif
+	int subclass, protocol;
 
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO
-    usb_charge_only_softconnect();
-#endif
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO
-	if (pid == lg_charge_only_pid) {
-		product_id = pid;		
-		device_desc.idProduct = __constant_cpu_to_le16(pid);
-		if (dev->cdev)
-			dev->cdev->desc.idProduct = device_desc.idProduct;
-		/* If we are in charge only pid, disconnect android gadget */
-		usb_gadget_disconnect(dev->cdev->gadget);
-		return 0;
+	switch(class_code) {
+		case USB_CLASS_PER_INTERFACE:
+			subclass = 0x00;
+			protocol = 0x00;
+			break;
+		case USB_CLASS_COMM:
+			subclass = 0x00;
+			protocol = 0x00;
+			break;
+		case USB_CLASS_MISC:
+			subclass = 0x02;
+			protocol = 0x01;
+			break;
+		default:
+			subclass = 0xFF;
+			protocol = 0xFF;
+			break;
 	}
-#endif
-
-	device_desc.idProduct = __constant_cpu_to_le16(pid);
+	set_device_class(dev->cdev->desc, class_code, subclass, protocol);
 	android_set_default_product(pid);
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-	product_id = pid;
-#endif
+}
 
+static void android_force_reset(void)
+{
+	struct android_dev *dev = _android_dev;
+	int product_id;
+
+	product_id = get_product_id(dev);
+	device_desc.idProduct = __constant_cpu_to_le16(product_id);
 	if (dev->cdev)
 		dev->cdev->desc.idProduct = device_desc.idProduct;
 
-/* [yk.kim@lge.com] 2011-01-18, two UMS mode (eMMC/SDcard), need meid */
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN 
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-	if (pid == lg_ums_pid) {
-		if (serial_number[0] == '\0') {
-			strings_dev[STRING_SERIAL_IDX].s = random_serial_number;
-			device_desc.iSerialNumber = 3;
-
-			if (dev->cdev)
-				dev->cdev->desc.iSerialNumber = device_desc.iSerialNumber;		
-		}
-	}
-#else
-	if (pid == lg_ums_pid) {
-
-		if (serial_number[0] == '\0') {
-			strings_dev[STRING_SERIAL_IDX].s = random_serial_number;
-			device_desc.iSerialNumber = 3;
-
-			if (dev->cdev)
-				dev->cdev->desc.iSerialNumber = device_desc.iSerialNumber;		
-		}
-
-		hidden_pid = lg_ums_pid;
-		goto OUT;
-	}
-	else {
-		hidden_pid = pid;
-	}
-#endif
-#endif
-
-
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-	ret = lge_bind_config(product_id);
-#endif
-
-	/* LGE_CHANGES_S [jaeho.cho@lge.com] 2010-08-16, Autorun Serial Number */
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-	if(product_id == lg_autorun_pid) {	   
-		strings_dev[STRING_SERIAL_IDX].s = autorun_serial_number;
-		device_desc.iSerialNumber = 3;
-	}
-	else {
-		strings_dev[STRING_SERIAL_IDX].s = serial_number;
-	}
-
-	/* [yk.kim@lge.com] 2010-12-31, update serial number id */
-	if (dev->cdev)
-		dev->cdev->desc.iSerialNumber = device_desc.iSerialNumber;
-#endif
-
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-	/* force reenumeration */
-	if (dev->cdev && dev->cdev->gadget &&
-			dev->cdev->gadget->speed != USB_SPEED_UNKNOWN) {
-		usb_gadget_disconnect(dev->cdev->gadget);
-		msleep(10);
-		ret = usb_gadget_connect(dev->cdev->gadget);
-	}
-
-	return ret;
-#else
-OUT:
-	/* force reenumeration */
-	if (dev->cdev && dev->cdev->gadget &&
-            dev->cdev->gadget->speed != USB_SPEED_UNKNOWN) {
-		usb_gadget_disconnect(dev->cdev->gadget);
-		msleep(10);
-		ret = usb_gadget_connect(dev->cdev->gadget);
-	}
-
-    return ret;
-#endif
+	usb_composite_force_reset(dev->cdev);
 }
 #endif
 
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-void android_set_device_class(u16 pid)
-{
-	struct android_dev *dev = _android_dev;
-    int deviceclass = -1;
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-#else
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-	if(pid == lg_android_pid) 
-#else
-    if(pid == lg_rmnet_pid) 
-#endif
-	{
-	  deviceclass = USB_CLASS_COMM;
-	  goto SetClass;
-	}
-#endif
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-    if(pid == lg_factory_pid) 
-    {
-      deviceclass = USB_CLASS_COMM;
-	  goto SetClass;
-    }
-#endif
-#if defined(CONFIG_LGE_USB_GADGET_NDIS_DRIVER)
-    if(pid == lg_ndis_pid) 
-    {
-  	  deviceclass = USB_CLASS_MISC;
-  	  goto SetClass;
-    }
-#elif defined(CONFIG_LGE_USB_GADGET_ECM_DRIVER)
-    if(pid == lg_ecm_pid) 
-    {
-  	  deviceclass = USB_CLASS_MISC;
-  	  goto SetClass;
-    }
-#elif defined(CONFIG_LGE_USB_GADGET_RNDIS_DRIVER)
-    if(pid == lg_rndis_pid) 
-    {
-  	  deviceclass = USB_CLASS_MISC;
-  	  goto SetClass;
-    }
-#endif
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-    if(pid == lg_ums_pid) 
-    {
-  	  deviceclass = USB_CLASS_PER_INTERFACE;
-  	  goto SetClass;
-    }
-#endif
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-    if(pid == lg_autorun_pid) 
-    {
-  	  deviceclass = USB_CLASS_PER_INTERFACE;
-  	  goto SetClass;
-    }
-#endif
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN_CGO
-    if(pid == lg_charge_only_pid) 
-    {
-  	  deviceclass = USB_CLASS_PER_INTERFACE;
-  	  goto SetClass;
-    }
-#endif
-
-SetClass:
-	if(deviceclass == USB_CLASS_COMM)
-	{
-  		dev->cdev->desc.bDeviceClass = USB_CLASS_COMM;
-		dev->cdev->desc.bDeviceSubClass      = 0x00;
-		dev->cdev->desc.bDeviceProtocol      = 0x00;
-	}
-	else if(deviceclass == USB_CLASS_MISC)
-	{
-	  	dev->cdev->desc.bDeviceClass = USB_CLASS_MISC;
-		dev->cdev->desc.bDeviceSubClass      = 0x02;
-		dev->cdev->desc.bDeviceProtocol      = 0x01;
-	}
-	else if(deviceclass == USB_CLASS_PER_INTERFACE)
-	{
-		dev->cdev->desc.bDeviceClass = USB_CLASS_PER_INTERFACE;
-		dev->cdev->desc.bDeviceSubClass      = 0x00;
-		dev->cdev->desc.bDeviceProtocol      = 0x00;
-	}
-	else
-	{
-		dev->cdev->desc.bDeviceClass = USB_CLASS_PER_INTERFACE;
-		dev->cdev->desc.bDeviceSubClass      = 0x00;
-		dev->cdev->desc.bDeviceProtocol      = 0x00;
-	}
-}
-#endif
-
-void update_dev_desc(struct android_dev *dev)
-{
+#ifdef M3_DEFENSE_CODE
+static void android_disable_all_function(void) // hyunjin2.lim disable all function.
+{ 
 	struct usb_function *f;
-	struct usb_function *last_enabled_f = NULL;
-	int num_enabled = 0;
-	int has_iad = 0;
-
-	dev->cdev->desc.bDeviceClass = USB_CLASS_PER_INTERFACE;
-	dev->cdev->desc.bDeviceSubClass = 0x00;
-	dev->cdev->desc.bDeviceProtocol = 0x00;
-
 	list_for_each_entry(f, &android_config_driver.functions, list) {
-		if (!f->disabled) {
-			num_enabled++;
-			last_enabled_f = f;
-			if (f->descriptors[0]->bDescriptorType ==
-					USB_DT_INTERFACE_ASSOCIATION)
-				has_iad = 1;
-		}
-		if (num_enabled > 1 && has_iad) {
-			dev->cdev->desc.bDeviceClass = USB_CLASS_MISC;
-			dev->cdev->desc.bDeviceSubClass = 0x02;
-			dev->cdev->desc.bDeviceProtocol = 0x01;
-			break;
-		}
-	}
-
-	if (num_enabled == 1) {
-#ifdef CONFIG_USB_ANDROID_RNDIS
-		if (!strcmp(last_enabled_f->name, "rndis")) {
-#ifdef CONFIG_USB_ANDROID_RNDIS_WCEIS
-			dev->cdev->desc.bDeviceClass =
-					USB_CLASS_WIRELESS_CONTROLLER;
-#else
-			dev->cdev->desc.bDeviceClass = USB_CLASS_COMM;
-#endif
-		}
-#endif
+		f->disabled = 1;
+		//usb_function_set_enabled(f, !enable);
 	}
 }
+#endif
 
 
 static char *sysfs_allowed[] = {
+#ifdef M3_DEFENSE_CODE
+	"usb_mass_storage",
+	"usb_cdrom_storage",
+	"acm",
+	"charge_only",
+	"ecm",
+#endif
 	"rndis",
 	"mtp",
 	"adb",
@@ -1118,227 +686,143 @@ static int is_sysfschange_allowed(struct usb_function *f)
 	return 0;
 }
 
+
 int android_enable_function(struct usb_function *f, int enable)
 {
 	struct android_dev *dev = _android_dev;
 	int disable = !enable;
-	struct usb_gadget	*gadget = dev->cdev->gadget;
 	int product_id;
 
 	if (!is_sysfschange_allowed(f))
 		return -EINVAL;
+
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	if (!strcmp(f->name, "usb_mass_storage")) {
+		/* We force to change mode even if mass storage is already enabled */
+		f->disabled = disable;
+		if (enable) {
+#ifdef M3_DEFENSE_CODE			
+			android_disable_all_function();
+#endif
+			/* switch to mass storage only */
+			android_set_class_product(LGE_UMSONLY_PID, USB_CLASS_PER_INTERFACE);
+			lgeusb_info("Switch to UMS only %x\n", LGE_UMSONLY_PID);
+		} else {
+			android_set_class_product(dev->product_id, USB_CLASS_COMM);
+		}
+
+		android_force_reset();
+		return 0;
+	}
+#endif
+
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+	if (!strcmp(f->name, "usb_cdrom_storage")) {
+		/* We force to change mode even if cdrom storage is already enabled */
+		f->disabled = disable;
+		if (enable) {
+			/* switch to cdrom storage only */
+			android_set_class_product(LGE_CDONLY_PID, USB_CLASS_PER_INTERFACE);
+			lgeusb_info("Switch to CDROM %x\n", LGE_CDONLY_PID);
+		} else {
+			android_set_class_product(dev->product_id, USB_CLASS_COMM);
+		}
+
+		android_force_reset();
+		return 0;
+	}
+
+	if (!strcmp(f->name, "acm")) {
+		/* We force to change mode even if already enabled */
+		f->disabled = disable;
+		if (enable) {
+			/* switch to modem(default) mode */
+#ifdef M3_DEFENSE_CODE
+			android_set_class_product(LGE_DEFAULT_PID, USB_CLASS_MISC);
+#else
+			android_set_class_product(LGE_DEFAULT_PID, USB_CLASS_COMM);
+#endif
+			lgeusb_info("Switch to modem mode %x\n", LGE_DEFAULT_PID);
+		} else {
+			android_set_class_product(dev->product_id, USB_CLASS_COMM);
+		}
+
+		android_force_reset();
+		return 0;
+	}
+
+	if (!strcmp(f->name, "charge_only")) {
+		f->disabled = disable;
+		if (enable) {
+			android_set_default_product(LGE_CHARGEONLY_PID);
+			/* Disconnect the android gadget */
+			android_usb_set_connected(0);
+			lgeusb_info("Switch to CHARGE ONLY\n");
+
+			/* Not use usb_composite_force_reset() */
+		} else {
+			android_set_class_product(dev->product_id, USB_CLASS_COMM);
+			android_force_reset();
+		}
+		return 0;
+	}
+#endif
+
 	if (!!f->disabled != disable) {
 		usb_function_set_enabled(f, !disable);
 
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-	if (!strcmp(f->name, "ecm")) {
-
-		/* We need to specify the COMM class in the device descriptor
-		 * if we are using RNDIS.
-		 */
-		if (enable) {
-			dev->cdev->desc.bDeviceClass = USB_CLASS_MISC;
-			dev->cdev->desc.bDeviceSubClass 	 = 0x02;
-			dev->cdev->desc.bDeviceProtocol 	 = 0x01;
-		} else {
-			dev->cdev->desc.bDeviceClass = USB_CLASS_COMM;
-			dev->cdev->desc.bDeviceSubClass 	 = 0;
-			dev->cdev->desc.bDeviceProtocol 	 = 0;
-		}
-
-		android_config_functions(f, enable);
-	}
-#else /* !CONFIG_LGE_USB_GADGET_NDIS_DRIVER */
-#ifdef CONFIG_USB_ANDROID_RNDIS
-		if (!strcmp(f->name, "rndis")) {
-
-			/* We need to specify the COMM class in the device descriptor
-			 * if we are using RNDIS.
+		if (!strcmp(f->name, "ecm")) {
+			/* We need to specify the COMM class in the device
+			 * descriptor if we are using CDC ECM.
 			 */
 			if (enable) {
-#ifdef CONFIG_USB_ANDROID_RNDIS_WCEIS
-				dev->cdev->desc.bDeviceClass = USB_CLASS_MISC;
-				dev->cdev->desc.bDeviceSubClass      = 0x02;
-				dev->cdev->desc.bDeviceProtocol      = 0x01;
-#else
-				dev->cdev->desc.bDeviceClass = USB_CLASS_COMM;
-#endif
+				set_device_class(dev->cdev->desc, USB_CLASS_MISC, 0x02, 0x01);
 			} else {
-				dev->cdev->desc.bDeviceClass = USB_CLASS_PER_INTERFACE;
-				dev->cdev->desc.bDeviceSubClass      = 0;
-				dev->cdev->desc.bDeviceProtocol      = 0;
+#ifdef M3_DEFENSE_CODE
+				set_device_class(dev->cdev->desc, USB_CLASS_MISC, 0x02, 0x01);
+#else
+				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
+#endif
+			}
+
+			android_config_functions(f, enable);
+		}
+
+#ifdef CONFIG_USB_ANDROID_MTP
+		if (!strcmp(f->name, "mtp")) {
+			if (enable) {
+				set_device_class(dev->cdev->desc, USB_CLASS_PER_INTERFACE,
+						0x00, 0x00);
+			} else {
+				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
 			}
 
 			android_config_functions(f, enable);
 		}
 #endif
-#endif /* CONFIG_LGE_USB_GADGET_NDIS_DRIVER */
 
-#ifdef CONFIG_USB_ANDROID_MTP
-		if (!strcmp(f->name, "mtp"))
-			android_config_functions(f, enable);
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+		if (device_desc.idProduct == LGE_UMSONLY_PID 
+#ifdef M3_DEFENSE_CODE			
+			|| device_desc.idProduct == LGE_CHARGEONLY_PID //hyunjin2.lim added defense code.
 #endif
-
+			){ 
+			/* When adb enable during mass storage only */
+			if (!strcmp(f->name, "adb")) {
+				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
+				android_set_default_product(dev->product_id);
+			}
+		}
+#endif
 		product_id = get_product_id(dev);
-
-		if (gadget && gadget->ops->wakeup &&
-				!is_msc_only_comp((product_id)))
-			android_config_driver.bmAttributes |=
-				USB_CONFIG_ATT_WAKEUP;
-		else
-			android_config_driver.bmAttributes &=
-				~USB_CONFIG_ATT_WAKEUP;
-
 		device_desc.idProduct = __constant_cpu_to_le16(product_id);
-		
 		if (dev->cdev)
 			dev->cdev->desc.idProduct = device_desc.idProduct;
+
 		usb_composite_force_reset(dev->cdev);
 	}
 	return 0;
 }
-
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-static int android_set_usermode(const char *val, struct kernel_param *kp)
-{
-	int ret = 0;
-	unsigned long tmp;
-
-	ret = strict_strtoul(val, 16, &tmp);
-	if (ret)
-		return ret;
-
-	autorun_user_mode = (unsigned int)tmp;
-	pr_info("autorun user mode : %d\n", autorun_user_mode);
-
-	return ret;
-}
-
-int get_autorun_user_mode(void)
-{
-	return autorun_user_mode;
-}
-EXPORT_SYMBOL(get_autorun_user_mode);
-#endif
-
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-int android_set_pid(const char *val, struct kernel_param *kp)
-{
-	int ret = 0;
-	unsigned long tmp;
-	
-	ret = strict_strtoul(val, 16, &tmp);
-	if (ret)
-		goto out;
-
-	/* We come here even before android_probe, when product id
-	 * is passed via kernel command line.
-	 */
-	if (!_android_dev) {
-		device_desc.idProduct = tmp;
-		goto out;
-	}
-
-#ifdef CONFIG_LGE_USB_GADGET_NDIS_DRIVER
-	if (device_desc.idProduct == tmp) {
-		pr_info("[%s] Requested product id is same(%lx), ignore it\n", __func__, tmp);
-		goto out;
-	}
-#endif
-
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-	/* If cable is factory cable, we ignore request from user space */
-	if (device_desc.idProduct == LGE_FACTORY_USB_PID && lg_manual_test_mode) {
-		pr_info("[%s] Factory USB cable is connected, ignore it\n", __func__);
-		goto out;
-	}
-#endif
-	set_pid_flag = 1;
-
-	mutex_lock(&_android_dev->lock);
-	pr_info("[%s] user set product id - %lx begin\n", __func__, tmp);
-	ret = android_switch_composition(tmp);
-	pr_info("[%s] user set product id - %lx complete\n", __func__, tmp);
-	mutex_unlock(&_android_dev->lock);
-out:
-	return ret;
-}
-
-static int android_get_pid(char *buffer, struct kernel_param *kp)
-{
-	int ret;
-    pr_debug("[%s] get product id - %x\n", __func__, device_desc.idProduct);
-	mutex_lock(&_android_dev->lock);
-	ret = sprintf(buffer, "%x", device_desc.idProduct);
-	mutex_unlock(&_android_dev->lock);
-	return ret;
-}
-
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-int android_set_usb_mode(const char *val, struct kernel_param *kp)
-{
-	int ret = 0;
-	memset(usb_mode, 0, MAX_USB_MODE_LEN);
-	pr_info("[%s] request connection mode : [%s]\n", __func__,val);
-
-	if (strstr(val, "charge_only")) {
-		strcpy(usb_mode, "charge_only");
-		ret = android_set_pid(lg_charge_only_pid_string, NULL);
-		return ret;
-	}
-	else if (strstr(val, "mass_storage")) {
-		strcpy(usb_mode, "mass_storage");
-		ret = android_set_pid(lg_ums_pid_string, NULL);
-		return ret;
-	}
-	else if (strstr(val, "windows_media_sync")) {
-		strcpy(usb_mode, "windows_media_sync");
-		ret = android_set_pid(lg_mtp_pid_string, NULL);
-		return ret;
-	}
-	else if (strstr(val, "internet_connection")) {
-		strcpy(usb_mode, "internet_connection");
-		ret = android_set_pid(lg_default_pid_string, NULL);
-		return ret;
-	}
-	else if (strstr(val, "auto_run")) {
-		strcpy(usb_mode, "auto_run");
-		ret = android_set_pid(lg_autorun_pid_string, NULL);
-		return ret;
-	}
-	else {
-		pr_info("[%s] undefined connection mode, ignore it : [%s]\n", __func__,val);
-		return -EINVAL;
-	}
-}
-
-static int android_get_usb_mode(char *buffer, struct kernel_param *kp)
-{
-	int ret;
-	pr_info("[%s] get usb connection mode\n", __func__, usb_mode);
-	mutex_lock(&_android_dev->lock);
-	ret = sprintf(buffer, "%s", usb_mode);
-	mutex_unlock(&_android_dev->lock);
-	return ret;
-}
-#endif
-
-u16 android_get_product_id(void)
-{
-    if(device_desc.idProduct != 0x0000 && device_desc.idProduct != 0x0001)
-    {
-      return device_desc.idProduct;
-    }
-	else
-	{
-	  USB_DBG("LG_FW : product_id is not initialized : device_desc.idProduct = 0x%x\n", device_desc.idProduct);
-	  return lg_default_pid;
-	}
-}
-	  
-#endif /* CONFIG_LGE_USB_GADGET_DRIVER */
-
-
 
 #ifdef CONFIG_DEBUG_FS
 static int android_debugfs_open(struct inode *inode, struct file *file)
@@ -1399,19 +883,41 @@ static void android_debugfs_cleanup(void)
 }
 #endif
 
-
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-extern int msm_get_manual_test_mode(void);
-
-static int android_get_manual_test_mode(char *buffer, struct kernel_param *kp)
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+/* LGE_CHANGE
+ * For switching into LG manufacturing USB mode
+ * 2011-01-14, hyunhui.park@lge.com
+ */
+static void android_lgeusb_switch_function(int pid, int need_reset)
 {
-	int ret;
-    pr_debug("[%s] get manual test mode - %d\n", __func__, lg_manual_test_mode);
-	mutex_lock(&_android_dev->lock);
-	ret = sprintf(buffer, "%d", lg_manual_test_mode);
-	mutex_unlock(&_android_dev->lock);
-	return ret;
+	struct android_dev *dev = _android_dev;
+
+	android_set_default_product(pid);
+
+	device_desc.idProduct = __constant_cpu_to_le16(pid);
+	if (dev->cdev)
+		dev->cdev->desc.idProduct = device_desc.idProduct;
+
+	if (need_reset)
+		usb_composite_force_reset(dev->cdev);
 }
+
+/* LGE_CHANGE
+ * Get current product id(for external).
+ * 2011-01-14, hyunhui.park@lge.com
+ */
+static int android_lgeusb_get_current_pid(void)
+{
+	struct android_dev *dev = _android_dev;
+
+	return get_product_id(dev);
+}
+
+static struct lgeusb_info android_lgeusb_info = {
+	.current_mode = LGEUSB_DEFAULT_MODE,
+	.switch_func = android_lgeusb_switch_function,
+	.get_pid = android_lgeusb_get_current_pid,
+};
 #endif
 
 
@@ -1420,24 +926,6 @@ static int __devinit android_probe(struct platform_device *pdev)
 	struct android_usb_platform_data *pdata = pdev->dev.platform_data;
 	struct android_dev *dev = _android_dev;
 	int result;
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-	/* BEGIN:0010739 [yk.kim@lge.com] 2010-11-11 */
-	/* ADD:0010739 init fatory usb switch composition */
-	extern int get_msm_cable_type(void);
-
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-		/* read NV manual_test_mode for set force Factory USB */
-		lg_manual_test_mode = msm_get_manual_test_mode();
-#endif
-	cable = get_msm_cable_type();
-	if (cable==LG_FACTORY_CABLE_56K_TYPE || cable==LG_FACTORY_CABLE_130K_TYPE || cable==LG_FACTORY_CABLE_910K_TYPE)
-	{
-		pdev->dev.platform_data = &android_usb_pdata_factory;
-		pdata = pdev->dev.platform_data;
-		switch_cable = 1;
-	}
-	/* END:0010739 [yk.kim@lge.com] 2010-11-11 */
-#endif
 
 	dev_dbg(&pdev->dev, "%s: pdata: %p\n", __func__, pdata);
 
@@ -1457,17 +945,11 @@ static int __devinit android_probe(struct platform_device *pdev)
 		dev->num_products = pdata->num_products;
 		dev->functions = pdata->functions;
 		dev->num_functions = pdata->num_functions;
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-		dev->unique_function = pdata->unique_function;
-#endif
 		if (pdata->vendor_id)
 			device_desc.idVendor =
 				__constant_cpu_to_le16(pdata->vendor_id);
 		if (pdata->product_id) {
 			dev->product_id = pdata->product_id;
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-			product_id = pdata->product_id;
-#endif
 			device_desc.idProduct =
 				__constant_cpu_to_le16(pdata->product_id);
 		}
@@ -1479,20 +961,26 @@ static int __devinit android_probe(struct platform_device *pdev)
 		if (pdata->manufacturer_name)
 			strings_dev[STRING_MANUFACTURER_IDX].s =
 					pdata->manufacturer_name;
-#ifdef CONFIG_LGE_USB_GADGET_SUPPORT_FACTORY_USB
-		strings_dev[STRING_SERIAL_IDX].s = serial_number;
-		
-		if (pdata->serial_number)
-			sprintf(user_serial_number, "%s", pdata->serial_number);
-#else
 		if (pdata->serial_number)
 			strings_dev[STRING_SERIAL_IDX].s = pdata->serial_number;
-#endif
+
 	}
 #ifdef CONFIG_DEBUG_FS
 	result = android_debugfs_init(dev);
 	if (result)
 		pr_debug("%s: android_debugfs_init failed\n", __func__);
+#endif
+
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	/* LGE_CHANGE
+	 * Registering usb information for LG Android USB
+	 * 2011-01-14, hyunhui.park@lge.com
+	 */
+	android_lgeusb_info.current_pid = dev->product_id;
+	android_lgeusb_info.serialno = serial_number;
+	android_lgeusb_info.defaultno = pdata->serial_number;
+
+	lgeusb_register_usbinfo(&android_lgeusb_info);
 #endif
 	return usb_composite_probe(&android_usb_driver, android_bind);
 }
@@ -1547,3 +1035,4 @@ static void __exit cleanup(void)
 	_android_dev = NULL;
 }
 module_exit(cleanup);
+

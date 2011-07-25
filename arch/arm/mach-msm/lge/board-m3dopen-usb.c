@@ -20,26 +20,12 @@
 
 #include "board-m3eu.h"
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
+
 char *usb_functions_lge_all[] = {
-#ifdef CONFIG_USB_ANDROID_MTP
-	"mtp",
-#endif
-#ifdef CONFIG_USB_ANDROID_RNDIS
-	"rndis",
-#endif
-#ifdef CONFIG_USB_ANDROID_ACM
+
 	"acm",
-#endif
-#ifdef CONFIG_USB_ANDROID_DIAG
 	"diag",
-#endif
-#ifdef CONFIG_USB_ANDROID_CDC_ECM
 	"ecm",
-	"acm2",
-#endif
-#ifdef CONFIG_USB_F_SERIAL
-	"nmea",
-#endif
 #ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
 	"usb_cdrom_storage",
 	"charge_only",
@@ -47,39 +33,21 @@ char *usb_functions_lge_all[] = {
 	"usb_mass_storage",
 	"adb",
 };
-/* LG Android Platform */
-char *usb_functions_lge_android_plat[] = {
 
- 	"acm", "diag", "nmea", "usb_mass_storage",
-
-};
-
-char *usb_functions_lge_android_plat_adb[] = {
-	
-	"acm", "diag", "nmea", "usb_mass_storage", "adb",
-
-};
-
-#ifdef CONFIG_USB_ANDROID_CDC_ECM
 static char *usb_functions_ndis[] = {
+	"acm",
 	"diag",
 	"ecm",
-	"acm2",
-	"nmea",
 	"usb_mass_storage",
-	"adb",
-
 };
+
 static char *usb_functions_ndis_adb[] = {
+	"acm",
 	"diag",
 	"ecm",
-	"acm2",
-	"nmea",
 	"usb_mass_storage",
 	"adb",
 };
-
-#endif
 
 /* LG Manufacturing mode */
 char *usb_functions_lge_manufacturing[] = {
@@ -91,55 +59,62 @@ char *usb_functions_lge_mass_storage_only[] = {
 	"usb_mass_storage",
 };
 
-struct android_usb_product usb_products[] = {
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+/* CDROM storage only mode(Autorun default mode) */
+char *usb_functions_lge_cdrom_storage_only[] = {
+	"usb_cdrom_storage",
+};
 
+char *usb_functions_lge_cdrom_storage_adb[] = {
+	"usb_cdrom_storage", "adb",
+};
+
+char *usb_functions_lge_charge_only[] = {
+	"charge_only",
+};
+#endif
+
+struct android_usb_product usb_products[] = {
 	{
-		.product_id = 0x61A1,
+		.product_id = 0x61FC,
 		.num_functions = ARRAY_SIZE(usb_functions_ndis),
 		.functions = usb_functions_ndis,
-		.unique_function = ECM,
 	},
-	
 	{
-		.product_id = 0x61A1,
+		.product_id = 0x61FC,
 		.num_functions = ARRAY_SIZE(usb_functions_ndis_adb),
 		.functions = usb_functions_ndis_adb,
-		.unique_function = ECM,
 	},
-
-	
 	{
 		.product_id = 0x6000,
 		.num_functions = ARRAY_SIZE(usb_functions_lge_manufacturing),
 		.functions = usb_functions_lge_manufacturing,
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-		.unique_function = FACTORY,
-#endif
 	},
 	{
 		.product_id = 0x61C5,
 		.num_functions = ARRAY_SIZE(usb_functions_lge_mass_storage_only),
 		.functions = usb_functions_lge_mass_storage_only,
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-		.unique_function = UMS,
-#endif
+	},
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+	{
+		/* FIXME: This pid is just for test */
+		.product_id = 0x91C8,
+		.num_functions = ARRAY_SIZE(usb_functions_lge_cdrom_storage_only),
+		.functions = usb_functions_lge_cdrom_storage_only,
 	},
 	{
-		.product_id = 0x618E,
-		.num_functions = ARRAY_SIZE(usb_functions_lge_android_plat),
-		.functions = usb_functions_lge_android_plat,
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-		.unique_function = ACM_MODEM,
-#endif
+		.product_id = 0x61A6,
+		.num_functions = ARRAY_SIZE(usb_functions_lge_cdrom_storage_adb),
+		.functions = usb_functions_lge_cdrom_storage_adb,
 	},
 	{
-		.product_id = 0x618E,
-		.num_functions = ARRAY_SIZE(usb_functions_lge_android_plat_adb),
-		.functions = usb_functions_lge_android_plat_adb,
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-		.unique_function = ACM_MODEM,
-#endif
+		/* Charge only doesn't have no specific pid */
+		.product_id = 0xFFFF,
+		.num_functions = ARRAY_SIZE(usb_functions_lge_charge_only),
+		.functions = usb_functions_lge_charge_only,
 	},
+#endif
+
 };
 
 #else	/* Qualcomm Original*/
@@ -189,8 +164,6 @@ static char *usb_functions_all[] = {
 };
 
 static struct android_usb_product usb_products[] = {
-	
-	
 	{
 		.product_id = 0x9025,
 		.num_functions	= ARRAY_SIZE(usb_functions_default_adb),
@@ -272,10 +245,6 @@ struct platform_device ecm_device = {
 #endif
 
 #ifdef CONFIG_USB_ANDROID_ACM
-/* LGE_CHANGE
- * To bind LG AndroidNet, add platform data for CDC ACM.
- * 2011-01-12, hyunhui.park@lge.com
- */
 struct acm_platform_data acm_pdata = {
 	.num_inst	    = 1,
 };
@@ -289,12 +258,29 @@ struct platform_device acm_device = {
 };
 #endif
 
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+struct usb_cdrom_storage_platform_data cdrom_storage_pdata = {
+	.nluns      = 1,
+	.vendor     = "LGE",
+	.product    = "Android Platform",
+	.release    = 0x0100,
+};
+
+struct platform_device usb_cdrom_storage_device = {
+	.name   = "usb_cdrom_storage",
+	.id = -1,
+	.dev    = {
+		.platform_data = &cdrom_storage_pdata,
+	},
+};
+#endif
+
 
 
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id  = 0x1004,
-	.product_id = 0x618E,
+	.product_id = 0x61FC,
 	.version    = 0x0100,
 	.product_name       = "LGE Android Phone",
 	.manufacturer_name  = "LG Electronics Inc.",
@@ -302,11 +288,8 @@ struct android_usb_platform_data android_usb_pdata = {
 	.products = usb_products,
 	.num_functions = ARRAY_SIZE(usb_functions_lge_all),
 	.functions = usb_functions_lge_all,
-	.serial_number = "LG_ANDROID_M3MPCS_GB_",
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-	.unique_function = ACM_MODEM,
-#endif	
-	
+	.serial_number = "LG_ANDROID_M3DOPEN_GB_",
+
 };
 #else
 static struct android_usb_platform_data android_usb_pdata = {
@@ -336,12 +319,10 @@ static struct usb_ether_platform_data rndis_pdata = {
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 	.vendorID	= 0x1004,
 	.vendorDescr	= "LG Electronics Inc.",
-
 #else
 	.vendorID	= 0x05C6,
 	.vendorDescr	= "Qualcomm Incorporated",
 #endif
-
 };
 
 static struct platform_device rndis_device = {
@@ -372,6 +353,29 @@ static int __init board_serialno_setup(char *serialno)
 __setup("androidboot.serialno=", board_serialno_setup);
 
 #endif
+
+#if 0
+static int __init board_serialno_setup(char *serialno)
+{
+	int i;
+	char *src = serialno;
+
+	/* create a fake MAC address from our serial number.
+	 * first byte is 0x02 to signify locally administered.
+	 */
+	ecm_pdata.ethaddr[0] = 0x02;
+	for (i = 0; *src; i++) {
+		/* XOR the USB serial across the remaining bytes */
+		ecm_pdata.ethaddr[i % (ETH_ALEN - 1) + 1] ^= *src++;
+	}
+
+	android_usb_pdata.serial_number = serialno;
+	return 1;
+}
+__setup("androidboot.serialno=", board_serialno_setup);
+
+#endif
+
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
 static void msm_hsusb_vbus_power(unsigned phy_info, int on)
@@ -525,12 +529,10 @@ static struct platform_device *m3eu_usb_devices[] __initdata = {
 #ifdef CONFIG_USB_ANDROID_ACM
 	&acm_device,
 #endif
-	&usb_gadget_fserial_device,
-#ifdef CONFIG_USB_ANDROID_ACM
-	&usb_gadget_facm_device,
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+	&usb_cdrom_storage_device,
 #endif
 	&android_usb_device,
-
 };
 
 void __init lge_add_usb_devices(void)

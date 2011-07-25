@@ -20,20 +20,6 @@
 #include <linux/usb/composite.h>
 #include <linux/if_ether.h>
 
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-typedef enum {
-    ACM_MODEM,
-	ECM,
-	RMNET,
-	NDIS,
-	RNDIS,
-	MTP,
-	UMS,
-	CD_ROM,
-	FACTORY,
-	MAX_FUNCTION,
-}unique_usb_function;
-#endif
 
 struct android_usb_function {
 	struct list_head	list;
@@ -51,9 +37,6 @@ struct android_usb_product {
 	 */
 	int num_functions;
 	char **functions;
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-	unique_usb_function unique_function;
-#endif
 };
 
 struct android_usb_platform_data {
@@ -86,10 +69,6 @@ struct android_usb_platform_data {
 	 */
 	int num_functions;
 	char **functions;
-#ifdef CONFIG_LGE_USB_GADGET_FUNC_BIND_ONLY_INIT
-	unique_usb_function unique_function;
-#endif
-	
 };
 
 /* Platform data for "usb_mass_storage" driver. */
@@ -118,6 +97,22 @@ struct usb_ether_platform_data {
  */
 struct acm_platform_data {
 	int	num_inst;
+};
+#endif
+
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
+/* LGE_CHANGE
+ * Platform data for "usb_cdrom_storage" driver.
+ * 2011-03-02, hyunhui.park@lge.com
+ */
+struct usb_cdrom_storage_platform_data {
+	/* Contains values for the SC_INQUIRY SCSI command. */
+	char *vendor;
+	char *product;
+	int release;
+
+	/* number of LUNS */
+	int nluns;
 };
 #endif
 
