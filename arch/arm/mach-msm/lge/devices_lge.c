@@ -352,7 +352,37 @@ int lge_init_gpio_i2c_pin_pullup(struct i2c_gpio_platform_data *i2c_adap_pdata,
 
 	return 0;
 }
+#if defined(CONFIG_ANDROID_RAM_CONSOLE) && defined(CONFIG_LGE_HANDLE_PANIC)
+static struct resource crash_log_resource[] = {
+	{
+		.name = "crash_log",
+		.flags = IORESOURCE_MEM,
+	}
+};
 
+static struct platform_device panic_handler_device = {
+	.name = "panic-handler",
+	.num_resources = ARRAY_SIZE(crash_log_resource),
+	.resource = crash_log_resource,
+	.dev    = {
+		.platform_data = NULL,
+	}
+};
+
+void __init lge_add_panic_handler_devices(void)
+{
+	struct resource *res = crash_log_resource;
+	struct membank *bank = &meminfo.bank[0];
+
+	res->start = bank->start + bank->size + LGE_RAM_CONSOLE_SIZE;
+	res->end = res->start + LGE_CRASH_LOG_SIZE - 1;
+
+	printk(KERN_INFO "CRASH LOG START ADDR : %d\n", res->start);
+	printk(KERN_INFO "CRASH LOG END ADDR   : %d\n", res->end);
+
+	platform_device_register(&panic_handler_device);
+}
+#endif
 /* lge common functions to add devices */
 __WEAK void __init lge_add_input_devices(void)
 {

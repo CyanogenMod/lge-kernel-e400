@@ -35,3 +35,7 @@ obj-$(CONFIG_MACH_MSM7X27A_HDK) += lge_gpio_h2w.o
 obj-$(CONFIG_MACH_MSM7X27A_HDK) += pmic_vibrator.o
 #endif
 obj-$(CONFIG_MACH_LGE) += devices_lge.o
+
+obj-$(CONFIG_LGE_HANDLE_PANIC) += lge_handle_panic.o
+
+

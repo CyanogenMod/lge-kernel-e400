@@ -37,6 +37,11 @@
 
 static const char *handler[]= { "prefetch abort", "data abort", "address exception", "interrupt" };
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+static int first_call_chain = 0;
+static int first_die = 1;
+#endif
+
 void *vectors_page;
 
 #ifdef CONFIG_DEBUG_USER
@@ -55,7 +60,14 @@ static void dump_mem(const char *, const char *, unsigned long, unsigned long);
 void dump_backtrace_entry(unsigned long where, unsigned long from, unsigned long frame)
 {
 #ifdef CONFIG_KALLSYMS
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	if(first_call_chain)
+		set_crash_store_enable();
+#endif
 	printk("[<%08lx>] (%pS) from [<%08lx>] (%pS)\n", where, (void *)where, from, (void *)from);
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	set_crash_store_disable();
+#endif
 #else
 	printk("Function entered at [<%08lx>] from [<%08lx>]\n", where, from);
 #endif
@@ -231,11 +243,19 @@ static int __die(const char *str, int err, struct thread_info *thread, struct pt
 	struct task_struct *tsk = thread->task;
 	static int die_counter;
 	int ret;
-
+#ifdef CONFIG_LGE_HANDLE_PANIC
+        if (first_die) {
+	   first_call_chain = 1;
+	   first_die = 0;
+	}
+	set_crash_store_enable();
+#endif
 	printk(KERN_EMERG "Internal error: %s: %x [#%d]" S_PREEMPT S_SMP "\n",
 	       str, err, ++die_counter);
 	sysfs_printk_last_file();
-
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	set_crash_store_disable();
+#endif
 	/* trap and error numbers are mostly meaningless on ARM */
 	ret = notify_die(DIE_OOPS, str, regs, err, tsk->thread.trap_no, SIGSEGV);
 	if (ret == NOTIFY_STOP)
@@ -251,6 +271,10 @@ static int __die(const char *str, int err, struct thread_info *thread, struct pt
 			 THREAD_SIZE + (unsigned long)task_stack_page(tsk));
 		dump_backtrace(regs, tsk);
 		dump_instr(KERN_EMERG, regs);
+#ifdef CONFIG_LGE_HANDLE_PANIC
+                /* prevent from displaying call-chain after first oops */
+		first_call_chain = 0;
+#endif
 	}
 
 	return ret;
