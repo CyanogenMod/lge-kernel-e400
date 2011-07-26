@@ -159,14 +159,12 @@ static int mipi_r61529_lcd_on(struct platform_device *pdev)
 
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_sleep_out_cmds,
 			ARRAY_SIZE(r61529_sleep_out_cmds));
-	mdelay(120);
 	mipi_set_tx_power_mode(1);
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_init_on_cmds,
 			ARRAY_SIZE(r61529_init_on_cmds));
 
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_disp_on_cmds,
 			ARRAY_SIZE(r61529_disp_on_cmds));
-	mdelay(40);
 
 	mipi_set_tx_power_mode(0);
 
