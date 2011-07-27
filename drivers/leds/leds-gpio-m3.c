@@ -65,7 +65,7 @@ static int __devinit m3d_keypad_led_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, info);
 
-	info->keypad_led_class_dev.name = "keyboard-backlight";
+	info->keypad_led_class_dev.name = "button-backlight";
 	info->keypad_led_class_dev.brightness_set =
 			m3d_keypad_led_store;
 	info->keypad_led_class_dev.max_brightness = LED_FULL;
