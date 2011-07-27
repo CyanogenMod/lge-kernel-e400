@@ -2935,6 +2935,17 @@ sub process {
 			WARN("externs should be avoided in .c files\n" .  $herecurr);
 		}
 
+# check for capitalized name of function or variable.
+		if ($line =~ /^.*$Type\s*($Ident).*/) 
+		{
+			my $function_name = $1;
+
+			if ($function_name =~ /^[A-Z]?.*[A-Z].*/ )
+			{
+				WARN("capitalized character should be avoided in name of function or variable\n" .  $herecurr);
+			}
+		}
+
 # checks for new __setup's
 		if ($rawline =~ /\b__setup\("([^"]*)"/) {
 			my $name = $1;

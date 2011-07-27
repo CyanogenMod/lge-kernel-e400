@@ -56,7 +56,7 @@ static int __init mipi_video_r61529_hvga_pt_init(void)
 	pinfo.lcdc.v_front_porch = 8;
 	pinfo.lcdc.v_pulse_width = 4;
 	pinfo.clk_rate = 380000000;
-	
+
 	pinfo.lcdc.border_clr = 0;	/* blk */
 	pinfo.lcdc.underflow_clr = 0xff;	/* blue */
 	pinfo.lcdc.hsync_skew = 0;
@@ -96,5 +96,5 @@ static int __init mipi_video_r61529_hvga_pt_init(void)
 	return ret;
 }
 
-module_init(mipi_video_r61529_hvga_pt_init); 
+module_init(mipi_video_r61529_hvga_pt_init);
 
