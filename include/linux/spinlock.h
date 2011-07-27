@@ -100,8 +100,12 @@ do {								\
 } while (0)
 
 #else
+#ifdef __SPLINT__
+# define raw_spin_lock_init(lock) do { ;} while(0)
+#else
 # define raw_spin_lock_init(lock)				\
 	do { *(lock) = __RAW_SPIN_LOCK_UNLOCKED(lock); } while (0)
+#endif
 #endif
 
 #define raw_spin_is_locked(lock)	arch_spin_is_locked(&(lock)->raw_lock)

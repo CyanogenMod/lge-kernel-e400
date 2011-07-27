@@ -21,10 +21,15 @@
 /* Main struct */
 struct c2port_ops;
 struct c2port_device {
+#ifdef __SPLINT__
+	unsigned int access:1;
+	unsigned int flash_access:1;
+#else
 	kmemcheck_bitfield_begin(flags);
 	unsigned int access:1;
 	unsigned int flash_access:1;
 	kmemcheck_bitfield_end(flags);
+#endif
 
 	int id;
 	char name[C2PORT_NAME_LEN];

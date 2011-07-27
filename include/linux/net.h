@@ -136,9 +136,13 @@ struct socket_wq {
 struct socket {
 	socket_state		state;
 
+#ifdef __SPLINT__
+	short			type;
+#else
 	kmemcheck_bitfield_begin(type);
 	short			type;
 	kmemcheck_bitfield_end(type);
+#endif
 
 	unsigned long		flags;
 

@@ -12,9 +12,13 @@ struct ring_buffer_iter;
  * Don't refer to this struct directly, use functions below.
  */
 struct ring_buffer_event {
+#ifdef __SPLINT__
+	u32		type_len:5, time_delta:27;
+#else
 	kmemcheck_bitfield_begin(bitfield);
 	u32		type_len:5, time_delta:27;
 	kmemcheck_bitfield_end(bitfield);
+#endif
 
 	u32		array[];
 };

@@ -109,8 +109,12 @@ do {							\
 		__DEBUG_MUTEX_INITIALIZER(lockname) \
 		__DEP_MAP_MUTEX_INITIALIZER(lockname) }
 
+#ifdef __SPLINT__
+#define DEFINE_MUTEX(mutexname)
+#else
 #define DEFINE_MUTEX(mutexname) \
 	struct mutex mutexname = __MUTEX_INITIALIZER(mutexname)
+#endif
 
 extern void __mutex_init(struct mutex *lock, const char *name,
 			 struct lock_class_key *key);

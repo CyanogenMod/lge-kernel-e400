@@ -350,6 +350,18 @@ struct sk_buff {
 		};
 	};
 	__u32			priority;
+#ifdef __SPLINT__
+	__u8			local_df:1,
+				cloned:1,
+				ip_summed:2,
+				nohdr:1,
+				nfctinfo:3;
+	__u8			pkt_type:3,
+				fclone:2,
+				ipvs_property:1,
+				peeked:1,
+				nf_trace:1;
+#else
 	kmemcheck_bitfield_begin(flags1);
 	__u8			local_df:1,
 				cloned:1,
@@ -362,6 +374,7 @@ struct sk_buff {
 				peeked:1,
 				nf_trace:1;
 	kmemcheck_bitfield_end(flags1);
+#endif
 	__be16			protocol;
 
 	void			(*destructor)(struct sk_buff *skb);
@@ -385,6 +398,16 @@ struct sk_buff {
 
 	__u32			rxhash;
 
+#ifdef __SPLINT__
+	__u16			queue_mapping:16;
+#ifdef CONFIG_IPV6_NDISC_NODETYPE
+	__u8			ndisc_nodetype:2,
+				deliver_no_wcard:1;
+#else
+	__u8			deliver_no_wcard:1;
+#endif
+	__u8			ooo_okay:1;
+#else
 	kmemcheck_bitfield_begin(flags2);
 	__u16			queue_mapping:16;
 #ifdef CONFIG_IPV6_NDISC_NODETYPE
@@ -395,6 +418,7 @@ struct sk_buff {
 #endif
 	__u8			ooo_okay:1;
 	kmemcheck_bitfield_end(flags2);
+#endif
 
 	/* 0/13 bit hole */
 

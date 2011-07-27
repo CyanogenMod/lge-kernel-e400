@@ -70,15 +70,16 @@ static void gpio_switch_work(struct work_struct *work)
 					enable_irq(gpio_to_irq(data->key_gpios[i]));
 			}
 			headset_type = value;
+			input_report_switch(data->ipdev, headset_type, state);
 		} else {
 			if (headset_type == SW_MICROPHONE_INSERT) {
 				for (i = 0; i < data->num_key_gpios; ++i)
 					disable_irq(gpio_to_irq(data->key_gpios[i]));
 			}
+			input_report_switch(data->ipdev, headset_type, state);
 			headset_type = 0;
 		}
 
-		input_report_switch(data->ipdev, value, state);
 		switch_set_state(&data->sdev, value);
 		input_sync(data->ipdev);
 	}
