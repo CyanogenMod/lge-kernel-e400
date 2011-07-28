@@ -311,6 +311,9 @@ CONFIG_MACH_LGE=y
 # CONFIG_MACH_MSM7X27A_M3EU is not set
 CONFIG_MACH_MSM7X27A_M3MPCS=y
 # CONFIG_MACH_MSM7X27A_HDK is not set
+#LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+CONFIG_LGE_PROC_COMM=y
+#LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
 
 #
 # LGE Specific Patches

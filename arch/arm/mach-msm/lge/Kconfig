@@ -46,6 +46,14 @@ config LGE_H9DA4VH4JJMMCR_NAND_PATCH
 	  This patch is used for Hynix H9DAVH4JJMMCR nand probing.
 	  Because Read ID 4th(page & block size) are not match with QCT code,
 	  Put directly to parameter tables for device id 0xBC.
+
+config LGE_PROC_COMM
+	bool "LGE added proc comm"
+	depends on MACH_LGE
+	default n
+	help
+	  LGE added proc_comm
+
 config LGE_FBCON_INACTIVE_CONSOLE
 	bool "Support LGE FBCON inactive console"
 	default n

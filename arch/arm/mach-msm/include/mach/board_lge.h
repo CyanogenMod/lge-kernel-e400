@@ -240,6 +240,25 @@ void __init msm_msm7x2x_allocate_memory_regions(void);
 void __init msm7x27a_reserve(void);
 
 /* lge API functions to register i2c devices */
+
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+unsigned lge_get_pif_info(void);
+unsigned lge_get_lpm_info(void);
+
+unsigned lge_get_batt_volt(void);
+unsigned lge_get_chg_therm(void);
+unsigned lge_get_pcb_version(void);
+unsigned lge_get_chg_curr_volt(void);
+unsigned lge_get_batt_therm(void);
+unsigned lge_get_batt_volt_raw(void);
+#ifdef CONFIG_MACH_MSM7X27_GELATO
+unsigned lge_get_chg_stat_reg(void);
+unsigned lge_get_chg_en_reg(void);
+unsigned lge_set_elt_test(void);
+unsigned lge_clear_elt_test(void);
+#endif
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
+
 typedef void (gpio_i2c_init_func_t)(int bus_num);
 
 void __init lge_add_gpio_i2c_device(gpio_i2c_init_func_t *init_func);
