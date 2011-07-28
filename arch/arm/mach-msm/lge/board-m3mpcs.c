@@ -195,7 +195,14 @@ static void __init msm7x2x_init(void)
 	platform_add_devices(m3_devices,
 		ARRAY_SIZE(m3_devices));
 
-	platform_device_register(&msm_device_uart3);
+	/*7x25a kgsl initializations*/
+	msm7x25a_kgsl_3d0_init();
+
+	if (lge_bd_rev == LGE_REV_A) {
+		platform_device_register(&msm_device_uart3);
+	} else {
+		platform_device_register(&msm_device_uart1);
+	}
 
 	lge_add_input_devices();
 	lge_add_misc_devices();
