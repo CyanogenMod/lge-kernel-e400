@@ -424,6 +424,11 @@ config LEDS_NETXBIG
 	  and 5Big Network v2 boards. The LEDs are wired to a CPLD and are
 	  controlled through a GPIO extension bus.
 
+config LEDS_GPIO_M3
+        tristate "LED Support for GPIO LEDs"
+        default y
+        help
+          This option enables support for GPIO LEDs	  
 config LEDS_TRIGGERS
 	bool "LED Trigger support"
 	depends on LEDS_CLASS

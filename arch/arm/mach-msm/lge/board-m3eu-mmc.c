@@ -38,8 +38,9 @@ static void sdcc_gpio_init(void)
 	if (gpio_request(GPIO_SD_DETECT_N, "sdc1_status_irq"))
 		pr_err("failed to request gpio sdc1_status_irq\n");
 
-	rc = gpio_tlmm_config(GPIO_CFG(GPIO_SD_DETECT_N, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
-									GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	rc = gpio_tlmm_config(GPIO_CFG(GPIO_SD_DETECT_N, 0,
+				GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	if (rc)
 		printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
 					__func__, rc);
@@ -219,11 +220,11 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 
 	rc = msm_sdcc_setup_vreg(pdev->id, !!vdd);
 
-			/* if first called related to sdcc1, irq should be registered as wakeup source
-	 *      * cleaneye.kim@lge.com, 2010-02-19
-	 *           */
-	if(vdd && first_setup)
-	{
+	/* if first called related to sdcc1,
+	 *  irq should be registered as wakeup source
+	 * cleaneye.kim@lge.com, 2010-02-19
+	 */
+	if (vdd && first_setup) {
 		struct mmc_platform_data *pdata = pdev->dev.platform_data;
 		if (pdev->id == 1) {
 			first_setup = 0;

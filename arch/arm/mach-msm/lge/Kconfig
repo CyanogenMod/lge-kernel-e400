@@ -95,6 +95,14 @@ config MACH_MSM7X27A_M3MPCS_REV_A
 	  This patch is used for MSM7x27A MPCS REV_A support.
 	  Because MPCS REV_B has GPIO big changes.
 
-endmenu
+config LGE_HANDLE_PANIC
+	tristate "Support LGE Kernel Panic Handler"
+	default n 
+	depends on MACH_LGE
+	depends on ANDROID_RAM_CONSOLE
+	help
+	 LGE crash handler
 
+endmenu
+ 
 endmenu

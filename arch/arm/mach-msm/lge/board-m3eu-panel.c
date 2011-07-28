@@ -54,7 +54,7 @@ static struct platform_device *m3eu_panel_devices[] __initdata = {
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
-	.gpio = 97,						//LCD_VSYNC_O
+	.gpio = 97,						/*LCD_VSYNC_P*/
 	.mdp_rev = MDP_REV_303,
 };
 
@@ -79,25 +79,25 @@ static int msm_fb_get_lane_config(void)
 
 #define GPIO_LCD_RESET 125
 static int dsi_gpio_initialized;
-static int Isfirstbootend=0;
+static int Isfirstbootend;
 
 static int mipi_dsi_panel_power(int on)
 {
 	int rc = 0;
 	struct vreg *vreg_mipi_dsi_v28;
 
-	printk("mipi_dsi_panel_power : %d \n",on);
+	printk("mipi_dsi_panel_power : %d \n", on);
 
 	if (!dsi_gpio_initialized) {
 
-		// Resetting LCD Panel
+		/* Resetting LCD Panel*/
 		rc = gpio_request(GPIO_LCD_RESET, "lcd_reset");
 		if (rc) {
 			pr_err("%s: gpio_request GPIO_LCD_RESET failed\n", __func__);
 		}
 		rc = gpio_tlmm_config(GPIO_CFG(GPIO_LCD_RESET, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		if (rc){
+		if (rc) {
 			printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
 					__func__, rc);
 		}
@@ -112,12 +112,12 @@ static int mipi_dsi_panel_power(int on)
 	}
 
 	if (on) {
-		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800); 
+		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800);
 		if (rc) {
 			pr_err("%s: vreg_set_level failed for mipi_dsi_v28\n", __func__);
 			goto vreg_put_dsi_v28;
 		}
-		rc = vreg_enable(vreg_mipi_dsi_v28); 
+		rc = vreg_enable(vreg_mipi_dsi_v28);
 		if (rc) {
 			pr_err("%s: vreg_enable failed for mipi_dsi_v28\n", __func__);
 			goto vreg_put_dsi_v28;
@@ -128,17 +128,16 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("%s: gpio_direction_output failed for lcd_reset\n", __func__);
 			goto vreg_put_dsi_v28;
 		}
-		if(Isfirstbootend){
+		if (Isfirstbootend) {
 			printk("gpio lcd reset on...\n");
 			mdelay(10);
 			gpio_set_value(GPIO_LCD_RESET, 0);
 			mdelay(10);
 			gpio_set_value(GPIO_LCD_RESET, 1);
-		}
-		else{
+		} else{
 			Isfirstbootend = 1;
 		}
-		mdelay(10);		
+		mdelay(10);
 	} else {
 		rc = vreg_disable(vreg_mipi_dsi_v28);
 		if (rc) {

@@ -184,6 +184,8 @@ void __init msm_msm7x2x_allocate_memory_regions(void)
 }
 
 static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
+#ifdef __SPLINT__
+#else
 	[MEMTYPE_SMI] = {
 	},
 	[MEMTYPE_EBI0] = {
@@ -192,6 +194,7 @@ static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	[MEMTYPE_EBI1] = {
 		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
+#endif
 };
 
 static void __init size_pmem_devices(void)
