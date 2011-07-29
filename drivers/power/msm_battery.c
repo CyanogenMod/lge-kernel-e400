@@ -33,6 +33,9 @@
 
 #include <mach/msm_rpcrouter.h>
 #include <mach/msm_battery.h>
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+#include <mach/board_lge.h>
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
 
 #define BATTERY_RPC_PROG	0x30000089
 #define BATTERY_RPC_VER_1_1	0x00010001
@@ -1573,6 +1576,121 @@ static int msm_batt_cb_func(struct msm_rpc_client *client,
 }
 #endif  /* CONFIG_BATTERY_MSM_FAKE */
 
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
+static unsigned pif_value;
+//static unsigned low_power_mode;
+
+static ssize_t msm_batt_pif_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	return sprintf(buf,"%d\n", pif_value);
+}
+
+static DEVICE_ATTR(pif, S_IRUGO, msm_batt_pif_show, NULL);
+
+static struct attribute* dev_attrs[] = {
+	&dev_attr_pif.attr,
+	NULL,
+};
+
+static struct attribute_group dev_attr_grp = {
+	.attrs = dev_attrs,
+};
+#endif
+
+#ifdef CONFIG_MACH_LGE
+static unsigned batt_volt;
+static unsigned chg_therm;
+static unsigned pcb_version;
+static unsigned chg_curr_volt;
+static unsigned batt_therm;
+static unsigned batt_volt_raw;
+#if 1 //#ifdef CONFIG_MACH_MSM7X27_GELATO
+static unsigned chg_stat_reg;
+static unsigned chg_en_reg;
+#endif
+
+
+static ssize_t msm_batt_batt_volt_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	batt_volt = lge_get_batt_volt();
+	return sprintf(buf,"%d\n", batt_volt);
+}
+static DEVICE_ATTR(batt_volt, S_IRUGO, msm_batt_batt_volt_show, NULL);
+
+static ssize_t msm_batt_chg_therm_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	chg_therm = lge_get_chg_therm();
+	return sprintf(buf,"%d\n", chg_therm);
+}
+static DEVICE_ATTR(chg_therm, S_IRUGO, msm_batt_chg_therm_show, NULL);
+
+static ssize_t msm_batt_pcb_version_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	pcb_version = lge_get_pcb_version();
+	return sprintf(buf,"%d\n", pcb_version);
+}
+static DEVICE_ATTR(pcb_version, S_IRUGO, msm_batt_pcb_version_show, NULL);
+
+static ssize_t msm_batt_chg_curr_volt_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	chg_curr_volt = lge_get_chg_curr_volt();
+	return sprintf(buf,"%d\n", chg_curr_volt);
+}
+static DEVICE_ATTR(chg_curr_volt, S_IRUGO, msm_batt_chg_curr_volt_show, NULL);
+
+static ssize_t msm_batt_batt_therm_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	batt_therm = lge_get_batt_therm();
+	return sprintf(buf,"%d\n", batt_therm);
+}
+static DEVICE_ATTR(batt_therm, S_IRUGO, msm_batt_batt_therm_show, NULL);
+
+static ssize_t msm_batt_batt_volt_raw_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	batt_volt_raw = lge_get_batt_volt_raw();
+	return sprintf(buf,"%d\n", batt_volt_raw);
+}
+static DEVICE_ATTR(batt_volt_raw, S_IRUGO, msm_batt_batt_volt_raw_show, NULL);
+
+#if 1 //#ifdef CONFIG_MACH_MSM7X27_GELATO
+static ssize_t msm_batt_chg_stat_reg_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	chg_stat_reg = lge_get_chg_stat_reg();
+	return sprintf(buf,"%d\n", chg_stat_reg);
+}
+static DEVICE_ATTR(chg_stat_reg, S_IRUGO, msm_batt_chg_stat_reg_show, NULL);
+
+
+static ssize_t msm_batt_chg_en_reg_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	chg_en_reg = lge_get_chg_en_reg();
+	return sprintf(buf,"%d\n", chg_en_reg);
+}
+static DEVICE_ATTR(chg_en_reg, S_IRUGO, msm_batt_chg_en_reg_show, NULL);
+#endif
+
+static struct attribute* dev_attrs_lge_batt_info[] = {
+	&dev_attr_batt_volt.attr,
+	&dev_attr_chg_therm.attr,
+	&dev_attr_pcb_version.attr,
+	&dev_attr_chg_curr_volt.attr,
+	&dev_attr_batt_therm.attr,
+	&dev_attr_batt_volt_raw.attr,	
+#if 1 //#ifdef CONFIG_MACH_MSM7X27_GELATO
+	&dev_attr_chg_stat_reg.attr,
+	&dev_attr_chg_en_reg.attr,
+#endif	
+	NULL,
+};
+
+static struct attribute_group dev_attr_grp_lge_batt_info = {
+	.attrs = dev_attrs_lge_batt_info,
+};
+
+#endif
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
+
 static int __devinit msm_batt_probe(struct platform_device *pdev)
 {
 	int rc;
@@ -1684,12 +1802,29 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
 	power_supply_changed(&msm_psy_ac);
 #endif  /* CONFIG_BATTERY_MSM_FAKE */
 
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+#ifdef CONFIG_MACH_LGE
+		rc = sysfs_create_group(&pdev->dev.kobj, &dev_attr_grp_lge_batt_info);
+		if(rc < 0) {
+			dev_err(&pdev->dev,
+				"%s: fail to create sysfs for lge batt info rc=%d\n", __func__, rc);
+		}
+#endif
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
+
 	return 0;
 }
 
 static int __devexit msm_batt_remove(struct platform_device *pdev)
 {
 	int rc;
+
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+#ifdef CONFIG_MACH_LGE
+	sysfs_remove_group(&pdev->dev.kobj,&dev_attr_grp_lge_batt_info);
+#endif
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
+
 	rc = msm_batt_cleanup();
 
 	if (rc < 0) {

@@ -251,7 +251,7 @@ unsigned lge_get_pcb_version(void);
 unsigned lge_get_chg_curr_volt(void);
 unsigned lge_get_batt_therm(void);
 unsigned lge_get_batt_volt_raw(void);
-#ifdef CONFIG_MACH_MSM7X27_GELATO
+#if 1 //#ifdef CONFIG_MACH_MSM7X27_GELATO
 unsigned lge_get_chg_stat_reg(void);
 unsigned lge_get_chg_en_reg(void);
 unsigned lge_set_elt_test(void);
