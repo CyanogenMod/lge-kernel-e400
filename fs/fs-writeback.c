@@ -875,6 +875,33 @@ int bdi_writeback_thread(void *data)
 	trace_writeback_thread_start(bdi);
 
 	while (!kthread_should_stop()) {
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+		/* FIXME : for getting debugging information
+		 * this should be removed after debugging.
+		 * 2011-08-01, cleaneye.kim@lge.com
+		 */
+		if (wb->wakeup_timer.entry.next == NULL) {
+			printk(KERN_INFO"%s: wakeup timer is already removed\n", __func__);
+			printk(KERN_INFO"%s: current jiffies %lu\n", __func__, jiffies);
+		}
+
+		/*
+		 * This patch is added for preventing from kernel panic which is
+		 * generated during executing bdi_writeback_thread(). Root cause of
+		 * this kernel panic starts from the synchronization problem between
+		 * kernel threads. When mmc card is once removed, kernel try to
+		 * unregister data structures of bdi and delete bdi timer in kthread
+		 * context. But, if bdi writeback kthread is already in execution,
+		 * there is a probablity that that kthread trys to delete bdi timer
+		 * which has been deleted already. In that case,
+		 * "del_timer(&wb->wakeup_timer)" code can generate kernel panic.
+		 * So, I add the codes which checks whether bdi is unregitered or not
+		 * before removing timer.
+		 * 2011-08-11, cleaneye.kim@lge.com
+		 */
+		 if (!kthread_sould_top() || !bdi->dev)
+		 continue
+#endif
 		/*
 		 * Remove own delayed wake-up timer, since we are already awake
 		 * and we'll take care of the preriodic write-back.
