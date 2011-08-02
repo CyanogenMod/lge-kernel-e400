@@ -29,6 +29,7 @@
 
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
+#define BAHAMA_SLAVE_ID_FM_REG 0x02
 #define FM_GPIO	83
 
 	/* FM Platform power and shutdown routines */
@@ -210,12 +211,36 @@ static int msm_bahama_setup_pcm_i2s(int mode)
 	return rc;
 }
 
+static int bt_set_gpio(int on)
+{
+	int rc = 0;
+	struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
+
+	if (on) {
+		rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
+		msleep(100);
+	} else {
+		if (!marimba_get_fm_status(&config) &&
+				!marimba_get_bt_status(&config)) {
+			gpio_set_value_cansleep(GPIO_BT_SYS_REST_EN, 0);
+			rc = gpio_direction_input(GPIO_BT_SYS_REST_EN);
+			msleep(100);
+		}
+	}
+	if (rc)
+		pr_err("%s: BT sys_reset_en GPIO : Error", __func__);
+
+	return rc;
+}
+
 static struct vreg *fm_regulator;
 static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
 {
 	int rc = 0;
 	const char *id = "FMPW";
 	uint32_t irqcfg;
+	struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
+	u8 value;
 
 	/* Voting for 1.8V Regulator */
 	fm_regulator = vreg_get(NULL , "msme1");
@@ -250,6 +275,20 @@ static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
 		goto fm_clock_vote_fail;
 	}
 
+	rc = bt_set_gpio(1);
+	if (rc) {
+		pr_err("%s: bt_set_gpio = %d", __func__, rc);
+		goto fm_gpio_config_fail;
+	}
+	/*re-write FM Slave Id, after reset*/
+	value = BAHAMA_SLAVE_ID_FM_ADDR;
+	rc = marimba_write_bit_mask(&config,
+			BAHAMA_SLAVE_ID_FM_REG, &value, 1, 0xFF);
+	if (rc < 0) {
+		pr_err("%s: FM Slave ID rewrite Failed = %d", __func__, rc);
+		goto fm_gpio_config_fail;
+	}
+
 	/* Configuring the FM GPIO */
 	irqcfg = GPIO_CFG(FM_GPIO, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
 			GPIO_CFG_2MA);
@@ -266,6 +305,7 @@ static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
 fm_gpio_config_fail:
 	pmapp_clock_vote(id, PMAPP_CLOCK_ID_D1,
 		PMAPP_CLOCK_VOTE_OFF);
+	bt_set_gpio(0);
 fm_clock_vote_fail:
 	vreg_disable(fm_regulator);
 
@@ -306,6 +346,9 @@ static void fm_radio_shutdown(struct marimba_fm_platform_data *pdata)
 	if (rc < 0)
 		pr_err("%s: voting off failed with :(%d)\n",
 			__func__, rc);
+	rc = bt_set_gpio(0);
+	if (rc)
+		pr_err("%s: bt_set_gpio = %d", __func__, rc);
 }
 
 static struct marimba_fm_platform_data marimba_fm_pdata = {
@@ -432,10 +475,10 @@ static int bahama_bt(int on)
 	on = on ? 1 : 0;
 	version = marimba_read_bahama_ver(&config);
 
-	if (version == BAHAMA_VER_UNSUPPORTED) {
-		dev_err(&msm_bt_power_device.dev,
-			"%s: unsupported version\n",
-			__func__);
+	if ((int)version < 0 || version == BAHAMA_VER_UNSUPPORTED) {
+		dev_err(&msm_bt_power_device.dev, "%s: Bahama \
+				version read Error, version = %d \n",
+				__func__, version);
 		return -EIO;
 	}
 
@@ -462,7 +505,7 @@ static int bahama_bt(int on)
 				__func__, (p+i)->reg, rc);
 			return rc;
 		}
-		dev_info(&msm_bt_power_device.dev,
+		dev_dbg(&msm_bt_power_device.dev,
 			"%s: reg 0x%02x write value 0x%02x mask 0x%02x\n",
 				__func__, (p+i)->reg,
 				value, (p+i)->mask);
@@ -473,7 +516,7 @@ static int bahama_bt(int on)
 		if (rc < 0)
 			dev_err(&msm_bt_power_device.dev, "%s marimba_read_bit_mask- error",
 					__func__);
-		dev_info(&msm_bt_power_device.dev,
+		dev_dbg(&msm_bt_power_device.dev,
 			"%s: reg 0x%02x read value 0x%02x mask 0x%02x\n",
 				__func__, (p+i)->reg,
 				value, (p+i)->mask);
@@ -552,9 +595,9 @@ static unsigned int msm_bahama_setup_power(void)
 	}
 
 	/*setup Bahama_sys_reset_n*/
-	rc = gpio_direction_output(BT_SYS_REST_EN, 1);
+	rc = bt_set_gpio(1);
 	if (rc < 0) {
-		pr_err("%s: gpio_direction_output %d = %d\n", __func__,
+		pr_err("%s: bt_set_gpio %d = %d\n", __func__,
 			BT_SYS_REST_EN, rc);
 		goto vreg_fail;
 	}
@@ -583,7 +626,13 @@ static unsigned int msm_bahama_shutdown_power(int value)
 		vreg_put(vreg_s3);
 		return rc;
 	}
-
+	if (value == BAHAMA_ID) {
+		rc = bt_set_gpio(0);
+		if (rc) {
+			pr_err("%s: bt_set_gpio = %d\n",
+					__func__, rc);
+		}
+	}
 	return rc;
 }
 
@@ -620,6 +669,11 @@ static unsigned int msm_bahama_core_config(int type)
 			}
 		}
 	}
+	rc = bt_set_gpio(0);
+	if (rc) {
+		pr_err("%s: bt_set_gpio = %d\n",
+		       __func__, rc);
+	}
 	pr_debug("core type: %d\n", type);
 	return rc;
 }
@@ -639,6 +693,12 @@ static int bluetooth_power(int on)
 
 	if (on) {
 		/*setup power for BT SOC*/
+		rc = bt_set_gpio(on);
+		if (rc) {
+			pr_err("%s: bt_set_gpio = %d\n",
+					__func__, rc);
+			goto exit;
+		}
 		rc = bluetooth_switch_regulators(on);
 		if (rc < 0) {
 			pr_err("%s: bluetooth_switch_regulators rc = %d",
@@ -692,6 +752,12 @@ static int bluetooth_power(int on)
 		rc = bahama_bt(0);
 		if (rc < 0)
 			pr_err("%s: bahama_bt rc = %d", __func__, rc);
+
+		rc = bt_set_gpio(on);
+		if (rc) {
+			pr_err("%s: bt_set_gpio = %d\n",
+					__func__, rc);
+		}
 fail_i2c:
 		rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_D1,
 				  PMAPP_CLOCK_VOTE_OFF);

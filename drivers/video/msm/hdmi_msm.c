@@ -420,8 +420,11 @@ static irqreturn_t hdmi_msm_isr(int irq, void *dev_id)
 		boolean cable_detected = (hpd_int_status & 2) >> 1;
 
 		/* HDMI_HPD_INT_CTRL[0x0254] */
-		/* Clear all interrupts, timer will turn IRQ back on */
-		HDMI_OUTP(0x0254, 1 << 0);
+		/* Clear all interrupts, timer will turn IRQ back on
+		 * Leaving the bit[2] on, else core goes off
+		 * on getting HPD during power off
+		 */
+		HDMI_OUTP(0x0254, (1 << 2) | (1 << 0));
 
 		DEV_DBG("%s: HPD IRQ, Ctrl=%04x, State=%04x\n", __func__,
 			hpd_int_ctrl, hpd_int_status);
@@ -642,7 +645,7 @@ static boolean hdmi_msm_is_dvi_mode(void)
 	return (HDMI_INP_ND(0x0000) & 0x00000002) ? FALSE : TRUE;
 }
 
-static void hdmi_msm_set_mode(boolean power_on)
+void hdmi_msm_set_mode(boolean power_on)
 {
 	uint32 reg_val = 0;
 	if (power_on) {
@@ -3019,7 +3022,7 @@ static void hdmi_msm_switch_3d(boolean on)
 }
 #endif
 
-static int hdmi_msm_clk(int on)
+int hdmi_msm_clk(int on)
 {
 	int rc;
 
@@ -3052,22 +3055,6 @@ static int hdmi_msm_clk(int on)
 	}
 
 	return 0;
-}
-
-static void hdmi_msm_reset_core(void)
-{
-	hdmi_msm_set_mode(FALSE);
-	hdmi_msm_clk(0);
-	udelay(5);
-	hdmi_msm_clk(1);
-
-	clk_reset(hdmi_msm_state->hdmi_app_clk, CLK_RESET_ASSERT);
-	clk_reset(hdmi_msm_state->hdmi_m_pclk, CLK_RESET_ASSERT);
-	clk_reset(hdmi_msm_state->hdmi_s_pclk, CLK_RESET_ASSERT);
-	udelay(20);
-	clk_reset(hdmi_msm_state->hdmi_app_clk, CLK_RESET_DEASSERT);
-	clk_reset(hdmi_msm_state->hdmi_m_pclk, CLK_RESET_DEASSERT);
-	clk_reset(hdmi_msm_state->hdmi_s_pclk, CLK_RESET_DEASSERT);
 }
 
 static void hdmi_msm_turn_on(void)

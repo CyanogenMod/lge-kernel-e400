@@ -35,6 +35,7 @@
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/setup.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/mmc.h>
 
@@ -718,15 +719,15 @@ static void __init reserve_pmem_memory(void)
 #endif
 }
 
+static int msm8960_paddr_to_memtype(unsigned int paddr)
+{
+	return MEMTYPE_EBI1;
+}
+
 static void __init msm8960_calculate_reserve_sizes(void)
 {
 	size_pmem_devices();
 	reserve_pmem_memory();
-}
-
-static int msm8960_paddr_to_memtype(unsigned int paddr)
-{
-	return MEMTYPE_EBI1;
 }
 
 static struct reserve_info msm8960_reserve_info __initdata = {
@@ -735,10 +736,44 @@ static struct reserve_info msm8960_reserve_info __initdata = {
 	.paddr_to_memtype = msm8960_paddr_to_memtype,
 };
 
+static int msm8960_memory_bank_size(void)
+{
+	return 1<<29;
+}
+
+static void __init locate_unstable_memory(void)
+{
+	struct membank *mb = &meminfo.bank[meminfo.nr_banks - 1];
+	unsigned long bank_size;
+	unsigned long low, high;
+
+	bank_size = msm8960_memory_bank_size();
+	low = meminfo.bank[0].start;
+	high = mb->start + mb->size;
+	low &= ~(bank_size - 1);
+
+	if (high - low <= bank_size)
+		return;
+	msm8960_reserve_info.low_unstable_address = low + bank_size;
+	msm8960_reserve_info.max_unstable_size = high - low - bank_size;
+	msm8960_reserve_info.bank_size = bank_size;
+	pr_info("low unstable address %lx max size %lx bank size %lx\n",
+		msm8960_reserve_info.low_unstable_address,
+		msm8960_reserve_info.max_unstable_size,
+		msm8960_reserve_info.bank_size);
+}
+
 static void __init msm8960_reserve(void)
 {
 	reserve_info = &msm8960_reserve_info;
+	locate_unstable_memory();
 	msm_reserve();
+}
+
+static int msm8960_change_memory_power(unsigned long start_pfn,
+	unsigned long nr_pages, int change_type)
+{
+	return 1;
 }
 
 #ifdef CONFIG_MSM_CAMERA
@@ -749,9 +784,20 @@ static int msm_cam_gpio_tbl[] = {
 	21, /*CAMIF_I2C_CLK*/
 };
 
+#define VFE_CAMIF_TIMER1_GPIO 2
+#define VFE_CAMIF_TIMER2_GPIO 3
+#define VFE_CAMIF_TIMER3_GPIO_INT 4
+struct msm_camera_sensor_strobe_flash_data strobe_flash_xenon = {
+	.flash_trigger = VFE_CAMIF_TIMER2_GPIO,
+	.flash_charge = VFE_CAMIF_TIMER1_GPIO,
+	.flash_charge_done = VFE_CAMIF_TIMER3_GPIO_INT,
+	.flash_recharge_duration = 50000,
+	.irq = MSM_GPIO_TO_INT(VFE_CAMIF_TIMER3_GPIO_INT),
+};
+
 #ifdef CONFIG_IMX074
 static struct msm_camera_sensor_platform_info sensor_board_info = {
-	.mount_angle = 0
+	.mount_angle = 90
 };
 #endif
 
@@ -822,6 +868,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx074_data = {
 	.vcm_enable	= 1,
 	.pdata	= &msm_camera_csi0_device_data,
 	.flash_data	= &flash_imx074,
+	.strobe_flash_data = &strobe_flash_xenon,
 	.sensor_platform_info = &sensor_board_info,
 	.csi_if	= 1
 };
@@ -856,12 +903,37 @@ struct platform_device msm8960_camera_sensor_ov2720 = {
 	},
 };
 #endif
+
+static struct msm_camera_sensor_flash_data flash_qs_mt9p017 = {
+	.flash_type	= MSM_CAMERA_FLASH_LED,
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_qs_mt9p017_data = {
+	.sensor_name	= "qs_mt9p017",
+	.sensor_reset	= 107,
+	.sensor_pwd	= 85,
+	.vcm_pwd	= 0,
+	.vcm_enable	= 1,
+	.pdata	= &msm_camera_csi0_device_data,
+	.flash_data	= &flash_qs_mt9p017,
+	.sensor_platform_info = &sensor_board_info,
+	.csi_if	= 1
+};
+
+struct platform_device msm8960_camera_sensor_qs_mt9p017 = {
+	.name	= "msm_camera_qs_mt9p017",
+	.dev	= {
+		.platform_data = &msm_camera_sensor_qs_mt9p017_data,
+	},
+};
+
 static void __init msm8960_init_cam(void)
 {
 	int i;
 	struct platform_device *cam_dev[] = {
 		&msm8960_camera_sensor_imx074,
 		&msm8960_camera_sensor_ov2720,
+		&msm8960_camera_sensor_qs_mt9p017,
 	};
 
 	for (i = 0; i < ARRAY_SIZE(cam_dev); i++) {
@@ -1101,21 +1173,20 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 
 static struct msm_bus_vectors mdp_init_vectors[] = {
-	/* For now, 0th array entry is reserved.
-	 * Please leave 0 as is and don't use it
-	 */
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab = 0,
 		.ib = 0,
 	},
-	/* Master and slaves can be from different fabrics */
+};
+
+static struct msm_bus_vectors mdp_ui_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 0,
-		.ib = 0,
+		.ab = 216000000 * 2,
+		.ib = 270000000 * 2,
 	},
 };
 
@@ -1124,14 +1195,8 @@ static struct msm_bus_vectors mdp_vga_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 175110000,
-		.ib = 218887500,
-	},
-	{
-		.src = MSM_BUS_MASTER_MDP_PORT0,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 175110000,
-		.ib = 218887500,
+		.ab = 216000000 * 2,
+		.ib = 270000000 * 2,
 	},
 };
 
@@ -1140,15 +1205,8 @@ static struct msm_bus_vectors mdp_720p_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 230400000,
-		.ib = 288000000,
-	},
-	/* Master and slaves can be from different fabrics */
-	{
-		.src = MSM_BUS_MASTER_MDP_PORT0,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 230400000,
-		.ib = 288000000,
+		.ab = 230400000 * 2,
+		.ib = 288000000 * 2,
 	},
 };
 
@@ -1157,32 +1215,8 @@ static struct msm_bus_vectors mdp_1080p_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 334080000,
-		.ib = 417600000,
-	},
-	/* Master and slaves can be from different fabrics */
-	{
-		.src = MSM_BUS_MASTER_MDP_PORT0,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 334080000,
-		.ib = 417600000,
-	},
-};
-
-static struct msm_bus_vectors mdp_rgb_vectors[] = {
-	/* RGB playing on VG or RGB pipe, might be on EBI */
-	{
-		.src = MSM_BUS_MASTER_MDP_PORT0,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 334080000,
-		.ib = 417600000,
-	},
-	/* FB on EBI, request for EBI too*/
-	{
-		.src = MSM_BUS_MASTER_MDP_PORT0,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 334080000,
-		.ib = 417600000,
+		.ab = 334080000 * 2,
+		.ib = 417600000 * 2,
 	},
 };
 
@@ -1190,6 +1224,14 @@ static struct msm_bus_paths mdp_bus_scale_usecases[] = {
 	{
 		ARRAY_SIZE(mdp_init_vectors),
 		mdp_init_vectors,
+	},
+	{
+		ARRAY_SIZE(mdp_ui_vectors),
+		mdp_ui_vectors,
+	},
+	{
+		ARRAY_SIZE(mdp_ui_vectors),
+		mdp_ui_vectors,
 	},
 	{
 		ARRAY_SIZE(mdp_vga_vectors),
@@ -1202,10 +1244,6 @@ static struct msm_bus_paths mdp_bus_scale_usecases[] = {
 	{
 		ARRAY_SIZE(mdp_1080p_vectors),
 		mdp_1080p_vectors,
-	},
-	{
-		ARRAY_SIZE(mdp_rgb_vectors),
-		mdp_rgb_vectors,
 	},
 };
 
@@ -1293,6 +1331,44 @@ static struct platform_device hdmi_msm_device = {
 };
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
 
+#ifdef CONFIG_MSM_BUS_SCALING
+static struct msm_bus_vectors dtv_bus_init_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_MDP_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 0,
+		.ib = 0,
+	},
+};
+static struct msm_bus_vectors dtv_bus_def_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_MDP_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 566092800 * 2,
+		.ib = 707616000 * 2,
+	},
+};
+static struct msm_bus_paths dtv_bus_scale_usecases[] = {
+	{
+		ARRAY_SIZE(dtv_bus_init_vectors),
+		dtv_bus_init_vectors,
+	},
+	{
+		ARRAY_SIZE(dtv_bus_def_vectors),
+		dtv_bus_def_vectors,
+	},
+};
+static struct msm_bus_scale_pdata dtv_bus_scale_pdata = {
+	dtv_bus_scale_usecases,
+	ARRAY_SIZE(dtv_bus_scale_usecases),
+	.name = "dtv",
+};
+
+static struct lcdc_platform_data dtv_pdata = {
+	.bus_scale_table = &dtv_bus_scale_pdata,
+};
+#endif
+
 static void __init msm_fb_add_devices(void)
 {
 	if (machine_is_msm8x60_rumi3()) {
@@ -1301,6 +1377,9 @@ static void __init msm_fb_add_devices(void)
 	} else
 		msm_fb_register_device("mdp", &mdp_pdata);
 	msm_fb_register_device("mipi_dsi", &mipi_dsi_pdata);
+#ifdef CONFIG_MSM_BUS_SCALING
+	msm_fb_register_device("dtv", &dtv_pdata);
+#endif
 }
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
@@ -1548,6 +1627,37 @@ static struct slim_boardinfo msm_slim_devices[] = {
 	},
 #endif
 	/* add more slimbus slaves as needed */
+};
+
+#define MSM_WCNSS_PHYS	0x03000000
+#define MSM_WCNSS_SIZE	0x280000
+
+static struct resource resources_wcnss_wlan[] = {
+	{
+		.start	= RIVA_APPS_WLAN_RX_DATA_AVAIL_IRQ,
+		.end	= RIVA_APPS_WLAN_RX_DATA_AVAIL_IRQ,
+		.name	= "wcnss_wlanrx_irq",
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= RIVA_APPS_WLAN_DATA_XFER_DONE_IRQ,
+		.end	= RIVA_APPS_WLAN_DATA_XFER_DONE_IRQ,
+		.name	= "wcnss_wlantx_irq",
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= MSM_WCNSS_PHYS,
+		.end	= MSM_WCNSS_PHYS + MSM_WCNSS_SIZE - 1,
+		.name	= "wcnss_mmio",
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device msm_device_wcnss_wlan = {
+	.name		= "wcnss_wlan",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(resources_wcnss_wlan),
+	.resource	= resources_wcnss_wlan,
 };
 
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
@@ -2525,7 +2635,7 @@ static struct cyttsp_platform_data cyttsp_pdata = {
 	.use_mt = CY_USE_MT,
 	.use_hndshk = CY_SEND_HNDSHK,
 	.use_trk_id = CY_USE_TRACKING_ID,
-	.use_sleep = CY_USE_SLEEP,
+	.use_sleep = 0,
 	.use_gestures = CY_USE_GESTURES,
 	.fw_fname = "cyttsp_8960_cdp.hex",
 	/* activate up to 4 groups
@@ -3273,6 +3383,9 @@ static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 	I2C_BOARD_INFO("ov2720", 0x6C),
 	},
 #endif
+	{
+	I2C_BOARD_INFO("qs_mt9p017", 0x6C >> 1),
+	},
 };
 #endif
 
@@ -3347,7 +3460,7 @@ static void __init msm8960_sim_init(void)
 	BUG_ON(msm_rpmrs_levels_init(msm_rpmrs_levels,
 				ARRAY_SIZE(msm_rpmrs_levels)));
 	regulator_suppress_info_printing();
-	msm_clock_init(msm_clocks_8960, msm_num_clocks_8960);
+	msm8960_clock_init();
 	msm8960_device_ssbi_pm8921.dev.platform_data =
 				&msm8960_ssbi_pm8921_pdata;
 	pm8921_platform_data.num_regulators = msm_pm8921_regulator_pdata_len;
@@ -3394,7 +3507,7 @@ static void __init msm8960_rumi3_init(void)
 	BUG_ON(msm_rpmrs_levels_init(msm_rpmrs_levels,
 				ARRAY_SIZE(msm_rpmrs_levels)));
 	regulator_suppress_info_printing();
-	msm_clock_init(msm_clocks_8960_dummy, msm_num_clocks_8960_dummy);
+	msm8960_clock_init_dummy();
 	gpiomux_init();
 	ethernet_init();
 	msm8960_device_ssbi_pm8921.dev.platform_data =
@@ -3432,7 +3545,7 @@ static void __init msm8960_cdp_init(void)
 	regulator_suppress_info_printing();
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
-	msm_clock_init(msm_clocks_8960, msm_num_clocks_8960);
+	msm8960_clock_init();
 	msm_device_otg.dev.platform_data = &msm_otg_pdata;
 	msm_device_gadget_peripheral.dev.parent = &msm_device_otg.dev;
 	msm_device_hsusb_host.dev.parent = &msm_device_otg.dev;
@@ -3466,6 +3579,7 @@ static void __init msm8960_cdp_init(void)
 	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
 	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
 				msm_pm_data);
+	change_memory_power = &msm8960_change_memory_power;
 }
 
 MACHINE_START(MSM8960_SIM, "QCT MSM8960 SIMULATOR")

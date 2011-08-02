@@ -2372,7 +2372,7 @@ static DEFINE_CLK_VOTER(ebi_adm_clk, &ebi1_fixed_clk.c);
  */
 
 /* Update the sys_vdd voltage given a level. */
-int soc_update_sys_vdd(enum sys_vdd_level level)
+static int msm7x30_update_sys_vdd(enum sys_vdd_level level)
 {
 	int rc, target_mv;
 	static const int mv[NUM_SYS_VDD_LEVELS] = {
@@ -2855,8 +2855,7 @@ static struct clk_local_ownership {
 		O(GLBL), BIT(8), &dummy_clk },
 };
 
-struct clk_lookup msm_clocks_7x30[ARRAY_SIZE(ownership_map)];
-unsigned msm_num_clocks_7x30 = ARRAY_SIZE(msm_clocks_7x30);
+static struct clk_lookup msm_clocks_7x30[ARRAY_SIZE(ownership_map)];
 
 static void __init set_clock_ownership(void)
 {
@@ -2920,7 +2919,7 @@ static const struct reg_init {
 };
 
 /* Local clock driver initialization. */
-void __init msm_clk_soc_init(void)
+void __init msm7x30_clock_init(void)
 {
 	int i;
 	uint32_t val;
@@ -2928,6 +2927,8 @@ void __init msm_clk_soc_init(void)
 	cache_ownership();
 	print_ownership();
 	set_clock_ownership();
+
+	soc_update_sys_vdd = msm7x30_update_sys_vdd;
 
 	/* When we have no local clock control, the rest of the code in this
 	 * function is a NOP since writes to shadow regions that we don't own
@@ -2956,26 +2957,27 @@ void __init msm_clk_soc_init(void)
 	clk_set_rate(&lpa_codec_clk.c, 1);
 	/* Sync the GRP2D clock to AXI */
 	clk_set_rate(&grp_2d_clk.c, 1);
+
+	msm_clock_init(msm_clocks_7x30, ARRAY_SIZE(msm_clocks_7x30));
 }
 
 /*
  * Clock operation handler registration
  */
 static struct clk_ops soc_clk_ops_7x30 = {
-	.enable = local_clk_enable,
-	.disable = local_clk_disable,
-	.auto_off = local_clk_auto_off,
-	.set_rate = local_clk_set_rate,
-	.set_min_rate = local_clk_set_min_rate,
-	.set_max_rate = local_clk_set_max_rate,
-	.get_rate = local_clk_get_rate,
-	.list_rate = local_clk_list_rate,
-	.is_enabled = local_clk_is_enabled,
-	.round_rate = local_clk_round_rate,
+	.enable = rcg_clk_enable,
+	.disable = rcg_clk_disable,
+	.auto_off = rcg_clk_auto_off,
+	.set_rate = rcg_clk_set_rate,
+	.set_min_rate = rcg_clk_set_min_rate,
+	.get_rate = rcg_clk_get_rate,
+	.list_rate = rcg_clk_list_rate,
+	.is_enabled = rcg_clk_is_enabled,
+	.round_rate = rcg_clk_round_rate,
 	.reset = msm7x30_clk_reset,
 	.set_flags = soc_clk_set_flags,
 	.is_local = local_clk_is_local,
-	.get_parent = local_clk_get_parent,
+	.get_parent = rcg_clk_get_parent,
 };
 
 static struct clk_ops clk_ops_branch = {

@@ -16,34 +16,37 @@
 #include <mach/clk.h>
 #include <linux/io.h>
 #include <linux/android_pmem.h>
-#include <mach/msm_reqs.h>
 #include <mach/camera.h>
+#include <mach/msm_subsystem_map.h>
 
 #include "msm_gemini_platform.h"
 #include "msm_gemini_common.h"
 #include "msm_gemini_hw.h"
 
-#ifdef CONFIG_MSM_NPA_SYSTEM_BUS
-/* NPA Flow ID */
-#define MSM_SYSTEM_BUS_RATE	MSM_AXI_FLOW_JPEG_12MP
-#else
 /* AXI rate in KHz */
 #define MSM_SYSTEM_BUS_RATE	160000
-#endif
 
-void msm_gemini_platform_p2v(struct file  *file)
+void msm_gemini_platform_p2v(struct file  *file,
+				struct msm_mapped_buffer **msm_buffer)
 {
+
+	if (msm_subsystem_unmap_buffer(
+		(struct msm_mapped_buffer *)*msm_buffer) < 0)
+		pr_err("%s: umapped stat memory\n",  __func__);
+	*msm_buffer = NULL;
 #ifdef CONFIG_ANDROID_PMEM
 	put_pmem_file(file);
 #endif
 }
 
-uint32_t msm_gemini_platform_v2p(int fd, uint32_t len, struct file **file_p)
+uint32_t msm_gemini_platform_v2p(int fd, uint32_t len, struct file **file_p,
+					struct msm_mapped_buffer **msm_buffer,
+					int *subsys_id)
 {
 	unsigned long paddr;
 	unsigned long size;
 	int rc;
-
+	int flags;
 #ifdef CONFIG_ANDROID_PMEM
 	unsigned long kvstart;
 	rc = get_pmem_file(fd, &paddr, &kvstart, &size, file_p);
@@ -64,6 +67,15 @@ uint32_t msm_gemini_platform_v2p(int fd, uint32_t len, struct file **file_p)
 		return 0;
 	}
 
+	flags = MSM_SUBSYSTEM_MAP_IOVA;
+	*subsys_id = MSM_SUBSYSTEM_CAMERA;
+	*msm_buffer = msm_subsystem_map_buffer(paddr, size,
+					flags, subsys_id, 1);
+	if (IS_ERR((void *)*msm_buffer)) {
+		pr_err("%s: msm_subsystem_map_buffer failed\n", __func__);
+		return 0;
+	}
+	paddr = ((struct msm_mapped_buffer *)*msm_buffer)->iova[0];
 	return paddr;
 }
 

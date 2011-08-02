@@ -37,10 +37,26 @@ static int first_pixel_start_x;
 static int first_pixel_start_y;
 
 static int writeback_offset;
+static int wait4vsync_cnt;
 
 static struct mdp4_overlay_pipe *dsi_pipe;
 
 static cmd_fxn_t display_on;
+
+static __u32 msm_fb_line_length(__u32 fb_index, __u32 xres, int bpp)
+{
+	/*
+	 * The adreno GPU hardware requires that the pitch be aligned to
+	 * 32 pixels for color buffers, so for the cases where the GPU
+	 * is writing directly to fb0, the framebuffer pitch
+	 * also needs to be 32 pixel aligned
+	 */
+
+	if (fb_index == 0)
+		return ALIGN(xres, 32) * bpp;
+	else
+		return xres * bpp;
+}
 
 void mdp4_dsi_video_fxn_register(cmd_fxn_t fxn)
 {
@@ -276,6 +292,78 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	return ret;
 }
 
+/* 3D side by side */
+void mdp4_dsi_video_3d_sbys(struct msm_fb_data_type *mfd,
+				struct msmfb_overlay_3d *r3d)
+{
+	struct fb_info *fbi;
+	struct mdp4_overlay_pipe *pipe;
+	int bpp;
+	uint8 *buf = NULL;
+
+	if (dsi_pipe == NULL)
+		return;
+
+	dsi_pipe->is_3d = r3d->is_3d;
+	dsi_pipe->src_height_3d = r3d->height;
+	dsi_pipe->src_width_3d = r3d->width;
+
+	pipe = dsi_pipe;
+
+	if (pipe->is_3d)
+		mdp4_overlay_panel_3d(pipe->mixer_num, MDP4_3D_SIDE_BY_SIDE);
+	else
+		mdp4_overlay_panel_3d(pipe->mixer_num, MDP4_3D_NONE);
+
+	fbi = mfd->fbi;
+
+	bpp = fbi->var.bits_per_pixel / 8;
+	buf = (uint8 *) fbi->fix.smem_start;
+	buf += fbi->var.xoffset * bpp +
+		fbi->var.yoffset * fbi->fix.line_length;
+
+	if (pipe->is_3d) {
+		pipe->src_height = pipe->src_height_3d;
+		pipe->src_width = pipe->src_width_3d;
+		pipe->src_h = pipe->src_height_3d;
+		pipe->src_w = pipe->src_width_3d;
+		pipe->dst_h = pipe->src_height_3d;
+		pipe->dst_w = pipe->src_width_3d;
+		pipe->srcp0_ystride = msm_fb_line_length(0,
+					pipe->src_width, bpp);
+	} else {
+		 /* 2D */
+		pipe->src_height = fbi->var.yres;
+		pipe->src_width = fbi->var.xres;
+		pipe->src_h = fbi->var.yres;
+		pipe->src_w = fbi->var.xres;
+		pipe->dst_h = fbi->var.yres;
+		pipe->dst_w = fbi->var.xres;
+		pipe->srcp0_ystride = fbi->fix.line_length;
+	}
+
+	pipe->src_y = 0;
+	pipe->src_x = 0;
+	pipe->dst_y = 0;
+	pipe->dst_x = 0;
+	pipe->srcp0_addr = (uint32)buf;
+
+	mdp4_overlay_rgb_setup(pipe);
+
+	mdp4_overlayproc_cfg(pipe);
+
+	mdp4_overlay_dmap_xy(pipe);
+
+	mdp4_overlay_dmap_cfg(mfd, 1);
+
+	mdp4_mixer_stage_up(pipe);
+
+	mb();
+
+	/* wait for vsycn */
+	mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
+}
+
 #ifdef CONFIG_FB_MSM_OVERLAY_WRITEBACK
 int mdp4_dsi_video_overlay_blt_offset(struct msm_fb_data_type *mfd,
 					struct msmfb_overlay_blt *req)
@@ -337,22 +425,27 @@ void mdp4_overlay_dsi_video_wait4vsync(struct msm_fb_data_type *mfd)
 
 	 /* enable irq */
 	spin_lock_irqsave(&mdp_spin_lock, flag);
-	mdp_enable_irq(MDP_DMA2_TERM);	/* enable intr */
-	INIT_COMPLETION(dsi_pipe->comp);
-	mfd->dma->waiting = TRUE;
-	outp32(MDP_INTR_CLEAR, INTR_PRIMARY_VSYNC);
-	mdp_intr_mask |= INTR_PRIMARY_VSYNC;
-	outp32(MDP_INTR_ENABLE, mdp_intr_mask);
+	if (wait4vsync_cnt == 0) {
+		INIT_COMPLETION(dsi_pipe->comp);
+		mfd->dma->waiting = TRUE;
+		mdp_intr_mask |= INTR_PRIMARY_VSYNC;
+		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
+		mdp_enable_irq(MDP_DMA2_TERM);	/* enable intr */
+	}
+	wait4vsync_cnt++;
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 	wait_for_completion_killable(&dsi_pipe->comp);
-	mdp_disable_irq(MDP_DMA2_TERM);
+	spin_lock(&mdp_spin_lock);
+	wait4vsync_cnt--;
+	if (wait4vsync_cnt == 0)
+		mdp_disable_irq(MDP_DMA2_TERM);
+	spin_unlock(&mdp_spin_lock);
 }
 
 void mdp4_overlay_dsi_video_vsync_push(struct msm_fb_data_type *mfd,
 			struct mdp4_overlay_pipe *pipe)
 {
 
-	mdp4_overlay_reg_flush(pipe, 1);
 	if (pipe->flags & MDP_OV_PLAY_NOWAIT)
 		return;
 
@@ -397,6 +490,7 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 	pipe = dsi_pipe;
 	pipe->srcp0_addr = (uint32) buf;
 	mdp4_overlay_rgb_setup(pipe);
+	mdp4_overlay_reg_flush(pipe, 1);
 	mutex_unlock(&mfd->dma->ov_mutex);
 	mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
 	mdp4_stat.kickoff_dsi++;

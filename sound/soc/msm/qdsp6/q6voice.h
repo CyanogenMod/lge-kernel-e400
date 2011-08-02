@@ -15,6 +15,7 @@
 #include <mach/qdsp6v2/apr.h>
 
 #define MAX_VOC_PKT_SIZE 322
+#define SESSION_NAME_LEN 20
 
 struct voice_header {
 	uint32_t id;
@@ -49,6 +50,47 @@ enum {
 	VOC_RELEASE,
 };
 
+/* Common */
+#define VSS_ICOMMON_CMD_MAP_MEMORY   0x00011025
+#define VSS_ICOMMON_CMD_UNMAP_MEMORY 0x00011026
+/* General shared memory; byte-accessible, 4 kB-aligned. */
+#define VSS_ICOMMON_MAP_MEMORY_SHMEM8_4K_POOL  3
+
+struct vss_icommon_cmd_map_memory_t {
+	uint32_t phys_addr;
+	/* Physical address of a memory region; must be at least
+	 *  4 kB aligned.
+	 */
+
+	uint32_t mem_size;
+	/* Number of bytes in the region; should be a multiple of 32. */
+
+	uint16_t mem_pool_id;
+	/* Type of memory being provided. The memory ID implicitly defines
+	 *  the characteristics of the memory. The characteristics might include
+	 *  alignment type, permissions, etc.
+	 * Memory pool ID. Possible values:
+	 * 3 -- VSS_ICOMMON_MEM_TYPE_SHMEM8_4K_POOL.
+	 */
+} __packed;
+
+struct vss_icommon_cmd_unmap_memory_t {
+	uint32_t phys_addr;
+	/* Physical address of a memory region; must be at least
+	 *  4 kB aligned.
+	 */
+} __packed;
+
+struct vss_map_memory_cmd {
+	struct apr_hdr hdr;
+	struct vss_icommon_cmd_map_memory_t vss_map_mem;
+} __packed;
+
+struct vss_unmap_memory_cmd {
+	struct apr_hdr hdr;
+	struct vss_icommon_cmd_unmap_memory_t vss_unmap_mem;
+} __packed;
+
 /* TO MVM commands */
 #define VSS_IMVM_CMD_CREATE_PASSIVE_CONTROL_SESSION	0x000110FF
 /**< No payload. Wait for APRV2_IBASIC_RSP_RESULT response. */
@@ -64,6 +106,16 @@ enum {
 
 #define VSS_IMVM_CMD_DETACH_STREAM			0x0001123D
 /* Detach a stream from the MVM. */
+
+#define VSS_IMVM_CMD_ATTACH_VOCPROC		       0x0001123E
+/* Attach a vocproc to the MVM. The MVM will symmetrically connect this vocproc
+ * to all the streams currently attached to it.
+ */
+
+#define VSS_IMVM_CMD_DETACH_VOCPROC			0x0001123F
+/* Detach a vocproc from the MVM. The MVM will symmetrically disconnect this
+ * vocproc from all the streams to which it is currently attached.
+*/
 
 #define VSS_IMVM_CMD_START_VOICE			0x00011190
 /**< No payload. Wait for APRV2_IBASIC_RSP_RESULT response. */
@@ -151,8 +203,8 @@ struct vss_icommon_cmd_set_voice_timing_t {
 	 */
 } __packed;
 
-struct vss_imvm_cmd_create_full_control_session_t {
-	char name[20];
+struct vss_imvm_cmd_create_control_session_t {
+	char name[SESSION_NAME_LEN];
 	/*
 	* A variable-sized stream name.
 	*
@@ -172,13 +224,9 @@ struct mvm_detach_vocproc_cmd {
 	struct vss_istream_cmd_detach_vocproc_t mvm_detach_cvp_handle;
 } __packed;
 
-struct mvm_create_passive_ctl_session_cmd {
+struct mvm_create_ctl_session_cmd {
 	struct apr_hdr hdr;
-} __packed;
-
-struct mvm_create_full_ctl_session_cmd {
-	struct apr_hdr hdr;
-	struct vss_imvm_cmd_create_full_control_session_t mvm_session;
+	struct vss_imvm_cmd_create_control_session_t mvm_session;
 } __packed;
 
 struct mvm_set_tty_mode_cmd {
@@ -217,6 +265,10 @@ struct mvm_set_voice_timing_cmd {
 
 #define VSS_ISTREAM_CMD_SET_MUTE			0x00011022
 
+#define VSS_ISTREAM_CMD_REGISTER_CALIBRATION_DATA	0x00011279
+
+#define VSS_ISTREAM_CMD_DEREGISTER_CALIBRATION_DATA     0x0001127A
+
 #define VSS_ISTREAM_CMD_SET_MEDIA_TYPE			0x00011186
 /* Set media type on the stream. */
 
@@ -246,7 +298,7 @@ struct mvm_set_voice_timing_cmd {
 /* Set encoder DTX mode. */
 
 struct vss_istream_cmd_create_passive_control_session_t {
-	char name[20];
+	char name[SESSION_NAME_LEN];
 	/**<
 	* A variable-sized stream name.
 	*
@@ -289,7 +341,7 @@ struct vss_istream_cmd_create_full_control_session_t {
 	/* Rx vocoder type. (Refer to VSS_MEDIA_ID_XXX). */
 	uint32_t network_id;
 	/* Network ID. (Refer to VSS_NETWORK_ID_XXX). */
-	char name[20];
+	char name[SESSION_NAME_LEN];
 	/*
 	 * A variable-sized stream name.
 	 *
@@ -380,6 +432,15 @@ struct vss_istream_cmd_set_enc_dtx_mode_t {
 	 */
 } __packed;
 
+struct vss_istream_cmd_register_calibration_data_t {
+	uint32_t phys_addr;
+	/* Phsical address to be registered with stream. The calibration data
+	 *  is stored at this address.
+	 */
+	uint32_t mem_size;
+	/* Size of the calibration data in bytes. */
+};
+
 struct cvs_create_passive_ctl_session_cmd {
 	struct apr_hdr hdr;
 	struct vss_istream_cmd_create_passive_control_session_t cvs_session;
@@ -429,6 +490,15 @@ struct cvs_set_enc_dtx_mode_cmd {
 	struct vss_istream_cmd_set_enc_dtx_mode_t dtx_mode;
 } __packed;
 
+struct cvs_register_cal_data_cmd {
+	struct apr_hdr hdr;
+	struct vss_istream_cmd_register_calibration_data_t cvs_cal_data;
+} __packed;
+
+struct cvs_deregister_cal_data_cmd {
+	struct apr_hdr hdr;
+} __packed;
+
 /* TO CVP commands */
 
 #define VSS_IVOCPROC_CMD_CREATE_FULL_CONTROL_SESSION	0x000100C3
@@ -447,6 +517,12 @@ struct cvs_set_enc_dtx_mode_cmd {
 
 #define VSS_IVOCPROC_CMD_DISABLE			0x000110E1
 /**< No payload. Wait for APRV2_IBASIC_RSP_RESULT response. */
+
+#define VSS_IVOCPROC_CMD_REGISTER_CALIBRATION_DATA	0x00011275
+#define VSS_IVOCPROC_CMD_DEREGISTER_CALIBRATION_DATA    0x00011276
+
+#define VSS_IVOCPROC_CMD_REGISTER_VOLUME_CAL_TABLE      0x00011277
+#define VSS_IVOCPROC_CMD_DEREGISTER_VOLUME_CAL_TABLE    0x00011278
 
 #define VSS_IVOCPROC_TOPOLOGY_ID_NONE			0x00010F70
 #define VSS_IVOCPROC_TOPOLOGY_ID_TX_SM_ECNS		0x00010F71
@@ -550,6 +626,25 @@ struct vss_ivocproc_cmd_set_device_t {
 	*/
 } __packed;
 
+struct vss_ivocproc_cmd_register_calibration_data_t {
+	uint32_t phys_addr;
+	/* Phsical address to be registered with vocproc. Calibration data
+	 *  is stored at this address.
+	 */
+	uint32_t mem_size;
+	/* Size of the calibration data in bytes. */
+} __packed;
+
+struct vss_ivocproc_cmd_register_volume_cal_table_t {
+	uint32_t phys_addr;
+	/* Phsical address to be registered with the vocproc. The volume
+	 *  calibration table is stored at this location.
+	 */
+
+	uint32_t mem_size;
+	/* Size of the volume calibration table in bytes. */
+} __packed;
+
 struct cvp_create_full_ctl_session_cmd {
 	struct apr_hdr hdr;
 	struct vss_ivocproc_cmd_create_full_control_session_t cvp_session;
@@ -571,6 +666,24 @@ struct cvp_set_vp3_data_cmd {
 struct cvp_set_rx_volume_index_cmd {
 	struct apr_hdr hdr;
 	struct vss_ivocproc_cmd_set_volume_index_t cvp_set_vol_idx;
+} __packed;
+
+struct cvp_register_cal_data_cmd {
+	struct apr_hdr hdr;
+	struct vss_ivocproc_cmd_register_calibration_data_t cvp_cal_data;
+} __packed;
+
+struct cvp_deregister_cal_data_cmd {
+	struct apr_hdr hdr;
+} __packed;
+
+struct cvp_register_vol_cal_table_cmd {
+	struct apr_hdr hdr;
+	struct vss_ivocproc_cmd_register_volume_cal_table_t cvp_vol_cal_tbl;
+} __packed;
+
+struct cvp_deregister_vol_cal_table_cmd {
+	struct apr_hdr hdr;
 } __packed;
 
 /* CB for up-link packets. */
@@ -621,6 +734,7 @@ struct voice_data {
 	uint32_t default_mute_val;
 	uint32_t default_vol_val;
 	uint32_t default_sample_val;
+	uint8_t tty_mode;
 
 	/* APR to MVM in the Q6 */
 	void *apr_q6_mvm;
@@ -673,6 +787,8 @@ enum {
 };
 
 /* called  by alsa driver */
+uint8_t voc_get_tty_mode(void);
+int voc_set_tty_mode(uint8_t tty_mode);
 int voc_start_voice_call(void);
 int voc_end_voice_call(void);
 void voc_set_rxtx_port(uint32_t dev_port_id, uint32_t dev_type);

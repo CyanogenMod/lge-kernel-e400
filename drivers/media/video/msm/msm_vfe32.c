@@ -17,7 +17,6 @@
 #include <linux/atomic.h>
 #include <mach/irqs.h>
 #include <mach/camera.h>
-#include <mach/msm_reqs.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
 
@@ -1054,8 +1053,21 @@ static void vfe32_start_common(void)
 	atomic_set(&vfe32_ctrl->vstate, 1);
 }
 
+#define ENQUEUED_BUFFERS 3
 static int vfe32_start_recording(void)
 {
+	/* Clear out duplicate entries in free_buf qeueue,
+	 * because the same number of the buffers were programmed
+	 * during AXI config and then enqueued before recording.
+	 * TODO: Do AXI config separately for recording at the
+	 * time of enqueue */
+	int i;
+	for (i = 0; i < ENQUEUED_BUFFERS; ++i) {
+		struct vfe32_free_buf *free_buf = NULL;
+		free_buf = vfe32_dequeue_free_buf(&vfe32_ctrl->outpath.out2);
+		kfree(free_buf);
+	}
+
 	vfe32_ctrl->req_start_video_rec = TRUE;
 	/* Mask with 0x7 to extract the pixel pattern*/
 	switch (msm_io_r(vfe32_ctrl->vfebase + VFE_CFG) & 0x7) {
@@ -1634,10 +1646,12 @@ static int vfe32_proc_general(struct msm_vfe32_cmd *cmd)
 			rc = -EFAULT;
 			goto proc_general_done;
 		}
+		cmdp_local = cmdp;
 		msm_io_memcpy(vfe32_ctrl->vfebase + V32_LINEARIZATION_OFF1,
-				cmdp, V32_LINEARIZATION_LEN1);
+				cmdp_local, V32_LINEARIZATION_LEN1);
+		cmdp_local += 4;
 		msm_io_memcpy(vfe32_ctrl->vfebase + V32_LINEARIZATION_OFF2,
-						cmdp+V32_LINEARIZATION_LEN1,
+						cmdp_local,
 						V32_LINEARIZATION_LEN2);
 		break;
 
@@ -1658,11 +1672,13 @@ static int vfe32_proc_general(struct msm_vfe32_cmd *cmd)
 			rc = -EFAULT;
 			goto proc_general_done;
 		}
+		cmdp_local = cmdp;
+
 		msm_io_memcpy(vfe32_ctrl->vfebase + V32_DEMOSAICV3_0_OFF,
-			cmdp, V32_DEMOSAICV3_0_LEN);
-		cmdp += 1;
+			cmdp_local, V32_DEMOSAICV3_0_LEN);
+		cmdp_local += 1;
 		msm_io_memcpy(vfe32_ctrl->vfebase + V32_DEMOSAICV3_1_OFF,
-			cmdp, V32_DEMOSAICV3_1_LEN);
+			cmdp_local, V32_DEMOSAICV3_1_LEN);
 		break;
 
 	case V32_DEMOSAICV3_ABCC_CFG:
@@ -2327,6 +2343,7 @@ static void vfe32_process_output_path_irq_0(void)
 			vfe32_put_ch_addr(ping_pong,
 			vfe32_ctrl->outpath.out0.ch1,
 			free_buf->paddr + free_buf->cbcr_off);
+			kfree(free_buf);
 		}
 		if (vfe32_ctrl->operation_mode ==
 			VFE_MODE_OF_OPERATION_SNAPSHOT) {
@@ -2428,6 +2445,7 @@ static void vfe32_process_output_path_irq_1(void)
 			vfe32_put_ch_addr(ping_pong,
 			vfe32_ctrl->outpath.out1.ch1,
 			free_buf->paddr + free_buf->cbcr_off);
+			kfree(free_buf);
 		}
 		if (vfe32_ctrl->operation_mode ==
 			VFE_MODE_OF_OPERATION_SNAPSHOT ||
@@ -2527,6 +2545,7 @@ static void vfe32_process_output_path_irq_2(void)
 			vfe32_put_ch_addr(ping_pong,
 			vfe32_ctrl->outpath.out2.ch1,
 			free_buf->paddr + free_buf->cbcr_off);
+			kfree(free_buf);
 		}
 		vfe_send_outmsg(MSG_ID_OUTPUT_V, pyaddr, pcbcraddr);
 	} else {

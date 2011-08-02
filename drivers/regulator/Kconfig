@@ -311,5 +311,15 @@ config REGULATOR_RT8053
 	help
 	  This driver controls a RICHTEK RT8053 voltage output 
 	  regulator via I2C bus.
+
+config REGULATOR_PM8058_XO
+	tristate "PM8058 XO Buffer driver"
+	depends on PMIC8058
+	default n
+	help
+	  This driver supports xo buffer control in the Qualcomm PM8058 PMIC
+	  chip. It is only supposed to be used when Linux on application
+	  processor is the master in control of XO buffers.
+
 endif
 

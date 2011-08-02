@@ -343,10 +343,14 @@ struct hci_ev_srch_st {
 	__le16   status_opcode;
 } __packed;
 
+struct hci_ev_rel_freq {
+	__u8  rel_freq_msb;
+	__u8  rel_freq_lsb;
+
+} __packed;
 struct hci_ev_srch_list_compl {
-	__u8    status;
 	__u8    num_stations_found;
-	struct  hci_ev_srch_st  srch_st[20];
+	struct hci_ev_rel_freq  rel_freq[20];
 } __packed;
 
 /* ----- HCI Event Response ----- */
@@ -407,6 +411,15 @@ struct hci_fm_dbg_param_rsp {
 
 #define hci_req_lock(d)		mutex_lock(&d->req_lock)
 #define hci_req_unlock(d)	mutex_unlock(&d->req_lock)
+
+/* FM RDS */
+#define RDS_PTYPE 2
+#define RDS_PID_LOWER 1
+#define RDS_PID_HIGHER 0
+#define RDS_OFFSET 5
+#define RDS_PS_LENGTH_OFFSET 7
+#define RDS_STRING 8
+#define RDS_PS_DATA_OFFSET 8
 
 /*FM states*/
 
@@ -539,6 +552,17 @@ enum search_t {
 /* Search direction */
 #define SRCH_DIR_UP		(0)
 #define SRCH_DIR_DOWN		(1)
+
+/*Search RDS stations*/
+#define SEARCH_RDS_STNS_MODE_OFFSET 4
+
+/*Search Station list */
+#define PARAMS_PER_STATION 0x07
+#define STN_NUM_OFFSET     0x01
+#define STN_FREQ_OFFSET    0x02
+#define KHZ_TO_MHZ         1000
+#define GET_MSB(x)((x >> 8) & 0xFF)
+#define GET_LSB(x)((x) & 0xFF)
 
 /* control options */
 #define CTRL_ON			(1)

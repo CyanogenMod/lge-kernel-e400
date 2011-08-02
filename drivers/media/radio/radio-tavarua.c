@@ -1689,6 +1689,7 @@ static int tavarua_fops_open(struct file *file)
 				__func__);
 			goto open_err_all;
 		}
+
 		/* Check for Bahama V2 variant*/
 		if (bahama_version == 0x09)	{
 
@@ -1950,13 +1951,14 @@ static int tavarua_fops_release(struct file *file)
 	}
 	FMDBG("%s, Calling fm_shutdown\n", __func__);
 	/* teardown gpio and pmic */
+
+	marimba_set_fm_status(radio->marimba, false);
 	radio->pdata->fm_shutdown(radio->pdata);
 	if (radio->pdata->config_i2s_gpio != NULL)
 		radio->pdata->config_i2s_gpio(FM_I2S_OFF);
 	radio->handle_irq = 1;
 	radio->users = 0;
 	radio->marimba->mod_id = SLAVE_ID_BAHAMA;
-	marimba_set_fm_status(radio->marimba, false);
 	return 0;
 }
 
@@ -2495,6 +2497,7 @@ static int tavarua_vidioc_g_ctrl(struct file *file, void *priv,
 		retval = tavarua_read_registers(radio, ADVCTRL, 1);
 		if (retval > -1)
 			ctrl->value = radio->registers[ADVCTRL];
+		msleep(TAVARUA_DELAY*5);
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_RDSD_BUF:
 		retval = sync_read_xfr(radio, RDS_CONFIG, xfr_buf);
@@ -2752,7 +2755,6 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 		/* RMSSI Threshold is a signed 8 bit value */
 		xfr_buf[0] = (unsigned char)ctrl->value;
 		xfr_buf[1] = (unsigned char)ctrl->value;
-		xfr_buf[4] = 0x01;
 		retval = sync_write_xfr(radio, RX_CONFIG, xfr_buf);
 		if (retval < 0) {
 			FMDERR("V4L2_CID_PRIVATE_TAVARUA_SIGNAL_TH]\n");
@@ -2796,8 +2798,32 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 		retval = sync_write_xfr(radio, RDS_CONFIG, xfr_buf);
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_RDSGROUP_PROC:
-		value  = radio->registers[ADVCTRL] | ctrl->value  ;
+		value  = radio->registers[ADVCTRL] | ctrl->value;
 		retval = tavarua_write_register(radio, ADVCTRL, value);
+		break;
+	case V4L2_CID_PRIVATE_TAVARUA_AF_JUMP:
+		retval = tavarua_read_registers(radio, ADVCTRL, 1);
+		SET_REG_FIELD(radio->registers[ADVCTRL], ctrl->value,
+			RDSAF_OFFSET, RDSAF_MASK);
+		msleep(TAVARUA_DELAY*5);
+		retval = tavarua_write_register(radio,
+			ADVCTRL, radio->registers[ADVCTRL]);
+		msleep(TAVARUA_DELAY*5);
+		break;
+	case V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA:
+		retval = sync_read_xfr(radio, RX_CONFIG, xfr_buf);
+		if (retval < 0) {
+			FMDERR("V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA]\n");
+			FMDERR("sync_read_xfr [retval=%d]\n", retval);
+			break;
+		}
+		xfr_buf[4] = (unsigned char)ctrl->value;
+		retval = sync_write_xfr(radio, RX_CONFIG, xfr_buf);
+		if (retval < 0) {
+			FMDERR("V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA]\n");
+			FMDERR("sync_write_xfr [retval=%d]\n", retval);
+			break;
+		}
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_RDSD_BUF:
 		retval = sync_read_xfr(radio, RDS_CONFIG, xfr_buf);

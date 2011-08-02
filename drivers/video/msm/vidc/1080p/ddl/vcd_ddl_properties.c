@@ -329,7 +329,7 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 			DDL_CLIENT_WAIT_FOR_INITCODEC) ||
 			DDLCLIENT_STATE_IS(ddl, DDL_CLIENT_WAIT_FOR_DPB) ||
 			DDLCLIENT_STATE_IS(ddl, DDL_CLIENT_OPEN))) {
-			phys_addr = mv_buff->physical_addr;
+			phys_addr = mv_buff->dev_addr;
 			virt_addr = mv_buff->kernel_virtual_addr;
 			buffer_size = mv_buff->size/mv_buff->count;
 
@@ -846,13 +846,13 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 		if (property_hdr->sz == sizeof(struct
 			vcd_property_enc_recon_buffer)) {
 			encoder->hw_bufs.dpb_y[index].align_physical_addr =
-				recon_buffers->physical_addr;
+				recon_buffers->dev_addr;
 			encoder->hw_bufs.dpb_y[index].align_virtual_addr =
 				recon_buffers->kernel_virtual_addr;
 			encoder->hw_bufs.dpb_y[index].buffer_size =
 				recon_buffers->buffer_size;
 			encoder->hw_bufs.dpb_c[index].align_physical_addr =
-			recon_buffers->physical_addr + ddl_get_yuv_buf_size(
+			recon_buffers->dev_addr + ddl_get_yuv_buf_size(
 				encoder->frame_size.width, encoder->frame_size.
 				height, DDL_YUV_BUF_TYPE_TILE);
 			encoder->hw_bufs.dpb_c[index].align_virtual_addr =
@@ -1669,24 +1669,11 @@ u32 ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 					(!decoder->progressive_only),
 					decoder->hdr.decoding, NULL);
 	} else {
-		if (min_dpb >= decoder->min_dpb_num ||
-			decoder->idr_only_decoding) {
-			frame_size = &decoder->frame_size;
-			output_buf_req = &decoder->actual_output_buf_req;
-			input_buf_req = &decoder->actual_input_buf_req;
-			min_dpb = decoder->min_dpb_num;
-			y_cb_cr_size = decoder->y_cb_cr_size;
-		} else {
-			u32 max_dpb_size;
-
-			max_dpb_size = DDL_NO_OF_MB(
-				decoder->client_frame_size.stride,
-				decoder->client_frame_size.scan_lines);
-			max_dpb_size *= (decoder->min_dpb_num - 2);
-			DDL_MSG_ERROR("Error: H264MaxDpbSizeExceeded: %d > %d",
-				max_dpb_size, MAX_DPB_SIZE_L4PT0_MBS);
-			return false;
-		}
+		frame_size = &decoder->frame_size;
+		output_buf_req = &decoder->actual_output_buf_req;
+		input_buf_req = &decoder->actual_input_buf_req;
+		min_dpb = decoder->min_dpb_num;
+		y_cb_cr_size = decoder->y_cb_cr_size;
 	}
 	memset(output_buf_req, 0,
 		sizeof(struct vcd_buffer_requirement));

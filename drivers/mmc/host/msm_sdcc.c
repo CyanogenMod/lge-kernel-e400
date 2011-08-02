@@ -106,8 +106,6 @@ static const u32 cmd19_tuning_block[16] = {
 	0xFDFFFDFF, 0xFFBFFFDF, 0xFFF7FFBB, 0xDE7B7FF7
 };
 
-#define VERBOSE_COMMAND_TIMEOUTS	0
-
 #if IRQ_DEBUG == 1
 static char *irq_status_bits[] = { "cmdcrcfail", "datcrcfail", "cmdtimeout",
 				   "dattimeout", "txunderrun", "rxoverrun",
@@ -293,11 +291,15 @@ msmsdcc_request_end(struct msmsdcc_host *host, struct mmc_request *mrq)
 	return retval;
 }
 
+static inline void msmsdcc_delay(struct msmsdcc_host *host);
+
 static void
 msmsdcc_stop_data(struct msmsdcc_host *host)
 {
 	host->curr.data = NULL;
 	host->curr.got_dataend = 0;
+	writel_relaxed(0, host->base + MMCIDATACTRL);
+	msmsdcc_delay(host);	/* Allow the DPSM to be reset */
 }
 
 static inline uint32_t msmsdcc_fifo_addr(struct msmsdcc_host *host)
@@ -1246,9 +1248,7 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 	cmd->resp[3] = readl_relaxed(host->base + MMCIRESPONSE3);
 
 	if (status & (MCI_CMDTIMEOUT | MCI_AUTOCMD19TIMEOUT)) {
-#if VERBOSE_COMMAND_TIMEOUTS
-		pr_err("%s: Command timeout\n", mmc_hostname(host->mmc));
-#endif
+		pr_debug("%s: Command timeout\n", mmc_hostname(host->mmc));
 		cmd->error = -ETIMEDOUT;
 	} else if ((status & MCI_CMDCRCFAIL && cmd->flags & MMC_RSP_CRC) &&
 			!host->cmd19_tuning_in_progress) {
@@ -3881,6 +3881,7 @@ msmsdcc_runtime_suspend(struct device *dev)
 	if (host->plat->is_sdio_al_client)
 		return 0;
 
+	pr_debug("%s: %s: start\n", mmc_hostname(mmc), __func__);
 	if (mmc) {
 		host->sdcc_suspending = 1;
 		mmc->suspend_task = current;
@@ -3943,6 +3944,7 @@ msmsdcc_runtime_suspend(struct device *dev)
 		if (rc && wake_lock_active(&host->sdio_suspend_wlock))
 			wake_unlock(&host->sdio_suspend_wlock);
 	}
+	pr_debug("%s: %s: end\n", mmc_hostname(mmc), __func__);
 	return rc;
 }
 
@@ -3956,6 +3958,7 @@ msmsdcc_runtime_resume(struct device *dev)
 	if (host->plat->is_sdio_al_client)
 		return 0;
 
+	pr_debug("%s: %s: start\n", mmc_hostname(mmc), __func__);
 	if (mmc) {
 		if (mmc->card && mmc->card->type == MMC_TYPE_SDIO) {
 			if (host->sdcc_irq_disabled) {
@@ -4006,6 +4009,7 @@ msmsdcc_runtime_resume(struct device *dev)
 
 		wake_unlock(&host->sdio_suspend_wlock);
 	}
+	pr_debug("%s: %s: end\n", mmc_hostname(mmc), __func__);
 	return 0;
 }
 
