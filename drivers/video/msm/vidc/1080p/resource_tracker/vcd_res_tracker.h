@@ -49,8 +49,6 @@ struct res_trk_context {
 	struct mutex lock;
 	struct clk *vcodec_clk;
 	struct clk *vcodec_pclk;
-	struct clk *vcodec_axi_a_clk;
-	struct clk *vcodec_axi_b_clk;
 	unsigned long vcodec_clk_rate;
 	unsigned int clock_enabled;
 	unsigned int perf_level;
@@ -62,8 +60,7 @@ struct res_trk_context {
 	uint32_t     pcl;
 #endif
 	u32 core_type;
-	u8 *base_addr;
-	phys_addr_t device_addr;
+	struct ddl_buf_addr firmware_addr;
 };
 
 #if DEBUG

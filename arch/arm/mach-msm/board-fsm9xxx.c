@@ -21,6 +21,7 @@
 #include <linux/i2c.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
+#include <linux/regulator/pm8058-xo.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -79,6 +80,9 @@
 #define GPIO_GRFC_27		153
 #define GPIO_GRFC_28		154
 #define GPIO_GRFC_29		155
+
+#define GPIO_USER_FIRST		58
+#define GPIO_USER_LAST		63
 
 #define FPGA_SDCC_STATUS        0x8E0001A8
 
@@ -377,6 +381,51 @@ static struct xoadc_platform_data xoadc_pdata = {
 };
 #endif
 
+#define XO_CONSUMERS(_id) \
+	static struct regulator_consumer_supply xo_consumers_##_id[]
+
+/*
+ * Consumer specific regulator names:
+ *                       regulator name         consumer dev_name
+ */
+XO_CONSUMERS(A0) = {
+	REGULATOR_SUPPLY("8058_xo_a0", NULL),
+	REGULATOR_SUPPLY("a0_clk_buffer", "fsm_xo_driver"),
+};
+XO_CONSUMERS(A1) = {
+	REGULATOR_SUPPLY("8058_xo_a1", NULL),
+	REGULATOR_SUPPLY("a1_clk_buffer", "fsm_xo_driver"),
+};
+
+#define PM8058_XO_INIT(_id, _modes, _ops, _always_on) \
+	[PM8058_XO_ID_##_id] = { \
+		.init_data = { \
+			.constraints = { \
+				.valid_modes_mask = _modes, \
+				.valid_ops_mask = _ops, \
+				.always_on = _always_on, \
+			}, \
+			.num_consumer_supplies = \
+				ARRAY_SIZE(xo_consumers_##_id),\
+			.consumer_supplies = xo_consumers_##_id, \
+		}, \
+	}
+
+#define PM8058_XO_INIT_AX(_id) \
+	PM8058_XO_INIT(_id, REGULATOR_MODE_NORMAL, REGULATOR_CHANGE_STATUS, 0)
+
+static struct pm8058_xo_pdata pm8058_xo_init_pdata[PM8058_XO_ID_MAX] = {
+	PM8058_XO_INIT_AX(A0),
+	PM8058_XO_INIT_AX(A1),
+};
+
+#define PM8058_XO(_id) { \
+	.name = PM8058_XO_BUFFER_DEV_NAME, \
+	.id = _id, \
+	.platform_data = &pm8058_xo_init_pdata[_id], \
+	.data_size = sizeof(pm8058_xo_init_pdata[_id]), \
+}
+
 /* Put sub devices with fixed location first in sub_devices array */
 static struct mfd_cell pm8058_subdevs[] = {
 	{	.name = "pm8058-mpp",
@@ -407,9 +456,8 @@ static struct mfd_cell pm8058_subdevs[] = {
 	PM8058_VREG(PM8058_VREG_ID_L18),
 	PM8058_VREG(PM8058_VREG_ID_S4),
 	PM8058_VREG(PM8058_VREG_ID_LVS0),
-	{	.name = "pm8058-fsm9xxx",
-		.id = -1,
-	},
+	PM8058_XO(PM8058_XO_ID_A0),
+	PM8058_XO(PM8058_XO_ID_A1),
 };
 
 static struct pm8058_platform_data pm8058_fsm9xxx_data = {
@@ -583,6 +631,19 @@ fsm9xxx_init_ssbi_gpio(void)
 
 }
 #endif
+
+/*
+ * User GPIOs
+ */
+
+static void user_gpios_init(void)
+{
+	unsigned int gpio;
+
+	for (gpio = GPIO_USER_FIRST; gpio <= GPIO_USER_LAST; ++gpio)
+		gpio_tlmm_config(GPIO_CFG(gpio, 0, GPIO_CFG_INPUT,
+			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+}
 
 /*
  * Crypto
@@ -770,6 +831,7 @@ static struct platform_device *devices[] __initdata = {
 	&qcrypto_device,
 	&qcedev_device,
 	&ota_qcrypto_device,
+	&fsm_xo_device,
 };
 
 static struct msm_acpu_clock_platform_data fsm9xxx_clock_data = {
@@ -827,6 +889,7 @@ static void __init fsm9xxx_init(void)
 	buses_init();
 	phy_init();
 	grfc_init();
+	user_gpios_init();
 
 #ifdef CONFIG_SERIAL_MSM_CONSOLE
 	fsm9xxx_init_uart1();

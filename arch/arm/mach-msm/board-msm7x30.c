@@ -81,7 +81,6 @@
 #include "spm.h"
 #include <mach/dal_axi.h>
 #include <mach/msm_serial_hs.h>
-#include <mach/msm_reqs.h>
 #include <mach/qdsp5v2/mi2s.h>
 #include <mach/qdsp5v2/audio_dev_ctl.h>
 #include <mach/sdio_al.h>
@@ -394,7 +393,7 @@ static struct cyttsp_platform_data cyttsp_data = {
 	.use_mt = CY_USE_MT,
 	.use_hndshk = CY_SEND_HNDSHK,
 	.use_trk_id = CY_USE_TRACKING_ID,
-	.use_sleep = CY_USE_SLEEP,
+	.use_sleep = CY_USE_DEEP_SLEEP_SEL | CY_USE_LOW_POWER_SEL,
 	.use_gestures = CY_USE_GESTURES,
 	/* activate up to 4 groups
 	 * and set active distance
@@ -7223,7 +7222,7 @@ static void __init msm7x30_init(void)
 
 	soc_version = socinfo_get_version();
 
-	msm_clock_init(msm_clocks_7x30, msm_num_clocks_7x30);
+	msm7x30_clock_init();
 #ifdef CONFIG_SERIAL_MSM_CONSOLE
 	msm7x30_init_uart2();
 #endif

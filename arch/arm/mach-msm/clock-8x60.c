@@ -134,6 +134,7 @@
 #define JPEGD_CC_REG				REG_MM(0x00A4)
 #define JPEGD_NS_REG				REG_MM(0x00AC)
 #define MAXI_EN_REG				REG_MM(0x0018)
+#define MAXI_EN2_REG				REG_MM(0x0020)
 #define MAXI_EN3_REG				REG_MM(0x002C)
 #define MDP_CC_REG				REG_MM(0x00C0)
 #define MDP_MD0_REG				REG_MM(0x00C4)
@@ -499,7 +500,7 @@ static void set_rate_tv(struct rcg_clk *clk, struct clk_freq_tbl *nf)
  */
 
 /* Update the sys_vdd voltage given a level. */
-int soc_update_sys_vdd(enum sys_vdd_level level)
+static int msm8660_update_sys_vdd(enum sys_vdd_level level)
 {
 	static const int vdd_uv[] = {
 		[NONE]    =  500000,
@@ -518,19 +519,18 @@ static int soc_clk_reset(struct clk *clk, enum clk_reset_action action)
 }
 
 static struct clk_ops soc_clk_ops_8x60 = {
-	.enable = local_clk_enable,
-	.disable = local_clk_disable,
-	.auto_off = local_clk_auto_off,
-	.set_rate = local_clk_set_rate,
-	.set_min_rate = local_clk_set_min_rate,
-	.set_max_rate = local_clk_set_max_rate,
-	.get_rate = local_clk_get_rate,
-	.list_rate = local_clk_list_rate,
-	.is_enabled = local_clk_is_enabled,
-	.round_rate = local_clk_round_rate,
+	.enable = rcg_clk_enable,
+	.disable = rcg_clk_disable,
+	.auto_off = rcg_clk_auto_off,
+	.set_rate = rcg_clk_set_rate,
+	.set_min_rate = rcg_clk_set_min_rate,
+	.get_rate = rcg_clk_get_rate,
+	.list_rate = rcg_clk_list_rate,
+	.is_enabled = rcg_clk_is_enabled,
+	.round_rate = rcg_clk_round_rate,
 	.reset = soc_clk_reset,
 	.is_local = local_clk_is_local,
-	.get_parent = local_clk_get_parent,
+	.get_parent = rcg_clk_get_parent,
 };
 
 static struct clk_ops clk_ops_branch = {
@@ -664,24 +664,32 @@ static struct branch_clk vfe_axi_clk = {
 
 static struct branch_clk rot_axi_clk = {
 	.b = {
+		.ctl_reg = MAXI_EN2_REG,
+		.en_mask = BIT(24),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(6),
+		.halt_reg = DBG_BUS_VEC_E_REG,
+		.halt_bit = 2,
 	},
 	.c = {
 		.dbg_name = "rot_axi_clk",
-		.ops = &clk_ops_reset,
+		.ops = &clk_ops_branch,
 		CLK_INIT(rot_axi_clk.c),
 	},
 };
 
 static struct branch_clk vpe_axi_clk = {
 	.b = {
+		.ctl_reg = MAXI_EN2_REG,
+		.en_mask = BIT(26),
 		.reset_reg = SW_RESET_AXI_REG,
 		.reset_mask = BIT(15),
+		.halt_reg = DBG_BUS_VEC_E_REG,
+		.halt_bit = 1,
 	},
 	.c = {
 		.dbg_name = "vpe_axi_clk",
-		.ops = &clk_ops_reset,
+		.ops = &clk_ops_branch,
 		CLK_INIT(vpe_axi_clk.c),
 	},
 };
@@ -2606,6 +2614,7 @@ static struct rcg_clk rot_clk = {
 	.set_rate = set_rate_div_banked,
 	.freq_tbl = clk_tbl_rot,
 	.bank_masks = &bdiv_info_rot,
+	.depends = &rot_axi_clk.c,
 	.current_freq = &local_dummy_freq,
 	.c = {
 		.dbg_name = "rot_clk",
@@ -2828,6 +2837,7 @@ static struct rcg_clk vpe_clk = {
 	.ns_mask = (BM(15, 12) | BM(2, 0)),
 	.set_rate = set_rate_nop,
 	.freq_tbl = clk_tbl_vpe,
+	.depends = &vpe_axi_clk.c,
 	.current_freq = &local_dummy_freq,
 	.c = {
 		.dbg_name = "vpe_clk",
@@ -3253,8 +3263,10 @@ static struct measure_sel measure_mux[] = {
 	{ TEST_MM_HS(0x13), &imem_axi_clk.c },
 	{ TEST_MM_HS(0x14), &jpegd_axi_clk.c },
 	{ TEST_MM_HS(0x15), &mdp_axi_clk.c },
+	{ TEST_MM_HS(0x16), &rot_axi_clk.c },
 	{ TEST_MM_HS(0x17), &vcodec_axi_clk.c },
 	{ TEST_MM_HS(0x18), &vfe_axi_clk.c },
+	{ TEST_MM_HS(0x19), &vpe_axi_clk.c },
 	{ TEST_MM_HS(0x1A), &mdp_clk.c },
 	{ TEST_MM_HS(0x1B), &rot_clk.c },
 	{ TEST_MM_HS(0x1C), &vpe_clk.c },
@@ -3455,7 +3467,7 @@ static struct measure_clk measure_clk = {
 	.divider = 1,
 };
 
-struct clk_lookup msm_clocks_8x60[] = {
+static struct clk_lookup msm_clocks_8x60[] = {
 	CLK_LOOKUP("cxo",		cxo_clk.c,	NULL),
 	CLK_LOOKUP("pll4",		pll4_clk.c,	NULL),
 	CLK_LOOKUP("pll4",		pll4_clk.c,	"peripheral-reset"),
@@ -3658,7 +3670,6 @@ struct clk_lookup msm_clocks_8x60[] = {
 	CLK_LOOKUP("sc1_mclk",		sc1_m_clk, NULL),
 	CLK_LOOKUP("l2_mclk",		l2_m_clk,  NULL),
 };
-unsigned msm_num_clocks_8x60 = ARRAY_SIZE(msm_clocks_8x60);
 
 /*
  * Miscellaneous clock register initializations
@@ -3707,7 +3718,7 @@ static void __init reg_init(void)
 	 * support it. Also set FORCE_CORE_ON bits, and any sleep and wake-up
 	 * delays to safe values. */
 	rmwreg(0x000207F9, MAXI_EN_REG,  0x0FFFFFFF);
-	/* MAXI_EN2_REG is owned by the RPM.  Don't touch it. */
+	writel_relaxed(0x7027FCFF, MAXI_EN2_REG);
 	writel_relaxed(0x3FE7FCFF, MAXI_EN3_REG);
 	writel_relaxed(0x000001D8, SAXI_EN_REG);
 
@@ -3760,8 +3771,9 @@ static void __init reg_init(void)
 }
 
 /* Local clock driver initialization. */
-void __init msm_clk_soc_init(void)
+void __init msm8660_clock_init(void)
 {
+	soc_update_sys_vdd = msm8660_update_sys_vdd;
 	xo_pxo = msm_xo_get(MSM_XO_PXO, "clock-8x60");
 	if (IS_ERR(xo_pxo)) {
 		pr_err("%s: msm_xo_get(PXO) failed.\n", __func__);
@@ -3789,10 +3801,12 @@ void __init msm_clk_soc_init(void)
 
 	/* The halt status bits for PDM and TSSC may be incorrect at boot.
 	 * Toggle these clocks on and off to refresh them. */
-	local_clk_enable(&pdm_clk.c);
-	local_clk_disable(&pdm_clk.c);
-	local_clk_enable(&tssc_clk.c);
-	local_clk_disable(&tssc_clk.c);
+	rcg_clk_enable(&pdm_clk.c);
+	rcg_clk_disable(&pdm_clk.c);
+	rcg_clk_enable(&tssc_clk.c);
+	rcg_clk_disable(&tssc_clk.c);
+
+	msm_clock_init(msm_clocks_8x60, ARRAY_SIZE(msm_clocks_8x60));
 }
 
 static int __init msm_clk_soc_late_init(void)

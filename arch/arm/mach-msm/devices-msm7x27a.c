@@ -652,7 +652,7 @@ void __init msm7x25a_kgsl_3d0_init(void)
 {
 	if (cpu_is_msm7x25a() || cpu_is_msm7x25aa()) {
 		kgsl_3d0_pdata.pwr_data.pwrlevel[0].gpu_freq = 133330000;
-		kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 200000000;
+		kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 160000000;
 		kgsl_3d0_pdata.pwr_data.pwrlevel[1].gpu_freq = 96000000;
 		kgsl_3d0_pdata.pwr_data.pwrlevel[1].bus_freq = 0;
 	}
@@ -731,6 +731,9 @@ int __init msm7x2x_misc_init(void)
 {
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed!\n", __func__);
+
+	if (cpu_is_msm7x27aa())
+		msm7x2x_clock_data.max_speed_delta_khz = 504000;
 
 	msm_clock_init(msm_clocks_7x27a, msm_num_clocks_7x27a);
 	msm_acpu_clock_init(&msm7x2x_clock_data);

@@ -22,6 +22,7 @@
 #include <sound/soc-dsp.h>
 #include <sound/pcm.h>
 #include <sound/jack.h>
+#include <asm/mach-types.h>
 #include "msm-pcm-routing.h"
 #include <../codecs/wcd9310.h>
 
@@ -61,6 +62,7 @@ static int clk_users;
 static int msm8960_headset_gpios_configured;
 
 static struct snd_soc_jack hs_jack;
+static struct snd_soc_jack button_jack;
 
 static void codec_poweramp_on(void)
 {
@@ -170,41 +172,93 @@ static const struct snd_soc_dapm_widget msm8960_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Handset Mic", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
+	SND_SOC_DAPM_MIC("ANCRight Headset Mic", NULL),
+	SND_SOC_DAPM_MIC("ANCLeft Headset Mic", NULL),
+
+	/* Digital Mic1. Front Bottom left Digital Mic on Fluid and MTP. */
+	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
+
+	/* Digital Mic2. Front Bottom right Digital Mic on Fluid and MTP. */
+	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
+
+	/* Digital Mic4. Back Top Digital Mic on Fluid. */
+	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 };
 
-static const struct snd_soc_dapm_route audio_map[] = {
+static const struct snd_soc_dapm_route common_audio_map[] = {
 	/* Speaker path */
 	{"Ext Spk", NULL, "LINEOUT"},
 
 	/* Microphone path */
-	{"AMIC1", NULL, "MIC BIAS1 Internal"},
-	{"DMIC1 IN", NULL, "MIC BIAS1 External"},
+	{"AMIC1", NULL, "MIC BIAS1 Internal1"},
+	{"MIC BIAS1 Internal1", NULL, "Handset Mic"},
+
 	{"AMIC2", NULL, "MIC BIAS2 External"},
-	{"MIC BIAS1 Internal", NULL, "Handset Mic"},
-	{"MIC BIAS1 External", NULL, "Digital Mic1"},
 	{"MIC BIAS2 External", NULL, "Headset Mic"},
+
+	/**
+	 * Digital Mic1. Front Bottom left Digital Mic on Fluid and MTP.
+	 * Conncted to DMIC2 Input on Tabla codec.
+	 */
+	{"DMIC2", NULL, "MIC BIAS1 External"},
+	{"MIC BIAS1 External", NULL, "Digital Mic1"},
+
+	/**
+	 * Digital Mic2. Front Bottom right Digital Mic on Fluid and MTP.
+	 * Conncted to DMIC1 Input on Tabla codec.
+	 */
+	{"DMIC1", NULL, "MIC BIAS1 External"},
+	{"MIC BIAS1 External", NULL, "Digital Mic2"},
+
+	/**
+	 * Digital Mic4. Back top Digital Mic on Fluid.
+	 * Conncted to DMIC3 Input on Tabla codec.
+	 */
+	{"DMIC3", NULL, "MIC BIAS3 External"},
+	{"MIC BIAS3 External", NULL, "Digital Mic4"},
+};
+
+static const struct snd_soc_dapm_route cdp_audio_map[] = {
+	{"AMIC3", NULL, "MIC BIAS3 External"},
+	{"MIC BIAS3 External", NULL, "ANCRight Headset Mic"},
+
+	{"AMIC4", NULL, "MIC BIAS4 External"},
+	{"MIC BIAS4 External", NULL, "ANCLeft Headset Mic"},
+};
+
+static const struct snd_soc_dapm_route fluid_audio_map[] = {
+	{"AMIC3", NULL, "MIC BIAS3 Internal1"},
+	{"MIC BIAS3 Internal1", NULL, "ANCRight Headset Mic"},
+
+	{"AMIC4", NULL, "MIC BIAS1 Internal2"},
+	{"MIC BIAS1 Internal2", NULL, "ANCLeft Headset Mic"},
 };
 
 static const char *spk_function[] = {"Off", "On"};
+static const char *slim0_rx_ch_text[] = {"One", "Two"};
+static const char *slim0_tx_ch_text[] = {"One", "Two", "Three", "Four"};
+
 static const struct soc_enum msm8960_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, spk_function),
+	SOC_ENUM_SINGLE_EXT(2, slim0_rx_ch_text),
+	SOC_ENUM_SINGLE_EXT(4, slim0_tx_ch_text),
 };
 
 static int msm8960_slim_0_rx_ch_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s: msm8960_slim_0_rx_ch  = %d", __func__,
+	pr_debug("%s: msm8960_slim_0_rx_ch  = %d\n", __func__,
 			msm8960_slim_0_rx_ch);
-	ucontrol->value.integer.value[0] = msm8960_slim_0_rx_ch;
+	ucontrol->value.integer.value[0] = msm8960_slim_0_rx_ch - 1;
 	return 0;
 }
 
 static int msm8960_slim_0_rx_ch_put(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	msm8960_slim_0_rx_ch = ucontrol->value.integer.value[0];
+	msm8960_slim_0_rx_ch = ucontrol->value.integer.value[0] + 1;
 
-	pr_debug("%s: msm8960_slim_0_tx_ch = %d\n", __func__,
+	pr_debug("%s: msm8960_slim_0_rx_ch = %d\n", __func__,
 			msm8960_slim_0_rx_ch);
 	return 1;
 }
@@ -212,16 +266,16 @@ static int msm8960_slim_0_rx_ch_put(struct snd_kcontrol *kcontrol,
 static int msm8960_slim_0_tx_ch_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s: msm8960_slim_0_tx_ch  = %d", __func__,
+	pr_debug("%s: msm8960_slim_0_tx_ch  = %d\n", __func__,
 			msm8960_slim_0_tx_ch);
-	ucontrol->value.integer.value[0] = msm8960_slim_0_tx_ch;
+	ucontrol->value.integer.value[0] = msm8960_slim_0_tx_ch - 1;
 	return 0;
 }
 
 static int msm8960_slim_0_tx_ch_put(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	msm8960_slim_0_tx_ch = ucontrol->value.integer.value[0];
+	msm8960_slim_0_tx_ch = ucontrol->value.integer.value[0] + 1;
 
 	pr_debug("%s: msm8960_slim_0_tx_ch = %d\n", __func__,
 			msm8960_slim_0_tx_ch);
@@ -232,12 +286,10 @@ static int msm8960_slim_0_tx_ch_put(struct snd_kcontrol *kcontrol,
 static const struct snd_kcontrol_new tabla_msm8960_controls[] = {
 	SOC_ENUM_EXT("Speaker Function", msm8960_enum[0], msm8960_get_spk,
 		msm8960_set_spk),
-	SOC_SINGLE_EXT("SLIM_0_RX Channels", 0, 0,
-			msm8960_SLIM_0_RX_MAX_CHANNELS, 0,
-			msm8960_slim_0_rx_ch_get, msm8960_slim_0_rx_ch_put),
-	SOC_SINGLE_EXT("SLIM_0_TX Channels", 0, 0,
-			msm8960_SLIM_0_TX_MAX_CHANNELS, 0,
-			msm8960_slim_0_tx_ch_get, msm8960_slim_0_tx_ch_put),
+	SOC_ENUM_EXT("SLIM_0_RX Channels", msm8960_enum[1],
+		msm8960_slim_0_rx_ch_get, msm8960_slim_0_rx_ch_put),
+	SOC_ENUM_EXT("SLIM_0_TX Channels", msm8960_enum[2],
+		msm8960_slim_0_tx_ch_get, msm8960_slim_0_tx_ch_put),
 };
 
 static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
@@ -256,7 +308,18 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_new_controls(dapm, msm8960_dapm_widgets,
 				ARRAY_SIZE(msm8960_dapm_widgets));
 
-	snd_soc_dapm_add_routes(dapm, audio_map, ARRAY_SIZE(audio_map));
+	snd_soc_dapm_add_routes(dapm, common_audio_map,
+		ARRAY_SIZE(common_audio_map));
+
+	if (machine_is_msm8960_cdp())
+		snd_soc_dapm_add_routes(dapm, cdp_audio_map,
+			ARRAY_SIZE(cdp_audio_map));
+	else if (machine_is_msm8960_mtp())
+		snd_soc_dapm_add_routes(dapm, cdp_audio_map,
+			ARRAY_SIZE(cdp_audio_map));
+	else if (machine_is_msm8960_fluid())
+		snd_soc_dapm_add_routes(dapm, fluid_audio_map,
+			ARRAY_SIZE(fluid_audio_map));
 
 	snd_soc_dapm_enable_pin(dapm, "Ext Spk");
 
@@ -268,7 +331,15 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		pr_err("failed to create new jack\n");
 		return err;
 	}
-	tabla_hs_detect(codec, &hs_jack, &tabla_cal);
+
+	err = snd_soc_jack_new(codec, "Button Jack",
+				SND_JACK_BTN_0, &button_jack);
+	if (err) {
+		pr_err("failed to create new jack\n");
+		return err;
+	}
+
+	tabla_hs_detect(codec, &hs_jack, &button_jack, &tabla_cal);
 
 	return 0;
 }

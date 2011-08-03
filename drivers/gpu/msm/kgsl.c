@@ -315,7 +315,7 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 		mutex_lock(&device->mutex);
 	}
 	/* Don't let the timer wake us during suspended sleep. */
-	del_timer(&device->idle_timer);
+	del_timer_sync(&device->idle_timer);
 	switch (device->state) {
 		case KGSL_STATE_INIT:
 			break;
@@ -1210,6 +1210,11 @@ static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
 	if (ret)
 		return ret;
 
+	if (phys == 0) {
+		ret = -EINVAL;
+		goto err;
+	}
+
 	if (offset >= len) {
 		ret = -EINVAL;
 		goto err;
@@ -1376,6 +1381,7 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 	struct kgsl_map_user_mem *param = data;
 	struct kgsl_mem_entry *entry = NULL;
 	struct kgsl_process_private *private = dev_priv->process_priv;
+	enum kgsl_user_mem_type memtype;
 
 	entry = kgsl_mem_entry_create();
 
@@ -1384,7 +1390,12 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 
 	kgsl_memqueue_drain_unlocked(dev_priv->device);
 
-	switch (param->memtype) {
+	if (_IOC_SIZE(cmd) == sizeof(struct kgsl_sharedmem_from_pmem))
+		memtype = KGSL_USER_MEM_TYPE_PMEM;
+	else
+		memtype = param->memtype;
+
+	switch (memtype) {
 	case KGSL_USER_MEM_TYPE_PMEM:
 		if (param->fd == 0 || param->len == 0)
 			break;
@@ -1426,7 +1437,7 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 					   param->len);
 		break;
 	default:
-		KGSL_CORE_ERR("Invalid memory type: %x\n", param->memtype);
+		KGSL_CORE_ERR("Invalid memory type: %x\n", memtype);
 		break;
 	}
 
@@ -1594,6 +1605,8 @@ static long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 
 	if (cmd == IOCTL_KGSL_CMDSTREAM_FREEMEMONTIMESTAMP_OLD)
 		cmd = IOCTL_KGSL_CMDSTREAM_FREEMEMONTIMESTAMP;
+	else if (cmd == IOCTL_KGSL_CMDSTREAM_READTIMESTAMP_OLD)
+		cmd = IOCTL_KGSL_CMDSTREAM_READTIMESTAMP;
 
 	if (cmd & (IOC_IN | IOC_OUT)) {
 		if (_IOC_SIZE(cmd) < sizeof(ustack))

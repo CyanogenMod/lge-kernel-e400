@@ -134,6 +134,7 @@ static struct notifier_block charm_panic_blk = {
 	.notifier_call  = charm_panic_prep,
 };
 
+static int first_boot = 1;
 
 static long charm_modem_ioctl(struct file *filp, unsigned int cmd,
 				unsigned long arg)
@@ -165,7 +166,12 @@ static long charm_modem_ioctl(struct file *filp, unsigned int cmd,
 			charm_boot_status = -EIO;
 		else
 			charm_boot_status = 0;
-		complete(&charm_boot);
+		charm_ready = 1;
+
+		if (!first_boot)
+			complete(&charm_boot);
+		else
+			first_boot = 0;
 		break;
 	case RAM_DUMP_DONE:
 		CHARM_DBG("%s: charm done collecting RAM dumps\n", __func__);
@@ -247,7 +253,6 @@ static irqreturn_t charm_status_change(int irq, void *dev_id)
 		queue_work(charm_queue, &charm_status_work);
 	} else if (gpio_get_value(MDM2AP_STATUS) == 1) {
 		CHARM_DBG("%s: charm is now ready\n", __func__);
-		charm_ready = 1;
 	}
 	return IRQ_HANDLED;
 }

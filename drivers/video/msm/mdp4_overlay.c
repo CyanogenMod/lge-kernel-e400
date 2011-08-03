@@ -1730,7 +1730,8 @@ static int get_img(struct msmfb_data *img, struct fb_info *info,
 	return ret;
 }
 
-int mdp4_overlay_3d(struct fb_info *info, struct msmfb_overlay_3d *req)
+#ifdef CONFIG_FB_MSM_MIPI_DSI
+int mdp4_overlay_3d_sbys(struct fb_info *info, struct msmfb_overlay_3d *req)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = -EPERM;
@@ -1738,17 +1739,24 @@ int mdp4_overlay_3d(struct fb_info *info, struct msmfb_overlay_3d *req)
 	if (mutex_lock_interruptible(&mfd->dma->ov_mutex))
 		return -EINTR;
 
-#ifdef CONFIG_FB_MSM_MIPI_DSI
-	/* Only dsi_cmd panel support 3D */
 	if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD) {
-		mdp4_dsi_cmd_3d(mfd, req);
+		mdp4_dsi_cmd_3d_sbys(mfd, req);
+		ret = 0;
+	} else if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO) {
+		mdp4_dsi_video_3d_sbys(mfd, req);
 		ret = 0;
 	}
-#endif
 	mutex_unlock(&mfd->dma->ov_mutex);
 
 	return ret;
 }
+#else
+int mdp4_overlay_3d_sbys(struct fb_info *info, struct msmfb_overlay_3d *req)
+{
+	/* do nothing */
+	return -EPERM;
+}
+#endif
 
 #ifdef CONFIG_FB_MSM_OVERLAY_WRITEBACK
 int mdp4_overlay_blt(struct fb_info *info, struct msmfb_overlay_blt *req)
@@ -2025,6 +2033,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 		}  else if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO) {
 			flags = pipe->flags;
 			pipe->flags &= ~MDP_OV_PLAY_NOWAIT;
+			mdp4_overlay_reg_flush(pipe, 1);
 			mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
 			pipe->flags = flags;
 		}
@@ -2040,6 +2049,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 		else if (ctrl->panel_mode & MDP4_PANEL_LCDC) {
 			flags = pipe->flags;
 			pipe->flags &= ~MDP_OV_PLAY_NOWAIT;
+			mdp4_overlay_reg_flush(pipe, 1);
 			mdp4_overlay_lcdc_vsync_push(mfd, pipe);
 			pipe->flags = flags;
 		}
@@ -2255,11 +2265,15 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req,
 	} else {
 		/* primary interface */
 		ctrl->mixer0_played++;
-		if (ctrl->panel_mode & MDP4_PANEL_LCDC)
+		if (ctrl->panel_mode & MDP4_PANEL_LCDC) {
+			mdp4_overlay_reg_flush(pipe, 1);
 			mdp4_overlay_lcdc_vsync_push(mfd, pipe);
+		}
 #ifdef CONFIG_FB_MSM_MIPI_DSI
-		else if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO)
+		else if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO) {
+			mdp4_overlay_reg_flush(pipe, 1);
 			mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
+		}
 #endif
 		else {
 			/* mddi & mipi dsi cmd mode */
