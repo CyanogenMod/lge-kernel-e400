@@ -25,7 +25,8 @@ static struct regulator_consumer_supply rt8053_vreg_supply[] = {
 		.initdata = { \
 			.constraints = { \
 				.valid_modes_mask = REGULATOR_MODE_NORMAL, \
-				.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS, \
+				.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE | \
+					REGULATOR_CHANGE_STATUS, \
 				.min_uV = _min_uV, \
 				.max_uV = _max_uV, \
 			}, \
