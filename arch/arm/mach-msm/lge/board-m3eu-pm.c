@@ -39,7 +39,8 @@ static struct regulator_consumer_supply rt8053_vreg_supply[] = {
 		.initdata = { \
 			.constraints = { \
 				.valid_modes_mask = REGULATOR_MODE_NORMAL, \
-				.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS, \
+				.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE | \
+					REGULATOR_CHANGE_STATUS, \
 				.min_uV = _min_uV, \
 				.max_uV = _max_uV, \
 			}, \
@@ -76,12 +77,14 @@ void __init msm7x27a_m3_init_i2c_subpm(int bus_num)
 	subpm_i2c_device.id = bus_num;
 
 	if (lge_bd_rev == LGE_REV_A) {
-		struct rt8053_platform_data *pdata = subpm_i2c_bdinfo[0].platform_data;
+		struct rt8053_platform_data *pdata =
+			subpm_i2c_bdinfo[0].platform_data;
 		if (pdata)
 			pdata->enable_gpio = 58;
 	}
 
-	lge_init_gpio_i2c_pin(&subpm_i2c_pdata, subpm_i2c_pin, &subpm_i2c_bdinfo[0]);
+	lge_init_gpio_i2c_pin(&subpm_i2c_pdata, subpm_i2c_pin,
+		&subpm_i2c_bdinfo[0]);
 	i2c_register_board_info(bus_num, &subpm_i2c_bdinfo[0], 1);
 	platform_device_register(&subpm_i2c_device);
 }
@@ -91,4 +94,3 @@ void __init lge_add_pm_devices(void)
 {
 	lge_add_gpio_i2c_device(msm7x27a_m3_init_i2c_subpm);
 }
-

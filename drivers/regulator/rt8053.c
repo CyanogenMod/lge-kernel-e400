@@ -70,7 +70,7 @@ static const int ldo4_voltage_map[] = {
 };
 
 static const int buck1_voltage_map[] = {
-	   0,  800,  850,  900,  950, 1000, 1050, 1100, 
+	   0,  800,  850,  900,  950, 1000, 1050, 1100,
 	1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500,
 	1550, 1600, 1650, 1700, 1750, 1800, 1850, 1900,
 	1950, 2000, 2050, 2100, 2150, 2200, 2250, 2300,
@@ -185,7 +185,7 @@ static u8 rt8053_reg_read(struct rt8053 *rt8053, u8 reg)
 static u8 rt8053_reg_write(struct rt8053 *rt8053, u8 reg, u16 val)
 {
 	int ret;
-	
+
 	mutex_lock(&rt8053->io_lock);
 	ret = rt8053_i2c_write(rt8053->i2c, reg, 1, &val);
 
@@ -219,7 +219,7 @@ static int rt8053_set_bits(struct rt8053 *rt8053, u8 reg, u16 mask, u16 val)
 static int rt8053_ldo_list_voltage(struct regulator_dev *dev, unsigned index)
 {
 	int ldo = rdev_get_id(dev) - RT8053_LDO1;
-	
+
 	return 1000 * RT8053_LDO_VOL_VALUE_MAP(ldo)[index];
 }
 
@@ -240,12 +240,11 @@ static int rt8053_ldo_enable(struct regulator_dev *dev)
 	int ldo = rdev_get_id(dev) - RT8053_LDO1;
 	u16 mask = RT8053_LDO_OUTPUT_ENABLE_MASK(ldo);
 
-	if (rt8053->refcnt == 0) {
+	if (rt8053->refcnt == 0)
 		gpio_set_value(rt8053->enable_gpio, 1);
-	}
-	
+
 	rt8053->refcnt++;
-	
+
 	return rt8053_set_bits(rt8053, RT8053_LDO_OUTPUT_ENABLE_REG(ldo),
 				mask, mask);
 }
@@ -255,13 +254,12 @@ static int rt8053_ldo_disable(struct regulator_dev *dev)
 	struct rt8053 *rt8053 = rdev_get_drvdata(dev);
 	int ldo = rdev_get_id(dev) - RT8053_LDO1;
 	u16 mask = RT8053_LDO_OUTPUT_ENABLE_MASK(ldo);
-	
+
 	rt8053->refcnt--;
-	
-	if (rt8053->refcnt == 0) {
+
+	if (rt8053->refcnt == 0)
 		gpio_set_value(rt8053->enable_gpio, 0);
-	}
-	
+
 	return rt8053_set_bits(rt8053, RT8053_LDO_OUTPUT_ENABLE_REG(ldo),
 				mask, 0);
 }
@@ -289,7 +287,7 @@ static int rt8053_ldo_set_voltage(struct regulator_dev *dev,
 	const int *vol_map = RT8053_LDO_VOL_VALUE_MAP(ldo);
 	u16 val;
 	int ret;
-	
+
 	if (min_vol < vol_map[RT8053_LDO_VOL_MIN_IDX(ldo)] ||
 	    min_vol > vol_map[RT8053_LDO_VOL_MAX_IDX(ldo)])
 		return -EINVAL;
@@ -299,11 +297,12 @@ static int rt8053_ldo_set_voltage(struct regulator_dev *dev,
 		if (vol_map[val] >= min_vol)
 			break;
 
-	if (val > RT8053_LDO_VOL_MAX_IDX(ldo) || (max_vol != 0 && vol_map[val] > max_vol))
+	if (val > RT8053_LDO_VOL_MAX_IDX(ldo) ||
+		(max_vol != 0 && vol_map[val] > max_vol))
 		return -EINVAL;
 
 	*selector = val;
-	
+
 	ret = rt8053_reg_write(rt8053, RT8053_LDO_VOL_CONTR_REG(ldo),
 		val & RT8053_LDO_VOL_MASK);
 
@@ -345,11 +344,10 @@ static int rt8053_dcdc_enable(struct regulator_dev *dev)
 
 	val = rt8053_set_bits(rt8053, RT8053_BUCK_VOL_ENABLE_REG(buck),
 				mask, mask);
-				
-	if (rt8053->refcnt == 0) {
+
+	if (rt8053->refcnt == 0)
 		gpio_set_value(rt8053->enable_gpio, 1);
-	}
-	
+
 	rt8053->refcnt++;
 	return val;
 }
@@ -363,13 +361,12 @@ static int rt8053_dcdc_disable(struct regulator_dev *dev)
 
 	val = rt8053_set_bits(rt8053, RT8053_BUCK_VOL_ENABLE_REG(buck),
 				mask, 0);
-				
+
 	rt8053->refcnt--;
-	
-	if (rt8053->refcnt == 0) {
+
+	if (rt8053->refcnt == 0)
 		gpio_set_value(rt8053->enable_gpio, 0);
-	}
-	
+
 	return val;
 }
 
@@ -418,16 +415,16 @@ static int rt8053_dcdc_set_voltage(struct regulator_dev *dev,
 		return -EINVAL;
 
 	*selector = val;
-	
-	ret = rt8053_reg_write(rt8053, RT8053_BUCK_VOL_CONTR_REG(buck), 
+
+	ret = rt8053_reg_write(rt8053, RT8053_BUCK_VOL_CONTR_REG(buck),
 		val & RT8053_BUCK_VOL_MASK);
 	if (ret)
 		return ret;
-	
+
 	/* BUCK1 & BUCK2 same register setting */
-	ret = rt8053_reg_write(rt8053, RT8053_BUCK_VOL_CONTR_REG(buck+1), 
+	ret = rt8053_reg_write(rt8053, RT8053_BUCK_VOL_CONTR_REG(buck+1),
 		val & RT8053_BUCK_VOL_MASK);
-	
+
 	return ret;
 }
 
@@ -549,7 +546,7 @@ static int __devinit rt8053_i2c_probe(struct i2c_client *i2c,
 	rt8053->dev = &i2c->dev;
 	rt8053->enable_gpio = pdata->enable_gpio;
 	rt8053->refcnt = 0;
-	
+
 	mutex_init(&rt8053->io_lock);
 
 	/* Detect RT8053 : just read testing */
@@ -558,7 +555,7 @@ static int __devinit rt8053_i2c_probe(struct i2c_client *i2c,
 		dev_err(&i2c->dev, "failed to detect device. ret = %d\n", ret);
 		goto err_detect;
 	}
-	
+
 	/* Because RT8053_ENABLE_REG reset value is not 0,
 	 * enable/disalbe control failed, so clear all enable bits */
 	rt8053_reg_write(rt8053, RT8053_ENABLE_REG, 0x80);
@@ -568,13 +565,14 @@ static int __devinit rt8053_i2c_probe(struct i2c_client *i2c,
 		dev_err(&i2c->dev, "failed to gpio_request: %d\n", ret);
 		goto err_detect;
 	}
-	
+
 	ret = gpio_direction_output(rt8053->enable_gpio, 0);
 	if (ret < 0) {
-		dev_err(&i2c->dev, "failed to gpio_direction_output: %d\n", ret);
-		goto err_detect;		
+		dev_err(&i2c->dev, "failed to gpio_direction_output: %d\n",
+			ret);
+		goto err_detect;
 	}
-	
+
 	ret = setup_regulators(rt8053, pdata);
 	if (ret < 0)
 		goto err_detect;
