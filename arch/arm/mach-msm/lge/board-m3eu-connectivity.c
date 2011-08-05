@@ -217,13 +217,13 @@ static int bt_set_gpio(int on)
 	struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
 
 	if (on) {
-		rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
+		rc = gpio_direction_output(BT_SYS_REST_EN, 1);
 		msleep(100);
 	} else {
 		if (!marimba_get_fm_status(&config) &&
 				!marimba_get_bt_status(&config)) {
-			gpio_set_value_cansleep(GPIO_BT_SYS_REST_EN, 0);
-			rc = gpio_direction_input(GPIO_BT_SYS_REST_EN);
+			gpio_set_value_cansleep(BT_SYS_REST_EN, 0);
+			rc = gpio_direction_input(BT_SYS_REST_EN);
 			msleep(100);
 		}
 	}
