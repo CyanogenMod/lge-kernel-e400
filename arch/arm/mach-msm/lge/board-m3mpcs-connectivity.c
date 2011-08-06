@@ -643,10 +643,10 @@ static unsigned int msm_bahama_setup_power(void)
 		goto vreg_fail;
 	}
 
-	msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR#295572, added sleep to modify the issue for turning on BT */
+	//msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR#295572, added sleep to modify the issue for turning on BT */
 	
 	return rc;
-#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */
+#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT1060 Original */
 	/*setup Bahama_sys_reset_n*/
 	rc = gpio_request(GPIO_BT_SYS_REST_EN, "bahama sys_rst_n");
 	if (rc < 0) {
@@ -660,8 +660,6 @@ static unsigned int msm_bahama_setup_power(void)
 			GPIO_BT_SYS_REST_EN, rc);
 		goto gpio_fail;
 	}
-
-	msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR#295572, added sleep to modify the issue for turning on BT */
 	
 	return rc;
 
@@ -794,7 +792,7 @@ static int bluetooth_power(int on)
 
 #if 1  /* LGE_BT_FW by suhui.kim@lge.com, QCT Guide */
 		msleep(100);
-#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */	
+#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT1060 Original */	
 		msleep(20);
 #endif
 
