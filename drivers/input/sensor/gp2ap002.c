@@ -59,7 +59,7 @@ enum {
 	GP2AP_DEBUG_INTR_DELAY		= 1U << 7,
 };
 
-static unsigned int gp2ap_debug_mask = 
+static unsigned int gp2ap_debug_mask =
 /*	GP2AP_DEBUG_DEV_STATUS |									\
 	GP2AP_DEBUG_DEV_DEBOUNCE |									\
 	GP2AP_DEBUG_FUNC_TRACE |									\*/
@@ -158,7 +158,7 @@ static struct detection_cycle gp2ap_cycle_table[] = {
 	{0x3C, "1024ms"},
 };
 
-static struct proximity_gp2ap_device *gp2ap_pdev = NULL;
+static struct proximity_gp2ap_device *gp2ap_pdev;
 static struct workqueue_struct *proximity_wq;
 
 enum gp2ap_dev_mode {
@@ -198,7 +198,7 @@ prox_i2c_write(u8 addr, u8 value, u8 intclr)
 	if (GP2AP_DEBUG_ERR_CHECK & gp2ap_debug_mask) {
 		if (gp2ap_pdev == NULL) {
 			PROXE("gp2ap device is null\n");
-			return -1;
+			return -ENODEV;
 		}
 	}
 
@@ -226,22 +226,19 @@ prox_i2c_read(u8 addr, u8 intclr)
 	if (GP2AP_DEBUG_ERR_CHECK & gp2ap_debug_mask) {
 		if (gp2ap_pdev == NULL) {
 			PROXE("gp2ap device is null\n");
-			return -1;
+			return -ENODEV;
 		}
 	}
 
-	if(addr == 0)
-	{
+	if (addr == 0) {
 		ret = i2c_smbus_read_word_data(gp2ap_pdev->client, addr | intclr);
 		if (GP2AP_DEBUG_ERR_CHECK & gp2ap_debug_mask) {
 			if (ret < 0) {
 				PROXE("caddr(0x%x), intclr(%d)\n", gp2ap_pdev->client->addr, intclr);
-				return -1;
+				return -EINVAL;
 			}
 		}
-	}
-	else
-	{
+	} else {
 		ret = gp2ap_pdev->reg_backup[addr];
 	}
 
@@ -264,35 +261,35 @@ gp2ap_device_initialise(void)
 	if (GP2AP_DEBUG_ERR_CHECK & gp2ap_debug_mask) {
 		if (gp2ap_pdev == NULL) {
 			PROXE("gp2ap device is null\n");
-			return -1;
+			return -ENODEV;
 		}
 	}
-	
+
 /* LGE_CHANGE_S for debugging */
 	ret = prox_i2c_write(GP2AP_REG_CON, 0x18, GP2AP_NO_INTCLEAR);
-	if (ret < 0){
+	if (ret < 0) {
 		printk(KERN_INFO "PROXI: REG_CON - 0x18 init error");
 		goto end_device_init;
 	}
 	ret = prox_i2c_write(GP2AP_REG_GAIN, 0x08, GP2AP_NO_INTCLEAR);
-	if (ret < 0){
+	if (ret < 0) {
 		printk(KERN_INFO "PROXI: REG_GAIN init error");
 		goto end_device_init;
 	}
-	if(gp2ap_pdev->op_mode == PROX_OPMODE_A)
+	if (gp2ap_pdev->op_mode == PROX_OPMODE_A)
 		hys = 0xC2;
-	else if(gp2ap_pdev->op_mode == PROX_OPMODE_B1)
+	else if (gp2ap_pdev->op_mode == PROX_OPMODE_B1)
 		hys = 0x40;
 	else	/* PROX_OPMODE_B2 */
 		hys = 0x20;
 
 	ret = prox_i2c_write(GP2AP_REG_HYS, hys, GP2AP_NO_INTCLEAR);
-	if (ret < 0){
+	if (ret < 0) {
 		printk(KERN_INFO "PROXI: REG_HYS init error");
 		goto end_device_init;
 	}
 	ret = prox_i2c_write(GP2AP_REG_CYCLE, gp2ap_cycle_table[gp2ap_pdev->cycle].val, GP2AP_NO_INTCLEAR);
-	if (ret < 0){
+	if (ret < 0) {
 		printk(KERN_INFO "PROXI: REG_CYCLE init error");
 		goto end_device_init;
 	}
@@ -302,19 +299,19 @@ gp2ap_device_initialise(void)
 		opmod = (u8)(GP2AP_ASD_SHIFT(gp2ap_pdev->asd) | 0x01);
 
 	ret = prox_i2c_write(GP2AP_REG_OPMOD, opmod, GP2AP_NO_INTCLEAR);
-	if (ret < 0){
+	if (ret < 0) {
 		printk(KERN_INFO "PROXI: REG_OPMOD init error");
 		goto end_device_init;
 	}
 	ret = prox_i2c_write(GP2AP_REG_CON, 0x00, GP2AP_NO_INTCLEAR);
-	if (ret < 0){
+	if (ret < 0) {
 		printk(KERN_INFO "PROXI: REG_CON - 0x00 init error");
 		goto end_device_init;
 	}
 	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
 		PROXD("exit\n");
 
- 	return ret;
+	return ret;
 
 /* LGE_CHANGE_E */
 
@@ -332,10 +329,9 @@ static irqreturn_t gp2ap_irq_handler(int irq, void *dev_id)
 	struct proximity_gp2ap_device *pdev = dev_id;
 	unsigned long delay;
 
-	if (GP2AP_DEBUG_INTR_DELAY & gp2ap_debug_mask)
-	{
+	if (GP2AP_DEBUG_INTR_DELAY & gp2ap_debug_mask) {
 		time_result.ready = 1;
-		time_result.start= 0;
+		time_result.start = 0;
 		time_result.end = 0;
 		time_result.result_t  = 0;
 		time_result.rem = 0;
@@ -371,12 +367,10 @@ gp2ap_report_event(int state)
 	input_report_abs(gp2ap_pdev->input_dev, ABS_DISTANCE, input_state);
 	input_sync(gp2ap_pdev->input_dev);
 
-	if (GP2AP_DEBUG_INTR_DELAY & gp2ap_debug_mask)
-	{
-		if(time_result.ready == 1)
-		{
+	if (GP2AP_DEBUG_INTR_DELAY & gp2ap_debug_mask) {
+		if (time_result.ready == 1) {
 			time_result.end = cpu_clock(smp_processor_id());
-			time_result.result_t  = time_result.end -time_result.start;
+			time_result.result_t  = time_result.end - time_result.start;
 			time_result.rem = do_div(time_result.result_t , 1000000000);
 			PROXD("Proximity interrupt BSP delay time = %2lu.%06lu\n", (unsigned long)time_result.result_t, time_result.rem/1000);
 			time_result.ready = 0;
@@ -396,7 +390,7 @@ static void
 gp2ap_work_func(struct work_struct *work)
 {
 	struct proximity_gp2ap_device *dev = container_of(work, struct proximity_gp2ap_device, dwork.work);
-	struct proximity_platform_data* proxi_pdata = dev->client->dev.platform_data;
+	struct proximity_platform_data *proxi_pdata = dev->client->dev.platform_data;
 
 	int vo_data;
 
@@ -409,7 +403,7 @@ gp2ap_work_func(struct work_struct *work)
 		vo_data = prox_i2c_read(GP2AP_REG_PROX, GP2AP_NO_INTCLEAR);
 		vo_data = (vo_data >> 8) & 0x1;
 	} else { /* Nomal mode*/
-		if(gpio_get_value(proxi_pdata->irq_num) == 1) /* FAR */
+		if (gpio_get_value(proxi_pdata->irq_num) == 1) /* FAR */
 			vo_data = PROX_SENSOR_DETECT_N;
 		else
 			vo_data = !PROX_SENSOR_DETECT_N;
@@ -430,14 +424,12 @@ gp2ap_work_func(struct work_struct *work)
 clear_interrupt:
 	if (dev->methods) {	/* Interrupt mode */
 		if (dev->vout_level == 0) {
-			if(PROX_OPMODE_B1) {
+			if (PROX_OPMODE_B1) {
 				(vo_data) ? prox_i2c_write(GP2AP_REG_HYS, 0x20, GP2AP_NO_INTCLEAR) : \
-	        	            prox_i2c_write(GP2AP_REG_HYS, 0x40, GP2AP_NO_INTCLEAR);
-			}
-			else	/* PROX_OPMODE_B2 */
-			{
+					prox_i2c_write(GP2AP_REG_HYS, 0x40, GP2AP_NO_INTCLEAR);
+			} else { /* PROX_OPMODE_B2 */
 				(vo_data) ? prox_i2c_write(GP2AP_REG_HYS, 0x00, GP2AP_NO_INTCLEAR) : \
-	        	            prox_i2c_write(GP2AP_REG_HYS, 0x20, GP2AP_NO_INTCLEAR);
+					prox_i2c_write(GP2AP_REG_HYS, 0x20, GP2AP_NO_INTCLEAR);
 			}
 			prox_i2c_write(GP2AP_REG_CON, 0x18, GP2AP_NO_INTCLEAR);
 		}
@@ -509,8 +501,7 @@ gp2ap_method_store(struct device *dev, struct device_attribute *attr, const char
 		pdev->methods = method;
 		gp2ap_resume(client);
 		(pdev->methods) ? printk(KERN_INFO "interrupt\n") : printk(KERN_INFO "normal\n");
-	}
-	else {
+	} else {
 		printk(KERN_INFO "sw mode is already %s\n", string);
 		return count;
 	}
@@ -590,13 +581,11 @@ gp2ap_enable_store(struct device *dev, struct device_attribute *attr, const char
 	if (mode == pdev->sw_mode) {
 		printk(KERN_INFO "mode is already %d\n", pdev->sw_mode);
 		return count;
-	}
-	else {
+	} else {
 		if (mode) {
 			gp2ap_resume(client);
 			printk(KERN_INFO "Power On Enable\n");
-		}
-		else {
+		} else {
 			gp2ap_suspend(client, dummy_state);
 			printk(KERN_INFO "Power Off Disable\n");
 		}
@@ -663,8 +652,7 @@ gp2ap_asd_store(struct device *dev, struct device_attribute *attr, const char *b
 		prox_i2c_write(GP2AP_REG_CON, 0x00, GP2AP_NO_INTCLEAR);
 		enable_irq(pdev->irq);
 		pdev->asd = asd;
-	}
-	else
+	} else
 		printk(KERN_INFO "ASD is already %d\n", pdev->asd);
 
 	return count;
@@ -695,7 +683,7 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		PROXD("entry\n");
 
 	if (GP2AP_DEBUG_ERR_CHECK & gp2ap_debug_mask) {
-		if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)){
+		if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 			PROXE("it is not support I2C_FUNC_I2C.\n");
 			return -ENODEV;
 		}
@@ -728,7 +716,7 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	gp2ap_pdev->input_dev->name = "proximity";
 	gp2ap_pdev->input_dev->phys = "proximity/input2";
 
-	set_bit(EV_SYN, gp2ap_pdev->input_dev->evbit); //for sync
+	set_bit(EV_SYN, gp2ap_pdev->input_dev->evbit); /* for sync */
 	set_bit(EV_ABS, gp2ap_pdev->input_dev->evbit);
 	input_set_abs_params(gp2ap_pdev->input_dev, ABS_DISTANCE, 0, 1, 0, 0);
 
@@ -793,7 +781,7 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		PROXD("i2c client addr(0x%x)\n", gp2ap_pdev->client->addr);
 
 	ret = set_irq_wake(gp2ap_pdev->irq, 1);
-        if (ret)
+	if (ret)
 		set_irq_wake(gp2ap_pdev->irq, 0);
 	/* create sysfs attribute files */
 	for (i = 0; i < ARRAY_SIZE(gp2ap_device_attrs); i++) {
@@ -814,7 +802,7 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	return 0;
 
 err_device_create_file:
-	while(--i >= 0)
+	while (--i >= 0)
 		device_remove_file(&client->dev, &gp2ap_device_attrs[i]);
 err_irq_request:
 	input_unregister_device(gp2ap_pdev->input_dev);
@@ -934,24 +922,21 @@ gp2ap_resume(struct i2c_client *i2c_dev)
 	else				/* Normal mode */
 		pdev->reg_backup[GP2AP_REG_OPMOD] = 0x01;
 
-	for(addr = 0; addr < 6; addr++)
-	{
-		if(pdev->reg_backup[addr] != 0)
-		{
+	for (addr = 0; addr < 6; addr++) {
+		if (pdev->reg_backup[addr] != 0) {
 			ret = prox_i2c_write(addr, pdev->reg_backup[addr], GP2AP_NO_INTCLEAR);
 
 			if (ret < 0) {
 				PROXE("%s failed to write - addr:%d\n", __func__, addr);
 				pdata->power(0);
-				return -1;
+				return -EIO;
 			}
-		}
-		else
+		} else
 			continue;
 	}
 
 	/* garbage data for first call */
-        gp2ap_report_event(PROX_SENSOR_DETECT_N);
+	gp2ap_report_event(PROX_SENSOR_DETECT_N);
 	pdev->last_vout = -1;
 
 	enable_irq(pdev->irq);
@@ -966,7 +951,7 @@ gp2ap_resume(struct i2c_client *i2c_dev)
 	pdev->sw_mode = PROX_STAT_OPERATING;
 
 	ret = set_irq_wake(pdev->irq, 1);
-        if (ret)
+	if (ret)
 		set_irq_wake(pdev->irq, 0);
 
 	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
@@ -1005,7 +990,7 @@ static int __init gp2ap_i2c_init(void)
 
 	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
 		PROXD("entry\n");
-
+	gp2ap_pdev = NULL;
 	proximity_wq = create_singlethread_workqueue("proximity_wq");
 	if (GP2AP_DEBUG_ERR_CHECK & gp2ap_debug_mask) {
 		if (!proximity_wq) {
