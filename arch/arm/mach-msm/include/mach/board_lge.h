@@ -291,4 +291,5 @@ void __init lge_add_ramconsole_devices(void);
 void __init lge_add_panic_handler_devices(void);
 void lge_set_reboot_reason(unsigned int reason);
 #endif
+int __init lge_get_uart_mode(void);
 #endif
