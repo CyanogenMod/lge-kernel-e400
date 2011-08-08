@@ -37,6 +37,27 @@ static int __init board_revno_setup(char *rev_info)
 
 __setup("lge.rev=", board_revno_setup);
 
+/* setting whether uart console is enabled or disabled */
+static int uart_console_mode = 0;
+
+int __init lge_get_uart_mode(void)
+{
+	return uart_console_mode;
+}
+
+static int __init lge_uart_mode(char *uart_mode)
+{
+	if (!strncmp("enable", uart_mode, 5)) {
+		printk(KERN_INFO "UART CONSOLE : enable\n");
+		uart_console_mode = 1;
+	} else
+		printk(KERN_INFO "UART CONSOLE : disable\n");
+
+	return 1;
+}
+
+__setup("uart_console=", lge_uart_mode);
+
 /* pmem devices */
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.name = "pmem_adsp",
