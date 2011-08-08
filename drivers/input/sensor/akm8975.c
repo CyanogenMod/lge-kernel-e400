@@ -19,6 +19,8 @@
  *
  */
 
+/* Modified by LG Electronics */
+
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
@@ -86,11 +88,11 @@ static atomic_t p_flag;
 
 /* static struct akm8975_platform_data *pdata; */
 
-static int failure_count = 0;
+static int failure_count;
 static short akmd_delay = AKM8975_DEFAULT_DELAY;
 
 static atomic_t suspend_flag = ATOMIC_INIT(0);
-static struct ecom_platform_data* ecom_pdata;
+static struct ecom_platform_data *ecom_pdata;
 
 /* LGE_CHANGE,
  * for power down routine
@@ -100,27 +102,27 @@ static atomic_t vreg_check = ATOMIC_INIT(0);
 static void lge_akm8975_early_resume(void);
 static void lge_akm8975_early_suspend(void);
 
-static ssize_t 
-ak8975_enable_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t
+ak8975_enable_show(struct device *dev, \
+struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", atomic_read(&vreg_check));
+	return snprintf(buf, PAGE_SIZE, "%d\n", atomic_read(&vreg_check));
 }
 
-static ssize_t 
-ak8975_enable_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t
+ak8975_enable_store(struct device *dev, \
+struct device_attribute *attr, const char *buf, size_t count)
 {
 	int mode = 0;
 
 	sscanf(buf, "%d", &mode);
 
-    if(mode)
-    {
+    if (mode) {
 		lge_akm8975_early_resume();
 #ifdef LGE_DEBUG
 		printk(KERN_INFO "Ecompass_Power On\n");
 #endif
-    }
-    else {
+    } else {
 		lge_akm8975_early_suspend();
 #ifdef LGE_DEBUG
 		printk(KERN_INFO "Ecompass_Power Off\n");
@@ -130,7 +132,8 @@ ak8975_enable_store(struct device *dev, struct device_attribute *attr, const cha
 
 }
 
-static DEVICE_ATTR(ak8975_enable, S_IRUGO | S_IWUGO, ak8975_enable_show, ak8975_enable_store);
+static DEVICE_ATTR(ak8975_enable, S_IRUGO | S_IWUGO, \
+ak8975_enable_show, ak8975_enable_store);
 static struct attribute *ak8975_attributes[] = {
     &dev_attr_ak8975_enable.attr,
     NULL,
@@ -183,8 +186,8 @@ static int AKI2C_RxData(char *rxData, int length)
 #if AKM8975_DEBUG_DATA
 	printk(KERN_INFO "RxData: len=%02x, addr=%02x", length, addr);
 	printk(KERN_INFO " data=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-		rxData[0],rxData[1],rxData[2],rxData[3],
-		rxData[4],rxData[5],rxData[6],rxData[7]);
+		rxData[0], rxData[1], rxData[2], rxData[3],
+		rxData[4], rxData[5], rxData[6], rxData[7]);
 #endif
 	return 0;
 }
@@ -297,7 +300,7 @@ static int AKECS_SetMode(char mode)
 		ret = AKECS_SetMode_PowerDown();
 		/* wait at least 100us after changing mode */
 		udelay(100);
-		
+
 		break;
 	default:
 		AKMDBG("%s: Unknown mode(%d)", __func__, mode);
@@ -354,7 +357,7 @@ static int AKECS_GetData(char *rbuf, int size)
 				failure_count = 0;
 			}
 		}
-		return -1;
+		return -EIO;
 	}
 
 	mutex_lock(&sense_data_mutex);
@@ -448,8 +451,8 @@ static int akm_aot_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
-   replace unlocked ioctl - from kernel 2.6.36.x */ 
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
+   replace unlocked ioctl - from kernel 2.6.36.x */
 static long
 akm_aot_ioctl(struct file *file,
 			  unsigned int cmd, unsigned long arg)
@@ -503,14 +506,14 @@ akm_aot_ioctl(struct file *file,
 	case ECS_IOCTL_APP_GET_MVFLAG:
 		flag = atomic_read(&mv_flag);
 		break;
-		case ECS_IOCTL_APP_SET_PFLAG:
+	case ECS_IOCTL_APP_SET_PFLAG:
 			atomic_set(&p_flag, flag);
 			AKMDBG("PFLAG is set to %d", flag);
 			break;
-		case ECS_IOCTL_APP_GET_PFLAG:
+	case ECS_IOCTL_APP_GET_PFLAG:
 			flag = atomic_read(&p_flag);
-			break;			
-		case ECS_IOCTL_APP_SET_DELAY:
+			break;
+	case ECS_IOCTL_APP_SET_DELAY:
 			akmd_delay = flag;
 			AKMDBG("Delay is set to %d", flag);
 		break;
@@ -525,7 +528,7 @@ akm_aot_ioctl(struct file *file,
 	case ECS_IOCTL_APP_GET_MFLAG:
 	case ECS_IOCTL_APP_GET_AFLAG:
 	case ECS_IOCTL_APP_GET_MVFLAG:
-		case ECS_IOCTL_APP_GET_PFLAG:			
+	case ECS_IOCTL_APP_GET_PFLAG:
 	case ECS_IOCTL_APP_GET_DELAY:
 			if (copy_to_user(argp, &flag, sizeof(flag))) {
 			return -EFAULT;
@@ -543,11 +546,12 @@ akm_aot_ioctl(struct file *file,
 static int akmd_open(struct inode *inode, struct file *file)
 {
 /* LGE_CHANGE_S, for debugging */
-#ifdef LGE_DEBUG 
+#ifdef LGE_DEBUG
 	int err;
 	err = AKECS_CheckDevice();
 	if (err < 0) {
-		printk(KERN_ERR "AKM8975 akm8975_debugging: check device error\n");
+		printk(KERN_ERR \
+"AKM8975 akm8975_debugging: check device error\n");
 	}
 #endif
 /* LGE_CHANGE_E */
@@ -562,8 +566,8 @@ static int akmd_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
-   replace unlocked ioctl - from kernel 2.6.36.x */ 
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
+   replace unlocked ioctl - from kernel 2.6.36.x */
 static long
 akmd_ioctl(struct file *file, unsigned int cmd,
 		   unsigned long arg)
@@ -681,7 +685,7 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 		AKMFUNC("IOCTL_GET_DELAY");
 			delay = akmd_delay;
 			break;
-		case ECS_IOCTL_GET_ACCEL_PATH:
+	case ECS_IOCTL_GET_ACCEL_PATH:
 			break;
 /* LGE_CHANGE,
  * add read accel tuning data ioctl for H/W accerleration sensor direction,
@@ -689,7 +693,7 @@ akmd_ioctl(struct file *file, unsigned int cmd,
  *
  * 2011-07-05
  */
-		case ECS_IOCTL_ACCEL_INIT:
+	case ECS_IOCTL_ACCEL_INIT:
 		break;
 /* LGE_CHANGE end */
 	default:
@@ -723,7 +727,7 @@ akmd_ioctl(struct file *file, unsigned int cmd,
 		}
 		break;
 	case ECS_IOCTL_GET_ACCEL_PATH:
-		sprintf(accel_dev_path, "/dev/%s", ecom_pdata->accelerator_name);
+		snprintf(accel_dev_path, PAGE_SIZE, "/dev/%s", ecom_pdata->accelerator_name);
 		if (copy_to_user(argp, accel_dev_path, sizeof(accel_dev_path)))
 			return -EFAULT;
 		break;
@@ -736,16 +740,16 @@ akmd_ioctl(struct file *file, unsigned int cmd,
  */
 	case ECS_IOCTL_ACCEL_INIT:
 		fdata_sign[0] = ecom_pdata->fdata_sign_x;
-        fdata_sign[1] = ecom_pdata->fdata_sign_y;
-        fdata_sign[2] = ecom_pdata->fdata_sign_z;
-        fdata_sign[3] = ecom_pdata->fdata_order0;
-        fdata_sign[4] = ecom_pdata->fdata_order1;
-        fdata_sign[5] = ecom_pdata->fdata_order2;
-        fdata_sign[6] = ecom_pdata->sensitivity1g;
+		fdata_sign[1] = ecom_pdata->fdata_sign_y;
+		fdata_sign[2] = ecom_pdata->fdata_sign_z;
+		fdata_sign[3] = ecom_pdata->fdata_order0;
+		fdata_sign[4] = ecom_pdata->fdata_order1;
+		fdata_sign[5] = ecom_pdata->fdata_order2;
+		fdata_sign[6] = ecom_pdata->sensitivity1g;
 
-        if (copy_to_user(argp, fdata_sign, sizeof(fdata_sign)))
-            return -EFAULT;
-        break;
+		if (copy_to_user(argp, fdata_sign, sizeof(fdata_sign)))
+			return -EFAULT;
+		break;
 /* LGE_CHANGE end */
 	default:
 		break;
@@ -794,7 +798,7 @@ static irqreturn_t akm8975_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
    for using when early_suspend configured only */
 #ifdef AKM8975_HAS_EARLYSUSPEND
 static void akm8975_early_suspend(struct early_suspend *handler)
@@ -806,7 +810,7 @@ static void akm8975_early_suspend(struct early_suspend *handler)
 	wake_up(&open_wq);
 	disable_irq(this_client->irq);
 	AKMDBG("suspended with flag=%d",
-	       atomic_read(&reserve_open_flag));	
+	       atomic_read(&reserve_open_flag));
  }
 
 static void akm8975_early_resume(struct early_suspend *handler)
@@ -844,12 +848,13 @@ static void lge_akm8975_early_resume()
 	if (atomic_read(&vreg_check) == 0) {
 		ecom_pdata->power(1);
 		atomic_set(&vreg_check, 1);
-		
+
 		enable_irq(this_client->irq);
 		atomic_set(&suspend_flag, 0);
 		atomic_set(&open_flag, atomic_read(&reserve_open_flag));
 		wake_up(&open_wq);
-	} else {/* already power on state */}
+	} else {
+	} /* already power on state */
 }
 /* LGE_CHANGE end */
 
@@ -858,8 +863,8 @@ static struct file_operations akmd_fops = {
 	.owner = THIS_MODULE,
 	.open = akmd_open,
 	.release = akmd_release,
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
-   replace unlocked ioctl - from kernel 2.6.36.x */ 
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
+   replace unlocked ioctl - from kernel 2.6.36.x */
 	.unlocked_ioctl = akmd_ioctl,
 /* LGE_CHANGE_E */
 };
@@ -868,8 +873,8 @@ static struct file_operations akm_aot_fops = {
 	.owner = THIS_MODULE,
 	.open = akm_aot_open,
 	.release = akm_aot_release,
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
-   replace unlocked ioctl - from kernel 2.6.36.x */ 
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
+   replace unlocked ioctl - from kernel 2.6.36.x */
 	.unlocked_ioctl = akm_aot_ioctl,
 /* LGE_CHANGE_E */
 };
@@ -922,13 +927,13 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	this_client = client;
 
 	ecom_pdata = client->dev.platform_data;
-	
+
 	ecom_pdata->power(1);
 
 	atomic_set(&vreg_check, 1);
 
 /* LGE_CHANGE_E */
- 
+
 	/* Check connection */
 	err = AKECS_CheckDevice();
 	if (err < 0) {
@@ -1011,8 +1016,8 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
  */
 	err = sysfs_create_group(&client->dev.kobj, &ak8975_attribute_group);
     if (err) {
-        printk(KERN_ERR "ak8975 sysfs register failed\n");
-        goto exit_sysfs_create_group_failed;
+		printk(KERN_ERR "ak8975 sysfs register failed\n");
+		goto exit_sysfs_create_group_failed;
     }
 /* LGE_CHANGE end */
 
@@ -1025,9 +1030,9 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	atomic_set(&m_flag, 1);
 	atomic_set(&a_flag, 1);
 	atomic_set(&mv_flag, 1);
-	atomic_set(&p_flag, 1);	
+	atomic_set(&p_flag, 1);
 
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
    for using when early_suspend configured only */
 #ifdef AKM8975_HAS_EARLYSUSPEND
 	akm->akm_early_suspend.suspend = akm8975_early_suspend;
@@ -1097,6 +1102,7 @@ static struct i2c_driver akm8975_driver = {
 static int __init akm8975_init(void)
 {
 	printk(KERN_INFO "AKM8975 compass driver: initialize\n");
+	failure_count = 0;
 	return i2c_add_driver(&akm8975_driver);
 }
 
