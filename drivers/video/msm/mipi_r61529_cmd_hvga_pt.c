@@ -14,7 +14,7 @@
 #include "mipi_dsi.h"
 #include "mipi_r61529.h"
 
-/*#define USE_HW_VSYNC*/
+#define USE_HW_VSYNC
 
 static struct msm_panel_info pinfo;
 
@@ -70,7 +70,7 @@ static int __init mipi_cmd_r61529_hvga_pt_init(void)
 	pinfo.lcd.vsync_enable = TRUE;
 	pinfo.lcd.hw_vsync_mode = TRUE;
 #endif
-	pinfo.lcd.refx100 = 6000; /* adjust refx100 to prevent tearing */
+	pinfo.lcd.refx100 = 6150; /* adjust refx100 to prevent tearing */
 
 	pinfo.mipi.mode = DSI_CMD_MODE;
 	pinfo.mipi.dst_format = DSI_CMD_DST_FORMAT_RGB888;
