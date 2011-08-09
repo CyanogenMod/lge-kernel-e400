@@ -60,17 +60,27 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 			brightness = PM_MPP__I_SINK__LEVEL_40mA;
 			break;
 		default :
-			brightness = PM_MPP__I_SINK__LEVEL_5mA;
-			break;
-	}
-	/* LED power(MPP pin) use
-	   - EU	  :  MPP3, MPP4
-	   - MPCS :  MPP 4
-	*/
-	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_4,brightness,(enum mpp_i_sink_switch)on_off);
-#if defined (CONFIG_MACH_MSM7X27A_M3EU)
-	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3,brightness,(enum mpp_i_sink_switch)on_off);
-#endif
+                        brightness = PM_MPP__I_SINK__LEVEL_25mA;
+                        break;
+        }
+        if (lge_bd_rev == LGE_REV_A){
+        /* LED power(MPP pin) use
+           ---REV.A---
+           - EU  : MPP3, MPP4
+           - MPCS: MPP4
+        */
+        pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_4,brightness,(enum mpp_i_sink_switch)on_off);
+        #if defined (CONFIG_MACH_MSM7X27A_M3EU)
+        pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3,brightness,(enum mpp_i_sink_switch)on_off);
+        #endif
+        }else if(lge_bd_rev >= LGE_REV_B){
+        /* LED power(MPP pin) use
+           ---REV.B---
+           - EU   :MPP3
+           - MPCS :MPP3
+        */
+        pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3,brightness,(enum mpp_i_sink_switch)on_off);
+        }
 }
 
 #if 0  /* QCT led fuction */
