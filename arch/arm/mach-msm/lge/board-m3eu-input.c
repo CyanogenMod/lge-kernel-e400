@@ -576,7 +576,7 @@ static struct i2c_gpio_platform_data nfc_i2c_pdata =
 {
 	.sda_is_open_drain = 0,
 	.scl_is_open_drain = 0,
-	.udelay = 2,
+	.udelay = 1,
 };
 
 static struct platform_device nfc_i2c_device = 
