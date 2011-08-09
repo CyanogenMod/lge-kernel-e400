@@ -171,6 +171,11 @@ config FB_MSM_MIPI_DSI_NOVATEK
         select FB_MSM_MIPI_DSI
         default n
 
+config FB_MSM_MIPI_DSI_MAGNACHIP
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
+
 config FB_MSM_LCDC_ST15_WXGA
     bool
     select FB_MSM_LCDC_PANEL
@@ -294,6 +299,10 @@ config FB_MSM_MIPI_SIMULATOR_VIDEO
 	select FB_MSM_MIPI_DSI_SIMULATOR
 	default n
 
+config FB_MSM_MIPI_MAGNACHIP_CMD_WVGA_PT
+	bool
+	select FB_MSM_MIPI_DSI_MAGNACHIP
+	default n
 
 config FB_MSM_OVERLAY_WRITEBACK
 	depends on FB_MSM_OVERLAY
@@ -480,6 +489,10 @@ config FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT_PANEL
 config FB_MSM_MIPI_SIMULATOR_VIDEO_PANEL
 	bool "MIPI Simulator Video Panel"
 	select FB_MSM_MIPI_SIMULATOR_VIDEO
+
+config FB_MSM_MIPI_MAGNACHIP_CMD_WVGA_PT_PANEL
+	bool "MIPI MagnaChip Command WVGA PT Panel"
+	select FB_MSM_MIPI_MAGNACHIP_CMD_WVGA_PT
 
 config FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF
 	bool "EBI2 TMD QVGA Epson QCIF Dual Panel"
