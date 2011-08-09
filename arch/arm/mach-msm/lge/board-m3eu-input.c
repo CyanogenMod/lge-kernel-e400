@@ -402,6 +402,28 @@ static struct ecom_platform_data ecom_pdata = {
  * 2011-07-05
  */
 	.fdata_sign_x = -1,
+    .fdata_sign_y = -1,
+    .fdata_sign_z = -1,
+    .fdata_order0 = 1,
+    .fdata_order1 = 0,
+    .fdata_order2 = 2,
+    .sensitivity1g = 64,
+
+};
+
+/* Rev.A */
+static struct ecom_platform_data ecom_pdata_reva = {
+	.pin_int        	= ECOM_GPIO_INT,
+	.pin_rst		= 0,
+	.power          	= ecom_power_set,
+	.accelerator_name = "bma222",
+/* LGE_CHANGE,
+ * add accel tuning data for H/W accerleration sensor direction,
+ * based on [hyesung.shin@lge.com] for <Sensor driver structure>
+ *
+ * 2011-07-05
+ */
+	.fdata_sign_x = -1,
     .fdata_sign_y = 1,
     .fdata_sign_z = -1,
     .fdata_order0 = 0,
@@ -416,6 +438,11 @@ static struct i2c_board_info ecom_i2c_bdinfo[] = {
 		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
 		.type = "akm8975",
 		.platform_data = &ecom_pdata,
+	},	
+	[1] = {
+		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
+		.type = "akm8975",
+		.platform_data = &ecom_pdata_reva,
 	},
 };
 
@@ -443,10 +470,13 @@ static struct platform_device ecom_i2c_device = {
 static void __init m3eu_init_i2c_ecom(int bus_num)
 {
 	ecom_i2c_device.id = bus_num;
-
-	lge_init_gpio_i2c_pin(&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[0]);
-
-	i2c_register_board_info(bus_num, &ecom_i2c_bdinfo[0], 1);
+	if (lge_bd_rev == LGE_REV_A) { /* Rev.A */
+		lge_init_gpio_i2c_pin(&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[1]);
+		i2c_register_board_info(bus_num, &ecom_i2c_bdinfo[1], 1);
+	} else { /* else Rev */
+		lge_init_gpio_i2c_pin(&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[0]);
+		i2c_register_board_info(bus_num, &ecom_i2c_bdinfo[0], 1);
+	}
 	platform_device_register(&ecom_i2c_device);
 }
 

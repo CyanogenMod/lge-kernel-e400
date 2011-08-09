@@ -217,7 +217,16 @@ static void __init msm7x2x_init(void)
 	platform_add_devices(m3_devices,
 		ARRAY_SIZE(m3_devices));
 
-	platform_device_register(&msm_device_uart3);
+	/*7x25a kgsl initializations*/
+	msm7x25a_kgsl_3d0_init();
+
+	if (lge_get_uart_mode()) {
+		if (lge_bd_rev == LGE_REV_A) {
+			platform_device_register(&msm_device_uart3);
+		} else {
+			platform_device_register(&msm_device_uart1);
+		}
+	}
 
 	lge_add_input_devices();
 	lge_add_misc_devices();
@@ -229,7 +238,7 @@ static void __init msm7x2x_init(void)
 	lge_add_pm_devices();
 #endif
 	lge_add_usb_devices();
-	lge_add_connectivity_devices();
+	lge_add_connectivity_devices(); /* LGE_BT_FW by suhui.kim@lge.com */
 
 	/* gpio i2c devices should be registered at latest point */
 	lge_add_gpio_i2c_devices();

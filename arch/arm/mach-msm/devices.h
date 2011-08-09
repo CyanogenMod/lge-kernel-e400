@@ -18,6 +18,7 @@
 #define __ARCH_ARM_MACH_MSM_DEVICES_H
 
 #include <linux/clkdev.h>
+#include <linux/platform_device.h>
 
 #include "clock.h"
 extern struct platform_device asoc_msm_pcm;
@@ -110,8 +111,6 @@ extern struct platform_device msm_device_ssbi7;
 
 extern struct platform_device msm_gsbi1_qup_spi_device;
 
-extern struct platform_device msm_device_wcnss_wlan;
-
 extern struct platform_device msm_device_vidc_720p;
 
 extern struct platform_device msm_pcm;
@@ -135,6 +134,8 @@ extern unsigned msm_num_footswitch_devices;
 
 extern struct platform_device fsm_qfp_fuse_device;
 
+extern struct platform_device fsm_xo_device;
+
 extern struct platform_device qfec_device;
 
 extern struct clk_lookup msm_clocks_7x01a[];
@@ -149,17 +150,9 @@ extern unsigned msm_num_clocks_7x27;
 extern struct clk_lookup msm_clocks_7x27a[];
 extern unsigned msm_num_clocks_7x27a;
 
-extern struct clk_lookup msm_clocks_7x30[];
-extern unsigned msm_num_clocks_7x30;
-
 extern struct clk_lookup msm_clocks_8x50[];
 extern unsigned msm_num_clocks_8x50;
 
-extern struct clk_lookup msm_clocks_8x60[];
-extern unsigned msm_num_clocks_8x60;
-
-extern struct clk_lookup msm_clocks_8960[];
-extern unsigned msm_num_clocks_8960;
 extern struct clk_lookup msm_clocks_8960_dummy[];
 extern unsigned msm_num_clocks_8960_dummy;
 

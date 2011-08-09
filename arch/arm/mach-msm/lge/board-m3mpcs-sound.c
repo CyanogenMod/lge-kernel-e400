@@ -175,6 +175,8 @@ static unsigned hook_key_gpios[] = {
 	GPIO_BUTTON_DETECT_EVB,
 	GPIO_BUTTON_DETECT_REV_A,
 	GPIO_BUTTON_DETECT_REV_B,
+	GPIO_BUTTON_DETECT_REV_B,
+	GPIO_BUTTON_DETECT_REV_B,
 };
 
 static int m3mpcs_gpio_earsense_work_func(int *value)
@@ -192,7 +194,14 @@ static int m3mpcs_gpio_earsense_work_func(int *value)
 		gpio_set_value(GPIO_MIC_MODE, 0);
 	} else {
 		state = EAR_STATE_INJECT;
-		gpio_value = gpio_get_value(hook_key_gpios[lge_bd_rev]);
+
+		msleep(100);
+
+		if (lge_bd_rev >= LGE_REV_B)
+			gpio_value = !gpio_get_value(hook_key_gpios[lge_bd_rev]);
+		else
+			gpio_value = gpio_get_value(hook_key_gpios[lge_bd_rev]);
+
 		if (gpio_value) {
 			printk(KERN_INFO "headphone was inserted!\n");
 			*value = SW_HEADPHONE_INSERT;
@@ -252,7 +261,11 @@ static int m3mpcs_gpio_hook_key_work_func(int *value)
 	int gpio_value;
 
 	*value = KEY_MEDIA;
-	gpio_value = gpio_get_value(hook_key_gpios[lge_bd_rev]);
+	if (lge_bd_rev >= LGE_REV_B)
+		gpio_value = !gpio_get_value(hook_key_gpios[lge_bd_rev]);
+	else
+		gpio_value = gpio_get_value(hook_key_gpios[lge_bd_rev]);
+
 	printk(KERN_INFO "%s: hook key detected : %s\n", __func__,
 		gpio_value ? "pressed" : "released");
 

@@ -35,25 +35,27 @@ static char config_column_addr[5] = {0x2a, 0x00, 0x00, 0x01, 0x3f};
 static char config_page_addr[5] = {0x2b, 0x00, 0x00, 0x01, 0xdf};
 static char config_frame_mem_if[5] = {0xb3, 0x02, 0x00, 0x00, 0x00};
 static char config_panel_drv[9] = {0xc0, 0x01, 0xdf, 0x40, 0x10, 0x00, 0x01, 0x00, 0x33};
-static char config_display_timing[6] = {0xc1, 0x07, 0x27, 0x08, 0x08, 0x10};
+static char config_display_timing[6] = {0xc1, 0x07, 0x2D, 0x04, 0x04, 0x10};
 static char config_src_gate_timing[5] = {0xc4, 0x77, 0x00, 0x03, 0x01};
 static char config_dpi_polarity[2] = {0xc6, 0x00};
-static char config_gamma_a[25] = {0xc8, 0x00, 0x04, 0x11, 0x1c, 0x2e, 0x46, 0x39, 0x21,
-								  0x15, 0x0a, 0x05, 0x00, 0x00, 0x04, 0x11, 0x1c,
-								  0x2e, 0x46, 0x39, 0x21, 0x15, 0x0a, 0x05, 0x00};
-static char config_gamma_b[25] = {0xc9, 0x00, 0x04, 0x11, 0x1c, 0x2e, 0x46, 0x39, 0x21,
-								  0x15, 0x0a, 0x05, 0x00, 0x00, 0x04, 0x11, 0x1c,
-								  0x2e, 0x46, 0x39, 0x21, 0x15, 0x0a, 0x05, 0x00};
-static char config_gamma_c[25] = {0xca, 0x00, 0x04, 0x11, 0x1c, 0x2e, 0x46, 0x39, 0x21,
-								  0x15, 0x0a, 0x05, 0x00, 0x00, 0x04, 0x11, 0x1c,
-								  0x2e, 0x46, 0x39, 0x21, 0x15, 0x0a, 0x05, 0x00};
-static char config_power_chg_pump[17] = {0xd0,0x95, 0x06, 0x08, 0x20, 0x31, 0x04, 0x01, 0x00,
-                                         0x08, 0x01, 0x00, 0x06, 0x01, 0x00, 0x00, 0x20};
-static char config_vcom[5] = {0xd1, 0x02, 0x1f, 0x1f, 0x38};
-static char config_backlight_ctrl1[21] = {0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static char config_gamma_a[25] = {0xc8, 0x00, 0x10, 0x16, 0x1e, 0x2b, 0x44, 0x39, 0x24,
+								  0x18, 0x0e, 0x06, 0x00, 0x00, 0x10, 0x16, 0x1e,
+								  0x2b, 0x45, 0x39, 0x24, 0x18, 0x0e, 0x06, 0x00};
+static char config_gamma_b[25] = {0xc9, 0x00, 0x10, 0x16, 0x1e, 0x2b, 0x44, 0x39, 0x24,
+								  0x18, 0x0e, 0x06, 0x00, 0x00, 0x10, 0x16, 0x1e,
+								  0x2b, 0x45, 0x39, 0x24, 0x18, 0x0e, 0x06, 0x00};
+static char config_gamma_c[25] = {0xca, 0x00, 0x10, 0x16, 0x1e, 0x2b, 0x44, 0x39, 0x24,
+								  0x18, 0x0e, 0x06, 0x00, 0x00, 0x10, 0x16, 0x1e,
+								  0x2b, 0x45, 0x39, 0x24, 0x18, 0x0e, 0x06, 0x00};
+static char config_power_chg_pump[17] = {0xd0, 0xA9, 0x06, 0x08, 0x20, 0x31, 0x04, 0x01,
+								  0x00, 0x08, 0x01, 0x00, 0x06, 0x01, 0x00, 0x00,
+								  0x20};
+static char config_vcom[5] = {0xd1, 0x02, 0x22, 0x22, 0x33};
+static char config_backlight_ctrl1[21] = {0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										  0x00, 0x00, 0x00, 0x00, 0x00};
 static char config_backlight_ctrl2[5] = {0xb9, 0x00, 0x00, 0x00, 0x00};
-//static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};
+/*static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};*/
 
 static char config_nvm_access[5] = {0xe0, 0x00, 0x00, 0x00, 0x00};
 static char config_ddb_write[7] = {0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x70};
@@ -100,7 +102,7 @@ static struct dsi_cmd_desc r61529_init_on_cmds[] = {
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_gamma_b), config_gamma_b},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
-		sizeof(config_gamma_c), config_gamma_c}, 
+		sizeof(config_gamma_c), config_gamma_c},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_power_chg_pump), config_power_chg_pump},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
@@ -109,8 +111,8 @@ static struct dsi_cmd_desc r61529_init_on_cmds[] = {
 		sizeof(config_backlight_ctrl1), config_backlight_ctrl1},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_backlight_ctrl2), config_backlight_ctrl2},
-//	{DTYPE_GEN_READ1, 1, 0, 0, R61529_CMD_DELAY,
-//		sizeof(config_backlight_ctrl3), config_backlight_ctrl3},
+/*	{DTYPE_GEN_READ1, 1, 0, 0, R61529_CMD_DELAY,
+		sizeof(config_backlight_ctrl3), config_backlight_ctrl3},*/
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(config_nvm_access), config_nvm_access},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
@@ -146,7 +148,7 @@ static int mipi_r61529_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	struct mipi_panel_info *mipi;
-	
+
 	mfd = platform_get_drvdata(pdev);
 	mipi  = &mfd->panel_info.mipi;
 
@@ -159,14 +161,12 @@ static int mipi_r61529_lcd_on(struct platform_device *pdev)
 
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_sleep_out_cmds,
 			ARRAY_SIZE(r61529_sleep_out_cmds));
-	mdelay(120);
 	mipi_set_tx_power_mode(1);
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_init_on_cmds,
 			ARRAY_SIZE(r61529_init_on_cmds));
 
 	mipi_dsi_cmds_tx(mfd, &r61529_tx_buf, r61529_disp_on_cmds,
 			ARRAY_SIZE(r61529_disp_on_cmds));
-	mdelay(40);
 
 	mipi_set_tx_power_mode(0);
 
@@ -197,24 +197,23 @@ static int mipi_r61529_lcd_off(struct platform_device *pdev)
 
 ssize_t mipi_r61529_lcd_show_onoff(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        printk("%s : strat\n", __func__);
-        return 0;
+	printk("%s : start\n", __func__);
+	return 0;
 }
 
 ssize_t mipi_r61529_lcd_store_onoff(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-        //struct platform_device dummy_pdev;
-        int onoff;
+	/*struct platform_device dummy_pdev;*/
+	int onoff;
 
-		sscanf(buf, "%d", &onoff);
-		printk("%s: onoff : %d\n", __func__, onoff);
-		if(onoff) {
-			mipi_r61529_lcd_on(NULL);
-		}
-		else {
-			mipi_r61529_lcd_off(NULL);
-		}
-        return count;
+	sscanf(buf, "%d", &onoff);
+	printk("%s: onoff : %d\n", __func__, onoff);
+	if (onoff) {
+		mipi_r61529_lcd_on(NULL);
+	} else {
+		mipi_r61529_lcd_off(NULL);
+	}
+	return count;
 }
 
 DEVICE_ATTR(lcd_onoff, 0664, mipi_r61529_lcd_show_onoff, mipi_r61529_lcd_store_onoff);
@@ -222,17 +221,17 @@ DEVICE_ATTR(lcd_onoff, 0664, mipi_r61529_lcd_show_onoff, mipi_r61529_lcd_store_o
 
 static int __devinit mipi_r61529_lcd_probe(struct platform_device *pdev)
 {
-	int rc=0;
-	
+	int rc = 0;
+
 	if (pdev->id == 0) {
 		mipi_r61529_pdata = pdev->dev.platform_data;
 		return 0;
 	}
 
 	msm_fb_add_device(pdev);
-	//this for ATAT Command
-	rc=device_create_file(&pdev->dev, &dev_attr_lcd_onoff);
-	
+	/*this for AT Command*/
+	rc = device_create_file(&pdev->dev, &dev_attr_lcd_onoff);
+
 	return 0;
 }
 
@@ -301,5 +300,4 @@ static void mipi_ldp_lcd_panel_poweroff(void)
 }
 
 
-
-module_init(mipi_r61529_lcd_init); 
+module_init(mipi_r61529_lcd_init);

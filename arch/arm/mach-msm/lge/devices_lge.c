@@ -25,7 +25,7 @@ static int __init board_revno_setup(char *rev_info)
 
 	lge_bd_rev = LGE_REV_TOT_NUM;
 
-	for (i = 0; i < LGE_REV_TOT_NUM; i++) 
+	for (i = 0; i < LGE_REV_TOT_NUM; i++)
 		if (!strncmp(rev_info, rev_str[i], 6)) {
 			lge_bd_rev = i;
 			break;
@@ -36,6 +36,27 @@ static int __init board_revno_setup(char *rev_info)
 }
 
 __setup("lge.rev=", board_revno_setup);
+
+/* setting whether uart console is enabled or disabled */
+static int uart_console_mode = 0;
+
+int __init lge_get_uart_mode(void)
+{
+	return uart_console_mode;
+}
+
+static int __init lge_uart_mode(char *uart_mode)
+{
+	if (!strncmp("enable", uart_mode, 5)) {
+		printk(KERN_INFO "UART CONSOLE : enable\n");
+		uart_console_mode = 1;
+	} else
+		printk(KERN_INFO "UART CONSOLE : disable\n");
+
+	return 1;
+}
+
+__setup("uart_console=", lge_uart_mode);
 
 /* pmem devices */
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
@@ -113,7 +134,7 @@ static struct platform_device msm_fb_device = {
 	}
 };
 
-void __init msm_add_fb_device(void) 
+void __init msm_add_fb_device(void)
 {
 	platform_device_register(&msm_fb_device);
 }
@@ -184,6 +205,8 @@ void __init msm_msm7x2x_allocate_memory_regions(void)
 }
 
 static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
+#ifdef __SPLINT__
+#else
 	[MEMTYPE_SMI] = {
 	},
 	[MEMTYPE_EBI0] = {
@@ -192,6 +215,7 @@ static struct memtype_reserve msm7x27a_reserve_table[] __initdata = {
 	[MEMTYPE_EBI1] = {
 		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
+#endif
 };
 
 static void __init size_pmem_devices(void)
@@ -262,9 +286,9 @@ void __init lge_add_ramconsole_devices(void)
 	struct membank *bank = &meminfo.bank[0];
 	res->start = MSM7X27_EBI1_CS0_BASE + bank->size;
 	res->end = res->start + LGE_RAM_CONSOLE_SIZE - 1;
-	printk("RAM CONSOLE START ADDR : 0x%x\n", res->start);
-	printk("RAM CONSOLE END ADDR   : 0x%x\n", res->end);
-	
+	printk(KERN_INFO "RAM CONSOLE START ADDR : 0x%x\n", res->start);
+	printk(KERN_INFO "RAM CONSOLE END ADDR   : 0x%x\n", res->end);
+
 	platform_device_register(&ram_console_device);
 }
 #endif
@@ -274,7 +298,7 @@ void __init lge_add_ramconsole_devices(void)
 #define LOWEST_GPIO_I2C_BUS_NUM		2
 
 static gpio_i2c_init_func_t *i2c_init_func[MAX_GPIO_I2C_DEV_NUM] __initdata;
-static int i2c_dev_num __initdata = 0;
+static int i2c_dev_num __initdata;
 
 void __init lge_add_gpio_i2c_device(gpio_i2c_init_func_t *init_func)
 {
@@ -287,7 +311,7 @@ void __init lge_add_gpio_i2c_devices(void)
 	int index;
 	gpio_i2c_init_func_t *init_func_ptr;
 
-	for (index = 0;index < i2c_dev_num;index++) {
+	for (index = 0; index < i2c_dev_num; index++) {
 		init_func_ptr = i2c_init_func[index];
 		(*init_func_ptr)(LOWEST_GPIO_I2C_BUS_NUM + index);
 	}
@@ -301,21 +325,23 @@ int __init lge_init_gpio_i2c_pin(struct i2c_gpio_platform_data *i2c_adap_pdata,
 	i2c_adap_pdata->scl_pin = gpio_i2c_pin.scl_pin;
 
 	gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.sda_pin, 0, GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.scl_pin, 0, GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_set_value(gpio_i2c_pin.sda_pin, 1);
 	gpio_set_value(gpio_i2c_pin.scl_pin, 1);
 
 	if (gpio_i2c_pin.reset_pin) {
-		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.reset_pin, 0, GPIO_CFG_OUTPUT,
-					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.reset_pin, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
 		gpio_set_value(gpio_i2c_pin.reset_pin, 1);
 	}
 
 	if (gpio_i2c_pin.irq_pin) {
-		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.irq_pin, 0, GPIO_CFG_INPUT,
-					GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.irq_pin, 0,
+			GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
 		i2c_board_info_data->irq =
 			MSM_GPIO_TO_INT(gpio_i2c_pin.irq_pin);
 	}
@@ -331,21 +357,23 @@ int lge_init_gpio_i2c_pin_pullup(struct i2c_gpio_platform_data *i2c_adap_pdata,
 	i2c_adap_pdata->scl_pin = gpio_i2c_pin.scl_pin;
 
 	gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.sda_pin, 0, GPIO_CFG_OUTPUT,
-				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.scl_pin, 0, GPIO_CFG_OUTPUT,
-				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_set_value(gpio_i2c_pin.sda_pin, 1);
 	gpio_set_value(gpio_i2c_pin.scl_pin, 1);
 
 	if (gpio_i2c_pin.reset_pin) {
-		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.reset_pin, 0, GPIO_CFG_OUTPUT,
-					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.reset_pin, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
 		gpio_set_value(gpio_i2c_pin.reset_pin, 1);
 	}
 
 	if (gpio_i2c_pin.irq_pin) {
-		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.irq_pin, 0, GPIO_CFG_INPUT,
-					GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.irq_pin, 0,
+			GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
 		i2c_board_info_data->irq =
 			MSM_GPIO_TO_INT(gpio_i2c_pin.irq_pin);
 	}

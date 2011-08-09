@@ -81,6 +81,7 @@ obj-$(CONFIG_USB_ANDROID_MTP)	+= f_mtp.o
 obj-$(CONFIG_USB_ANDROID_RNDIS)	+= f_rndis.o u_ether.o
 obj-$(CONFIG_USB_ANDROID_CDC_ECM)	+= f_ecm.o u_ether.o
 obj-$(CONFIG_LGE_USB_GADGET_DRIVER)	+= u_lgeusb.o
+obj-$(CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN)	+= f_cdrom_storage.o f_charge_only.o
 
 # MSM specific
 obj-$(CONFIG_USB_ANDROID_DIAG)	+= f_diag.o

@@ -338,8 +338,9 @@ CHECK		= sparse
 # warnings and causes the build to stop upon encountering them.
 CC		= $(srctree)/scripts/gcc-wrapper.py $(REAL_CC)
 
+LGE_CF     = -D__CHECK_ENDIAN__ -Wcast-truncate -Wno-paren-string -Wtypesign
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
-		  -Wbitwise -Wno-return-void $(CF)
+		  -Wbitwise -Wno-return-void $(CF) $(LGE_CF)
 CFLAGS_MODULE   =
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =

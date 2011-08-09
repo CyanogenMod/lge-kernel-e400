@@ -573,6 +573,10 @@ static void msm_hs_set_bps_locked(struct uart_port *uport,
 	data |= UARTDM_IPR_STALE_TIMEOUT_MSB_BMSK & (rxstale << 2);
 
 	msm_hs_write(uport, UARTDM_IPR_ADDR, data);
+	/* +s suhui.kim@lge.com, added for QCT patch of CR#296523(SR#00564335), regarding UART hang during turing on/off BT */
+    msm_hs_write(uport, UARTDM_CR_ADDR, RESET_TX);
+    msm_hs_write(uport, UARTDM_CR_ADDR, RESET_RX);
+	/* +e suhui.kim@lge.com */
 }
 
 
@@ -643,6 +647,9 @@ static void msm_hs_set_termios(struct uart_port *uport,
 
 	spin_lock_irqsave(&uport->lock, flags);
 	clk_enable(msm_uport->clk);
+	/* +s suhui.kim@lge.com, added for QCT patch of CR#296523(SR#00564335), regarding UART hang during turing on/off BT */
+	msm_hs_write(uport, UARTDM_CR_ADDR, FORCE_STALE_EVENT);
+	/* +e suhui.kim@lge.com */
 
 	/* 300 is the minimum baud support by the driver  */
 	bps = uart_get_baud_rate(uport, termios, oldtermios, 200, 4000000);

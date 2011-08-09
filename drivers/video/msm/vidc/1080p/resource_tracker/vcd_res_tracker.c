@@ -17,7 +17,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/pm_runtime.h>
 #include <mach/clk.h>
-#include <mach/msm_reqs.h>
 #include <mach/msm_memtypes.h>
 #include <linux/interrupt.h>
 #include <linux/memory_alloc.h>
@@ -61,20 +60,6 @@ static u32 res_trk_get_clk()
 						__func__);
 		goto release_vcodec_clk;
 	}
-	resource_context.vcodec_axi_a_clk = clk_get(resource_context.device,
-			"vcodec_axi_a_clk");
-	if (IS_ERR(resource_context.vcodec_axi_a_clk)) {
-		VCDRES_MSG_ERROR("%s(): vcodec_axi_a_clk get failed\n",
-						__func__);
-		resource_context.vcodec_axi_a_clk = NULL;
-	}
-	resource_context.vcodec_axi_b_clk = clk_get(resource_context.device,
-			"vcodec_axi_b_clk");
-	if (IS_ERR(resource_context.vcodec_axi_b_clk)) {
-		VCDRES_MSG_ERROR("%s(): vcodec_axi_b_clk get failed\n",
-						__func__);
-		resource_context.vcodec_axi_b_clk = NULL;
-	}
 	if (clk_set_rate(resource_context.vcodec_clk,
 		vidc_clk_table[0])) {
 		VCDRES_MSG_ERROR("%s(): set rate failed in power up\n",
@@ -83,14 +68,8 @@ static u32 res_trk_get_clk()
 	}
 	return true;
 release_vcodec_pclk:
-	if (resource_context.vcodec_axi_a_clk)
-		clk_put(resource_context.vcodec_axi_a_clk);
-	if (resource_context.vcodec_axi_b_clk)
-		clk_put(resource_context.vcodec_axi_b_clk);
 	clk_put(resource_context.vcodec_pclk);
 	resource_context.vcodec_pclk = NULL;
-	resource_context.vcodec_axi_a_clk = NULL;
-	resource_context.vcodec_axi_b_clk = NULL;
 release_vcodec_clk:
 	clk_put(resource_context.vcodec_clk);
 	resource_context.vcodec_clk = NULL;
@@ -104,12 +83,6 @@ static void res_trk_put_clk()
 		clk_put(resource_context.vcodec_clk);
 	if (resource_context.vcodec_pclk)
 		clk_put(resource_context.vcodec_pclk);
-	if (resource_context.vcodec_axi_a_clk)
-		clk_put(resource_context.vcodec_axi_a_clk);
-	if (resource_context.vcodec_axi_b_clk)
-		clk_put(resource_context.vcodec_axi_b_clk);
-	resource_context.vcodec_axi_b_clk = NULL;
-	resource_context.vcodec_axi_a_clk = NULL;
 	resource_context.vcodec_clk = NULL;
 	resource_context.vcodec_pclk = NULL;
 }
@@ -153,15 +126,6 @@ u32 res_trk_enable_clocks(void)
 			if (clk_enable(resource_context.vcodec_clk)) {
 				VCDRES_MSG_ERROR("vidc core clk Enable fail\n");
 				goto vidc_disable_pclk;
-			}
-			if (resource_context.vcodec_axi_a_clk &&
-				resource_context.vcodec_axi_b_clk) {
-				if (clk_enable(resource_context.
-					vcodec_axi_a_clk))
-					VCDRES_MSG_ERROR("a_clk Enable fail\n");
-				if (clk_enable(resource_context.
-					vcodec_axi_b_clk))
-					VCDRES_MSG_ERROR("b_clk Enable fail\n");
 			}
 
 			VCDRES_MSG_LOW("%s(): Clocks enabled!\n", __func__);
@@ -225,10 +189,6 @@ u32 res_trk_disable_clocks(void)
 			clk_disable(resource_context.vcodec_clk);
 		if (resource_context.vcodec_pclk)
 			clk_disable(resource_context.vcodec_pclk);
-		if (resource_context.vcodec_axi_a_clk)
-			clk_disable(resource_context.vcodec_axi_a_clk);
-		if (resource_context.vcodec_axi_b_clk)
-			clk_disable(resource_context.vcodec_axi_b_clk);
 		status = true;
 	}
 	mutex_unlock(&resource_context.lock);
@@ -465,23 +425,12 @@ void res_trk_init(struct device *device, u32 irq)
 			resource_context.memtype = -1;
 		}
 		resource_context.core_type = VCD_CORE_1080P;
-		if (resource_context.memtype == MEMTYPE_EBI1) {
-			resource_context.device_addr =
-			(phys_addr_t)
-			allocate_contiguous_memory_nomap(VIDC_FW_SIZE,
-					resource_context.memtype, SZ_4K);
-			if (resource_context.device_addr) {
-				resource_context.base_addr = (u8 *)
-				ioremap((unsigned long)
-				resource_context.device_addr, VIDC_FW_SIZE);
-				if (!resource_context.base_addr) {
-					free_contiguous_memory_by_paddr(
-					(unsigned long)
-					resource_context.device_addr);
-					resource_context.device_addr =
-						(phys_addr_t)NULL;
-				}
-			}
+		if (!ddl_pmem_alloc(&resource_context.firmware_addr,
+			VIDC_FW_SIZE, DDL_KILO_BYTE(128))) {
+			pr_err("%s() Firmware buffer allocation failed",
+				   __func__);
+			memset(&resource_context.firmware_addr, 0,
+				   sizeof(resource_context.firmware_addr));
 		}
 	}
 }
@@ -490,14 +439,12 @@ u32 res_trk_get_core_type(void){
 	return resource_context.core_type;
 }
 
-u32 res_trk_get_firmware_addr(struct res_trk_firmware_addr *firm_addr)
+u32 res_trk_get_firmware_addr(struct ddl_buf_addr *firm_addr)
 {
 	int status = -1;
-	if (firm_addr && resource_context.base_addr &&
-		resource_context.device_addr) {
-		firm_addr->base_addr = resource_context.base_addr;
-		firm_addr->device_addr = resource_context.device_addr;
-		firm_addr->buf_size = VIDC_FW_SIZE;
+	if (resource_context.firmware_addr.mapped_buffer) {
+		memcpy(firm_addr, &resource_context.firmware_addr,
+			   sizeof(struct ddl_buf_addr));
 		status = 0;
 	}
 	return status;

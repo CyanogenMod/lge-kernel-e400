@@ -53,15 +53,15 @@ static struct platform_device msm_batt_device = {
 };
 
 /* LED platform data */
-static struct platform_device msm_device_pmic_leds = {
-	.name = "pmic-leds",
+static struct platform_device gpio_device_leds = {
+	.name = "keypad_led",
 	.id = -1,
 };
 
 /* misc platform devices */
 static struct platform_device *m3eu_misc_devices[] __initdata = {
 	&msm_batt_device,
-	&msm_device_pmic_leds,
+	&gpio_device_leds,
 };
 
 /* main interface */

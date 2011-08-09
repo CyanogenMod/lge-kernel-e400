@@ -660,7 +660,7 @@ static int hci_fm_cancel_search_req(struct radio_hci_dev *hdev,
 {
 	__u16 opcode = 0;
 
-	opcode = hci_opcode_pack(HCI_OGF_FM_COMMON_CTRL_CMD_REQ,
+	opcode = hci_opcode_pack(HCI_OGF_FM_RECV_CTRL_CMD_REQ,
 		HCI_OCF_FM_CANCEL_SEARCH);
 	return radio_hci_send_cmd(hdev, opcode, 0, NULL);
 }
@@ -1477,12 +1477,49 @@ static inline void hci_ev_search_compl(struct radio_hci_dev *hdev,
 	iris_q_event(radio, IRIS_EVT_SEEK_COMPLETE);
 }
 
+
+static void iris_q_evt_data(struct iris_device *radio,
+					char *data, int len, int event)
+{
+	struct kfifo *data_b = &radio->data_buf[event];
+	if (kfifo_in_locked(data_b, data, len, &radio->buf_lock[event]))
+			wake_up_interruptible(&radio->event_queue);
+}
 static inline void hci_ev_srch_st_list_compl(struct radio_hci_dev *hdev,
 		struct sk_buff *skb)
 {
 	struct iris_device *radio = video_get_drvdata(video_get_dev());
-	struct hci_ev_srch_list_compl *ev = (void *) skb->data;
-	radio->srch_st_result = *ev;
+	struct hci_ev_srch_list_compl *ev ;
+	int cnt;
+	int stn_num;
+	int rel_freq;
+	int abs_freq;
+	int len;
+
+	ev = kmalloc(sizeof(*ev), GFP_ATOMIC);
+	if (!ev) {
+		FMDERR("Memory allocation failed");
+		return ;
+	}
+
+	ev->num_stations_found = skb->data[STN_NUM_OFFSET];
+	len = ev->num_stations_found * PARAMS_PER_STATION + STN_FREQ_OFFSET;
+
+	for (cnt = STN_FREQ_OFFSET, stn_num = 0;
+		(cnt < len) && (stn_num < ev->num_stations_found);
+		cnt += PARAMS_PER_STATION, stn_num++) {
+		abs_freq = *((int *)&skb->data[cnt]);
+		rel_freq = abs_freq - radio->recv_conf.band_low_limit;
+		rel_freq = (rel_freq * 20) / KHZ_TO_MHZ;
+
+		ev->rel_freq[stn_num].rel_freq_lsb = GET_LSB(rel_freq);
+		ev->rel_freq[stn_num].rel_freq_msb = GET_MSB(rel_freq);
+	}
+
+	len = ev->num_stations_found * 2 + sizeof(ev->num_stations_found);
+	iris_q_event(radio, IRIS_EVT_NEW_SRCH_LIST);
+	iris_q_evt_data(radio, (char *)ev, len, IRIS_BUF_SRCH_LIST);
+	kfree(ev);
 }
 
 static inline void hci_ev_search_next(struct radio_hci_dev *hdev,
@@ -1502,6 +1539,70 @@ static inline void hci_ev_stereo_status(struct radio_hci_dev *hdev,
 	else
 		iris_q_event(radio, IRIS_EVT_MONO);
 }
+
+
+static inline void hci_ev_program_service(struct radio_hci_dev *hdev,
+		struct sk_buff *skb)
+{
+	struct iris_device *radio = video_get_drvdata(video_get_dev());
+	int len;
+	char *data;
+
+	len = (skb->data[RDS_PS_LENGTH_OFFSET] * RDS_STRING) + RDS_OFFSET;
+	iris_q_event(radio, IRIS_EVT_NEW_PS_RDS);
+	data = kmalloc(len, GFP_ATOMIC);
+	if (!data) {
+		FMDERR("Failed to allocate memory");
+		return;
+	}
+
+	data[0] = skb->data[RDS_PS_LENGTH_OFFSET];
+	data[1] = skb->data[RDS_PTYPE];
+	data[2] = skb->data[RDS_PID_LOWER];
+	data[3] = skb->data[RDS_PID_HIGHER];
+	data[4] = 0;
+
+	memcpy(data+RDS_OFFSET, &skb->data[RDS_PS_DATA_OFFSET], len-RDS_OFFSET);
+
+	iris_q_evt_data(radio, data, len, IRIS_BUF_PS_RDS);
+
+	kfree(data);
+}
+
+
+static inline void hci_ev_radio_text(struct radio_hci_dev *hdev,
+	struct sk_buff *skb)
+{
+	struct iris_device *radio = video_get_drvdata(video_get_dev());
+	int len = 0;
+	char *data;
+
+	iris_q_event(radio, IRIS_EVT_NEW_RT_RDS);
+
+	while (skb->data[len+RDS_OFFSET] != 0x0d)
+		len++;
+	len++;
+
+	data = kmalloc(len+RDS_OFFSET, GFP_ATOMIC);
+	if (!data) {
+		FMDERR("Failed to allocate memory");
+		return;
+	}
+
+	data[0] = len;
+	data[1] = skb->data[RDS_PTYPE];
+	data[2] = skb->data[RDS_PID_LOWER];
+	data[3] = skb->data[RDS_PID_HIGHER];
+	data[4] = 0;
+
+	memcpy(data+RDS_OFFSET, &skb->data[RDS_OFFSET], len);
+	data[len+RDS_OFFSET] = 0x00;
+
+	iris_q_evt_data(radio, data, len+RDS_OFFSET, IRIS_BUF_RT_RDS);
+
+	kfree(data);
+}
+
 
 void radio_hci_event_packet(struct radio_hci_dev *hdev, struct sk_buff *skb)
 {
@@ -1525,8 +1626,13 @@ void radio_hci_event_packet(struct radio_hci_dev *hdev, struct sk_buff *skb)
 	case HCI_EV_RDS_LOCK_STATUS:
 	case HCI_EV_SERVICE_AVAILABLE:
 	case HCI_EV_RDS_RX_DATA:
+		break;
 	case HCI_EV_PROGRAM_SERVICE:
+		hci_ev_program_service(hdev, skb);
+		break;
 	case HCI_EV_RADIO_TEXT:
+		hci_ev_radio_text(hdev, skb);
+		break;
 	case HCI_EV_FM_AF_LIST:
 	case HCI_EV_TX_RDS_GRP_COMPL:
 	case HCI_EV_TX_RDS_CONT_GRP_COMPL:
@@ -1546,6 +1652,7 @@ void radio_hci_event_packet(struct radio_hci_dev *hdev, struct sk_buff *skb)
 		break;
 
 	case HCI_EV_SEARCH_LIST_COMPLETE:
+		hci_ev_srch_st_list_compl(hdev, skb);
 		break;
 
 	default:
@@ -1575,6 +1682,7 @@ static int iris_search(struct iris_device *radio, int on, int dir)
 		case RDS_SEEK_PTY:
 		case RDS_SCAN_PTY:
 		case RDS_SEEK_PI:
+			srch = srch - SEARCH_RDS_STNS_MODE_OFFSET;
 			radio->srch_rds.srch_station.srch_mode = srch;
 			radio->srch_rds.srch_station.srch_dir = dir;
 			radio->srch_rds.srch_station.scan_time =

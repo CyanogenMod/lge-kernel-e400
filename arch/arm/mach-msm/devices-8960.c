@@ -456,37 +456,6 @@ struct platform_device msm_device_vidc = {
 	},
 };
 
-#define MSM_WCNSS_PHYS	0x03000000
-#define MSM_WCNSS_SIZE	0x280000
-
-static struct resource resources_wcnss_wlan[] = {
-	{
-		.start	= RIVA_APPS_WLAN_RX_DATA_AVAIL_IRQ,
-		.end	= RIVA_APPS_WLAN_RX_DATA_AVAIL_IRQ,
-		.name	= "wcnss_wlanrx_irq",
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= RIVA_APPS_WLAN_DATA_XFER_DONE_IRQ,
-		.end	= RIVA_APPS_WLAN_DATA_XFER_DONE_IRQ,
-		.name	= "wcnss_wlantx_irq",
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= MSM_WCNSS_PHYS,
-		.end	= MSM_WCNSS_PHYS + MSM_WCNSS_SIZE - 1,
-		.name	= "wcnss_mmio",
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-struct platform_device msm_device_wcnss_wlan = {
-	.name		= "wcnss_wlan",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(resources_wcnss_wlan),
-	.resource	= resources_wcnss_wlan,
-};
-
 #define MSM_SDC1_BASE         0x12400000
 #define MSM_SDC1_DML_BASE     (MSM_SDC1_BASE + 0x800)
 #define MSM_SDC1_BAM_BASE     (MSM_SDC1_BASE + 0x2000)
@@ -1204,12 +1173,23 @@ static void __init msm_register_device(struct platform_device *pdev, void *data)
 			__func__, ret);
 }
 
+#ifdef CONFIG_MSM_BUS_SCALING
+static struct platform_device msm_dtv_device = {
+	.name   = "dtv",
+	.id     = 0,
+};
+#endif
+
 void __init msm_fb_register_device(char *name, void *data)
 {
 	if (!strncmp(name, "mdp", 3))
 		msm_register_device(&msm_mdp_device, data);
 	else if (!strncmp(name, "mipi_dsi", 8))
 		msm_register_device(&msm_mipi_dsi1_device, data);
+#ifdef CONFIG_MSM_BUS_SCALING
+	else if (!strncmp(name, "dtv", 3))
+		msm_register_device(&msm_dtv_device, data);
+#endif
 	else
 		printk(KERN_ERR "%s: unknown device! %s\n", __func__, name);
 }
@@ -1738,9 +1718,7 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 		.num_levels = 3,
 		.set_grp_async = NULL,
 		.idle_timeout = HZ/5,
-#ifdef CONFIG_MSM_BUS_SCALING
 		.nap_allowed = true,
-#endif
 	},
 	.clk = {
 		.name = {
@@ -1798,9 +1776,7 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 		.num_levels = 2,
 		.set_grp_async = NULL,
 		.idle_timeout = HZ/10,
-#ifdef CONFIG_MSM_BUS_SCALING
 		.nap_allowed = true,
-#endif
 	},
 	.clk = {
 		.name = {
@@ -1855,9 +1831,7 @@ static struct kgsl_device_platform_data kgsl_2d1_pdata = {
 		.num_levels = 2,
 		.set_grp_async = NULL,
 		.idle_timeout = HZ/10,
-#ifdef CONFIG_MSM_BUS_SCALING
 		.nap_allowed = true,
-#endif
 	},
 	.clk = {
 		.name = {
@@ -1926,7 +1900,7 @@ struct msm_rpm_map_data rpm_map_data[] __initdata = {
 	MSM_RPM_MAP(SYS_FABRIC_CFG_HALT_0, SYS_FABRIC_CFG_HALT, 2),
 	MSM_RPM_MAP(SYS_FABRIC_CFG_CLKMOD_0, SYS_FABRIC_CFG_CLKMOD, 3),
 	MSM_RPM_MAP(SYS_FABRIC_CFG_IOCTL, SYS_FABRIC_CFG_IOCTL, 1),
-	MSM_RPM_MAP(SYSTEM_FABRIC_ARB_0, SYSTEM_FABRIC_ARB, 27),
+	MSM_RPM_MAP(SYSTEM_FABRIC_ARB_0, SYSTEM_FABRIC_ARB, 29),
 
 	MSM_RPM_MAP(MMSS_FABRIC_CFG_HALT_0, MMSS_FABRIC_CFG_HALT, 2),
 	MSM_RPM_MAP(MMSS_FABRIC_CFG_CLKMOD_0, MMSS_FABRIC_CFG_CLKMOD, 3),

@@ -153,6 +153,25 @@
 
 
 /*-------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------*/
+
+/* SCSI device types */
+#define TYPE_DISK	0x00
+#define TYPE_CDROM	0x05
+
+/* USB protocol value = the transport method */
+#define USB_PR_CBI	0x00		/* Control/Bulk/Interrupt */
+#define USB_PR_CB	0x01		/* Control/Bulk w/o interrupt */
+#define USB_PR_BULK	0x50		/* Bulk-only */
+
+/* USB subclass value = the protocol encapsulation */
+#define USB_SC_RBC	0x01		/* Reduced Block Commands (flash) */
+#define USB_SC_8020	0x02		/* SFF-8020i, MMC-2, ATAPI (CD-ROM) */
+#define USB_SC_QIC	0x03		/* QIC-157 (tape) */
+#define USB_SC_UFI	0x04		/* UFI (floppy) */
+#define USB_SC_8070	0x05		/* SFF-8070i (removable) */
+#define USB_SC_SCSI	0x06		/* Transparent SCSI */
+
 
 /* Bulk-only data structures */
 
@@ -204,6 +223,34 @@ struct interrupt_data {
 
 /* Length of a SCSI Command Data Block */
 #define MAX_COMMAND_SIZE	16
+
+/* SCSI commands that we recognize */
+#define SC_FORMAT_UNIT			0x04
+#define SC_INQUIRY			0x12
+#define SC_MODE_SELECT_6		0x15
+#define SC_MODE_SELECT_10		0x55
+#define SC_MODE_SENSE_6			0x1a
+#define SC_MODE_SENSE_10		0x5a
+#define SC_PREVENT_ALLOW_MEDIUM_REMOVAL	0x1e
+#define SC_READ_6			0x08
+#define SC_READ_10			0x28
+#define SC_READ_12			0xa8
+#define SC_READ_CAPACITY		0x25
+#define SC_READ_FORMAT_CAPACITIES	0x23
+#define SC_READ_HEADER			0x44
+#define SC_READ_TOC			0x43
+#define SC_RELEASE			0x17
+#define SC_REQUEST_SENSE		0x03
+#define SC_RESERVE			0x16
+#define SC_SEND_DIAGNOSTIC		0x1d
+#define SC_START_STOP_UNIT		0x1b
+#define SC_SYNCHRONIZE_CACHE		0x35
+#define SC_TEST_UNIT_READY		0x00
+#define SC_VERIFY			0x2f
+#define SC_WRITE_6			0x0a
+#define SC_WRITE_10			0x2a
+#define SC_WRITE_12			0xaa
+
 
 /* SCSI Sense Key/Additional Sense Code/ASC Qualifier values */
 #define SS_NO_SENSE				0

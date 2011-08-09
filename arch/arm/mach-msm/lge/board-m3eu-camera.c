@@ -26,10 +26,10 @@ static uint32_t camera_on_gpio_table[] = {
 
 static void msm_camera_vreg_config(int vreg_en)
 {
-	static int gpio_initialzed = 0;
-	static struct regulator* ldo2 = NULL;
-	static struct regulator* ldo3 = NULL;
-	static struct regulator* ldo4 = NULL;
+	static int gpio_initialzed;
+	static struct regulator *ldo2;
+	static struct regulator *ldo3;
+	static struct regulator *ldo4;
 	int rc;
 
 	if (!gpio_initialzed) {
@@ -44,65 +44,62 @@ static void msm_camera_vreg_config(int vreg_en)
 
 		/* TODO : error checking */
 		ldo4 = regulator_get(NULL, "RT8053_LDO4");
-		if (ldo4 == NULL) {
+		if (ldo4 == NULL)
 			pr_err("%s: regulator_get(ldo4) failed\n", __func__);
-		}
 
 		ldo2 = regulator_get(NULL, "RT8053_LDO2");
-		if (ldo2 == NULL) {
+		if (ldo2 == NULL)
 			pr_err("%s: regulator_get(ldo2) failed\n", __func__);
-		}
 
 		ldo3 = regulator_get(NULL, "RT8053_LDO3");
-		if (ldo3 == NULL) {
+		if (ldo3 == NULL)
 			pr_err("%s: regulator_get(ldo3) failed\n", __func__);
-		}
 
 		rc = regulator_set_voltage(ldo4, 1800000, 1800000);
-		if (rc < 0) {
-			pr_err("%s: regulator_set_voltage(ldo4) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_set_voltage(ldo4) failed\n",
+				__func__);
 		rc = regulator_enable(ldo4);
-		if (rc < 0) {
-			pr_err("%s: regulator_enable(ldo4) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_enable(ldo4) failed\n",
+				__func__);
 
 		rc = regulator_set_voltage(ldo2, 2800000, 2800000);
-		if (rc < 0) {
-			pr_err("%s: regulator_set_voltage(ldo2) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_set_voltage(ldo2) failed\n",
+				__func__);
 		rc = regulator_enable(ldo2);
-		if (rc < 0) {
-			pr_err("%s: regulator_enable(ldo2) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_enable(ldo2) failed\n",
+				__func__);
 
 		rc = regulator_set_voltage(ldo3, 2800000, 2800000);
-		if (rc < 0) {
-			pr_err("%s: regulator_set_voltage(ldo3) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_set_voltage(ldo3) failed\n",
+				__func__);
 		rc = regulator_enable(ldo3);
-		if (rc < 0) {
-			pr_err("%s: regulator_enable(ldo3) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_enable(ldo3) failed\n",
+				__func__);
 	} else {
 		gpio_set_value(GPIO_CAM_RESET, 0);
 
 		rc = regulator_disable(ldo3);
-		if (rc < 0) {
-			pr_err("%s: regulator_disable(ldo3) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_disable(ldo3) failed\n",
+				__func__);
 		regulator_put(ldo3);
 
 		rc = regulator_disable(ldo2);
-		if (rc < 0) {
-			pr_err("%s: regulator_disble(ldo2) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_disble(ldo2) failed\n",
+				__func__);
 		regulator_put(ldo2);
 
 		rc = regulator_disable(ldo4);
-		if (rc < 0) {
-			pr_err("%s: regulator_disable(ldo4) failed\n", __func__);
-		}
+		if (rc < 0)
+			pr_err("%s: regulator_disable(ldo4) failed\n",
+				__func__);
 		regulator_put(ldo4);
 	}
 
@@ -178,7 +175,7 @@ struct msm_camera_device_platform_data msm_camera_device_data_rear = {
 	.ioext.appphy = MSM_CLK_CTL_PHYS,
 	.ioext.appsz  = MSM_CLK_CTL_SIZE,
 	.camera_power_on   = camera_power_on_rear,
-	.camera_power_off  = camera_power_off_rear,	
+	.camera_power_off  = camera_power_off_rear,
 };
 
 #ifdef CONFIG_MT9P017
@@ -209,10 +206,10 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
 };
 
 static struct platform_device msm_camera_sensor_mt9p017 = {
-        .name      = "msm_camera_mt9p017",
-        .dev       = {
-                .platform_data = &msm_camera_sensor_mt9p017_data,
-        },
+	.name = "msm_camera_mt9p017",
+	.dev  = {
+		.platform_data = &msm_camera_sensor_mt9p017_data,
+	},
 };
 #endif
 
@@ -260,7 +257,7 @@ static struct i2c_board_info i2c_camera_flash_devices[] = {
 
 static struct platform_device *m3eu_camera_devices[] __initdata = {
 #ifdef CONFIG_MT9P017
-    &msm_camera_sensor_mt9p017,
+	&msm_camera_sensor_mt9p017,
 #endif
 };
 
@@ -282,6 +279,7 @@ void __init lge_add_camera_devices(void)
 		i2c_camera_devices,
 		ARRAY_SIZE(i2c_camera_devices));
 #endif
-	platform_add_devices(m3eu_camera_devices, ARRAY_SIZE(m3eu_camera_devices));
+	platform_add_devices(m3eu_camera_devices,
+		ARRAY_SIZE(m3eu_camera_devices));
 	lge_add_gpio_i2c_device(m3eu_init_i2c_camera);
 }

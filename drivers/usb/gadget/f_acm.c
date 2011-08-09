@@ -788,14 +788,6 @@ static inline bool can_support_cdc(struct usb_configuration *c)
 	return true;
 }
 
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-/* LGE_CHANGE
- * To bind LG AndroidNet, another ACM instance
- * named "acm2" is used.
- * 2011-01-12, hyunhui.park@lge.com
- */
-static int acm_count;
-#endif
 
 /**
  * acm_bind_config - add a CDC ACM function to a configuration
@@ -871,22 +863,7 @@ int acm_bind_config(struct usb_configuration *c, u8 port_num)
 	acm->port.disconnect = acm_disconnect;
 	acm->port.send_break = acm_send_break;
 
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-		/* LGE_CHANGE
-		 * To bind LG AndroidNet, another ACM instance
-		 * named "acm2" is used.
-		 * 2011-01-12, hyunhui.park@lge.com
-		 */
-		if (!acm_count)
-			acm->port.func.name = "acm";
-		else
-			acm->port.func.name = "acm2";
-	
-		acm_count++;
-	
-#else /* below is original */
 		acm->port.func.name = "acm";
-#endif
 	acm->port.func.strings = acm_strings;
 	/* descriptors are per-instance copies */
 	acm->port.func.bind = acm_bind;
@@ -960,35 +937,12 @@ static struct android_usb_function acm_function = {
 	.bind_config = acm_function_bind_config,
 };
 
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-/* LGE_CHANGE
- * Add ACM function instance named "acm2".
- * 2011-01-12, hyunhui.park@lge.com
- */
-int acm2_function_bind_config(struct usb_configuration *c)
-{
-	int ret = acm_bind_config(c, 0);
-	return ret;
-}
-
-static struct android_usb_function acm2_function = {
-	.name = "acm2",
-	.bind_config = acm2_function_bind_config,
-};
-#endif
 
 static int __init init(void)
 {
 	printk(KERN_INFO "f_acm init\n");
 	platform_driver_probe(&acm_platform_driver, acm_probe);
 	android_register_function(&acm_function);
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-	/* LGE_CHANGE
-	 * Add ACM function instance named "acm2".
-	 * 2011-01-12, hyunhui.park@lge.com
-	 */
-	android_register_function(&acm2_function);
-#endif
 	return 0;
 }
 module_init(init);
