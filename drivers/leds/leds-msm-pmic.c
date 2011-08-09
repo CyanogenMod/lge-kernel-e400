@@ -66,10 +66,11 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	/* LED power(MPP pin) use
 	   - EU	  :  MPP3, MPP4
 	   - MPCS :  MPP 4
+	   - MPCS RevB:  MPP 3	   
 	*/
-	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_4,brightness,(enum mpp_i_sink_switch)on_off);
-#if defined (CONFIG_MACH_MSM7X27A_M3EU)
 	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3,brightness,(enum mpp_i_sink_switch)on_off);
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_4,brightness,(enum mpp_i_sink_switch)on_off);
 #endif
 }
 
