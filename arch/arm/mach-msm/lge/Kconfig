@@ -103,6 +103,23 @@ config LGE_HANDLE_PANIC
 	help
 	 LGE crash handler
 
+config LGE_BDI_TIMER_BUG_PATCH
+	bool "LGE bdi timer bug patch"
+	default n 
+	depends on MACH_LGE
+	help
+	  This patch is added for preventing from kernel panic which is
+	  generated during executing bdi_writeback_thread(). Root cause of
+	  this kernel panic starts from the synchronization problem between
+	  kernel threads. When mmc card is once removed, kernel try to 
+	  unregister data structures of bdi and delete bdi timer in kthread
+	  context. But, if bdi writeback kthread is already in execution,
+	  there is a probablity that that kthread trys to delete bdi timer
+	  which has been deleted already. In that case, 
+	  "del_timer(&wb->wakeup_timer)" code can generate kernel panic.
+	  So, I add the codes which checks whether bdi is unregitered or not 
+	  before removing timer.
+
 endmenu
  
 endmenu

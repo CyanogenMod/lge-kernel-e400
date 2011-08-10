@@ -307,7 +307,8 @@ struct mt9p017_i2c_reg_conf const lensrolloff_tbl[] = {
                 {0x37C2, 0x1FE9},             //  P_RD_Q5                                                                                                                                                                                                                       
                 {0x37C4, 0x3648},             //  P_BL_Q5                                                                                                                                                                                                                        
                 {0x37C6, 0x52A6},            //  P_GB_Q5                                                                                                                                                                                                                                      
-                {0x3780, 0x8000}              //  Poly_sc_enable
+                {0x3780, 0x0000}              //  Poly_sc_enable
+//                {0x3780, 0x8000}              //  Poly_sc_enable
 };
 
 

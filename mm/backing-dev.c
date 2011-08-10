@@ -621,6 +621,13 @@ void bdi_unregister(struct backing_dev_info *bdi)
 		bdi_debug_unregister(bdi);
 		device_unregister(bdi->dev);
 		bdi->dev = NULL;
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+		/* FIXME : for getting debugging information
+		 * this should be removed after debugging.
+		 * 2011-08-01, cleaneye.kim@lge.com
+		 */
+		printk(KERN_INFO"%s: current jiffies %lu\n", __func__, jiffies);
+#endif
 	}
 }
 EXPORT_SYMBOL(bdi_unregister);

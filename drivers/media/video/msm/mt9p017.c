@@ -141,7 +141,7 @@ static uint8_t mt9p017_delay_msecs_stdby = 20;
 static uint16_t mt9p017_delay_msecs_stream = 60;
 
 //QCTK_20110111_LSC & DPC Flag
-static int lc_option = 1;
+static int lc_option = 0;
 static int nr_option = 1; 
 
 
@@ -332,8 +332,7 @@ static int32_t mt9p017_lens_shading_enable(uint8_t is_enable)
 	if (rc < 0)
 		return rc;
 
-	rc = mt9p017_i2c_write_w_sensor(REG_LENS_SHADING,
-			((uint16_t) is_enable) << 15);
+	rc = mt9p017_i2c_write_w_sensor(REG_LENS_SHADING, 0x0000);
 	if (rc < 0)
 		return rc;
 
@@ -1214,8 +1213,7 @@ int mt9p017_sensor_config(void __user *argp)
 				cdata.cfg.focus.steps);
 			break;
 		case CFG_SET_LENS_SHADING:
-			rc =
-				mt9p017_lens_shading_enable(cdata.cfg.lens_shading);
+			rc = mt9p017_lens_shading_enable(cdata.cfg.lens_shading);
 			break;
 		case CFG_GET_AF_MAX_STEPS:
 			cdata.max_steps = MT9P017_STEPS_NEAR_TO_CLOSEST_INF;

@@ -12,7 +12,6 @@
 #include <mach/board_lge.h>
 #include <mach/vreg.h>
 
-
 /* backlight device */
 static struct gpio_i2c_pin bl_i2c_pin = {
 	.sda_pin = 123,
@@ -42,7 +41,11 @@ static struct lge_backlight_platform_data lm3530bl_data = {
 /* For 2.8" Display */
 static struct lge_backlight_platform_data aat2870bl_data = {
 	.gpio = 124,
-	.version = 2862,
+#ifdef CONFIG_FB_MSM_MIPI_DSI_MAGNACHIP
+	.version = 2870,  /* for WVGA panel */
+#else
+	.version = 2862,  /* for QVGA panel */
+#endif
 };
 #endif
 
@@ -64,7 +67,7 @@ static struct i2c_board_info bl_i2c_bdinfo[] = {
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
-	.gpio = 97,						//LCD_VSYNC_O
+	.gpio = 97,  /* LCD_VSYNC */
 	.mdp_rev = MDP_REV_303,
 };
 
@@ -73,7 +76,11 @@ static struct msm_panel_common_pdata mdp_pdata = {
 
 #ifdef CONFIG_FB_MSM_MIPI_DSI
 static struct platform_device mipi_dsi_r61529_panel_device = {
-	.name = "mipi_r61529",
+#ifdef CONFIG_FB_MSM_MIPI_DSI_MAGNACHIP
+	.name = "mipi_magnachip",  /* for WVGA panel */
+#else
+	.name = "mipi_r61529",  /* for HVGA panel */
+#endif
 	.id = 0,
 };
 
@@ -85,14 +92,6 @@ enum {
 static int msm_fb_get_lane_config(void)
 {
 	int rc = DSI_TWO_LANES;
-#if 0
-	if (cpu_is_msm7x25a()) {
-		rc = DSI_SINGLE_LANE;
-		pr_info("DSI Single Lane\n");
-	} else {
-		pr_info("DSI Two Lanes\n");
-	}
-#endif
 	return rc;
 }
 
@@ -102,28 +101,28 @@ static int mipi_dsi_panel_power(int on)
 {
 	int rc = 0;
 	struct vreg *vreg_mipi_dsi_v28, *vreg_mipi_dsi_v18;
-	
+
 	if (!dsi_gpio_initialized) {
 		rc = gpio_request(GPIO_LCD_IFMODE1, "MIPI I/F");
-		if (rc) {
-			pr_err("%s: gpio_request GPIO_LCD_IFMODE1 failed\n", __func__);
-		}
+		if (rc)
+			pr_err("%s: gpio_request failed\n", __func__);
 
-		// Resetting LCD Panel
+
+		/* Resetting LCD Panel */
 		rc = gpio_request(GPIO_LCD_RESET, "lcd_reset");
-		if (rc) {
-			pr_err("%s: gpio_request GPIO_LCD_RESET failed\n", __func__);
-		}
+		if (rc)
+			pr_err("%s: gpio_request CD_RESET failed\n", __func__);
+
 
 		dsi_gpio_initialized = 1;
 	}
- 
+
 	vreg_mipi_dsi_v28 = vreg_get(0, "emmc");
 	if (IS_ERR(vreg_mipi_dsi_v28)) {
 		pr_err("%s: vreg_get for emmc failed\n", __func__);
 		return PTR_ERR(vreg_mipi_dsi_v28);
 	}
-	
+
 	vreg_mipi_dsi_v18 = vreg_get(0, "wlan_tcx0");
 	if (IS_ERR(vreg_mipi_dsi_v18)) {
 		pr_err("%s: vreg_get for wlan_tcx0 failed\n", __func__);
@@ -132,54 +131,56 @@ static int mipi_dsi_panel_power(int on)
 	}
 
 #ifdef CONFIG_FB_MSM_MIPI_R61529_VIDEO_HVGA_PT
-	gpio_direction_output(GPIO_LCD_IFMODE1, 1); /* IFMODE1=1 setting is DSI Video mode */
+	/* IFMODE1=1 setting is DSI Video mode */
+	gpio_direction_output(GPIO_LCD_IFMODE1, 1);
 #else
-	gpio_direction_output(GPIO_LCD_IFMODE1, 0); /* IFMODE1=0 setting is DSI CMD mode */
+	/* IFMODE1=0 setting is DSI CMD mode */
+	gpio_direction_output(GPIO_LCD_IFMODE1, 0);
 #endif /* CONFIG_FB_MSM_MIPI_R61529_VIDEO_HVGA_PT */
 
 	if (on) {
-		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800); 
+		rc = vreg_set_level(vreg_mipi_dsi_v28, 2800);
 		if (rc) {
-			pr_err("%s: vreg_set_level failed for mipi_dsi_v28\n", __func__);
+			pr_err("%s: vreg_set_level failed v28\n", __func__);
 			goto vreg_put_dsi_v18;
 		}
-		rc = vreg_enable(vreg_mipi_dsi_v28); 
+		rc = vreg_enable(vreg_mipi_dsi_v28);
 		if (rc) {
-			pr_err("%s: vreg_enable failed for mipi_dsi_v28\n", __func__);
+			pr_err("%s: vreg_enable failed v28\n", __func__);
 			goto vreg_put_dsi_v18;
 		}
 
-		rc = vreg_set_level(vreg_mipi_dsi_v18, 1800); 
+		rc = vreg_set_level(vreg_mipi_dsi_v18, 1800);
 		if (rc) {
-			pr_err("%s: vreg_set_level failed for mipi_dsi_v18\n", __func__);
+			pr_err("%s: vreg_set_level failed v18\n", __func__);
 			goto vreg_put_dsi_v18;
 		}
 		rc = vreg_enable(vreg_mipi_dsi_v18);
 		if (rc) {
-			pr_err("%s: vreg_enable failed for mipi_dsi_v18\n", __func__);
+			pr_err("%s: vreg_enable failed v18\n", __func__);
 			goto vreg_put_dsi_v18;
 		}
 
 		rc = gpio_direction_output(GPIO_LCD_RESET, 1);
 		if (rc) {
-			pr_err("%s: gpio_direction_output failed for lcd_reset\n", __func__);
+			pr_err("%s: gpio_direction_output failed\n", __func__);
 			goto vreg_put_dsi_v18;
 		}
-		
-		mdelay(10);
+
+		msleep(20);
 		gpio_set_value(GPIO_LCD_RESET, 0);
-		mdelay(10);
+		msleep(20);
 		gpio_set_value(GPIO_LCD_RESET, 1);
-		mdelay(10);		
+		msleep(20);
 	} else {
 		rc = vreg_disable(vreg_mipi_dsi_v28);
 		if (rc) {
-			pr_err("%s: vreg_disable failed for mipi_dsi_v28\n", __func__);
+			pr_err("%s: vreg_disable failed v28\n", __func__);
 			goto vreg_put_dsi_v18;
 		}
 		rc = vreg_disable(vreg_mipi_dsi_v18);
 		if (rc) {
-			pr_err("%s: vreg_disable failed for mipi_dsi_v18\n", __func__);
+			pr_err("%s: vreg_disable failed v18\n", __func__);
 			goto vreg_put_dsi_v18;
 		}
 	}
@@ -188,7 +189,7 @@ vreg_put_dsi_v18:
 	vreg_put(vreg_mipi_dsi_v18);
 vreg_put_dsi_v28:
 	vreg_put(vreg_mipi_dsi_v28);
-	
+
 	return rc;
 }
 
@@ -242,11 +243,12 @@ static int ebi2_hdk_power_save(int on)
 		MSM_FB_LCDC_VREG_OP(msm_fb_vreg[0], enable, 1800);
 		MSM_FB_LCDC_VREG_OP(msm_fb_vreg[1], enable, 2800);
 	} else{
-		/* LGE_CHANGE, [hyuncheol0.kim@lge.com] , 2011-02-10, for current consumption */
-		//MSM_FB_LCDC_VREG_OP(msm_fb_vreg[0], disable, 0);
+		/* LGE_CHANGE, [hyuncheol0.kim@lge.com]
+		 * 2011-02-10, for current consumption */
+		/* MSM_FB_LCDC_VREG_OP(msm_fb_vreg[0], disable, 0); */
 		MSM_FB_LCDC_VREG_OP(msm_fb_vreg[1], disable, 0);
 	}
-	
+
 	return 0;
 }
 
@@ -291,10 +293,12 @@ static struct platform_device *hdk_panel_devices[] __initdata = {
 void __init hdk_init_i2c_backlight(int bus_num)
 {
 	bl_i2c_device.id = bus_num;
-	
+
 	/* workaround for HDK rev_a no pullup */
-	lge_init_gpio_i2c_pin_pullup(&bl_i2c_pdata, bl_i2c_pin, &bl_i2c_bdinfo[0]);
-	i2c_register_board_info(bus_num, bl_i2c_bdinfo, ARRAY_SIZE(bl_i2c_bdinfo));
+	lge_init_gpio_i2c_pin_pullup(&bl_i2c_pdata, bl_i2c_pin,
+		&bl_i2c_bdinfo[0]);
+	i2c_register_board_info(bus_num, bl_i2c_bdinfo,
+		ARRAY_SIZE(bl_i2c_bdinfo));
 	platform_device_register(&bl_i2c_device);
 }
 
@@ -304,4 +308,3 @@ void __init lge_add_lcd_devices(void)
 	msm_fb_add_devices();
 	lge_add_gpio_i2c_device(hdk_init_i2c_backlight);
 }
-

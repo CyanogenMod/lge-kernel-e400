@@ -73,6 +73,7 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_RENESAS) += mipi_renesas.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_R61529) += mipi_r61529.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_SIMULATOR) += mipi_simulator.o
+obj-$(CONFIG_FB_MSM_MIPI_DSI_MAGNACHIP) += mipi_magnachip.o
 
 # TVEnc
 obj-$(CONFIG_FB_MSM_TVOUT) += tvenc.o
@@ -121,6 +122,7 @@ obj-$(CONFIG_FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT) += mipi_renesas_cmd_fwvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_R61529_VIDEO_HVGA_PT) += mipi_r61529_video_hvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_R61529_CMD_HVGA_PT) += mipi_r61529_cmd_hvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_SIMULATOR_VIDEO) += mipi_simulator_video.o
+obj-$(CONFIG_FB_MSM_MIPI_MAGNACHIP_CMD_WVGA_PT) += mipi_magnachip_cmd_wvga_pt.o
 endif
 
 
