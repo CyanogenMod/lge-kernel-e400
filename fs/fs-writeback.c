@@ -899,8 +899,8 @@ int bdi_writeback_thread(void *data)
 		 * before removing timer.
 		 * 2011-08-11, cleaneye.kim@lge.com
 		 */
-		 if (!kthread_sould_top() || !bdi->dev)
-		 continue
+		 if (!kthread_should_stop() || !bdi->dev)
+			 continue;
 #endif
 		/*
 		 * Remove own delayed wake-up timer, since we are already awake
