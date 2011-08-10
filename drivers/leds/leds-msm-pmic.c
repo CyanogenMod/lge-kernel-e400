@@ -18,6 +18,7 @@
 #include <linux/leds.h>
 
 #include <mach/pmic.h>
+#include <mach/board_lge.h>
 
 #define MAX_KEYPAD_BL_LEVEL	16
 
