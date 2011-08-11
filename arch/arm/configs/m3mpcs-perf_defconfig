@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38.6 Kernel Configuration
-# Wed Aug 10 16:31:39 2011
+# Thu Aug 11 14:56:38 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -980,7 +980,21 @@ CONFIG_MTD_NAND_IDS=y
 # CONFIG_MTD_LPDDR is not set
 # CONFIG_MTD_UBI is not set
 # CONFIG_PARPORT is not set
-# CONFIG_BLK_DEV is not set
+CONFIG_BLK_DEV=y
+# CONFIG_BLK_DEV_COW_COMMON is not set
+CONFIG_BLK_DEV_LOOP=y
+# CONFIG_BLK_DEV_CRYPTOLOOP is not set
+
+#
+# DRBD disabled because PROC_FS, INET or CONNECTOR not selected
+#
+# CONFIG_BLK_DEV_NBD is not set
+# CONFIG_BLK_DEV_UB is not set
+# CONFIG_BLK_DEV_RAM is not set
+# CONFIG_CDROM_PKTCDVD is not set
+# CONFIG_ATA_OVER_ETH is not set
+# CONFIG_MG_DISK is not set
+# CONFIG_BLK_DEV_RBD is not set
 CONFIG_MISC_DEVICES=y
 # CONFIG_AD525X_DPOT is not set
 CONFIG_ANDROID_PMEM=y
