@@ -20,7 +20,7 @@
 #include <mach/board_lge.h>
 #include "../proc_comm.h"
 
-#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
+#if 1 //#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
 unsigned lge_get_pif_info(void)
 {
 	int err;

@@ -28,6 +28,9 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#if 1 //#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
+#include <linux/delay.h>
+#endif
 
 #include <asm/atomic.h>
 
@@ -1577,7 +1580,7 @@ static int msm_batt_cb_func(struct msm_rpc_client *client,
 #endif  /* CONFIG_BATTERY_MSM_FAKE */
 
 //LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
-#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
+#if 1 //#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
 static unsigned pif_value;
 //static unsigned low_power_mode;
 
@@ -1803,6 +1806,20 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
 #endif  /* CONFIG_BATTERY_MSM_FAKE */
 
 //LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+#if 1 //#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
+	rc = sysfs_create_group(&pdev->dev.kobj, &dev_attr_grp);
+	if(rc < 0) {
+		dev_err(&pdev->dev,
+			"%s: msm_batt_cleanup  failed rc=%d\n", __func__, rc);
+	} else {
+		pif_value = lge_get_pif_info();
+		//mdelay(10);
+		//low_power_mode = lge_get_lpm_info();
+	}
+
+	dev_info(&pdev->dev, "%s : Using PIF ZIG (%d)\n", __func__, pif_value);
+#endif
+
 #ifdef CONFIG_MACH_LGE
 		rc = sysfs_create_group(&pdev->dev.kobj, &dev_attr_grp_lge_batt_info);
 		if(rc < 0) {
@@ -1820,6 +1837,9 @@ static int __devexit msm_batt_remove(struct platform_device *pdev)
 	int rc;
 
 //LGE_CHANGE_S, [hyo.park@lge.com] , 2011-07-28
+#if 1 //#if defined(CONFIG_LGE_DETECT_PIF_PATCH)
+	sysfs_remove_group(&pdev->dev.kobj,&dev_attr_grp);
+#endif
 #ifdef CONFIG_MACH_LGE
 	sysfs_remove_group(&pdev->dev.kobj,&dev_attr_grp_lge_batt_info);
 #endif
