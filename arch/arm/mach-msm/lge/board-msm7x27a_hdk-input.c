@@ -12,6 +12,9 @@
 #ifdef CONFIG_TOUCHSCREEN_ATMEL_MAXTOUCH
 #include <linux/atmel_maxtouch.h>
 #endif
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+#include <linux/synaptics_i2c_rmi4.h>
+#endif
 
 #include "devices-msm7x2xa.h"
 #include "board-msm7x27a_hdk.h"
@@ -344,6 +347,49 @@ static struct touch_platform_data ts_pdata = {
 	.hw_i2c     = 0,
 };
 
+#elif defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)
+
+static int synaptics_t1320_power_on(int onoff, bool log_en)
+{
+	int ret = 0;
+
+	ret = gpio_request(TS_GPIO_LDO_EN, "TOUCH_LDO_EN");
+	if (ret) {
+		pr_err("Requesting TOUCH_LDO_EN GPIO failed!\n");
+		goto err;
+	}
+
+	ret = gpio_direction_output(TS_GPIO_LDO_EN, onoff);
+	if (ret) {
+		pr_err("Setting TOUCH_LDO_EN GPIO direction failed!\n");
+		gpio_free(TS_GPIO_LDO_EN);
+	}
+
+err:
+	return 0;
+}
+
+static struct synaptics_ts_platform_data synaptics_t1320_ts_platform_data = {
+	.use_irq             = 1,
+	.irqflags            = IRQF_TRIGGER_FALLING,
+	.i2c_sda_gpio        = TS_GPIO_I2C_SDA,
+	.i2c_scl_gpio        = TS_GPIO_I2C_SCL,
+	.i2c_int_gpio        = TS_GPIO_IRQ,
+	.power               = synaptics_t1320_power_on,
+	.ic_booting_delay    = 400,       /* ms */
+	.report_period       = 12500000,  /* 12.5 msec */
+	.num_of_finger       = 10,
+	.num_of_button       = 4,
+	.button[0]           = KEY_MENU,
+	.button[1]           = KEY_HOME,
+	.button[2]           = KEY_BACK,
+	.button[3]           = KEY_SEARCH,
+	.x_max               = 1036,  /* for 4.0" */
+	.y_max               = 1728,  /* for 4.0" */
+	.fw_ver              = 1,
+	.palm_threshold      = 0,
+	.delta_pos_threshold = 0,
+};
 #endif
 
 static struct i2c_board_info ts_i2c_bdinfo[] = {
@@ -358,6 +404,12 @@ static struct i2c_board_info ts_i2c_bdinfo[] = {
 		I2C_BOARD_INFO("qt602240_ts", 0x4A),
 		.type = "qt602240_ts",
 		.platform_data = &ts_pdata,
+	},
+#elif defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)
+	{
+		I2C_BOARD_INFO("synaptics_ts", 0x20),
+		.platform_data = &synaptics_t1320_ts_platform_data,
+		.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
 	},
 #endif
 };
