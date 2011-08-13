@@ -92,5 +92,8 @@ enum {
 #define GPIO_FLASH_I2C_SDA  27
 #define FLASH_I2C_ADDRESS   0x53
 
+/* fm radio */
+extern void snd_fm_vol_mute(void);
+
 #endif
 

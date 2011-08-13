@@ -30,6 +30,12 @@
 #include <mach/msm_rpcrouter.h>
 #include <mach/debug_mm.h>
 
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+#include "../lge/board-m3eu.h"
+
+static int fm_enable = 0;
+#endif
+
 struct snd_ctxt {
 	struct mutex lock;
 	int opened;
@@ -258,6 +264,12 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		MM_INFO("snd_set_device %d %d %d\n", dev.device,
 				dev.ear_mute, dev.mic_mute);
 
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+		if (dev.device == 10 || dev.device == 11)
+			fm_enable = 1;
+		else
+			fm_enable = 0;
+#endif
 		rc = msm_rpc_call(snd->ept,
 			SND_SET_DEVICE_PROC,
 			&dmsg, sizeof(dmsg), 5 * HZ);
@@ -719,11 +731,41 @@ static long snd_dev_enable(const char *arg)
 	MM_INFO("snd_set_device %d %d %d\n", dev.device, dev.ear_mute,
 			dev.mic_mute);
 
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+	if (dev.device == 10 || dev.device == 11)
+		fm_enable = 1;
+	else
+		fm_enable = 0;
+#endif
 	rc = msm_rpc_call(snd_sys->ept,
 		SND_SET_DEVICE_PROC,
 		&dmsg, sizeof(dmsg), 5 * HZ);
 	return rc;
 }
+
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+void snd_fm_vol_mute()
+{
+	struct snd_sys_ctxt *snd_sys = &the_snd_sys;
+	int rc = 0;
+
+	rc = snd_sys_open();
+	if (rc)
+		return;
+
+	mutex_lock(&snd_sys->lock);
+
+	if (!fm_enable) {
+		mutex_unlock(&snd_sys->lock);
+		return;
+	}
+
+	snd_vol_enable("31 0 0");
+	mutex_unlock(&snd_sys->lock);
+
+	snd_sys_release();
+}
+#endif
 
 static ssize_t snd_dev_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
