@@ -34,16 +34,16 @@ obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-pm.o
 obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-usb.o
 obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dopen-connectivity.o
 
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-input.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-misc.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-mmc.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-sound.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-panel.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-camera.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-pm.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-usb.o
-obj-$(CONFIG_MACH_MSM7X25A_M3DOPEN) += board-m3dviv-connectivity.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-input.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-misc.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-mmc.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-sound.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-panel.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-camera.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-pm.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-usb.o
+obj-$(CONFIG_MACH_MSM7X25A_M3DVIV) += board-m3dviv-connectivity.o
 
 obj-$(CONFIG_MACH_MSM7X27A_HDK) += board-msm7x27a_hdk.o
 obj-$(CONFIG_MACH_MSM7X27A_HDK) += board-msm7x27a_hdk-input.o
