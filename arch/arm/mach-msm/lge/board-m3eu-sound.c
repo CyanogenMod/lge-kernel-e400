@@ -184,6 +184,7 @@ static int m3eu_gpio_earsense_work_func(int *value)
 		state = EAR_STATE_EJECT;
 		*value = 0;
 		gpio_set_value(GPIO_MIC_MODE, 0);
+		snd_fm_vol_mute();
 	} else {
 		state = EAR_STATE_INJECT;
 		msleep(100);

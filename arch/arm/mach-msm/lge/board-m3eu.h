@@ -102,5 +102,8 @@ enum {
 #define NFC_GPIO_VEN      	12
 #define NFC_I2C_SLAVE_ADDR	0x28
 
+/* fm radio */
+extern void snd_fm_vol_mute(void);
+
 #endif
 

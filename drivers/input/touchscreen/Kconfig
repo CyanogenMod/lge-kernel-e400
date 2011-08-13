@@ -414,6 +414,33 @@ config TOUCHSCREEN_SYNAPTICS_I2C_RMI
 	help
 	  This enables support for Synaptics RMI over I2C based touchscreens.
 
+config TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+	tristate "Synaptics RMI4 protocol based I2C interface Touchscreen Driver"
+	depends on I2C
+	help
+	  This enables support for Synaptics RMI4 protocol I2C interface Touchscreens.
+choice
+	prompt "Register map"
+	depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+
+config TOUCH_REG_MAP_TM1804
+	bool "TM1804"
+	depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+	help
+	  Register map TM1804.
+config TOUCH_REG_MAP_TM1814
+	bool "TM1814"
+	depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+	help
+	  Register map TM1814.
+endchoice
+
+config TOUCH_SYNAPTICS_FW_UPGRADE
+       bool "Synaptics ClearPad General F/W upgread"
+       depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+       help
+         This enables support for Synaptics general F/W upgrade.
+
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
