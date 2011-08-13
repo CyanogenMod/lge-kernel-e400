@@ -21,6 +21,7 @@ struct timed_output_dev {
 
 	/* enable the output and set the timer */
 	void	(*enable)(struct timed_output_dev *sdev, int timeout);
+	void	(*voltage)(struct timed_output_dev *sdev, int value);
 
 	/* returns the current number of milliseconds remaining on the timer */
 	int		(*get_time)(struct timed_output_dev *sdev);
