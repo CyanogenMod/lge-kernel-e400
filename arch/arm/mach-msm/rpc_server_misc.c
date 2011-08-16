@@ -206,6 +206,10 @@ static struct atcmd_dev *atpdev;
 // END: 0005723:eternalblue@lge.com:2010-04-01
 // END: 0003698:eternalblue@lge.com:2010-01-30
 
+/* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
+#define ATCMD_ADBON     134
+/* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
+
 //////////////////////////////////////////////////////////////////
 // at_cmd value end
 
@@ -702,6 +706,17 @@ static int  dsatHandleAT_ARM11(uint32_t at_cmd, uint32_t at_act, uint32_t at_par
 			ret_value2 = 20;
 		}
 		break;
+		
+		/* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
+		case ATCMD_ADBON:
+
+			if(at_act != ATCMD_ACTION)
+				result = HANLDE_FAIL;
+
+			update_atcmd_state(atpdev, "adbon", at_param);
+
+		break;
+	/* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
 
 		case ATCMD_SWV:
 		{
