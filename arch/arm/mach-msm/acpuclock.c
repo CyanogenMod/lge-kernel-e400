@@ -295,10 +295,10 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_800[] = {
 	{ 0, 65536, ACPU_PLL_1, 1, 3,  8192, 3, 1,  49152 },
 	{ 1, 98304, ACPU_PLL_1, 1, 1,  12288, 3, 2,  49152 },
 	{ 1, 196608, ACPU_PLL_1, 1, 0, 24576, 3, 3,  98304 },
-	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 150000 },
-	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 160000 },
-	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 160000 },
-	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 160000 },
+	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 120000 },
+	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 120000 },
+	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 120000 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 120000 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
 	{ 1, 800000, ACPU_PLL_4, 6, 0, 100000, 3, 7, 200000 },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
@@ -318,6 +318,21 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008[] = {
 	{ 1, 1008000, ACPU_PLL_4, 6, 0, 126000, 3, 7, 200000},
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
+
+/* 7x25a pll2 at 1200mhz with GSM capable modem */
+static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800_25a[] = {
+	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 30720 },
+	{ 0, 61440, ACPU_PLL_1, 1, 3,  7680, 3, 1,  61440 },
+	{ 1, 122880, ACPU_PLL_1, 1, 1,  15360, 3, 2,  61440 },
+	{ 1, 245760, ACPU_PLL_1, 1, 0, 30720, 3, 3,  61440 },
+	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 150000 },
+	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 122880 },
+	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 122880 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 60000, 3, 5, 122880 },
+	{ 1, 600000, ACPU_PLL_2, 2, 1, 75000, 3, 6, 200000 },
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
+};
+
 #define PLL_0_MHZ	0
 #define PLL_196_MHZ	10
 #define PLL_245_MHZ	12
@@ -860,13 +875,21 @@ static void __init acpu_freq_tbl_fixup(void)
 		pll0_needs_fixup = 1;
 	}
 
-	/* Select the right table to use. */
-	for (lst = acpu_freq_tbl_list; lst->tbl != 0; lst++) {
-		if (lst->pll0_l == pll0_l && lst->pll1_l == pll1_l
-				&& lst->pll2_l == pll2_l
-				&& lst->pll4_l == pll4_l) {
-			acpu_freq_tbl = lst->tbl;
-			break;
+	/* Fix the tables for 7x25a variant to not conflict with 7x27 ones */
+	if (cpu_is_msm7x25a()) {
+		if (pll1_l == PLL_245_MHZ) {
+			acpu_freq_tbl =
+				pll0_960_pll1_245_pll2_1200_pll4_800_25a;
+		}
+	} else {
+		/* Select the right table to use. */
+		for (lst = acpu_freq_tbl_list; lst->tbl != 0; lst++) {
+			if (lst->pll0_l == pll0_l && lst->pll1_l == pll1_l
+					&& lst->pll2_l == pll2_l
+					&& lst->pll4_l == pll4_l) {
+				acpu_freq_tbl = lst->tbl;
+				break;
+			}
 		}
 	}
 

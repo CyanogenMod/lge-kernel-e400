@@ -121,6 +121,7 @@ static struct sx150x_platform_data sx150x_data[] __initdata = {
 
 	/* FM Platform power and shutdown routines */
 #define FPGA_MSM_CNTRL_REG2 0x90008010
+
 static void config_pcm_i2s_mode(int mode)
 {
 	void __iomem *cfg_ptr;
@@ -419,7 +420,6 @@ static void fm_radio_shutdown(struct marimba_fm_platform_data *pdata)
 	/* Releasing the 1.8V Regulator */
 	if (fm_regulator != NULL) {
 		rc = vreg_disable(fm_regulator);
-
 		if (rc)
 			pr_err("%s: disable regulator failed:(%d)\n",
 				__func__, rc);
@@ -448,21 +448,32 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 	.config_i2s_gpio = msm_bahama_setup_pcm_i2s,
 };
 
+static struct platform_device msm_wlan_ar6000_pm_device = {
+	.name           = "wlan_ar6000_pm_dev",
+	.id             = -1,
+};
+
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 
 static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
 };
-	struct bahama_config_register {
+struct bahama_config_register {
 		u8 reg;
 		u8 value;
 		u8 mask;
-	};
-static const char * const vregs_bahama_name[] = {
-	"msme1",
-	"bt",
 };
-static struct vreg *vregs_bahama[ARRAY_SIZE(vregs_bahama_name)];
+struct bt_vreg_info {
+	const char *name;
+	unsigned int pmapp_id;
+	unsigned int level;
+	unsigned int is_pin_controlled;
+	struct vreg *vregs;
+};
+static struct bt_vreg_info bt_vregs[] = {
+	{"msme1", 2, 1800, 0, NULL},
+	{"bt", 21, 2900, 1, NULL}
+};
 
 static int bahama_bt(int on)
 {
@@ -616,42 +627,51 @@ static int bahama_bt(int on)
 static int bluetooth_switch_regulators(int on)
 {
 	int i, rc = 0;
+	const char *id = "BTPW";
 
-	for (i = 0; i < ARRAY_SIZE(vregs_bahama_name); i++) {
-		if (!vregs_bahama[i]) {
+	for (i = 0; i < ARRAY_SIZE(bt_vregs); i++) {
+		if (!bt_vregs[i].vregs) {
 			pr_err("%s: vreg_get %s failed(%d)\n",
-			__func__, vregs_bahama_name[i], rc);
+			__func__, bt_vregs[i].name, rc);
 			goto vreg_fail;
 		}
-		rc = on ? vreg_set_level(vregs_bahama[i], i ? 2900 :
-			1800) : 0;
+		rc = on ? vreg_set_level(bt_vregs[i].vregs,
+				bt_vregs[i].level) : 0;
 
 		if (rc < 0) {
 			pr_err("%s: vreg set level failed (%d)\n",
 					__func__, rc);
 			goto vreg_set_level_fail;
 		}
-
-		rc = on ? vreg_enable(vregs_bahama[i]) :
-			  vreg_disable(vregs_bahama[i]);
+		if (bt_vregs[i].is_pin_controlled == 1) {
+			rc = pmapp_vreg_pincntrl_vote(id,
+					bt_vregs[i].pmapp_id,
+					PMAPP_CLOCK_ID_D1,
+					on ? PMAPP_CLOCK_VOTE_ON :
+					PMAPP_CLOCK_VOTE_OFF);
+		} else {
+		rc = on ? vreg_enable(bt_vregs[i].vregs) :
+			  vreg_disable(bt_vregs[i].vregs);
+		}
 
 		if (rc < 0) {
 			pr_err("%s: vreg %s %s failed(%d)\n",
-				__func__, vregs_bahama_name[i],
-			       on ? "enable" : "disable", rc);
+					__func__, bt_vregs[i].name,
+					on ? "enable" : "disable", rc);
 			goto vreg_fail;
-			}
+		}
 	}
+
 	return rc;
 
 vreg_fail:
 	while (i) {
 		if (on)
-			vreg_disable(vregs_bahama[--i]);
+			vreg_disable(bt_vregs[--i].vregs);
 		}
 vreg_set_level_fail:
-	vreg_put(vregs_bahama[0]);
-	vreg_put(vregs_bahama[1]);
+	vreg_put(bt_vregs[0].vregs);
+	vreg_put(bt_vregs[1].vregs);
 	return rc;
 }
 
@@ -886,14 +906,14 @@ exit:
 static int __init bt_power_init(void)
 {
 	int i, rc = 0;
-	for (i = 0; i < ARRAY_SIZE(vregs_bahama_name); i++) {
-			vregs_bahama[i] = vreg_get(NULL,
-						vregs_bahama_name[i]);
-			if (IS_ERR(vregs_bahama[i])) {
+	for (i = 0; i < ARRAY_SIZE(bt_vregs); i++) {
+			bt_vregs[i].vregs = vreg_get(NULL,
+					bt_vregs[i].name);
+			if (IS_ERR(bt_vregs[i].vregs)) {
 				pr_err("%s: vreg get %s failed (%ld)\n",
-				       __func__, vregs_bahama_name[i],
-				       PTR_ERR(vregs_bahama[i]));
-				rc = PTR_ERR(vregs_bahama[i]);
+				       __func__, bt_vregs[i].name,
+				       PTR_ERR(bt_vregs[i].vregs));
+				rc = PTR_ERR(bt_vregs[i].vregs);
 				goto vreg_get_fail;
 			}
 		}
@@ -904,7 +924,7 @@ static int __init bt_power_init(void)
 
 vreg_get_fail:
 	while (i)
-		vreg_put(vregs_bahama[--i]);
+		vreg_put(bt_vregs[--i].vregs);
 	return rc;
 }
 
@@ -1314,33 +1334,40 @@ struct sdcc_gpio {
 	struct msm_gpio *sleep_cfg_data;
 };
 
+/**
+ * Due to insufficient drive strengths for SDC GPIO lines some old versioned
+ * SD/MMC cards may cause data CRC errors. Hence, set optimal values
+ * for SDC slots based on timing closure and marginality. SDC1 slot
+ * require higher value since it should handle bad signal quality due
+ * to size of T-flash adapters.
+ */
 static struct msm_gpio sdc1_cfg_data[] = {
-	{GPIO_CFG(51, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(51, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_14MA),
 								"sdc1_dat_3"},
-	{GPIO_CFG(52, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(52, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_14MA),
 								"sdc1_dat_2"},
-	{GPIO_CFG(53, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(53, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_14MA),
 								"sdc1_dat_1"},
-	{GPIO_CFG(54, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(54, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_14MA),
 								"sdc1_dat_0"},
-	{GPIO_CFG(55, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(55, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_14MA),
 								"sdc1_cmd"},
-	{GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
+	{GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_14MA),
 								"sdc1_clk"},
 };
 
 static struct msm_gpio sdc2_cfg_data[] = {
 	{GPIO_CFG(62, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 								"sdc2_clk"},
-	{GPIO_CFG(63, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(63, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc2_cmd"},
-	{GPIO_CFG(64, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(64, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc2_dat_3"},
-	{GPIO_CFG(65, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(65, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc2_dat_2"},
-	{GPIO_CFG(66, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(66, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc2_dat_1"},
-	{GPIO_CFG(67, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(67, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc2_dat_0"},
 };
 
@@ -1361,38 +1388,38 @@ static struct msm_gpio sdc2_sleep_cfg_data[] = {
 static struct msm_gpio sdc3_cfg_data[] = {
 	{GPIO_CFG(88, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 								"sdc3_clk"},
-	{GPIO_CFG(89, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(89, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_cmd"},
-	{GPIO_CFG(90, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(90, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_3"},
-	{GPIO_CFG(91, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(91, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_2"},
-	{GPIO_CFG(92, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(92, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_1"},
-	{GPIO_CFG(93, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(93, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_0"},
 #ifdef CONFIG_MMC_MSM_SDC3_8_BIT_SUPPORT
-	{GPIO_CFG(19, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(19, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_7"},
-	{GPIO_CFG(20, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(20, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_6"},
-	{GPIO_CFG(21, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(21, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_5"},
-	{GPIO_CFG(108, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(108, 3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc3_dat_4"},
 #endif
 };
 
 static struct msm_gpio sdc4_cfg_data[] = {
-	{GPIO_CFG(19, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(19, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc4_dat_3"},
-	{GPIO_CFG(20, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(20, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc4_dat_2"},
-	{GPIO_CFG(21, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(21, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc4_dat_1"},
-	{GPIO_CFG(107, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(107, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc4_cmd"},
-	{GPIO_CFG(108, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
+	{GPIO_CFG(108, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_10MA),
 								"sdc4_dat_0"},
 	{GPIO_CFG(109, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 								"sdc4_clk"},
@@ -1628,7 +1655,7 @@ static struct msm_pm_platform_data msm7x27a_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.name = "pmem_adsp",
 	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-	.cached = 0,
+	.cached = 1,
 	.memory_type = MEMTYPE_EBI1,
 };
 
@@ -1664,44 +1691,6 @@ static int __init fb_size_setup(char *p)
 }
 
 early_param("fb_size", fb_size_setup);
-
-
-#define LCDC_CONFIG_PROC          21
-#define LCDC_UN_CONFIG_PROC       22
-#define LCDC_API_PROG             0x30000066
-#define LCDC_API_VERS             0x00010001
-
-static struct msm_rpc_endpoint *lcdc_ep;
-
-static int msm_fb_lcdc_config(int on)
-{
-	int rc = 0;
-	struct rpc_request_hdr hdr;
-
-	if (on)
-		pr_info("lcdc config\n");
-	else
-		pr_info("lcdc un-config\n");
-
-	lcdc_ep = msm_rpc_connect_compatible(LCDC_API_PROG, LCDC_API_VERS, 0);
-
-	if (IS_ERR(lcdc_ep)) {
-		printk(KERN_ERR "%s: msm_rpc_connect failed! rc = %ld\n",
-			__func__, PTR_ERR(lcdc_ep));
-		return -EINVAL;
-	}
-
-	rc = msm_rpc_call(lcdc_ep,
-		(on) ? LCDC_CONFIG_PROC : LCDC_UN_CONFIG_PROC,
-		&hdr, sizeof(hdr), 5 * HZ);
-
-	if (rc)
-		printk(KERN_ERR
-			"%s: msm_rpc_call failed! rc = %d\n", __func__, rc);
-
-	msm_rpc_close(lcdc_ep);
-	return rc;
-}
 
 static const char * const msm_fb_lcdc_vreg[] = {
 		"gp2",
@@ -1870,7 +1859,7 @@ static int lcdc_toshiba_set_bl(int level)
 
 
 static struct lcdc_platform_data lcdc_pdata = {
-	.lcdc_gpio_config = msm_fb_lcdc_config,
+	.lcdc_gpio_config = NULL,
 	.lcdc_power_save   = msm_fb_lcdc_power_save,
 };
 
@@ -2687,6 +2676,10 @@ static struct platform_device *surf_ffa_devices[] __initdata = {
 #ifdef CONFIG_BT
 	&msm_bt_power_device,
 #endif
+	&asoc_msm_pcm,
+	&asoc_msm_dai0,
+	&asoc_msm_dai1,
+	&msm_wlan_ar6000_pm_device,
 };
 
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
