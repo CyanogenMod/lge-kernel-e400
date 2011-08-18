@@ -218,13 +218,13 @@ static int bt_set_gpio(int on)
 	struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
 
 	if (on) {
-		rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
+		rc = gpio_direction_output(BT_SYS_REST_EN, 1);
 		msleep(100);
 	} else {
 		if (!marimba_get_fm_status(&config) &&
 				!marimba_get_bt_status(&config)) {
-			gpio_set_value_cansleep(GPIO_BT_SYS_REST_EN, 0);
-			rc = gpio_direction_input(GPIO_BT_SYS_REST_EN);
+			gpio_set_value_cansleep(BT_SYS_REST_EN, 0);
+			rc = gpio_direction_input(BT_SYS_REST_EN);
 			msleep(100);
 		}
 	}
@@ -374,11 +374,18 @@ static struct platform_device msm_bt_power_device = {
 		u8 value;
 		u8 mask;
 	};
-static const char * const vregs_bahama_name[] = {
-	"msme1",
-	"bt",
+
+struct bt_vreg_info {
+	const char *name;
+	unsigned int pmapp_id;
+	unsigned int level;
+	unsigned int is_pin_controlled;
+	struct vreg *vregs;
 };
-static struct vreg *vregs_bahama[ARRAY_SIZE(vregs_bahama_name)];
+static struct bt_vreg_info bt_vregs[] = {
+	{"msme1", 2, 1800, 0, NULL},
+	{"bt", 21, 2900, 1, NULL}
+};
 
 static int bahama_bt(int on)
 {
@@ -533,42 +540,51 @@ static int bahama_bt(int on)
 static int bluetooth_switch_regulators(int on)
 {
 	int i, rc = 0;
+	const char *id = "BTPW";
 
-	for (i = 0; i < ARRAY_SIZE(vregs_bahama_name); i++) {
-		if (!vregs_bahama[i]) {
+	for (i = 0; i < ARRAY_SIZE(bt_vregs); i++) {
+		if (!bt_vregs[i].vregs) {
 			pr_err("%s: vreg_get %s failed(%d)\n",
-			__func__, vregs_bahama_name[i], rc);
+			__func__, bt_vregs[i].name, rc);
 			goto vreg_fail;
 		}
-		rc = on ? vreg_set_level(vregs_bahama[i], i ? 2900 :
-			1800) : 0;
+		rc = on ? vreg_set_level(bt_vregs[i].vregs,
+				bt_vregs[i].level) : 0;
 
 		if (rc < 0) {
 			pr_err("%s: vreg set level failed (%d)\n",
 					__func__, rc);
 			goto vreg_set_level_fail;
 		}
-
-		rc = on ? vreg_enable(vregs_bahama[i]) :
-			  vreg_disable(vregs_bahama[i]);
+		if (bt_vregs[i].is_pin_controlled == 1) {
+			rc = pmapp_vreg_pincntrl_vote(id,
+					bt_vregs[i].pmapp_id,
+					PMAPP_CLOCK_ID_D1,
+					on ? PMAPP_CLOCK_VOTE_ON :
+					PMAPP_CLOCK_VOTE_OFF);
+		} else {
+		rc = on ? vreg_enable(bt_vregs[i].vregs) :
+			  vreg_disable(bt_vregs[i].vregs);
+		}
 
 		if (rc < 0) {
 			pr_err("%s: vreg %s %s failed(%d)\n",
-				__func__, vregs_bahama_name[i],
-			       on ? "enable" : "disable", rc);
+					__func__, bt_vregs[i].name,
+					on ? "enable" : "disable", rc);
 			goto vreg_fail;
-			}
+		}
 	}
+
 	return rc;
 
 vreg_fail:
 	while (i) {
 		if (on)
-			vreg_disable(vregs_bahama[--i]);
+			vreg_disable(bt_vregs[--i].vregs);
 		}
 vreg_set_level_fail:
-	vreg_put(vregs_bahama[0]);
-	vreg_put(vregs_bahama[1]);
+	vreg_put(bt_vregs[0].vregs);
+	vreg_put(bt_vregs[1].vregs);
 	return rc;
 }
 
@@ -797,14 +813,14 @@ exit:
 static int __init bt_power_init(void)
 {
 	int i, rc = 0;
-	for (i = 0; i < ARRAY_SIZE(vregs_bahama_name); i++) {
-			vregs_bahama[i] = vreg_get(NULL,
-						vregs_bahama_name[i]);
-			if (IS_ERR(vregs_bahama[i])) {
+	for (i = 0; i < ARRAY_SIZE(bt_vregs); i++) {
+			bt_vregs[i].vregs = vreg_get(NULL,
+					bt_vregs[i].name);
+			if (IS_ERR(bt_vregs[i].vregs)) {
 				pr_err("%s: vreg get %s failed (%ld)\n",
-				       __func__, vregs_bahama_name[i],
-				       PTR_ERR(vregs_bahama[i]));
-				rc = PTR_ERR(vregs_bahama[i]);
+				       __func__, bt_vregs[i].name,
+				       PTR_ERR(bt_vregs[i].vregs));
+				rc = PTR_ERR(bt_vregs[i].vregs);
 				goto vreg_get_fail;
 			}
 		}
@@ -815,7 +831,7 @@ static int __init bt_power_init(void)
 
 vreg_get_fail:
 	while (i)
-		vreg_put(vregs_bahama[--i]);
+		vreg_put(bt_vregs[--i].vregs);
 	return rc;
 }
 

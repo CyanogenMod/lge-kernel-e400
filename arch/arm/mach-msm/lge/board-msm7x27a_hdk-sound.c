@@ -5,6 +5,7 @@
 #include <mach/board.h>
 #include <mach/board_lge.h>
 
+#include "devices.h"
 #include "board-msm7x27a_hdk.h"
 
 #define SND(desc, num) { .name = #desc, .id = num }
@@ -160,11 +161,29 @@ static struct platform_device hdk_earsense_device = {
 	},
 };
 
+struct platform_device asoc_msm_pcm = {
+	.name   = "msm-dsp-audio",
+	.id     = 0,
+};
+
+struct platform_device asoc_msm_dai0 = {
+	.name   = "msm-codec-dai",
+	.id     = 0,
+};
+
+struct platform_device asoc_msm_dai1 = {
+	.name   = "msm-cpu-dai",
+	.id     = 0,
+};
+
 /* input platform device */
 static struct platform_device *hdk_sound_devices[] __initdata = {
 	&msm_device_snd,
 	&msm_device_adspdec,
 	&hdk_earsense_device,
+	&asoc_msm_pcm,
+	&asoc_msm_dai0,
+	&asoc_msm_dai1,
 };
 
 /* common function */

@@ -78,6 +78,10 @@
 #define MPX_DCC_PEEK_MSB_REG3      (0x88)
 #define MPX_DCC_PEEK_LSB_REG3      (0xC4)
 
+#define ENF_200Khz                    (1)
+#define SRCH200KHZ_OFFSET             (7)
+#define SRCH_MASK                  (1 << SRCH200KHZ_OFFSET)
+
 /* Standard buffer size */
 #define STD_BUF_SIZE               (64)
 /* Search direction */
@@ -172,7 +176,8 @@ enum v4l2_cid_private_tavarua_t {
 	V4L2_CID_PRIVATE_TAVARUA_INTDET,
 	V4L2_CID_PRIVATE_TAVARUA_MPX_DCC,
 	V4L2_CID_PRIVATE_TAVARUA_AF_JUMP,
-	V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA ,
+	V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA,
+	V4L2_CID_PRIVATE_TAVARUA_HLSI
 };
 
 enum tavarua_buf_t {
@@ -193,6 +198,27 @@ enum tavarua_xfr_t {
 	TAVARUA_XFR_PS_RDS,
 	TAVARUA_XFR_AF_LIST,
 	TAVARUA_XFR_MAX
+};
+
+enum channel_spacing {
+	FM_CH_SPACE_200KHZ,
+	FM_CH_SPACE_100KHZ,
+	FM_CH_SPACE_50KHZ
+};
+
+enum step_size {
+	NO_SRCH200khz,
+	ENF_SRCH200khz
+};
+
+enum emphasis {
+	EMP_75,
+	EMP_50
+};
+
+enum rds_std {
+	RBDS_STD,
+	RDS_STD
 };
 
 /* offsets */
