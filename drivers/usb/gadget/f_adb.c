@@ -645,8 +645,8 @@ static int adb_bind_config(struct usb_configuration *c)
 	dev->function.set_alt = adb_function_set_alt;
 	dev->function.disable = adb_function_disable;
 
-#ifndef CONFIG_LGE_USB_GADGET_DRIVER
-//hyunjin2.lim changed start enable.
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+/* hyunjin2.lim@lge.com changed start enable. */
 	/* start disabled */
 	dev->function.disabled = 1;
 #endif

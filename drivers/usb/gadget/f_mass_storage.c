@@ -316,6 +316,31 @@ static const char fsg_string_interface[] = "Mass Storage";
 #define FSG_NO_OTG               1
 #define FSG_NO_INTR_EP           1
 
+
+#if defined (CONFIG_MACH_LGE)
+#define PRODUCT_NAME "LGE"
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+#define PRODUCT_NAME_EXTERNAL "P590 SD Card"
+#elif defined(CONFIG_MACH_MSM7X27A_M3MPCS)
+#define PRODUCT_NAME_EXTERNAL "MS695 SD Card"
+#elif defined(CONFIG_MACH_MSM7X25A_M3DOPEN)
+#define PRODUCT_NAME_EXTERNAL "E525 SD Card"
+#else
+#define PRODUCT_NAME_EXTERNAL "P590 SD Card"
+#endif
+
+static const char product_name[] = PRODUCT_NAME;
+static const char product_name_external[] = PRODUCT_NAME_EXTERNAL;
+
+enum
+{
+	INTERNAL_MASS_STORAGE = 0,
+	EXTERNAL_MASS_STORAGE = 1
+};
+#endif
+
+
+
 #include "storage_common.c"
 
 #ifdef CONFIG_USB_CSW_HACK
@@ -1250,7 +1275,9 @@ static int do_inquiry(struct fsg_common *common, struct fsg_buffhd *bh)
 {
 	struct fsg_lun *curlun = common->curlun;
 	u8	*buf = (u8 *) bh->buf;
-
+#if defined(CONFIG_MACH_LGE)
+	int release = 0x0100;
+#endif
 	if (!curlun) {		/* Unsupported LUNs are okay */
 		common->bad_lun_okay = 1;
 		memset(buf, 0, 36);
@@ -1268,6 +1295,14 @@ static int do_inquiry(struct fsg_common *common, struct fsg_buffhd *bh)
 	buf[6] = 0;
 	buf[7] = 0;
 	memcpy(buf + 8, common->inquiry_string, sizeof common->inquiry_string);
+
+#if defined(CONFIG_MACH_LGE)
+	if(common->lun == EXTERNAL_MASS_STORAGE)
+		/* sprintf(buf + 8, "%-8s%-16s", common->inquiry_string, product_name_external); */
+		/* memcpy(buf + 8, product_name_external, sizeof product_name_external); */
+		sprintf(buf + 8, "%-8s%-16s%04x", product_name, product_name_external, release);
+#endif
+	
 	return 36;
 }
 
