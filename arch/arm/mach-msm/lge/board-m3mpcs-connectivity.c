@@ -383,10 +383,6 @@ struct bt_vreg_info {
 	unsigned int is_pin_controlled;
 	struct vreg *vregs;
 };
-static struct bt_vreg_info bt_vregs[] = {
-	{"msme1", 2, 1800, 0, NULL},
-	{"bt", 21, 2900, 1, NULL}
-};
 
 static const char * const vregs_bahama_name[] = {
 	"msme1",
