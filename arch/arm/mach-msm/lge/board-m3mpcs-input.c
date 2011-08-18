@@ -132,7 +132,7 @@ static struct platform_device ts_i2c_device = {
 	.dev.platform_data = &ts_i2c_pdata,
 };
 
-static int ts_set_vreg(unsigned char onoff)
+int ts_set_vreg(unsigned char onoff)
 {
 	if (lge_bd_rev == LGE_REV_A) {
 		struct vreg *vreg_touch;
