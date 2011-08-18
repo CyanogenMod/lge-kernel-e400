@@ -32,7 +32,6 @@
 #endif
 
 #define HTC_PROCEDURE_SET_VIB_ON_OFF	21
-//#define PMIC_VIBRATOR_LEVEL	(3000)
 
 static struct work_struct work_vibrator_on;
 static struct work_struct work_vibrator_off;
@@ -51,7 +50,7 @@ static void set_pmic_vibrator(int on)
 	}
 
 	if (on)
-		rc = pmic_vib_mot_set_volt(/*PMIC_VIBRATOR_LEVEL*/voltage);
+		rc = pmic_vib_mot_set_volt(voltage);
 	else
 		rc = pmic_vib_mot_set_volt(0);
 
@@ -78,7 +77,7 @@ static void set_pmic_vibrator(int on)
 
 
 	if (on)
-		req.data = cpu_to_be32(/*PMIC_VIBRATOR_LEVEL*/voltage);
+		req.data = cpu_to_be32(voltage);
 	else
 		req.data = cpu_to_be32(0);
 
@@ -110,11 +109,11 @@ static void timed_vibrator_off(struct timed_output_dev *sdev)
 static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
 	hrtimer_cancel(&vibe_timer);
-	printk("The vibrator operation Time is = %d \n", value);
+	printk(KERN_INFO "The vibrator operation Time is = %d\n", value);
 	if (value == 0)
 		set_pmic_vibrator(0);
 	else {
-		value = (value > 15000 ? 15000 : value);
+		value = (value > 20000 ? 20000 : value);
 
 		timed_vibrator_on(dev);
 
@@ -127,7 +126,7 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 static void vibrator_voltage(struct timed_output_dev *dev, int value)
 {
 	voltage = value;
-	printk("[LGE] Setting vibrator voltage is %d", voltage);
+	printk(KERN_INFO "[LGE] Setting vibrator voltage is %d", voltage);
 }
 
 static int vibrator_get_time(struct timed_output_dev *dev)

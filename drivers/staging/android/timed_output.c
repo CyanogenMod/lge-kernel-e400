@@ -54,7 +54,6 @@ static ssize_t voltage_show(struct device *dev, struct device_attribute *attr,
 {
 	struct timed_output_dev *tdev = dev_get_drvdata(dev);
 	int remaining = tdev->get_time(tdev);
-	
 	return sprintf(buf, "%d\n", remaining);
 }
 
@@ -68,7 +67,6 @@ static ssize_t voltage_store(struct device *dev, struct device_attribute *attr,
 		return -EINVAL;
 
 	tdev->voltage(tdev, value);
-	
 	return size;
 }
 static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR, enable_show, enable_store);
@@ -106,7 +104,6 @@ int timed_output_dev_register(struct timed_output_dev *tdev)
 	ret = device_create_file(tdev->dev, &dev_attr_enable);
 	if (ret < 0)
 		goto err_create_file;
-	
 	ret = device_create_file(tdev->dev, &dev_attr_voltage);
 	if (ret < 0)
 		goto err_create_file;
