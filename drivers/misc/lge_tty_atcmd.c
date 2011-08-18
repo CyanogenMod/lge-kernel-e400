@@ -388,7 +388,7 @@ static int atcmd_tty_open(struct tty_struct *tty, struct file *f)
 
 	if (info->open_count++ == 0) {
 		info->tty = tty;
-		INIT_DELAYED_WORK(&info->work, info->work_fn); 
+		INIT_DELAYED_WORK(&info->work, info->work_fn);
 		wake_lock_init(&info->wake_lock, WAKE_LOCK_SUSPEND, info->name);
 		if (info->other_tty->open_count) {
 			info->line_status |= TIOCM_DTR | TIOCM_RTS;
