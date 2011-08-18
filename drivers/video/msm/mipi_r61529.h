@@ -30,7 +30,7 @@
 #ifndef MIPI_R61529_H
 #define MIPI_R61529_H
 
-#define GPIO_HDK_LCD_RESET 125
+#define GPIO_LCD_RESET 125
 int mipi_r61529_device_register(struct msm_panel_info *pinfo,
 					u32 channel, u32 panel);
 

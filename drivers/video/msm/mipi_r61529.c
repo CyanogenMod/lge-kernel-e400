@@ -295,7 +295,7 @@ static int __init mipi_r61529_lcd_init(void)
 
 static void mipi_ldp_lcd_panel_poweroff(void)
 {
-	gpio_set_value(GPIO_HDK_LCD_RESET, 0);
+	gpio_set_value(GPIO_LCD_RESET, 0);
 	mdelay(10);
 }
 

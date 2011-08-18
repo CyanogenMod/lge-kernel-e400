@@ -34,6 +34,7 @@
 
 	/* FM Platform power and shutdown routines */
 #define FPGA_MSM_CNTRL_REG2 0x90008010
+
 static void config_pcm_i2s_mode(int mode)
 {
 	void __iomem *cfg_ptr;
@@ -370,11 +371,23 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
 };
-	struct bahama_config_register {
+struct bahama_config_register {
 		u8 reg;
 		u8 value;
 		u8 mask;
-	};
+};
+struct bt_vreg_info {
+	const char *name;
+	unsigned int pmapp_id;
+	unsigned int level;
+	unsigned int is_pin_controlled;
+	struct vreg *vregs;
+};
+static struct bt_vreg_info bt_vregs[] = {
+	{"msme1", 2, 1800, 0, NULL},
+	{"bt", 21, 2900, 1, NULL}
+};
+
 static const char * const vregs_bahama_name[] = {
 	"msme1",
 	#if 0  /* LGE_BT_FW by suhui.kim@lge.com, power for MSM7x27A HDK only */	
@@ -480,7 +493,6 @@ static int bahama_bt(int on)
 	u8 offset = 0; /* index into bahama configs */
 	on = on ? 1 : 0;
 	version = marimba_read_bahama_ver(&config);
-
 	if ((int)version < 0 || version == BAHAMA_VER_UNSUPPORTED) {
 		dev_err(&msm_bt_power_device.dev, "%s: Bahama \
 				version read Error, version = %d \n",
@@ -700,14 +712,13 @@ static unsigned int msm_bahama_shutdown_power(int value)
 	return rc;
 }
 
-
 static unsigned int msm_bahama_core_config(int type)
 {
 	int rc = 0;
 
 	if (type == BAHAMA_ID) {
 		int i;
-		struct marimba config = { .mod_id = SLAVE_ID_BAHAMA };
+		struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
 		const struct bahama_config_register v20_init[] = {
 			/* reg, value, mask */
 			{ 0xF4, 0x84, 0xFF }, /* AREG */
@@ -754,7 +765,6 @@ static int bluetooth_power(int on)
 					__func__, cid);
 		return -ENODEV;
 	}
-
 	if (on) {
 		/*setup power for BT SOC*/
 		rc = bt_set_gpio(on);
