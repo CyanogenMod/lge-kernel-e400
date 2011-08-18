@@ -32,7 +32,7 @@
 #include <asm/uaccess.h>
 #include <linux/miscdevice.h>
 /* To enable FW Upgrade */
-/* #include "mcs8000_download.h" */
+#include "mcs8000_download.h"
 
 #include <linux/i2c-gpio.h>
 #include <mach/board_lge.h>
@@ -94,8 +94,9 @@ static void mcs8000_late_resume(struct early_suspend *h);
 #define TS_MAX_Y_COORD		320
 #define FW_VERSION		0x00	
 #define TS_READ_START_ADDR 	0x10
-#define TS_READ_VERSION_ADDR	0x31
-#define TS_READ_HW_VERSION_ADDR	0x32	/* HW Revision Info Address */
+#define TS_READ_HW_VERSION_ADDR	0x30	/* HW Revision Info Address */
+#define TS_READ_VERSION_ADDR	0x31	/* FW Version Info Address */
+#define TS_READ_HW_COMPATIBILITY_ADDR	0x32	/* HW COMPATIBILITY Info Address */
 #define TS_READ_REGS_LEN 	6
 #define MELFAS_MAX_TOUCH 	5
 #define I2C_RETRY_CNT		10
@@ -104,7 +105,23 @@ static void mcs8000_late_resume(struct early_suspend *h);
 #define DEBUG_PRINT 		0
 
 #define	SET_DOWNLOAD_BY_GPIO	1
+#define TS_MODULE_A	0
+#define TS_MODULE_B	16
+#define TS_MODULE_C	17
 
+/*
+ * Compatibility Value
+*/
+#define TS_COMPATIBILITY_0	0
+#define TS_COMPATIBILITY_A	1
+#define TS_COMPATIBILITY_B	2
+
+/*
+ * To confirm the latest FW Version
+ */
+#define TS_LATEST_FW_VERSION_HW_00	5
+#define TS_LATEST_FW_VERSION_HW_10	6
+#define TS_LATEST_FW_VERSION_HW_11	7
 
 enum {
 	None = 0,
@@ -321,7 +338,9 @@ static irqreturn_t mcs8000_ts_irq_handler(int irq, void *handle)
 		/* schedule_delayed_work(&dev->work, 0); */
 		schedule_work(&dev->work);
 		/* queue_delayed_work(dev->ts_wq, &dev->work,msecs_to_jiffies(TS_POLLING_TIME)); */
-
+#if DEBUG_PRINT
+	printk(KERN_ERR "melfas_ts_work_func is sending irq");
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -361,7 +380,7 @@ err_power_failed:
 	return ret;
 }
 
-void mcs8000_firmware_info(unsigned char *fw_ver, unsigned char *hw_ver)
+void mcs8000_firmware_info(unsigned char *fw_ver, unsigned char *hw_ver, unsigned char *comp_ver)
 {
 	unsigned char data;
 	struct mcs8000_ts_device *dev = NULL;
@@ -405,6 +424,17 @@ void mcs8000_firmware_info(unsigned char *fw_ver, unsigned char *hw_ver)
 
 	printk(KERN_INFO "MCS8000 H/W Revision [0x%x]\n", data);
 	*hw_ver = data;
+	try_cnt = 0;
+	do {
+		i2c_smbus_write_byte(dev->client, TS_READ_HW_COMPATIBILITY_ADDR);
+		data = i2c_smbus_read_byte(dev->client);
+
+		msleep(10);
+		try_cnt++;
+	} while (data > MCS7000_TS_MAX_HW_VERSION && try_cnt < 10);
+
+	printk(KERN_INFO "MCS8000 H/W Compatibility [0x%x]\n", data);
+	*comp_ver = data;
 #if 0
 	/* just touch i2c debug by younchan.kim */
 	for (try_cnt = 0x10 ; try_cnt < 0x15; try_cnt++) {
@@ -427,10 +457,10 @@ static struct miscdevice mcs8000_ts_misc_dev = {
 static ssize_t read_touch_version(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int r;
-	unsigned char hw_ver, fw_ver;
+	unsigned char hw_ver, fw_ver, comp_ver;
 
-	mcs8000_firmware_info(&fw_ver, &hw_ver);
-	r = sprintf(buf, "MCS8000 Touch Version HW:%02x FW:%02x\n", hw_ver, fw_ver);
+	mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
+	r = sprintf(buf, "MCS8000 Touch Version HW:%02x FW:%02x CV:%02x\n", hw_ver, fw_ver, comp_ver);
 
 	return r;
 }
@@ -556,7 +586,7 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	/* unsigned char data; */ /* For Touch FW Upgrade */
 	struct touch_platform_data *ts_pdata;
 	struct mcs8000_ts_device *dev;
-	unsigned char fw_ver, hw_ver;
+	unsigned char fw_ver, hw_ver, comp_ver;
 	/* unsigned char tmp_val, tmp_reg ; */
 
 	DMSG("%s: start...\n", __FUNCTION__);
@@ -590,7 +620,7 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	if (!(err = i2c_check_functionality(client->adapter, I2C_FUNC_I2C))) {
 		printk(KERN_ERR "%s: fucntionality check failed\n", __FUNCTION__);
 		return err;
-	}
+	} 
 
 	err = gpio_request(dev->intr_gpio, "touch_mcs8000");
 	if (err < 0) {
@@ -627,27 +657,25 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	ts_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1 ;
 	register_early_suspend(&ts_early_suspend);
 #endif
-	mcs8000_firmware_info(&fw_ver, &hw_ver);
+	mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
 	mcs8000_create_file(mcs8000_ts_input);
 	DMSG(KERN_INFO "%s: ts driver probed\n", __FUNCTION__);
-#if 0
+	
 	/* [LGE_S] FW Upgrade function */
-	do {
-		i2c_smbus_write_byte(dev->client, TS_READ_HW_VERSION_ADDR);
-		data = i2c_smbus_read_byte(dev->client);
-
-		usleep(10);
-		try_cnt++;
-	} while (data > MCS7000_TS_MAX_FW_VERSION && try_cnt < 10);
-	printk(KERN_INFO "MS695 Touch HW Revision Info is [0x%x]", data);
-	if (data == 01) {
-		//err = mcsdl_download_binary_data(1);
-		//if (err < 0) {
-		//	printk(KERN_ERR, "FW Upgrade Fails");
-		//}
+	mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
+#if 0
+	printk(KERN_INFO "MS695 & P590 HW Version Info is [0x%x]", hw_ver);
+	printk(KERN_INFO "MS695 & P590 FW Version Info is [0x%x]", fw_ver);
+	printk(KERN_INFO "MS695 & P590 Compatibility Version Info is [0x%x]", comp_ver);
+#endif	
+	if (hw_ver == TS_MODULE_B) {
+		printk(KERN_INFO "Checking HW Revision is success");
+		if (comp_ver == TS_COMPATIBILITY_A && fw_ver != TS_LATEST_FW_VERSION_HW_10) {
+			printk(KERN_INFO "Checking Latest FW Version & Compatibility is success");
+			err = mcsdl_download_binary_data(1, 1);
+		}
 	}
 	/* [LGE_E] */
-#endif
 	enable_irq(dev->num_irq);
 	return 0;
 }
