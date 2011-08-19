@@ -92,4 +92,6 @@ config SENSORS_BH1721
 	  This driver can also be built as a module.  If so, the module
 	  will be called bh1721fvc.
 
+# HSCDTD004A sensor
+source "drivers/input/sensor/alps_IF_Driver/Kconfig"
 endif

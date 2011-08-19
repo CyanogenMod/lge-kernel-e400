@@ -52,7 +52,7 @@ struct lge_gpio_switch_data {
 
 struct lge_gpio_switch_data *lge_switch_data;
 
-static int headset_type = 0;
+static int headset_type;
 
 static void gpio_switch_work(struct work_struct *work)
 {
@@ -89,7 +89,7 @@ static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
 {
 	struct lge_gpio_switch_data *switch_data =
 	    (struct lge_gpio_switch_data *)dev_id;
-	
+
 	schedule_work(&switch_data->work);
 	return IRQ_HANDLED;
 }
@@ -125,17 +125,17 @@ static ssize_t switch_gpio_print_name(struct switch_dev *sdev, char *buf)
 		container_of(sdev, struct lge_gpio_switch_data, sdev);
 	const char *name;
 	int cur_state;
-	
+
 	cur_state = switch_get_state(sdev);
 	if (switch_data->print_name)
 		name = switch_data->print_name(cur_state);
 	else
-		return -1;
+		return -ENODEV;
 
 	if (name)
 		return sprintf(buf, "%s\n", name);
 
-	return -1;
+	return -ENODEV;
 }
 
 static ssize_t switch_gpio_print_state(struct switch_dev *sdev, char *buf)
@@ -149,12 +149,12 @@ static ssize_t switch_gpio_print_state(struct switch_dev *sdev, char *buf)
 	if (switch_data->print_state)
 		state = switch_data->print_state(cur_state);
 	else
-		return -1;
+		return -ENODEV;
 
 	if (state)
 		return sprintf(buf, "%s\n", state);
 
-	return -1;
+	return -ENODEV;
 }
 
 static ssize_t sysfs_mode_store(
@@ -167,17 +167,17 @@ static ssize_t sysfs_mode_store(
 
 	pdata = (struct lge_gpio_switch_platform_data *)dev->platform_data;
 
-	list_for_each_entry(switch_data, &switchs, list) 
-		if (!strcmp(switch_data->sdev.name,	pdata->name)) 
+	list_for_each_entry(switch_data, &switchs, list)
+		if (!strcmp(switch_data->sdev.name, pdata->name))
 			goto found_it;
 
-	printk(KERN_INFO"%s: not found %s\n",__func__, pdata->name);
+	printk(KERN_INFO "%s: not found %s\n", __func__, pdata->name);
 	return size;
 
-found_it:			
+found_it:
 	state = switch_data->sysfs_store(buf, size);
 	switch_set_state(&switch_data->sdev, state);
-	
+
 	return size;
 }
 
@@ -187,16 +187,16 @@ int lge_gpio_switch_pass_event(char *sdev_name, int state)
 {
 	struct lge_gpio_switch_data *switch_data;
 
-	list_for_each_entry(switch_data, &switchs, list) 
-		if (!strcmp(switch_data->sdev.name,	sdev_name)) 
+	list_for_each_entry(switch_data, &switchs, list)
+		if (!strcmp(switch_data->sdev.name, sdev_name))
 			goto found_it;
 
-	printk(KERN_INFO"%s: not found %s\n",__func__, sdev_name);
-	return -1;
+	printk(KERN_INFO "%s: not found %s\n", __func__, sdev_name);
+	return -ENODEV;
 
-found_it:			
+found_it:
 	switch_set_state(&switch_data->sdev, state);
-	
+
 	return 0;
 }
 
@@ -207,6 +207,8 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 	struct lge_gpio_switch_data *switch_data;
 	int ret = 0;
 	int index;
+
+	headset_type = 0;
 
 	if (!pdata)
 		return -EBUSY;
@@ -236,12 +238,12 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 
 	list_add_tail(&switch_data->list, &switchs);
 
-    ret = switch_dev_register(&switch_data->sdev);
+	ret = switch_dev_register(&switch_data->sdev);
 	if (ret < 0)
 		goto err_switch_dev_register;
 
-	for(index = 0; index < switch_data->num_gpios; index++) {
-		gpio_tlmm_config(GPIO_CFG(switch_data->gpios[index], 0, 
+	for (index = 0; index < switch_data->num_gpios; index++) {
+		gpio_tlmm_config(GPIO_CFG(switch_data->gpios[index], 0,
 					GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
 					GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 
@@ -253,10 +255,10 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto err_request_gpio;
 	}
-	
+
 	INIT_WORK(&switch_data->work, gpio_switch_work);
 
-	for(index = 0; index < switch_data->num_gpios; index++) {
+	for (index = 0; index < switch_data->num_gpios; index++) {
 		if (switch_data->gpios[index] < 0) {
 			ret = switch_data->gpios[index];
 			goto err_request_gpio;
@@ -274,7 +276,7 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 	}
 
 	/* especially to address gpio key */
-	for(index = 0; index < switch_data->num_key_gpios; index++) {
+	for (index = 0; index < switch_data->num_key_gpios; index++) {
 		gpio_tlmm_config(GPIO_CFG(switch_data->key_gpios[index], 0,
 					GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
 					GPIO_CFG_2MA), GPIO_CFG_ENABLE);
@@ -290,7 +292,7 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 
 	INIT_WORK(&switch_data->key_work, key_gpio_switch_work);
 
-	for(index = 0; index < switch_data->num_key_gpios; index++) {
+	for (index = 0; index < switch_data->num_key_gpios; index++) {
 		if (switch_data->key_gpios[index] < 0) {
 			ret = switch_data->key_gpios[index];
 			goto err_request_gpio;
@@ -339,7 +341,7 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 	return 0;
 
 err_request_gpio:
-    switch_dev_unregister(&switch_data->sdev);
+	switch_dev_unregister(&switch_data->sdev);
 err_switch_dev_register:
 	kfree(switch_data);
 
@@ -351,7 +353,7 @@ static int __devexit lge_gpio_switch_remove(struct platform_device *pdev)
 	struct lge_gpio_switch_data *switch_data = platform_get_drvdata(pdev);
 
 	cancel_work_sync(&switch_data->work);
-    switch_dev_unregister(&switch_data->sdev);
+	switch_dev_unregister(&switch_data->sdev);
 
 	return 0;
 }
@@ -366,7 +368,8 @@ static struct platform_driver lge_gpio_switch_driver = {
 
 static int __init lge_gpio_switch_init(void)
 {
-	return platform_driver_probe(&lge_gpio_switch_driver, lge_gpio_switch_probe);
+	return platform_driver_probe(&lge_gpio_switch_driver,
+		lge_gpio_switch_probe);
 }
 
 static void __exit lge_gpio_switch_exit(void)

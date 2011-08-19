@@ -213,11 +213,10 @@ static void __init msm7x2x_init(void)
 	msm7x25a_kgsl_3d0_init();
 
 	if (lge_get_uart_mode()) {
-		if (lge_bd_rev == LGE_REV_A) {
+		if (lge_bd_rev == LGE_REV_A)
 			platform_device_register(&msm_device_uart3);
-		} else {
+		else
 			platform_device_register(&msm_device_uart1);
-		}
 	}
 
 	lge_add_input_devices();

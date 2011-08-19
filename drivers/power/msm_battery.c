@@ -185,10 +185,10 @@ enum chg_battery_level_type {
 #ifndef CONFIG_BATTERY_MSM_FAKE
 struct rpc_reply_batt_chg_v1 {
 	struct rpc_reply_hdr hdr;
-	u32 	more_data;
+	u32 more_data;
 
 	u32	charger_status;
-	u32	charger_type;
+	u32 charger_type;
 	u32	battery_status;
 	u32	battery_level;
 	u32     battery_voltage;
@@ -803,18 +803,18 @@ static void msm_batt_update_psy_status(void)
 		}
 	}
 
-	msm_batt_info.charger_status 	= charger_status;
-	msm_batt_info.charger_type 	= charger_type;
-	msm_batt_info.battery_status 	= battery_status;
-	msm_batt_info.battery_level 	= battery_level;
-	msm_batt_info.battery_temp 	= battery_temp;
+	msm_batt_info.charger_status = charger_status;
+	msm_batt_info.charger_type = charger_type;
+	msm_batt_info.battery_status = battery_status;
+	msm_batt_info.battery_level = battery_level;
+	msm_batt_info.battery_temp = battery_temp;
 
 #ifdef CONFIG_LGE_FUEL_GAUGE
-  battery_capacity = msm_batt_info.calculate_capacity(battery_soc);
+	battery_capacity = msm_batt_info.calculate_capacity(battery_soc);
 
 	if (msm_batt_info.battery_voltage != battery_voltage
 		|| msm_batt_info.batt_capacity != battery_capacity) {
-		msm_batt_info.battery_voltage  	= battery_voltage;
+		msm_batt_info.battery_voltage = battery_voltage;
 		msm_batt_info.batt_capacity = battery_capacity;
 
 		DBG_LIMIT("BATT: voltage = %u mV [capacity = %d%%]\n",
@@ -825,7 +825,7 @@ static void msm_batt_update_psy_status(void)
 	}
 #else
 	if (msm_batt_info.battery_voltage != battery_voltage) {
-		msm_batt_info.battery_voltage  	= battery_voltage;
+		msm_batt_info.battery_voltage = battery_voltage;
 		msm_batt_info.batt_capacity =
 			msm_batt_info.calculate_capacity(battery_voltage);
 		DBG_LIMIT("BATT: voltage = %u mV [capacity = %d%%]\n",
