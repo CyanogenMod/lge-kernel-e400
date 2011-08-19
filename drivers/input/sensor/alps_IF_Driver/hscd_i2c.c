@@ -39,7 +39,7 @@ static struct ecom_platform_data* ecom_pdata;
 	#define HSCD_CTRL4	0x28
 #endif
 
-#define ALPS_DEBUG 1
+/* #define ALPS_DEBUG 1 */
 
 static struct i2c_driver hscd_driver;
 static struct i2c_client *client_hscd = NULL;

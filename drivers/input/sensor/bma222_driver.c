@@ -82,6 +82,19 @@ struct acceleration_platform_data *accel_pdata;
 static u8 bandwidth = 2; /* 31.25 Hz */
 /* LGE_CHANGE_E */
 
+/* LGE_CHANGE,
+ * offer acceleration access functions to share with ecompass sensor
+ * 2011-07-29, jihyun.seong@lge.com
+ */
+extern int accsns_get_acceleration_data(int *xyz);
+extern void accsns_activate(int flgatm, int flg);
+/* LGE_CHANGE end */
+/* LGE_CHANGE,
+ * enable state check and run suspend/resume.
+ * 2011-07-29, jihyun.seong@lge.com
+ */
+static void run_suspend_resume(int mode);
+/* LGE_CHANGE end */
 /* i2c operation for bma222 API */
 static char bma222_i2c_write(unsigned char reg_addr, \
 unsigned char *data, unsigned char len);
@@ -260,6 +273,40 @@ static unsigned int bma222_poll(struct file *file, poll_table *wait)
     return mask;
 }
 
+/* LGE_CHANGE,
+ * enable state check and run suspend/resume.
+ *
+ * 2011-07-29, jihyun.seong@lge.com
+ */
+static void run_suspend_resume(int mode)
+{
+	if(mode){
+		 /* if already mode normal, pass this routine.*/
+		if(atomic_read(&bma222_report_enabled) == 0) {
+			/* turn on vreg power */
+			accel_pdata->power(1);
+			mdelay(1);
+			bma222_set_mode(bma222_MODE_NORMAL);
+			bma222_set_bandwidth( bandwidth );//bandwidth set
+			atomic_set(&bma222_report_enabled, 1);
+#ifdef LGE_DEBUG
+			printk(KERN_INFO "ACCEL_Power On\n");
+#endif
+		} else { /* already power on state */ 
+			bma222_set_bandwidth( bandwidth );//bandwidth set
+		}
+	} else {
+		bma222_set_mode(bma222_MODE_SUSPEND);
+		atomic_set(&bma222_report_enabled, 0);
+#ifdef LGE_DEBUG
+		printk(KERN_INFO "ACCEL_Power Off\n");
+#endif
+		/* turn off vreg power */
+		accel_pdata->power(0);
+    }
+	return;
+} 
+/* LGE_CHANGE end */
 
 /* LGE_CHANGE_S [adwardk.kim@lge.com] 2011-03-25 */
 static ssize_t show_bma222_enable(struct device *dev, \
@@ -276,34 +323,9 @@ struct device_attribute *attr, const char *buf, size_t count)
     int mode = 0;
 
     sscanf(buf, "%d", &mode);
-
-    if (mode) {
-		/* LGE_CHANGE,
-		 * if already mode normal, pass this routine.
-		 * 2011-07-18, jihyun.seong@lge.com
-		 */
-		if (atomic_read(&bma222_report_enabled) == 0) {
-			/* turn on vreg power */
-			accel_pdata->power(1);
-			mdelay(1);
-			bma222_set_mode(bma222_MODE_NORMAL);
-			bma222_set_bandwidth(bandwidth);/* bandwidth set */
-			atomic_set(&bma222_report_enabled, 1);
-#ifdef LGE_DEBUG
-			printk(KERN_INFO "ACCEL_Power On\n");
-#endif
-		} else { /* already power on state */
-			bma222_set_bandwidth(bandwidth);/* bandwidth set */
-		}
-	} else {
-		bma222_set_mode(bma222_MODE_SUSPEND);
-		atomic_set(&bma222_report_enabled, 0);
-#ifdef LGE_DEBUG
-		printk(KERN_INFO "ACCEL_Power Off\n");
-#endif
-		/* turn off vreg power */
-		accel_pdata->power(0);
-    }
+	/* actual routine */
+	run_suspend_resume(mode);
+    
     return 0;
 }
 
@@ -370,6 +392,42 @@ static struct attribute_group bma222_attribute_group = {
 };
 /* LGE_CHANGE_E [adwardk.kim@lge.com] 2011-03-25 */
 
+/* LGE_CHANGE,
+ * offer acceleration access functions to share with ecompass sensor
+ * 2011-07-29, jihyun.seong@lge.com
+ */
+int accsns_get_acceleration_data(int *xyz)
+{
+	bma222acc_t acc;
+	int err;
+
+    err = bma222_read_accel_xyz(&acc);
+
+	/* raw * 4 */
+    xyz[0] = ((int)acc.x) * 4;
+    xyz[1] = ((int)acc.y) * 4;
+    xyz[2] = ((int)acc.z) * 4;
+
+#ifdef LGE_DEBUG
+	/*** DEBUG OUTPUT - REMOVE ***/
+	printk("Acc_I2C, x:%d, y:%d, z:%d\n", xyz[0], xyz[1], xyz[2]);
+	/*** <end> DEBUG OUTPUT - REMOVE ***/
+#endif
+
+	return err;
+}
+
+void accsns_activate(int flgatm, int flg)
+{
+	if (flg != 0) flg = 1;
+	
+	/* if (flg == 1) then sensor activate */
+	run_suspend_resume(flg);
+}
+
+EXPORT_SYMBOL(accsns_get_acceleration_data);
+EXPORT_SYMBOL(accsns_activate);
+/* LGE_CHANGE end */
 /*	open command for BMA222 device file	*/
 static int bma222_open(struct inode *inode, struct file *file)
 {
