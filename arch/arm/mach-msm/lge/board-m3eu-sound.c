@@ -10,7 +10,7 @@
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
-	SND(HANDSET_LOOPBACK,5),
+	SND(HANDSET_LOOPBACK, 5),
 	SND(HANDSET, 6),
 	SND(HEADSET_LOOPBACK, 1),
 	SND(HEADSET, 2),
@@ -164,7 +164,7 @@ static char *ear_state_string[] = {
 
 enum {
 	EAR_STATE_EJECT = 0,
-	EAR_STATE_INJECT = 1, 
+	EAR_STATE_INJECT = 1,
 };
 
 enum {
