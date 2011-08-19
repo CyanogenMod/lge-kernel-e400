@@ -1266,6 +1266,7 @@ CONFIG_SENSOR_BMA222=y
 # CONFIG_SENSOR_AMI306 is not set
 # CONFIG_SENSOR_K3DH is not set
 # CONFIG_SENSORS_BH1721 is not set
+# CONFIG_SENSOR_HSCDTD004A is not set
 
 #
 # Hardware I/O ports
