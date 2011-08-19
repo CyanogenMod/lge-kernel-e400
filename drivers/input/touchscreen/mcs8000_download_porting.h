@@ -108,15 +108,22 @@ typedef unsigned char		BOOLEAN;
 //
 //============================================================
 
+#if defined(CONFIG_MACH_MSM7X27A_M3EU) || defined(CONFIG_MACH_MSM7X27A_M3MPCS)
 /*Add extern function to enable FW Download by matthew.kim*/
 extern int ts_set_vreg(unsigned char onoff);
+#endif
 
 //----------------
 // VDD
 //----------------
 #if MCSDL_USE_VDD_CONTROL
+#if defined(CONFIG_MACH_MSM7X27A_M3EU) || defined(CONFIG_MACH_MSM7X27A_M3MPCS)
 #define MCSDL_VDD_SET_HIGH()             			ts_set_vreg(1)   //gpio_set_value(GPIO_TOUCH_EN, 1)
 #define MCSDL_VDD_SET_LOW()              			ts_set_vreg(0)   //gpio_set_value(GPIO_TOUCH_EN,0)
+#else
+#define MCSDL_VDD_SET_HIGH()             			// Nothing
+#define MCSDL_VDD_SET_LOW()              			// Nothing
+#endif
 #else
 #define MCSDL_VDD_SET_HIGH()             			// Nothing
 #define MCSDL_VDD_SET_LOW()              			// Nothing
