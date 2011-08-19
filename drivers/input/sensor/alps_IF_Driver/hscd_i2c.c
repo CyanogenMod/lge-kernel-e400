@@ -6,7 +6,7 @@
 
 /* LGE_CHANGE_S */
 #include <mach/board_lge.h> /* platform data */
-static struct ecom_platform_data* ecom_pdata;
+static struct ecom_platform_data *ecom_pdata;
 /* LGE_CHANGE_E */
 
 #define I2C_RETRY_DELAY		5
@@ -42,7 +42,7 @@ static struct ecom_platform_data* ecom_pdata;
 /* #define ALPS_DEBUG 1 */
 
 static struct i2c_driver hscd_driver;
-static struct i2c_client *client_hscd = NULL;
+static struct i2c_client *client_hscd;
 
 static atomic_t flgEna;
 static atomic_t delay;
@@ -100,7 +100,10 @@ static int hscd_i2c_writem(char *txData, int length)
 
 #ifdef ALPS_DEBUG
 	printk("[HSCD] i2c_writem : ");
-	for (i=0; i<length;i++) printk("0X%02X, ", txData[i]);
+
+	for (i = 0; i < length; i++)
+		printk("0X%02X, ", txData[i]);
+
 	printk("\n");
 #endif
 
@@ -126,14 +129,16 @@ int hscd_get_magnetic_field_data(int *xyz)
 
 	sx[0] = HSCD_XOUT;
 	err = hscd_i2c_readm(sx, 6);
-	if (err < 0) return err;
-	for (i=0; i<3; i++) {
+	if (err < 0)
+		return err;
+
+	for (i = 0; i < 3; i++) {
 		xyz[i] = (int) ((short)((sx[2*i+1] << 8) | (sx[2*i])));
 	}
 
 #ifdef ALPS_DEBUG
 	/*** DEBUG OUTPUT - REMOVE ***/
-	printk("Mag_I2C, x:%d, y:%d, z:%d\n",xyz[0], xyz[1], xyz[2]);
+	printk("Mag_I2C, x:%d, y:%d, z:%d\n", xyz[0], xyz[1], xyz[2]);
 	/*** <end> DEBUG OUTPUT - REMOVE ***/
 #endif
 
@@ -144,15 +149,24 @@ void hscd_activate(int flgatm, int flg, int dtime)
 {
 	u8 buf[2];
 
-	if (flg != 0) flg = 1;
+	if (flg != 0)
+		flg = 1;
 
-	if      (dtime <=  10) buf[1] = (0x60 | 3<<2);		// 100Hz- 10msec
-	else if (dtime <=  20) buf[1] = (0x60 | 2<<2);		//  50Hz- 20msec
-	else if (dtime <=  60) buf[1] = (0x60 | 1<<2);		//  20Hz- 50msec
-	else                   buf[1] = (0x60 | 0<<2);		//  10Hz-100msec
+	if (dtime <= 10)
+		buf[1] = (0x60 | 3<<2);		/* 100Hz- 10msec */
+
+	else if (dtime <= 20)
+		buf[1] = (0x60 | 2<<2);		/*  50Hz- 20msec */
+
+	else if (dtime <= 60)
+		buf[1] = (0x60 | 1<<2);		/*  20Hz- 50msec */
+
+	else
+		buf[1] = (0x60 | 0<<2);		/*  10Hz-100msec */
+
 	buf[0]  = HSCD_CTRL1;
 	buf[1] |= (flg<<7);
-	buf[1] |= 0x60;										// RS1:1(Reverse Input Substraction drive), RS2:1(13bit)
+	buf[1] |= 0x60;	/* RS1:1(Reverse Input Substraction drive), RS2:1(13bit) */
 	hscd_i2c_writem(buf, 2);
 	mdelay(1);
 
@@ -206,7 +220,7 @@ static int hscd_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	hscd_activate(0, 1, atomic_read(&delay));
 	hscd_get_magnetic_field_data(d);
-	printk("[HSCD] x:%d y:%d z:%d\n",d[0],d[1],d[2]);
+	printk("[HSCD] x:%d y:%d z:%d\n", d[0], d[1], d[2]);
 	hscd_activate(0, 0, atomic_read(&delay));
 
 	return 0;
@@ -247,7 +261,7 @@ static struct i2c_driver hscd_driver = {
 	.probe    = hscd_probe,
 	.id_table = ALPS_id,
 	.driver   = {
-  		.name	= HSCD_DRIVER_NAME,
+		.name	= HSCD_DRIVER_NAME,
 	},
 	.shutdown		= hscd_shutdown,
 	.suspend		= hscd_suspend,
@@ -263,6 +277,12 @@ static int __init hscd_init(void)
 #endif
 /* LGE_CHANGE_E */
 	int rc;
+
+/* LGE_CHANGE
+ * follow linux coding rule
+ * 2011-08-19, jihyun.seong@lge.com
+ */
+	client_hscd = NULL;
 
 #ifdef ALPS_DEBUG
 	printk("[HSCD] init\n");
@@ -292,11 +312,11 @@ static int __init hscd_init(void)
 	client_hscd = i2c_new_device(adapter, &i2c_info);
 	client_hscd->adapter->timeout = 0;
 	client_hscd->adapter->retries = 0;
-  
+
 	i2c_put_adapter(adapter);
 	if (!client_hscd) {
-		printk("can't add i2c device at 0x%x\n",(unsigned int)i2c_info.addr);
-		rc = -ENOTSUPP;  
+		printk("can't add i2c device at 0x%x\n", (unsigned int)i2c_info.addr);
+		rc = -ENOTSUPP;
 	}
 #endif
 /* LGE_CHANGE_E */
@@ -305,7 +325,7 @@ static int __init hscd_init(void)
 	printk("hscd_open Init end!!!!\n");
 #endif
 
-//	probe_done: 
+/* probe_done: */
 
 	return rc;
 }

@@ -280,20 +280,20 @@ static unsigned int bma222_poll(struct file *file, poll_table *wait)
  */
 static void run_suspend_resume(int mode)
 {
-	if(mode){
+	if (mode) {
 		 /* if already mode normal, pass this routine.*/
-		if(atomic_read(&bma222_report_enabled) == 0) {
+		if (atomic_read(&bma222_report_enabled) == 0) {
 			/* turn on vreg power */
 			accel_pdata->power(1);
 			mdelay(1);
 			bma222_set_mode(bma222_MODE_NORMAL);
-			bma222_set_bandwidth( bandwidth );//bandwidth set
+			bma222_set_bandwidth(bandwidth);/* bandwidth set */
 			atomic_set(&bma222_report_enabled, 1);
 #ifdef LGE_DEBUG
 			printk(KERN_INFO "ACCEL_Power On\n");
 #endif
-		} else { /* already power on state */ 
-			bma222_set_bandwidth( bandwidth );//bandwidth set
+		} else { /* already power on state */
+			bma222_set_bandwidth(bandwidth);/* bandwidth set */
 		}
 	} else {
 		bma222_set_mode(bma222_MODE_SUSPEND);
@@ -305,7 +305,7 @@ static void run_suspend_resume(int mode)
 		accel_pdata->power(0);
     }
 	return;
-} 
+}
 /* LGE_CHANGE end */
 
 /* LGE_CHANGE_S [adwardk.kim@lge.com] 2011-03-25 */
@@ -325,7 +325,7 @@ struct device_attribute *attr, const char *buf, size_t count)
     sscanf(buf, "%d", &mode);
 	/* actual routine */
 	run_suspend_resume(mode);
-    
+
     return 0;
 }
 
@@ -419,8 +419,9 @@ int accsns_get_acceleration_data(int *xyz)
 
 void accsns_activate(int flgatm, int flg)
 {
-	if (flg != 0) flg = 1;
-	
+	if (flg != 0)
+		flg = 1;
+
 	/* if (flg == 1) then sensor activate */
 	run_suspend_resume(flg);
 }

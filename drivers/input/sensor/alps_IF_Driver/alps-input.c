@@ -4,7 +4,7 @@
 #include <linux/input.h>
 #include <linux/input-polldev.h>
 
-#include <asm/uaccess.h> 
+#include <asm/uaccess.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
@@ -14,9 +14,9 @@
 * from alps's hscd, accsns sensors driver.
 * However, we don't need to use accsns's default functions.
 * So we use our acceleration sensor's functions for independant driver porting.
-* 
+*
 * acceleration sensor driver has to offer following functions !
-* => accsns_get_accelration_data(), accsns_activate() 
+* => accsns_get_accelration_data(), accsns_activate()
 * 2011-07-29, jihyun.seong@lge.com
 */
 extern int accsns_get_acceleration_data(int *xyz);
@@ -49,88 +49,96 @@ static struct input_polled_dev *alps_idev;
 
 #define POLL_STOP_TIME		400	/* (msec) */
 
-static int flgM = 0, flgA = 0;
-static int delay = 200;
-static int poll_stop_cnt = 0;
+static int flgM, flgA;
+static int delay;
+static int poll_stop_cnt;
 
-///////////////////////////////////////////////////////////////////////////////
-// for I/O Control
+/*****************************************************************************/
+/* for I/O Control */
 
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
-   replace unlocked ioctl - from kernel 2.6.36.x */ 
-static long alps_ioctl( struct file* filp, unsigned int cmd, unsigned long arg)
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
+   replace unlocked ioctl - from kernel 2.6.36.x */
+static long alps_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	int ret = -1, tmpval;
 
 	switch (cmd) {
-		case ALPSIO_SET_MAGACTIVATE:
-			ret = copy_from_user(&tmpval, argp, sizeof(tmpval));
-			if (ret) {
-				printk("error : alps_ioctl(cmd = ALPSIO_SET_MAGACTIVATE)\n" );
-				return -EFAULT;
-			}
+	case ALPSIO_SET_MAGACTIVATE:
+		ret = copy_from_user(&tmpval, argp, sizeof(tmpval));
+		if (ret) {
+			printk("error : alps_ioctl(cmd = ALPSIO_SET_MAGACTIVATE)\n");
+			return -EFAULT;
+		}
 #ifdef ALPS_DEBUG
-			printk("alps_ioctl(cmd = ALPSIO_SET_MAGACTIVATE), flgM = %d\n", tmpval);
+		printk("alps_ioctl(cmd = ALPSIO_SET_MAGACTIVATE), flgM = %d\n", tmpval);
 #endif
-			mutex_lock(&alps_lock);
-			flgM = tmpval;
-			hscd_activate(1, tmpval, delay);
-			mutex_unlock(&alps_lock);
-			break;
+		mutex_lock(&alps_lock);
+		flgM = tmpval;
+		hscd_activate(1, tmpval, delay);
+		mutex_unlock(&alps_lock);
+		break;
 
-		case ALPSIO_SET_ACCACTIVATE:
-			ret = copy_from_user(&tmpval, argp, sizeof(tmpval));
-			if (ret) {
-				printk("error : alps_ioctl(cmd = ALPSIO_SET_ACCACTIVATE)\n");
-				return -EFAULT;
-			}
+	case ALPSIO_SET_ACCACTIVATE:
+		ret = copy_from_user(&tmpval, argp, sizeof(tmpval));
+		if (ret) {
+			printk("error : alps_ioctl(cmd = ALPSIO_SET_ACCACTIVATE)\n");
+			return -EFAULT;
+		}
 #ifdef ALPS_DEBUG
-			printk("alps_ioctl(cmd = ALPSIO_SET_ACCACTIVATE), flgA = %d\n", tmpval);
+		printk("alps_ioctl(cmd = ALPSIO_SET_ACCACTIVATE), flgA = %d\n", tmpval);
 #endif
-			mutex_lock(&alps_lock);
-			flgA = tmpval;
-			accsns_activate(1, flgA);
-			mutex_unlock(&alps_lock);
-			break;
+		mutex_lock(&alps_lock);
+		flgA = tmpval;
+		accsns_activate(1, flgA);
+		mutex_unlock(&alps_lock);
+		break;
 
-		case ALPSIO_SET_DELAY:
-			ret = copy_from_user(&tmpval, argp, sizeof(tmpval));
-			if (ret) {
-				printk( "error : alps_ioctl(cmd = ALPSIO_SET_DELAY)\n" );
-				return -EFAULT;
-			}
+	case ALPSIO_SET_DELAY:
+		ret = copy_from_user(&tmpval, argp, sizeof(tmpval));
+		if (ret) {
+			printk("error : alps_ioctl(cmd = ALPSIO_SET_DELAY)\n");
+			return -EFAULT;
+		}
 #ifdef ALPS_DEBUG
-			printk("alps_ioctl(cmd = ALPSIO_SET_DELAY)\n");
+		printk("alps_ioctl(cmd = ALPSIO_SET_DELAY)\n");
 #endif
-			if      (tmpval <=  10) tmpval =  10;
-			else if (tmpval <=  20) tmpval =  20;
-			else if (tmpval <=  60) tmpval =  50;
-			else                    tmpval = 100;
-			mutex_lock(&alps_lock);
-			delay = tmpval;
-			poll_stop_cnt = POLL_STOP_TIME / tmpval;
-			hscd_activate(1, flgM, delay);
-			mutex_unlock(&alps_lock);
-#ifdef ALPS_DEBUG
-			printk("     delay = %d\n", delay);
-#endif
-			break;
+		if (tmpval <= 10)
+			tmpval = 10;
 
-		default:
-			return -ENOTTY;
+		else if (tmpval <= 20)
+			tmpval = 20;
+
+		else if (tmpval <= 60)
+			tmpval = 50;
+
+		else
+			tmpval = 100;
+
+		mutex_lock(&alps_lock);
+		delay = tmpval;
+		poll_stop_cnt = POLL_STOP_TIME / tmpval;
+		hscd_activate(1, flgM, delay);
+		mutex_unlock(&alps_lock);
+#ifdef ALPS_DEBUG
+		printk("     delay = %d\n", delay);
+#endif
+		break;
+
+	default:
+		return -ENOTTY;
 	}
 	return 0;
 }
 
-static int 
-alps_io_open( struct inode* inode, struct file* filp )
+static int
+alps_io_open(struct inode *inode, struct file *filp)
 {
 	return 0;
 }
 
-static int 
-alps_io_release( struct inode* inode, struct file* filp )
+static int
+alps_io_release(struct inode *inode, struct file *filp)
 {
 	return 0;
 }
@@ -139,8 +147,8 @@ static struct file_operations alps_fops = {
 	.owner   = THIS_MODULE,
 	.open    = alps_io_open,
 	.release = alps_io_release,
-/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24, 
-   replace unlocked ioctl - from kernel 2.6.36.x */ 
+/* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
+   replace unlocked ioctl - from kernel 2.6.36.x */
 	.unlocked_ioctl   = alps_ioctl,
 /* LGE_CHANGE_E */
 };
@@ -152,16 +160,16 @@ static struct miscdevice alps_device = {
 };
 
 
-///////////////////////////////////////////////////////////////////////////////
-// for input device
+/*****************************************************************/
+/* for input device */
 
 static ssize_t accsns_position_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
-	int x,y,z;
+	int x, y, z;
 	int xyz[3];
 
-	if(accsns_get_acceleration_data(xyz) == 0) {
+	if (accsns_get_acceleration_data(xyz) == 0) {
 		x = xyz[0];
 		y = xyz[1];
 		z = xyz[2];
@@ -170,16 +178,16 @@ static ssize_t accsns_position_show(struct device *dev,
 		y = 0;
 		z = 0;
 	}
-	return snprintf(buf, PAGE_SIZE, "(%d %d %d)\n",x,y,z);
+	return snprintf(buf, PAGE_SIZE, "(%d %d %d)\n", x, y, z);
 }
 
 static ssize_t hscd_position_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
-	int x,y,z;
+	int x, y, z;
 	int xyz[3];
 
-	if(hscd_get_magnetic_field_data(xyz) == 0) {
+	if (hscd_get_magnetic_field_data(xyz) == 0) {
 		x = xyz[0];
 		y = xyz[1];
 		z = xyz[2];
@@ -188,7 +196,7 @@ static ssize_t hscd_position_show(struct device *dev,
 		y = 0;
 		z = 0;
 	}
-	return snprintf(buf, PAGE_SIZE, "(%d %d %d)\n",x,y,z);
+	return snprintf(buf, PAGE_SIZE, "(%d %d %d)\n", x, y, z);
 }
 
 static ssize_t alps_position_show(struct device *dev,
@@ -196,8 +204,8 @@ static ssize_t alps_position_show(struct device *dev,
 {
 	size_t cnt = 0;
 	mutex_lock(&alps_lock);
-	cnt += accsns_position_show(dev,attr,buf);
-	cnt += hscd_position_show(dev,attr,buf);
+	cnt += accsns_position_show(dev, attr, buf);
+	cnt += hscd_position_show(dev, attr, buf);
 	mutex_unlock(&alps_lock);
 	return cnt;
 }
@@ -238,7 +246,7 @@ static void accsns_poll(struct input_dev *idev)
 {
 	int xyz[3];
 
-	if(accsns_get_acceleration_data(xyz) == 0) {
+	if (accsns_get_acceleration_data(xyz) == 0) {
 		input_report_abs(idev, EVENT_TYPE_ACCEL_X, xyz[0]);
 		input_report_abs(idev, EVENT_TYPE_ACCEL_Y, xyz[1]);
 		input_report_abs(idev, EVENT_TYPE_ACCEL_Z, xyz[2]);
@@ -251,7 +259,7 @@ static void hscd_poll(struct input_dev *idev)
 {
 	int xyz[3];
 
-	if(hscd_get_magnetic_field_data(xyz) == 0) {
+	if (hscd_get_magnetic_field_data(xyz) == 0) {
 		input_report_abs(idev, EVENT_TYPE_MAGV_X, xyz[0]);
 		input_report_abs(idev, EVENT_TYPE_MAGV_Y, xyz[1]);
 		input_report_abs(idev, EVENT_TYPE_MAGV_Z, xyz[2]);
@@ -269,10 +277,12 @@ static void alps_poll(struct input_polled_dev *dev)
 	dev->poll_interval = delay;
 	if (poll_stop_cnt-- < 0) {
 		poll_stop_cnt = -1;
-		if (flgM) hscd_poll(idev);
-		if (flgA) accsns_poll(idev);
+		if (flgM)
+			hscd_poll(idev);
+		if (flgA)
+			accsns_poll(idev);
 	}
-//	else printk("pollinf stop. delay = %d, poll_stop_cnt = %d\n", delay, poll_stop_cnt);
+/*	else printk("pollinf stop. delay = %d, poll_stop_cnt = %d\n", delay, poll_stop_cnt); */
 	mutex_unlock(&alps_lock);
 }
 
@@ -280,7 +290,15 @@ static int __init alps_init(void)
 {
 	struct input_dev *idev;
 	int ret;
-
+/* LGE_CHANGE
+ * follow linux coding rule
+ * 2011-08-19, jihyun.seong@lge.com
+ */
+	flgM = 0;
+	flgA = 0;
+	delay = 200;
+	poll_stop_cnt = 0;
+/* LGE_CHANGE end */
 	ret = platform_driver_register(&alps_driver);
 	if (ret)
 		goto out_region;
