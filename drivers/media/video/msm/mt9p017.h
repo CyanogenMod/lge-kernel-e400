@@ -34,50 +34,50 @@
 extern struct mt9p017_reg mt9p017_regs;
 
 struct mt9p017_i2c_reg_conf {
-  unsigned short waddr;
-  unsigned short wdata;
+	unsigned short waddr;
+	unsigned short wdata;
 };
 
 struct mt9p017_reg {
-  struct mt9p017_i2c_reg_conf const *pll_tbl;
-  uint16_t plltbl_size;
-  struct mt9p017_i2c_reg_conf const *init_tbl;
-  uint16_t inittbl_size;
-  struct mt9p017_i2c_reg_conf const *prev_tbl;
-  uint16_t prevtbl_size;
-  struct mt9p017_i2c_reg_conf const *snap_tbl;
-  uint16_t snaptbl_size;
-  struct mt9p017_i2c_reg_conf const *lensroff_tbl;
-  uint16_t lensroff_size;
+	struct mt9p017_i2c_reg_conf const *pll_tbl;
+	uint16_t plltbl_size;
+	struct mt9p017_i2c_reg_conf const *init_tbl;
+	uint16_t inittbl_size;
+	struct mt9p017_i2c_reg_conf const *prev_tbl;
+	uint16_t prevtbl_size;
+	struct mt9p017_i2c_reg_conf const *snap_tbl;
+	uint16_t snaptbl_size;
+	struct mt9p017_i2c_reg_conf const *lensroff_tbl;
+	uint16_t lensroff_size;
 };
 
-
 enum mt9p017_test_mode_t {
-  TEST_OFF,
-  TEST_1,
-  TEST_2,
-  TEST_3
+	TEST_OFF,
+	TEST_1,
+	TEST_2,
+	TEST_3
 };
 
 enum mt9p017_resolution_t {
-  QTR_SIZE,
-  FULL_SIZE,
-  INVALID_SIZE
-};
-enum mt9p017_setting {
-  RES_PREVIEW,
-  RES_CAPTURE
-};
-enum mt9p012_reg_update {
-  /* Sensor egisters that need to be updated during initialization */
-  REG_INIT,
-  /* Sensor egisters that needs periodic I2C writes */
-  UPDATE_PERIODIC,
-  /* All the sensor Registers will be updated */
-  UPDATE_ALL,
-  /* Not valid update */
-  UPDATE_INVALID
+	QTR_SIZE,
+	FULL_SIZE,
+	INVALID_SIZE
 };
 
+enum mt9p017_setting {
+	RES_PREVIEW,
+	RES_CAPTURE
+};
+
+enum mt9p012_reg_update {
+	/* Sensor egisters that need to be updated during initialization */
+	REG_INIT,
+	/* Sensor egisters that needs periodic I2C writes */
+	UPDATE_PERIODIC,
+	/* All the sensor Registers will be updated */
+	UPDATE_ALL,
+	/* Not valid update */
+	UPDATE_INVALID
+};
 
 #endif /* MT9P017_H */

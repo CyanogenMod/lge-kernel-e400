@@ -28,64 +28,55 @@
 #include <asm/mach-types.h>
 #include "mt9p017.h"
 
-//#undef CDBG
-//#define CDBG(fmt, args...) printk(KERN_INFO "msm_camera: " fmt, ##args)
-
-#define MT9P017_REG_MODEL_ID 		 0x0000
-#define MT9P017_MODEL_ID     		 0x4800
-#define REG_GROUPED_PARAMETER_HOLD	 0x0104
-#define GROUPED_PARAMETER_HOLD_OFF	 0x00
-#define GROUPED_PARAMETER_HOLD		 0x01
-#define REG_MODE_SELECT				 0x0100
-#define MODE_SELECT_STANDBY_MODE	 0x00
-#define MODE_SELECT_STREAM			 0x01
+#define MT9P017_REG_MODEL_ID       0x0000
+#define MT9P017_MODEL_ID           0x4800
+#define REG_GROUPED_PARAMETER_HOLD 0x0104
+#define GROUPED_PARAMETER_HOLD_OFF 0x00
+#define GROUPED_PARAMETER_HOLD     0x01
+#define REG_MODE_SELECT            0x0100
+#define MODE_SELECT_STANDBY_MODE   0x00
+#define MODE_SELECT_STREAM         0x01
 
 /* mode setting */
-#define REG_FRAME_LENGTH_LINES       0x300A
-#define REG_COARSE_INT_TIME          0x3012
-#define REG_GLOBAL_GAIN              0x305E
-#define REG_LENS_SHADING    		 0x3780
-#define REG_NOISE_MODEL_COEFF         0x3102
+#define REG_FRAME_LENGTH_LINES     0x300A
+#define REG_COARSE_INT_TIME        0x3012
+#define REG_GLOBAL_GAIN            0x305E
+#define REG_LENS_SHADING           0x3780
+#define REG_NOISE_MODEL_COEFF      0x3102
 
-#define REG_RESET_REGISTER          0x301A
-#define RESET_STREAM_READY          0x8652
-#define RESET_STREAM_STOP           0x0050
+#define REG_RESET_REGISTER         0x301A
+#define RESET_STREAM_READY         0x8652
+#define RESET_STREAM_STOP          0x0050
 
-#define REG_VCM_NEW_CODE				0x30F2
-#define REG_VCM_CONTROL				0x30F0
-#define REG_VCM_ANALOG_POWER			0x317A
+#define REG_VCM_NEW_CODE           0x30F2
+#define REG_VCM_CONTROL            0x30F0
+#define REG_VCM_ANALOG_POWER       0x317A
 
-#define  REG_VCM_CONTROL_POWER_EN		0x8010
-#define  REG_VCM_ANALOG_POWER_EN		0x2000
+#define REG_VCM_CONTROL_POWER_EN   0x8010
+#define REG_VCM_ANALOG_POWER_EN    0x2000
 
-
-
-
-/*============================================================================
-							 TYPE DECLARATIONS
-============================================================================*/
-
+/* TYPE DECLARATIONS */
 /* 16bit address - 16 bit context register structure */
-#define	Q8		0x00000100
-#define	MT9P017_DEFAULT_MASTER_CLK_RATE	24000000
+#define Q8 0x00000100
+#define MT9P017_DEFAULT_MASTER_CLK_RATE 24000000
 
-/* Full	Size */
-#define	MT9P017_FULL_SIZE_WIDTH      	2608
-#define	MT9P017_FULL_SIZE_HEIGHT		1960
-#define	MT9P017_FULL_SIZE_DUMMY_PIXELS	0
-#define	MT9P017_FULL_SIZE_DUMMY_LINES	0
-/* Quarter Size	*/
-#define	MT9P017_QTR_SIZE_WIDTH			1300
-#define	MT9P017_QTR_SIZE_HEIGHT			980
-#define	MT9P017_QTR_SIZE_DUMMY_PIXELS	0
-#define	MT9P017_QTR_SIZE_DUMMY_LINES	0
+/* Full Size */
+#define MT9P017_FULL_SIZE_WIDTH 2608
+#define MT9P017_FULL_SIZE_HEIGHT 1960
+#define MT9P017_FULL_SIZE_DUMMY_PIXELS 0
+#define MT9P017_FULL_SIZE_DUMMY_LINES 0
+/* Quarter Size */
+#define MT9P017_QTR_SIZE_WIDTH 1300
+#define MT9P017_QTR_SIZE_HEIGHT 980
+#define MT9P017_QTR_SIZE_DUMMY_PIXELS 0
+#define MT9P017_QTR_SIZE_DUMMY_LINES 0
 
-/* Full	Size */
-#define	MT9P017_HRZ_FULL_BLK_PIXELS		2672
-#define	MT9P017_VER_FULL_BLK_LINES		80
-/* Quarter Size	*/
-#define	MT9P017_HRZ_QTR_BLK_PIXELS		2104
-#define	MT9P017_VER_QTR_BLK_LINES		76
+/* Full Size */
+#define MT9P017_HRZ_FULL_BLK_PIXELS 2672
+#define MT9P017_VER_FULL_BLK_LINES 80
+/* Quarter Size */
+#define MT9P017_HRZ_QTR_BLK_PIXELS 2104
+#define MT9P017_VER_QTR_BLK_LINES 76
 
 /* AF Total steps parameters */
 #define MT9P017_STEPS_NEAR_TO_CLOSEST_INF  32
@@ -93,9 +84,9 @@
 
 uint16_t mt9p017_step_position_table[MT9P017_TOTAL_STEPS_NEAR_TO_FAR+1];
 uint16_t mt9p017_nl_region_boundary1 = 2;
-uint16_t mt9p017_nl_region_boundary2 = 0;
+uint16_t mt9p017_nl_region_boundary2;
 uint16_t mt9p017_nl_region_code_per_step1 = 32;
-uint16_t mt9p017_nl_region_code_per_step2 = 0;
+uint16_t mt9p017_nl_region_code_per_step2;
 uint16_t mt9p017_l_region_code_per_step = 4;
 uint16_t mt9p017_damping_threshold = 10;
 uint16_t mt9p017_sw_damping_time_wait = 1;
@@ -113,13 +104,12 @@ static struct mt9p017_work_t *mt9p017_sensorw;
 static struct i2c_client *mt9p017_client;
 static int32_t config_csi;
 
-
 struct mt9p017_ctrl_t {
 	const struct  msm_camera_sensor_info *sensordata;
 
 	uint32_t sensormode;
-	uint32_t fps_divider;   	/* init to 1 * 0x00000400 */
-	uint32_t pict_fps_divider;  /* init to 1 * 0x00000400 */
+	uint32_t fps_divider; /* init to 1 * 0x00000400 */
+	uint32_t pict_fps_divider; /* init to 1 * 0x00000400 */
 	uint16_t fps;
 
 	int16_t curr_lens_pos;
@@ -136,23 +126,16 @@ struct mt9p017_ctrl_t {
 	unsigned short imgaddr;
 };
 
-
 static uint8_t mt9p017_delay_msecs_stdby = 20;
 static uint16_t mt9p017_delay_msecs_stream = 60;
 
-//QCTK_20110111_LSC & DPC Flag
-static int lc_option = 0;
-static int nr_option = 1; 
+/* QCTK_20110111_LSC & DPC Flag */
+static int lc_option;
+static int nr_option = 1;
 
-
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
-static struct mt9p017_ctrl_t *mt9p017_ctrl = NULL;
-//static struct mt9p017_ctrl_t *mt9p017_ctrl;
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
+static struct mt9p017_ctrl_t *mt9p017_ctrl;
 static DECLARE_WAIT_QUEUE_HEAD(mt9p017_wait_queue);
 DEFINE_MUTEX(mt9p017_mut);
-
-/*=============================================================*/
 
 static int mt9p017_i2c_rxdata(unsigned short saddr,
 	unsigned char *rxdata, int length)
@@ -207,7 +190,7 @@ static int32_t mt9p017_i2c_read_w(unsigned short saddr,
 
 	memset(buf, 0, sizeof(buf));
 
-	buf[0] = (raddr & 0xFF00)>>8;
+	buf[0] = (raddr & 0xFF00) >> 8;
 	buf[1] = (raddr & 0x00FF);
 
 	rc = mt9p017_i2c_rxdata(saddr, buf, 2);
@@ -238,7 +221,8 @@ static int32_t mt9p017_i2c_write_b_sensor(unsigned short waddr, uint8_t bdata)
 	return rc;
 }
 
-static int32_t mt9p017_i2c_write_w_sensor(unsigned short waddr, unsigned short wdata)
+static int32_t mt9p017_i2c_write_w_sensor(unsigned short waddr,
+	unsigned short wdata)
 {
 	int32_t rc = -EFAULT;
 	unsigned char buf[4];
@@ -289,7 +273,7 @@ static int32_t mt9p017_i2c_write_w_table(
 	}
 
 	return rc;
-}/* endof mt9p017_i2c_write_w_table */
+}
 
 
 static void mt9p017_get_pict_fps(uint16_t fps, uint16_t *pfps)
@@ -318,7 +302,6 @@ static void mt9p017_get_pict_fps(uint16_t fps, uint16_t *pfps)
 	*pfps = (uint16_t) (fps * divider / 0x400);
 	/* 2 is the ratio of no.of snapshot channels
 	to number of preview channels */
-
 }
 
 static int32_t mt9p017_lens_shading_enable(uint8_t is_enable)
@@ -336,7 +319,7 @@ static int32_t mt9p017_lens_shading_enable(uint8_t is_enable)
 	if (rc < 0)
 		return rc;
 
-	rc = mt9p017_i2c_write_b_sensor( REG_GROUPED_PARAMETER_HOLD,
+	rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
 			GROUPED_PARAMETER_HOLD_OFF);
 
 	CDBG("%s: exiting. rc = %d\n", __func__, rc);
@@ -350,7 +333,7 @@ static uint16_t mt9p017_get_prev_lines_pf(void)
 	else
 		return MT9P017_FULL_SIZE_HEIGHT + MT9P017_VER_FULL_BLK_LINES;
 
-}/* endof mt9p017_get_prev_lines_pf */
+}
 
 static uint16_t mt9p017_get_prev_pixels_pl(void)
 {
@@ -358,7 +341,7 @@ static uint16_t mt9p017_get_prev_pixels_pl(void)
 		return MT9P017_QTR_SIZE_WIDTH + MT9P017_HRZ_QTR_BLK_PIXELS;
 	else
 		return MT9P017_FULL_SIZE_WIDTH + MT9P017_HRZ_FULL_BLK_PIXELS;
-}/* endof mt9p017_get_prev_pixels_pl */
+}
 
 static uint16_t mt9p017_get_pict_lines_pf(void)
 {
@@ -368,7 +351,7 @@ static uint16_t mt9p017_get_pict_lines_pf(void)
 		else
 			return MT9P017_FULL_SIZE_HEIGHT +
 				MT9P017_VER_FULL_BLK_LINES;
-}/* endof mt9p017_get_pict_lines_pf */
+}
 
 static uint16_t mt9p017_get_pict_pixels_pl(void)
 {
@@ -378,7 +361,7 @@ static uint16_t mt9p017_get_pict_pixels_pl(void)
 	else
 		return MT9P017_FULL_SIZE_WIDTH +
 			MT9P017_HRZ_FULL_BLK_PIXELS;
-}/* endof mt9p017_get_pict_pixels_pl */
+}
 
 static uint32_t mt9p017_get_pict_max_exp_lc(void)
 {
@@ -388,7 +371,7 @@ static uint32_t mt9p017_get_pict_max_exp_lc(void)
 	else
 		return (MT9P017_FULL_SIZE_HEIGHT +
 			MT9P017_VER_FULL_BLK_LINES)*24;
-}/* endof mt9p017_get_pict_max_exp_lc */
+}
 
 static int32_t mt9p017_set_fps(struct fps_cfg	*fps)
 {
@@ -402,20 +385,18 @@ static int32_t mt9p017_set_fps(struct fps_cfg	*fps)
 		return rc;
 
 	return rc;
-}/* endof mt9p017_set_fps*/
-
+}
 
 static int32_t mt9p017_write_exp_gain(uint16_t gain, uint32_t line)
 {
-
 	uint16_t max_legal_gain = 0x0E7F;
 	int32_t rc = 0;
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
+/* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
 	uint16_t gain_NR = 0;
 	uint16_t line_NR = 0;
+/* LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK */
 
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
-	CDBG("mt9p017_write_exp_gain entering.... \n");
+	CDBG("mt9p017_write_exp_gain entering....\n");
 	if (mt9p017_ctrl->sensormode == SENSOR_PREVIEW_MODE) {
 		mt9p017_ctrl->my_reg_gain = gain;
 		mt9p017_ctrl->my_reg_line_count = (uint16_t) line;
@@ -424,10 +405,10 @@ static int32_t mt9p017_write_exp_gain(uint16_t gain, uint32_t line)
 	if (gain > max_legal_gain)
 		gain = max_legal_gain;
 
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
+/* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
 	gain_NR = gain;
 	line_NR = line;
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
+/* LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK */
 
 	if (mt9p017_ctrl->sensormode != SENSOR_SNAPSHOT_MODE)
 		line = (uint32_t) (line * mt9p017_ctrl->fps_divider /
@@ -438,63 +419,60 @@ static int32_t mt9p017_write_exp_gain(uint16_t gain, uint32_t line)
 
 	/*Set digital gain to 1 */
 	gain |= 0x1000;
-	CDBG("[QCTK].mt9p017_write_exp_gain Func. Gain = %d, Line = %d\n", gain, line);
+	CDBG("[QCTK].mt9p017_write_exp_gain Func. Gain = %d, Line = %d\n",
+		gain, line);
 	rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
 						GROUPED_PARAMETER_HOLD);
 	if (rc < 0)
 		return rc;
-	CDBG("mt9p017_write_exp_gain REG_GLOBAL_GAIN .... \n");
+	CDBG("mt9p017_write_exp_gain REG_GLOBAL_GAIN ....\n");
 
 	rc = mt9p017_i2c_write_w_sensor(REG_GLOBAL_GAIN, gain);
 	if (rc < 0)
 		return rc;
-	CDBG("mt9p017_write_exp_gain REG_COARSE_INT_TIME .... \n");
+	CDBG("mt9p017_write_exp_gain REG_COARSE_INT_TIME ....\n");
 
 	rc = mt9p017_i2c_write_w_sensor(REG_COARSE_INT_TIME, line);
 	if (rc < 0)
 		return rc;
 
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
-#if 1
-	//printk("[mt9p017_write_NoiseReduction]Gain = %d, Line = %d\n", gain_NR, line_NR);
-	if(gain_NR < 100 && line_NR < 800)	//around 3.0x	Indoor & Outdoor
-	{
+/* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
+	CDBG("[mt9p017_write_NoiseReduction]Gain = %d, Line = %d\n", gain_NR,
+		line_NR);
+
+	if (gain_NR < 100 && line_NR < 800) {
+		/* around 3.0x  Indoor & Outdoor */
 		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
-		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x28);	//25
-		//printk("[NOISE] Outdoor/Bright Indoor...\n");		
-	}
-	else if(gain_NR < 2135) //5.4	//Indoor
-	{
+		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x28); /* 25 */
+		CDBG("[NOISE] Outdoor/Bright Indoor...\n");
+	} else if (gain_NR < 2135) {
+		/* 5.4  Indoor */
 		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
-		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x28);	//82
-		//printk("[NOISE] Indoor...\n");				
-	}	
-	else if(gain_NR < 2172) //7.7x	//ND2
-	{
+		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x28); /* 82 */
+		CDBG("[NOISE] Indoor...\n");
+	} else if (gain_NR < 2172) {
+		/* 7.7x  ND2 */
 		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
-		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x50);	//E0
-		//printk("[NOISE] Dark[ND2] Indoor...\n");						
-	}
-	else	//over 7.7x to 12x	//ND8
-	{
+		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x50); /* E0 */
+		CDBG("[NOISE] Dark[ND2] Indoor...\n");
+	} else {
+		/* over 7.7x to 12x  ND8 */
 		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0003);
-		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x70);	//112
-		//printk("[NOISE] Low light[ND8]Indoor...\n");						
-	}		
-	
-	if(rc < 0)
-	{
-		//printk("[QCTK]Fail to write NR...\n");
+		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x70); /* 112 */
+		CDBG("[NOISE] Low light[ND8]Indoor...\n");
+	}
+
+	if (rc < 0) {
+		CDBG("[QCTK]Fail to write NR...\n");
 		return rc;
 	}
-#endif
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
+/* LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK */
 
 	rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
-								GROUPED_PARAMETER_HOLD_OFF);
+		GROUPED_PARAMETER_HOLD_OFF);
 	if (rc < 0)
 		return rc;
-	CDBG("mt9p017_write_exp_gain exit.... \n");
+	CDBG("mt9p017_write_exp_gain exit....\n");
 	return rc;
 }
 
@@ -508,98 +486,116 @@ static int32_t mt9p017_set_pict_exp_gain(uint16_t gain, uint32_t line)
 	mdelay(5);
 
 	return rc;
-} /* endof mt9p017_set_pict_exp_gain*/
+}
 
 static int32_t mt9p017_set_lc(void)
 {
 	int32_t rc;
 
 	rc = mt9p017_i2c_write_w_table(mt9p017_regs.lensroff_tbl,
-								   mt9p017_regs.lensroff_size);
+		mt9p017_regs.lensroff_size);
 
 	return rc;
-}/* endof mt9p017_set_lc*/
+}
 
 static int32_t mt9p017_move_focus(int direction, int32_t num_steps)
 {
 	int32_t rc = 0;
 	int16_t step_direction, dest_lens_position, dest_step_position;
 	int16_t target_dist, small_step, next_lens_position;
-	//printk("mt9p017_move_focus entering.... \n");
-	if (direction == CAMSENSOR_MOVE_FOCUS_NEAR){
+
+	CDBG("mt9p017_move_focus entering....\n");
+	if (direction == CAMSENSOR_MOVE_FOCUS_NEAR) {
 		step_direction = 1;
-	}
-	else if (direction == CAMSENSOR_MOVE_FOCUS_FAR){
+	} else if (direction == CAMSENSOR_MOVE_FOCUS_FAR) {
 		step_direction = -1;
-	}
-	else{
-		pr_err("Illegal focus direction \n");
+	} else {
+		pr_err("Illegal focus direction\n");
 		return -EINVAL;
 	}
-	//printk("mt9p017_move_focus calculating dest_step_position \n");
-	dest_step_position = mt9p017_ctrl->curr_step_pos + (step_direction * num_steps);
-	if (dest_step_position < 0){
+
+	CDBG("mt9p017_move_focus calculating dest_step_position\n");
+	dest_step_position = mt9p017_ctrl->curr_step_pos +
+		(step_direction * num_steps);
+	if (dest_step_position < 0)
 		dest_step_position = 0;
-	}
-	else if (dest_step_position > MT9P017_TOTAL_STEPS_NEAR_TO_FAR){
+	else if (dest_step_position > MT9P017_TOTAL_STEPS_NEAR_TO_FAR)
 		dest_step_position = MT9P017_TOTAL_STEPS_NEAR_TO_FAR;
-	}
-	if(dest_step_position == mt9p017_ctrl->curr_step_pos){
-		//printk("mt9p017_move_focus ==  mt9p017_ctrl->curr_step_pos No Move exit \n");
+
+	if (dest_step_position == mt9p017_ctrl->curr_step_pos) {
+		CDBG("mt9p017_move_focus ==  mt9p017_ctrl->curr_step_pos "
+			"No Move exit\n");
 		return rc;
 	}
-	//printk("Cur Step: %hd Step Direction: %hd Dest Step Pos: %hd Num Step: %hd\n", mt9p017_ctrl->curr_step_pos, step_direction, dest_step_position, num_steps);
+
+	CDBG("Cur Step: %hd Step Direction: %hd Dest Step Pos: %hd Num Step: "
+		"%hd\n", mt9p017_ctrl->curr_step_pos, step_direction,
+		dest_step_position, num_steps);
 
 	dest_lens_position = mt9p017_step_position_table[dest_step_position];
-	target_dist = step_direction * (dest_lens_position - mt9p017_ctrl->curr_lens_pos);
-	//printk("Target Dist: %hd\n", target_dist);
+	target_dist = step_direction *
+		(dest_lens_position - mt9p017_ctrl->curr_lens_pos);
+	CDBG("Target Dist: %hd\n", target_dist);
 
-	if(step_direction < 0 && (target_dist >=
-		mt9p017_step_position_table[mt9p017_damping_threshold])){
-		small_step = (uint16_t)((target_dist/10));
+	if (step_direction < 0 && (target_dist >=
+		mt9p017_step_position_table[mt9p017_damping_threshold])) {
+		small_step = (uint16_t)(target_dist / 10);
 		if (small_step == 0)
 			small_step = 1;
 		mt9p017_sw_damping_time_wait = 1;
-	}
-	else{
-		small_step = (uint16_t)(target_dist/4);
+	} else {
+		small_step = (uint16_t)(target_dist / 4);
 		if (small_step == 0)
 			small_step = 1;
 		mt9p017_sw_damping_time_wait = 4;
 	}
-	//printk("mt9p017_move_focus small_step %d ...\n", small_step);
+	CDBG("mt9p017_move_focus small_step %d ...\n", small_step);
 
-	for (next_lens_position = mt9p017_ctrl->curr_lens_pos + (step_direction * small_step);
-	(step_direction * next_lens_position) <= (step_direction * dest_lens_position);
-	next_lens_position += (step_direction * small_step)){
-		//printk("mt9p017_move_focus next_lens_position %d ...\n", next_lens_position);
-		//printk("mt9p017_move_focus writing i2c at line %d ...\n", __LINE__);
-		rc = mt9p017_i2c_write_w_sensor(REG_VCM_NEW_CODE, next_lens_position);
-		if (rc < 0){
-			//printk("mt9p017_move_focus failed writing i2c at line %d ...\n", __LINE__);
+	for (next_lens_position = mt9p017_ctrl->curr_lens_pos +
+		(step_direction * small_step);
+		(step_direction * next_lens_position) <=
+		(step_direction * dest_lens_position);
+		next_lens_position += (step_direction * small_step)) {
+		CDBG("mt9p017_move_focus next_lens_position %d ...\n",
+			next_lens_position);
+		CDBG("mt9p017_move_focus writing i2c at line %d b...\n",
+			__LINE__);
+		rc = mt9p017_i2c_write_w_sensor(REG_VCM_NEW_CODE,
+			next_lens_position);
+		if (rc < 0) {
+			CDBG("mt9p017_move_focus failed writing i2c at %d\n",
+				__LINE__);
 			return rc;
-			}
-		//printk("mt9p017_move_focus writing Success i2c at line %d ...\n", __LINE__);
+		}
+		CDBG("mt9p017_move_focus writing Success i2c at line %d ...\n",
+			__LINE__);
 		mt9p017_ctrl->curr_lens_pos = next_lens_position;
 		usleep(mt9p017_sw_damping_time_wait*10);
 	}
-	if(mt9p017_ctrl->curr_lens_pos != dest_lens_position){
-		//printk("mt9p017_move_focus writing i2c at line %d ...\n", __LINE__);
-		//printk("mt9p017_move_focus curr_lens_pos = %d  dest_lens_position = %d ...\n", mt9p017_ctrl->curr_lens_pos, dest_lens_position);
+
+	if (mt9p017_ctrl->curr_lens_pos != dest_lens_position) {
+		CDBG("mt9p017_move_focus writing i2c at line %d ...\n",
+			__LINE__);
+		CDBG("mt9p017_move_focus curr_lens_pos = %d "
+			"dest_lens_position = %d ...\n",
+			mt9p017_ctrl->curr_lens_pos, dest_lens_position);
 
 		rc = mt9p017_i2c_write_w_sensor(REG_VCM_NEW_CODE,
 			 dest_lens_position);
-		if (rc < 0){
-			//printk("mt9p017_move_focus failed writing i2c at line %d ...\n", __LINE__);
+		if (rc < 0) {
+			CDBG("mt9p017_move_focus failed writing i2c at %d\n",
+				__LINE__);
 			return rc;
-			}
-		//printk("mt9p017_move_focus writing Success i2c at line %d ...\n", __LINE__);
+		}
+		CDBG("mt9p017_move_focus writing Success i2c at line %d\n",
+			__LINE__);
 
 		usleep(mt9p017_sw_damping_time_wait*10);
 	}
+
 	mt9p017_ctrl->curr_lens_pos = dest_lens_position;
 	mt9p017_ctrl->curr_step_pos = dest_step_position;
-	//printk("mt9p017_move_focus exit.... \n");
+	CDBG("mt9p017_move_focus exit....\n");
 	return rc;
 }
 
@@ -607,46 +603,51 @@ static void mt9p017_af_init(void)
 {
 	uint8_t i;
 	mt9p017_step_position_table[0] = 0;
-	for(i=1; i <= MT9P017_TOTAL_STEPS_NEAR_TO_FAR; i++){
-		if ( i <= mt9p017_nl_region_boundary1){
-			mt9p017_step_position_table[i] = mt9p017_step_position_table[i-1] + mt9p017_nl_region_code_per_step1;
-			}
-		else if ( i <= mt9p017_nl_region_boundary2){
-			mt9p017_step_position_table[i] = mt9p017_step_position_table[i-1] + mt9p017_nl_region_code_per_step2;
-			}
-		else{
-			mt9p017_step_position_table[i] = mt9p017_step_position_table[i-1] + mt9p017_l_region_code_per_step;
-			}
-		if (mt9p017_step_position_table[i] >255)
+	for (i = 1; i <= MT9P017_TOTAL_STEPS_NEAR_TO_FAR; i++) {
+		if (i <= mt9p017_nl_region_boundary1)
+			mt9p017_step_position_table[i] =
+				mt9p017_step_position_table[i-1] +
+				mt9p017_nl_region_code_per_step1;
+		else if (i <= mt9p017_nl_region_boundary2)
+			mt9p017_step_position_table[i] =
+				mt9p017_step_position_table[i-1] +
+				mt9p017_nl_region_code_per_step2;
+		else
+			mt9p017_step_position_table[i] =
+				mt9p017_step_position_table[i-1] +
+				mt9p017_l_region_code_per_step;
+
+		if (mt9p017_step_position_table[i] > 255)
 			mt9p017_step_position_table[i] = 255;
 	}
 }
 
-
-
 static int32_t mt9p017_set_default_focus(uint8_t af_step)
 {
 	int32_t rc = 0;
-	CDBG("mt9p017_set_default_focus entering.... \n");
-	if(mt9p017_ctrl->curr_step_pos != 0){
-		rc = mt9p017_move_focus(CAMSENSOR_MOVE_FOCUS_FAR, mt9p017_ctrl->curr_step_pos);
+
+	CDBG("mt9p017_set_default_focus entering....\n");
+
+	if (mt9p017_ctrl->curr_step_pos != 0) {
+		rc = mt9p017_move_focus(CAMSENSOR_MOVE_FOCUS_FAR,
+			mt9p017_ctrl->curr_step_pos);
 		if (rc < 0)
 			return rc;
-	}
-	else{
-		CDBG("mt9p017_set_default_focus writing REG_VCM_NEW_CODE with 00.... \n");
-		rc = mt9p017_i2c_write_w_sensor(REG_VCM_NEW_CODE,0x0000);
-		if (rc < 0){
-			CDBG("mt9p017_set_default_focus failed writing i2c at line %d ...\n", __LINE__);
+	} else {
+		CDBG("%s writing REG_VCM_NEW_CODE with 00\n", __func__);
+		rc = mt9p017_i2c_write_w_sensor(REG_VCM_NEW_CODE, 0x0000);
+		if (rc < 0) {
+			CDBG("%s failed writing i2c at line %d ...\n",
+				__func__, __LINE__);
 			return rc;
-			}
+		}
 	}
+
 	mt9p017_ctrl->curr_lens_pos = 0x00;
 	mt9p017_ctrl->curr_step_pos = 0x00;
-	CDBG("mt9p017_set_default_focus exit.... \n");
+	CDBG("mt9p017_set_default_focus exit....\n");
 	return rc;
 }
-
 
 static int32_t mt9p017_sensor_setting(int update_type, int rt)
 {
@@ -655,11 +656,10 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 	switch (update_type) {
 	case REG_INIT:
 		if (rt == RES_PREVIEW || rt == RES_CAPTURE) {
-
 			CDBG("Sensor setting Init = %d\n", rt);
 			/* reset fps_divider */
 			mt9p017_ctrl->fps = 30.8 * Q8;
-			mt9p017_ctrl->fps_divider = 1* 0x400;
+			mt9p017_ctrl->fps_divider = 1 * 0x400;
 			CDBG("%s: %d\n", __func__, __LINE__);
 
 			/* stop streaming */
@@ -669,8 +669,9 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 				return rc;
 
 			msleep(mt9p017_delay_msecs_stdby);
-			rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
-								GROUPED_PARAMETER_HOLD);
+			rc = mt9p017_i2c_write_b_sensor(
+				REG_GROUPED_PARAMETER_HOLD,
+				GROUPED_PARAMETER_HOLD);
 				if (rc < 0)
 					return rc;
 
@@ -684,17 +685,16 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 				mt9p017_regs.inittbl_size);
 			if (rc < 0)
 				return rc;
-				
-			if(lc_option)       //QCTK_20110111_Load_LSC
-			{
-				rc = mt9p017_i2c_write_w_table(mt9p017_regs.lensroff_tbl, mt9p017_regs.lensroff_size);
+
+			if (lc_option) { /* QCTK_20110111_Load_LSC */
+				rc = mt9p017_i2c_write_w_table(
+					mt9p017_regs.lensroff_tbl,
+					mt9p017_regs.lensroff_size);
 				if (rc < 0)
 					return rc;
 			}
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
-#if 1
-			if(nr_option)	//QCTK_20110124_Setting for NR
-			{
+/* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
+			if (nr_option) { /* QCTK_20110124_Setting for NR */
 				rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
 				rc = mt9p017_i2c_write_w_sensor(0x3102, 0x0028);
 				rc = mt9p017_i2c_write_w_sensor(0x3104, 0x0B6D);
@@ -712,25 +712,25 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 
 				if (rc < 0)
 					return rc;
-				
-				CDBG("mt9p017_NR_Default setting is done during INIT!\n");
+
+				CDBG("mt9p017_NR_Default setting is done\n");
 			}
-#endif			
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
-			rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
-								GROUPED_PARAMETER_HOLD_OFF);
+/* LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK */
+			rc = mt9p017_i2c_write_b_sensor(
+				REG_GROUPED_PARAMETER_HOLD,
+				GROUPED_PARAMETER_HOLD_OFF);
 			if (rc < 0)
 				return rc;
 
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
-			CDBG(" MT9P017 Turn on streaming \n");
+/* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
+			CDBG(" MT9P017 Turn on streaming\n");
 			/* turn on streaming */
 			rc = mt9p017_i2c_write_b_sensor(REG_MODE_SELECT,
 				MODE_SELECT_STREAM);
 			if (rc < 0)
 				return rc;
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
-			
+/* LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK */
+
 			CDBG("%s: %d\n", __func__, __LINE__);
 
 			msleep(mt9p017_delay_msecs_stdby);
@@ -743,18 +743,19 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 
 			/* config mipi csi controller */
 			if (config_csi == 0) {
-			mt9p017_csi_params.lane_cnt = 2;
-			mt9p017_csi_params.data_format = CSI_10BIT;
-			mt9p017_csi_params.lane_assign = 0xe4;
-			mt9p017_csi_params.dpcm_scheme = 0;
-			mt9p017_csi_params.settle_cnt = 0x14;
-			//msm_camio_clk_rate_set(MT9P017_DEFAULT_MASTER_CLK_RATE); 
-			CDBG("mt9p017 configuring csi controller \n");
-			rc = msm_camio_csi_config(&mt9p017_csi_params);
-			if (rc < 0)
-				CDBG("config csi controller failed \n");
-			msleep(5);
-			config_csi = 1;
+				mt9p017_csi_params.lane_cnt = 2;
+				mt9p017_csi_params.data_format = CSI_10BIT;
+				mt9p017_csi_params.lane_assign = 0xe4;
+				mt9p017_csi_params.dpcm_scheme = 0;
+				mt9p017_csi_params.settle_cnt = 0x14;
+				/* msm_camio_clk_rate_set(
+					MT9P017_DEFAULT_MASTER_CLK_RATE); */
+				CDBG("mt9p017 configuring csi controller\n");
+				rc = msm_camio_csi_config(&mt9p017_csi_params);
+				if (rc < 0)
+					CDBG("config csi controller failed\n");
+				msleep(5);
+				config_csi = 1;
 			}
 			rc = mt9p017_i2c_write_w_sensor(REG_VCM_CONTROL,
 				REG_VCM_CONTROL_POWER_EN);
@@ -767,15 +768,17 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 
 			/* stop streaming */
 			CDBG("Sensor setting snap or preview = %d\n", rt);
-			rc =mt9p017_i2c_write_b_sensor(REG_MODE_SELECT,
+
+			rc = mt9p017_i2c_write_b_sensor(REG_MODE_SELECT,
 				MODE_SELECT_STANDBY_MODE);
-			if(rc < 0)
+			if (rc < 0)
 				return rc;
 
 			msleep(mt9p017_delay_msecs_stdby);
 
-			rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
-								GROUPED_PARAMETER_HOLD);
+			rc = mt9p017_i2c_write_b_sensor(
+				REG_GROUPED_PARAMETER_HOLD,
+				GROUPED_PARAMETER_HOLD);
 				if (rc < 0)
 					return rc;
 
@@ -785,29 +788,31 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 				return rc;
 
 			/* write mode settings */
-			if (rt == RES_PREVIEW)
-			{
-			rc = mt9p017_i2c_write_w_table(mt9p017_regs.prev_tbl,
-				mt9p017_regs.prevtbl_size);
-			CDBG(" MT9P017 Preview configs done  \n");
-			if (rc < 0)
-				return rc;
-			}else{
-			rc = mt9p017_i2c_write_w_table(mt9p017_regs.snap_tbl,
-				mt9p017_regs.snaptbl_size);
-			if (rc < 0)
-				return rc;
-			CDBG(" MT9P017 Snapshot configs done  \n");
+			if (rt == RES_PREVIEW) {
+				rc = mt9p017_i2c_write_w_table(
+					mt9p017_regs.prev_tbl,
+					mt9p017_regs.prevtbl_size);
+				CDBG(" MT9P017 Preview configs done\n");
+				if (rc < 0)
+					return rc;
+			} else {
+				rc = mt9p017_i2c_write_w_table(
+					mt9p017_regs.snap_tbl,
+					mt9p017_regs.snaptbl_size);
+				if (rc < 0)
+					return rc;
+				CDBG(" MT9P017 Snapshot configs done\n");
 			}
 			rc = mt9p017_i2c_write_w_sensor(REG_RESET_REGISTER,
 				RESET_STREAM_READY);
 			if (rc < 0)
 				return rc;
-			rc = mt9p017_i2c_write_b_sensor(REG_GROUPED_PARAMETER_HOLD,
-								GROUPED_PARAMETER_HOLD_OFF);
+			rc = mt9p017_i2c_write_b_sensor(
+				REG_GROUPED_PARAMETER_HOLD,
+				GROUPED_PARAMETER_HOLD_OFF);
 			if (rc < 0)
 				return rc;
-			CDBG(" MT9P017 Turn on streaming \n");
+			CDBG(" MT9P017 Turn on streaming\n");
 			/* turn on streaming */
 			rc = mt9p017_i2c_write_b_sensor(REG_MODE_SELECT,
 				MODE_SELECT_STREAM);
@@ -824,35 +829,33 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 	return rc;
 }
 
-
 static int32_t mt9p017_video_config(int mode)
 {
-
 	int32_t	rc = 0;
 	int	rt;
-	CDBG("mt9p017_video_config entering.... \n");
+	CDBG("mt9p017_video_config entering....\n");
 
-	/* change sensor resolution	if needed */
+	/* change sensor resolution if needed */
 	if (mt9p017_ctrl->prev_res == QTR_SIZE) {
-			rt = RES_PREVIEW;
-			mt9p017_delay_msecs_stdby	=
-				(((2 * 1000 * Q8 * mt9p017_ctrl->fps_divider) / 0x400) /
-				mt9p017_ctrl->fps) + 1;
-		} else {
-			rt = RES_CAPTURE;
-			mt9p017_delay_msecs_stdby	=
-				(((1000 * Q8 * mt9p017_ctrl->fps_divider) /0x400) /
-				mt9p017_ctrl->fps) + 1;
-		}
-		CDBG("mt9p017_video_config mt9p017_delay_msecs_stdby = %d \n", mt9p017_delay_msecs_stdby);
+		rt = RES_PREVIEW;
+		mt9p017_delay_msecs_stdby =
+			(((2 * 1000 * Q8 * mt9p017_ctrl->fps_divider) / 0x400)
+			/ mt9p017_ctrl->fps) + 1;
+	} else {
+		rt = RES_CAPTURE;
+		mt9p017_delay_msecs_stdby =
+			(((1000 * Q8 * mt9p017_ctrl->fps_divider) / 0x400) /
+			mt9p017_ctrl->fps) + 1;
+	}
+	CDBG("mt9p017_video_config mt9p017_delay_msecs_stdby = %d\n",
+		mt9p017_delay_msecs_stdby);
 
-		if (mt9p017_sensor_setting(UPDATE_PERIODIC, rt) < 0)
-			return rc;
-
+	if (mt9p017_sensor_setting(UPDATE_PERIODIC, rt) < 0)
+		return rc;
 
 	mt9p017_ctrl->curr_res = mt9p017_ctrl->prev_res;
 	mt9p017_ctrl->sensormode = mode;
-	CDBG("mt9p017_video_config exit.... \n");
+	CDBG("mt9p017_video_config exit....\n");
 	return rc;
 }
 
@@ -860,38 +863,39 @@ static int32_t mt9p017_snapshot_config(int mode)
 {
 	int32_t rc = 0;
 	int rt;
-	CDBG("mt9p017_snapshot_config entering.... \n");
+	CDBG("mt9p017_snapshot_config entering....\n");
 
 	/* change sensor resolution if needed */
 	if (mt9p017_ctrl->curr_res != mt9p017_ctrl->pict_res) {
 		if (mt9p017_ctrl->pict_res == QTR_SIZE) {
 			rt = RES_PREVIEW;
 			mt9p017_delay_msecs_stdby =
-				(((2 * 1000 * Q8 * mt9p017_ctrl->fps_divider)/0x400) /
-				mt9p017_ctrl->fps) + 1;
+				(((2 * 1000 * Q8 * mt9p017_ctrl->fps_divider) /
+				0x400) / mt9p017_ctrl->fps) + 1;
 		} else {
 			rt = RES_CAPTURE;
 			mt9p017_delay_msecs_stdby =
-				(((1000 * Q8 * mt9p017_ctrl->fps_divider)/0x400) /
-				mt9p017_ctrl->fps) + 1;
+				(((1000 * Q8 * mt9p017_ctrl->fps_divider) /
+				0x400) / mt9p017_ctrl->fps) + 1;
 		}
 
-	CDBG("Calling mt9p017_snapshot_config\n");
-	if (mt9p017_sensor_setting(UPDATE_PERIODIC, rt) < 0)
-		return rc;
+		CDBG("Calling mt9p017_snapshot_config\n");
+		if (mt9p017_sensor_setting(UPDATE_PERIODIC, rt) < 0)
+			return rc;
 	}
-	CDBG("mt9p017_snapshot_config mt9p017_delay_msecs_stdby = %d \n", mt9p017_delay_msecs_stdby);
+	CDBG("mt9p017_snapshot_config mt9p017_delay_msecs_stdby = %d\n",
+		mt9p017_delay_msecs_stdby);
 	mt9p017_ctrl->curr_res = mt9p017_ctrl->pict_res;
 	mt9p017_ctrl->sensormode = mode;
-	CDBG("mt9p017_snapshot_config exit.... \n");
+	CDBG("mt9p017_snapshot_config exit....\n");
 	return rc;
-} /*end of mt9p017_snapshot_config*/
+}
 
 static int32_t mt9p017_raw_snapshot_config(int mode)
 {
 	int32_t rc = 0;
 	int rt;
-	CDBG("mt9p017_raw_snapshot_config entering.... \n");
+	CDBG("mt9p017_raw_snapshot_config entering....\n");
 	/* change sensor resolution if needed */
 	if (mt9p017_ctrl->curr_res != mt9p017_ctrl->pict_res) {
 		if (mt9p017_ctrl->pict_res == QTR_SIZE) {
@@ -903,7 +907,7 @@ static int32_t mt9p017_raw_snapshot_config(int mode)
 		} else {
 			rt = RES_CAPTURE;
 			mt9p017_delay_msecs_stdby =
-				((1000 * Q8 * mt9p017_ctrl->fps_divider)/
+				((1000 * Q8 * mt9p017_ctrl->fps_divider) /
 				mt9p017_ctrl->fps) + 1;
 		}
 		if (mt9p017_sensor_setting(UPDATE_PERIODIC, rt) < 0)
@@ -911,16 +915,15 @@ static int32_t mt9p017_raw_snapshot_config(int mode)
 	}
 	mt9p017_ctrl->curr_res = mt9p017_ctrl->pict_res;
 	mt9p017_ctrl->sensormode = mode;
-	CDBG("mt9p017_raw_snapshot_config exit.... \n");
+	CDBG("mt9p017_raw_snapshot_config exit....\n");
 
 	return rc;
-} /*end of mt9p017_raw_snapshot_config*/
+}
 
-static int32_t mt9p017_set_sensor_mode(int mode,
-	int res)
+static int32_t mt9p017_set_sensor_mode(int mode, int res)
 {
 	int32_t rc = 0;
-	CDBG("mt9p017_set_sensor_mode entering.... \n");
+	CDBG("mt9p017_set_sensor_mode entering....\n");
 
 	switch (mode) {
 	case SENSOR_PREVIEW_MODE:
@@ -936,24 +939,25 @@ static int32_t mt9p017_set_sensor_mode(int mode,
 		rc = -EINVAL;
 		break;
 	}
-	CDBG("mt9p017_set_sensor_mode exit.... \n");
+	CDBG("mt9p017_set_sensor_mode exit....\n");
 
 	return rc;
 }
+
 static int32_t mt9p017_power_down(void)
 {
-    CDBG("mt9p017_entering power_down \n");
+	CDBG("mt9p017_entering power_down\n");
 
-    mt9p017_i2c_write_w_sensor(REG_RESET_REGISTER, RESET_STREAM_STOP);
-    mt9p017_i2c_write_w_sensor(REG_VCM_CONTROL, 0x0000);
-    mt9p017_i2c_write_b_sensor(REG_VCM_ANALOG_POWER, 0x0000);
-    msleep(mt9p017_delay_msecs_stdby);
+	mt9p017_i2c_write_w_sensor(REG_RESET_REGISTER, RESET_STREAM_STOP);
+	mt9p017_i2c_write_w_sensor(REG_VCM_CONTROL, 0x0000);
+	mt9p017_i2c_write_b_sensor(REG_VCM_ANALOG_POWER, 0x0000);
+	msleep(mt9p017_delay_msecs_stdby);
 
-    if(mt9p017_ctrl)
-        mt9p017_ctrl->sensordata->pdata->camera_power_off();
+	if (mt9p017_ctrl)
+		mt9p017_ctrl->sensordata->pdata->camera_power_off();
 
-    CDBG("mt9p017_entering power_down completed\n");
-    return 0;
+	CDBG("mt9p017_entering power_down completed\n");
+	return 0;
 }
 
 static int mt9p017_probe_init_sensor(const struct msm_camera_sensor_info *data)
@@ -962,10 +966,11 @@ static int mt9p017_probe_init_sensor(const struct msm_camera_sensor_info *data)
 	unsigned short chipid;
 	CDBG("%s: %d\n", __func__, __LINE__);
 
-	CDBG(" mt9p017_probe_init_sensor MT9P017_REG_MODEL_ID is read  \n");
+	CDBG(" mt9p017_probe_init_sensor MT9P017_REG_MODEL_ID is read\n");
 
 	/* Read sensor Model ID: */
-	rc = mt9p017_i2c_read_w(mt9p017_client->addr, MT9P017_REG_MODEL_ID, &chipid);
+	rc = mt9p017_i2c_read_w(mt9p017_client->addr, MT9P017_REG_MODEL_ID,
+		&chipid);
 	if (rc < 0)
 		goto init_probe_fail;
 
@@ -977,15 +982,14 @@ static int mt9p017_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		printk(KERN_ERR "mt9p017 model_id = 0x%x\n", chipid);
 		goto init_probe_fail;
 	}
-	
+
 	goto init_probe_done;
 init_probe_fail:
 	CDBG(" mt9p017_probe_init_sensor fails\n");
 init_probe_done:
 	CDBG(" mt9p017_probe_init_sensor finishes\n");
 	return rc;
-	}
-/* camsensor_iu060f_mt9p017_reset */
+}
 
 int mt9p017_sensor_open_init(const struct msm_camera_sensor_info *data)
 {
@@ -998,6 +1002,7 @@ int mt9p017_sensor_open_init(const struct msm_camera_sensor_info *data)
 		rc = -ENOMEM;
 		goto init_done;
 	}
+
 	mt9p017_ctrl->fps_divider = 1 * 0x00000400;
 	mt9p017_ctrl->pict_fps_divider = 1 * 0x00000400;
 	mt9p017_ctrl->fps = 30.8 * Q8;
@@ -1010,16 +1015,16 @@ int mt9p017_sensor_open_init(const struct msm_camera_sensor_info *data)
 	if (data)
 		mt9p017_ctrl->sensordata = data;
 
-	msm_camio_clk_rate_set(MT9P017_DEFAULT_MASTER_CLK_RATE); 
+	msm_camio_clk_rate_set(MT9P017_DEFAULT_MASTER_CLK_RATE);
 
-	// power on
+	/* power on */
 	data->pdata->camera_power_on();
-	
+
 	rc = mt9p017_probe_init_sensor(data);
-	if (rc < 0) {
+	if (rc < 0)
 		goto init_fail;
-	}
-	CDBG("Calling mt9p017_af_init \n");
+
+	CDBG("Calling mt9p017_af_init\n");
 	mt9p017_af_init();
 	CDBG("%s: %d\n", __func__, __LINE__);
 	rc = mt9p017_sensor_setting(REG_INIT, RES_PREVIEW);
@@ -1031,13 +1036,13 @@ int mt9p017_sensor_open_init(const struct msm_camera_sensor_info *data)
 init_fail:
 	CDBG(" mt9p017_sensor_open_init fail\n");
 	kfree(mt9p017_ctrl);
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
+/* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
 	mt9p017_ctrl = NULL;
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
+/* LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK */
 init_done:
 	CDBG("mt9p017_sensor_open_init done\n");
 	return rc;
-} /*endof mt9p017_sensor_open_init*/
+}
 
 static int mt9p017_init_client(struct i2c_client *client)
 {
@@ -1213,7 +1218,8 @@ int mt9p017_sensor_config(void __user *argp)
 				cdata.cfg.focus.steps);
 			break;
 		case CFG_SET_LENS_SHADING:
-			rc = mt9p017_lens_shading_enable(cdata.cfg.lens_shading);
+			rc = mt9p017_lens_shading_enable(
+				cdata.cfg.lens_shading);
 			break;
 		case CFG_GET_AF_MAX_STEPS:
 			cdata.max_steps = MT9P017_STEPS_NEAR_TO_CLOSEST_INF;
@@ -1233,9 +1239,6 @@ int mt9p017_sensor_config(void __user *argp)
 	return rc;
 }
 
-
-
-
 static int mt9p017_sensor_release(void)
 {
 	int rc = -EBADF;
@@ -1243,14 +1246,12 @@ static int mt9p017_sensor_release(void)
 	mutex_lock(&mt9p017_mut);
 	mt9p017_power_down();
 
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
-    if( mt9p017_ctrl ){
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
-	kfree(mt9p017_ctrl);
-	mt9p017_ctrl = NULL;
-// LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK
-    }
-// LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK
+/* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
+	if (mt9p017_ctrl) {
+		kfree(mt9p017_ctrl);
+		mt9p017_ctrl = NULL;
+	}
+/* LGE_UPDATE_E jeonghoon.cho@lge.com : modification QCTK */
 	CDBG("mt9p017_release completed\n");
 	mutex_unlock(&mt9p017_mut);
 
@@ -1269,7 +1270,7 @@ static int mt9p017_sensor_probe(const struct msm_camera_sensor_info *info,
 		goto probe_fail;
 	}
 
-	s->s_init 	 = mt9p017_sensor_open_init;
+	s->s_init    = mt9p017_sensor_open_init;
 	s->s_release = mt9p017_sensor_release;
 	s->s_config  = mt9p017_sensor_config;
 	s->s_camera_type = BACK_CAMERA_2D;
@@ -1307,6 +1308,3 @@ void mt9p017_exit(void)
 {
 	i2c_del_driver(&mt9p017_i2c_driver);
 }
-
-
-

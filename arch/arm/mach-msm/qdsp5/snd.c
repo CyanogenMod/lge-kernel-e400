@@ -33,7 +33,7 @@
 #if defined (CONFIG_MACH_MSM7X27A_M3EU)
 #include "../lge/board-m3eu.h"
 
-static int fm_enable = 0;
+static int fm_enable;
 #endif
 
 struct snd_ctxt {
@@ -123,7 +123,7 @@ struct snd_agc_ctl_msg {
 struct snd_set_loopback_param_rep {
 	struct rpc_reply_hdr hdr;
 	uint32_t get_mode;
-} lrep;	
+} lrep;
 
 struct rpc_snd_set_loopback_mode_args {
 	uint32_t mode;
@@ -139,7 +139,7 @@ struct snd_set_loopback_mode_msg {
 struct snd_set_rxvol_param_rep {
 	struct rpc_reply_hdr hdr;
 	uint32_t get_rxvol;
-}rrep;
+} rrep;
 
 struct rpc_snd_set_rx_volume_param_args {
 	uint32_t device;
@@ -160,7 +160,7 @@ struct snd_set_rx_volume_param_msg {
 struct snd_set_dtmfvol_param_rep {
 	struct rpc_reply_hdr hdr;
 	uint32_t get_dtmfvol;
-}frep;
+} frep;
 
 struct rpc_snd_set_dtmf_volume_param_args {
 	uint32_t device;
@@ -402,12 +402,10 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		rc = msm_rpc_call_reply(snd->ept,
 			SND_SET_RX_VOLUME_PROC,
-			&rmsg, sizeof(rmsg),&rrep, sizeof(rrep), 5 * HZ);
-		if (rc < 0){
+			&rmsg, sizeof(rmsg), &rrep, sizeof(rrep), 5 * HZ);
+		if (rc < 0)
 			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
-		}
-		else
-		{
+		else {
 			rxvol.get_param = be32_to_cpu(rrep.get_rxvol);
 			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, rxvol.get_param);
 			if (copy_to_user((void __user *)arg, &rxvol, sizeof(rxvol))) {
@@ -431,16 +429,14 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		fmsg.args.cb_func = -1;
 		fmsg.args.client_data = 0;
 		pr_info("set_dtmf_volume %d %d %d %d\n", dtmfvol.device,
-						 dtmfvol.method, dtmfvol.idx, dtmfvol.param_val);
+				dtmfvol.method, dtmfvol.idx, dtmfvol.param_val);
 
 		rc = msm_rpc_call_reply(snd->ept,
 			SND_SET_DTMF_VOLUME_PROC,
-			&fmsg, sizeof(fmsg),&frep, sizeof(frep), 5 * HZ);
-		if (rc < 0){
+			&fmsg, sizeof(fmsg), &frep, sizeof(frep), 5 * HZ);
+		if (rc < 0)
 			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
-		}
-		else
-		{
+		else {
 			dtmfvol.get_param = be32_to_cpu(frep.get_dtmfvol);
 			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, dtmfvol.get_param);
 			if (copy_to_user((void __user *)arg, &dtmfvol, sizeof(dtmfvol))) {
@@ -829,6 +825,9 @@ static int snd_probe(struct platform_device *pdev)
 	struct snd_sys_ctxt *snd_sys = &the_snd_sys;
 	int rc = 0;
 
+#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+	fm_enable = 0;
+#endif
 	mutex_init(&snd->lock);
 	mutex_init(&snd_sys->lock);
 	snd_sys->ept = NULL;
