@@ -42,8 +42,9 @@
 #endif
 
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
-//hyunjin2.lim
-//using ADB test & changed default PID 618E -> 61FC
+/* hyunjin2.lim@lge.com
+ * using ADB test & changed default PID 618E -> 61FC
+ */
 #define M3_DEFENSE_CODE
 #endif
 
@@ -377,7 +378,7 @@ static int __devinit android_bind(struct usb_composite_dev *cdev)
 	 * that can be sent from mass storage during suspend.
 	 */
 	 
-//hyunjin2.lim check.  if (gadget->ops->wakeup && !is_msc_only_comp((dev->product_id)))
+/* hyunjin2.lim check.  if (gadget->ops->wakeup && !is_msc_only_comp((dev->product_id))) */
 	if (gadget->ops->wakeup)
 		android_config_driver.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
 	else
@@ -426,7 +427,7 @@ static int __devinit android_bind(struct usb_composite_dev *cdev)
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 	/* Set default device class */
 #ifdef M3_DEFENSE_CODE
- 	if (product_id == LGE_FACTORY_PID)//hyunjin2.lim.default pid = 0x61fc
+ 	if (product_id == LGE_FACTORY_PID)
 #else
 	if ((product_id == LGE_DEFAULT_PID) || (product_id == LGE_FACTORY_PID))
 #endif
@@ -648,13 +649,13 @@ static void android_force_reset(void)
 }
 #endif
 
-#ifdef M3_DEFENSE_CODE
-static void android_disable_all_function(void) // hyunjin2.lim disable all function.
+#ifndef M3_DEFENSE_CODE
+static void android_disable_all_function(void)
 { 
 	struct usb_function *f;
 	list_for_each_entry(f, &android_config_driver.functions, list) {
 		f->disabled = 1;
-		//usb_function_set_enabled(f, !enable);
+		/* usb_function_set_enabled(f, !enable); */
 	}
 }
 #endif
@@ -704,14 +705,14 @@ int android_enable_function(struct usb_function *f, int enable)
 		/* We force to change mode even if mass storage is already enabled */
 		f->disabled = disable;
 		if (enable) {
-#ifdef M3_DEFENSE_CODE			
+#ifndef M3_DEFENSE_CODE			
 			android_disable_all_function();
 #endif
 			/* switch to mass storage only */
 			android_set_class_product(LGE_UMSONLY_PID, USB_CLASS_PER_INTERFACE);
 			lgeusb_info("Switch to UMS only %x\n", LGE_UMSONLY_PID);
 		} else {
-			android_set_class_product(dev->product_id, USB_CLASS_COMM);
+			android_set_class_product(dev->product_id, USB_CLASS_MISC);
 		}
 
 		android_force_reset();
@@ -774,6 +775,7 @@ int android_enable_function(struct usb_function *f, int enable)
 	if (!!f->disabled != disable) {
 		usb_function_set_enabled(f, !disable);
 
+		
 		if (!strcmp(f->name, "ecm")) {
 			/* We need to specify the COMM class in the device
 			 * descriptor if we are using CDC ECM.
@@ -787,7 +789,11 @@ int android_enable_function(struct usb_function *f, int enable)
 				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
 #endif
 			}
-
+			
+#if 0
+			if(device_desc.idProduct == LGE_DEFAULT_PID)
+				return 0;
+#endif				
 			android_config_functions(f, enable);
 		}
 
@@ -807,12 +813,17 @@ int android_enable_function(struct usb_function *f, int enable)
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 		if (device_desc.idProduct == LGE_UMSONLY_PID 
 #ifdef M3_DEFENSE_CODE			
-			|| device_desc.idProduct == LGE_CHARGEONLY_PID //hyunjin2.lim added defense code.
+			|| device_desc.idProduct == LGE_CHARGEONLY_PID
+			|| device_desc.idProduct == LGE_DEFAULT_PID
 #endif
 			){ 
 			/* When adb enable during mass storage only */
 			if (!strcmp(f->name, "adb")) {
+#ifdef M3_DEFENSE_CODE
+				set_device_class(dev->cdev->desc, USB_CLASS_MISC, 0x02, 0x01);
+#else
 				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
+#endif
 				android_set_default_product(dev->product_id);
 			}
 		}
