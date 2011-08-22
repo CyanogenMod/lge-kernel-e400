@@ -165,6 +165,7 @@ struct mt9p017_i2c_reg_conf const init_tbl[] = {
 struct mt9p017_i2c_reg_conf const mode_preview_tbl[] = {
 	{0x3004, 0x0000}, /* x_addr_start */
 	{0x3008, 0x0A25}, /* x_addr_end */
+	{0x3002, 0x0000}, /* y_start_addr */
 	{0x3006, 0x07A5}, /* y_addr_end */
 	{0x3040, 0x04C3}, /* read_mode */
 	{0x034C, 0x0514}, /* x_output_size */
