@@ -183,6 +183,7 @@ static struct msm_camera_sensor_platform_info mt9p017_sensor_info = {
 	.mount_angle = 0
 };
 
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
 static struct msm_camera_sensor_flash_src led_flash_src = {
 	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
 };
@@ -191,6 +192,12 @@ static struct msm_camera_sensor_flash_data led_flash_data = {
 	.flash_type = MSM_CAMERA_FLASH_LED,
 	.flash_src  = &led_flash_src,
 };
+#else
+static struct msm_camera_sensor_flash_data led_flash_data = {
+	.flash_type = MSM_CAMERA_FLASH_NONE,
+	.flash_src  = NULL,
+};
+#endif
 
 static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
 	.sensor_name    = "mt9p017",
@@ -221,6 +228,7 @@ static struct i2c_board_info i2c_camera_devices[] = {
 #endif
 };
 
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
 /* LM3559 flash led driver */
 static struct gpio_i2c_pin flash_i2c_pin[] = {
 	{
@@ -252,6 +260,7 @@ static struct i2c_board_info i2c_camera_flash_devices[] = {
 		.platform_data = &lm3559_flash_pdata,
 	},
 };
+#endif
 
 #endif /* CONFIG_MSM_CAMERA */
 
@@ -261,6 +270,7 @@ static struct platform_device *m3eu_camera_devices[] __initdata = {
 #endif
 };
 
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
 static void __init m3eu_init_i2c_camera(int bus_num)
 {
 	flash_i2c_device.id = bus_num;
@@ -271,6 +281,7 @@ static void __init m3eu_init_i2c_camera(int bus_num)
 		ARRAY_SIZE(i2c_camera_flash_devices));
 	platform_device_register(&flash_i2c_device);
 }
+#endif
 
 void __init lge_add_camera_devices(void)
 {
@@ -281,5 +292,7 @@ void __init lge_add_camera_devices(void)
 #endif
 	platform_add_devices(m3eu_camera_devices,
 		ARRAY_SIZE(m3eu_camera_devices));
+#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
 	lge_add_gpio_i2c_device(m3eu_init_i2c_camera);
+#endif
 }
