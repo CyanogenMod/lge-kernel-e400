@@ -131,11 +131,11 @@ static struct dsi_cmd_desc r61529_disp_on_cmds[] = {
 static struct dsi_cmd_desc r61529_disp_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 40,
 		sizeof(sleep_display_off), sleep_display_off},
-	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 100,
 		sizeof(sleep_mode_on), sleep_mode_on},
 	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_mcap), sleep_mcap},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 100,
+	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_low_power_mode), sleep_low_power_mode}
 };
 
