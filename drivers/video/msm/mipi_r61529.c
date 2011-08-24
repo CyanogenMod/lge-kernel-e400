@@ -35,7 +35,7 @@ static char config_column_addr[5] = {0x2a, 0x00, 0x00, 0x01, 0x3f};
 static char config_page_addr[5] = {0x2b, 0x00, 0x00, 0x01, 0xdf};
 static char config_frame_mem_if[5] = {0xb3, 0x02, 0x00, 0x00, 0x00};
 static char config_panel_drv[9] = {0xc0, 0x01, 0xdf, 0x40, 0x10, 0x00, 0x01, 0x00, 0x33};
-static char config_display_timing[6] = {0xc1, 0x07, 0x28, 0x08, 0x08, 0x10};
+static char config_display_timing[6] = {0xc1, 0x07, 0x27, 0x08, 0x08, 0x10};
 static char config_src_gate_timing[5] = {0xc4, 0x77, 0x00, 0x03, 0x01};
 static char config_dpi_polarity[2] = {0xc6, 0x00};
 static char config_gamma_a[25] = {0xc8, 0x00, 0x10, 0x18, 0x24, 0x2f, 0x48, 0x38, 0x24,
@@ -58,7 +58,7 @@ static char config_backlight_ctrl2[5] = {0xb9, 0x00, 0x00, 0x00, 0x00};
 /*static char config_backlight_ctrl3[3] = {0xba, 0x00, 0x00};*/
 
 static char config_nvm_access[5] = {0xe0, 0x00, 0x00, 0x00, 0x00};
-static char config_ddb_write[7] = {0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x70};
+static char config_ddb_write[7] = {0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static char config_nvm_load[2] = {0xe2, 0x80};
 static char config_write_memory[2] = {0x2c, 0x00};
 
@@ -131,11 +131,11 @@ static struct dsi_cmd_desc r61529_disp_on_cmds[] = {
 static struct dsi_cmd_desc r61529_disp_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 40,
 		sizeof(sleep_display_off), sleep_display_off},
-	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 100,
 		sizeof(sleep_mode_on), sleep_mode_on},
 	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_mcap), sleep_mcap},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 100,
+	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_low_power_mode), sleep_low_power_mode}
 };
 

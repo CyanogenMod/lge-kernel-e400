@@ -36,7 +36,7 @@
 static struct work_struct work_vibrator_on;
 static struct work_struct work_vibrator_off;
 static struct hrtimer vibe_timer;
-static int voltage = 3000;
+static int voltage = 2900;
 
 #ifdef CONFIG_PM8XXX_RPC_VIBRATOR
 static void set_pmic_vibrator(int on)
@@ -96,11 +96,6 @@ static void pmic_vibrator_off(struct work_struct *work)
 	set_pmic_vibrator(0);
 }
 
-static void timed_vibrator_on(struct timed_output_dev *sdev)
-{
-	schedule_work(&work_vibrator_on);
-}
-
 static void timed_vibrator_off(struct timed_output_dev *sdev)
 {
 	schedule_work(&work_vibrator_off);
@@ -109,13 +104,13 @@ static void timed_vibrator_off(struct timed_output_dev *sdev)
 static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
 	hrtimer_cancel(&vibe_timer);
-	printk(KERN_INFO "The vibrator operation Time is = %d\n", value);
+	cancel_work_sync(&work_vibrator_off);
 	if (value == 0)
 		set_pmic_vibrator(0);
 	else {
 		value = (value > 20000 ? 20000 : value);
-
-		timed_vibrator_on(dev);
+		set_pmic_vibrator(0);
+		set_pmic_vibrator(1);
 
 		hrtimer_start(&vibe_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
@@ -126,7 +121,7 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 static void vibrator_voltage(struct timed_output_dev *dev, int value)
 {
 	voltage = value;
-	printk(KERN_INFO "[LGE] Setting vibrator voltage is %d", voltage);
+	printk(KERN_INFO "[LGE] Setting vibrator voltage is %dmV\n", voltage);
 }
 
 static int vibrator_get_time(struct timed_output_dev *dev)
