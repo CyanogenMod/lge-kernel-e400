@@ -205,11 +205,11 @@ static struct atcmd_dev *atpdev;
 #define ATCMD_NOT_ATMCD_EARSENSE			88
 // END: 0005723:eternalblue@lge.com:2010-04-01
 // END: 0003698:eternalblue@lge.com:2010-01-30
-
+#if defined(LGE_MODEL_M3_EU) || defined(LGE_MODEL_M3_MPCS)
 /* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
 #define ATCMD_ADBON     134
 /* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
-
+#endif
 //////////////////////////////////////////////////////////////////
 // at_cmd value end
 
@@ -706,7 +706,7 @@ static int  dsatHandleAT_ARM11(uint32_t at_cmd, uint32_t at_act, uint32_t at_par
 			ret_value2 = 20;
 		}
 		break;
-		
+#if defined(LGE_MODEL_M3_EU) || defined(LGE_MODEL_M3_MPCS) 	
 		/* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
 		case ATCMD_ADBON:
 
@@ -717,7 +717,7 @@ static int  dsatHandleAT_ARM11(uint32_t at_cmd, uint32_t at_act, uint32_t at_par
 
 		break;
 	/* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
-
+#endif
 		case ATCMD_SWV:
 		{
 

@@ -19,6 +19,10 @@
 
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
+// BEGIN: myunghwan.kim@lge.com:2011-08-26
+// [AT-CMD] for AT-CMD(RPC) Support
+#include <linux/eve_at.h>
+// END: myunghwan.kim@lge.com:2011-08-26
 #include <mach/socinfo.h>
 #include <mach/msm_serial_hs.h>
 
@@ -116,6 +120,21 @@ static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.max_axi_khz = 200000,
 };
 
+// BEGIN: myunghwan.kim@lge.com:2011-08-26
+// [AT-CMD] for AT-CMD(RPC) Support
+static struct atcmd_platform_data eve_atcmd_pdata = {
+	.name = "eve_atcmd",
+};
+
+static struct platform_device eve_atcmd_device = {
+	.name = "eve_atcmd",
+	.id = -1,
+	.dev    = {
+		.platform_data = &eve_atcmd_pdata
+	},
+}; 
+// END: myunghwan.kim@lge.com:2011-08-26
+
 static struct platform_device *m3eu_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
@@ -123,6 +142,11 @@ static struct platform_device *m3eu_devices[] __initdata = {
 	&msm_gsbi0_qup_i2c_device,
 	&msm_gsbi1_qup_i2c_device,
 	&msm_kgsl_3d0,
+	
+	// BEGIN: myunghwan.kim@lge.com:2011-08-26
+	// [AT-CMD] for AT-CMD(RPC) Support
+	&eve_atcmd_device,
+	// END: myunghwan.kim@lge.com:2011-08-26	
 };
 
 static void __init msm_device_i2c_init(void)

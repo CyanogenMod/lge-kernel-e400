@@ -72,6 +72,9 @@ static void mcs8000_late_resume(struct early_suspend *h);
 #define TS_POLLING_TIME 0 /* msec */
 #endif
 
+#if defined (CONFIG_MACH_MSM7X25A_M3DOPEN)
+#define KEY_SIM_SWITCH          248
+#endif
 #define DEBUG_TS 0 /* enable or disable debug message */
 
 #if DEBUG_TS
@@ -315,7 +318,11 @@ static void mcs8000_work(struct work_struct *work)
 			if (keyID == 0x3)
 				input_report_key(ts->input_dev, KEY_BACK, touchState ? PRESS_KEY : RELEASE_KEY);
 			if (keyID == 0x4)
+			#if defined (CONFIG_MACH_MSM7X25A_M3DOPEN)
+				input_report_key(ts->input_dev, KEY_SIM_SWITCH, touchState ? PRESS_KEY : RELEASE_KEY);
+			#else
 				input_report_key(ts->input_dev, KEY_SEARCH, touchState ? PRESS_KEY : RELEASE_KEY);
+			#endif	
 #if DEBUG_PRINT
 		printk(KERN_ERR "melfas_ts_work_func: keyID : %d, touchState: %d\n", keyID, touchState);
 #endif
@@ -804,7 +811,11 @@ static int __devinit mcs8000_ts_init(void)
 	set_bit(KEY_BACK, mcs8000_ts_input->keybit);
 	set_bit(KEY_MENU, mcs8000_ts_input->keybit);
 	set_bit(KEY_HOME, mcs8000_ts_input->keybit);
+	#if defined (CONFIG_MACH_MSM7X25A_M3DOPEN)
+	set_bit(KEY_SIM_SWITCH, mcs8000_ts_input->keybit);
+	#else
 	set_bit(KEY_SEARCH, mcs8000_ts_input->keybit);
+	#endif
 #endif
 
 	err = input_register_device(mcs8000_ts_input);
