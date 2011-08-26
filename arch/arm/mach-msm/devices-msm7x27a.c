@@ -405,8 +405,13 @@ static struct resource resources_sdc1[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
+#ifdef CONFIG_MACH_LGE
+               .start  = 7,
+               .end    = 7,
+#else
 		.start	= 8,
 		.end	= 8,
+#endif
 		.flags	= IORESOURCE_DMA,
 	},
 };
