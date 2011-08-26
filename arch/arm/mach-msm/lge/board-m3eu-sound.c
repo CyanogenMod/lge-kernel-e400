@@ -253,6 +253,12 @@ static int m3eu_gpio_hook_key_work_func(int *value)
 	printk(KERN_INFO "%s: hook key detected : %s\n", __func__,
 		gpio_value ? "pressed" : "released");
 
+	msleep(150);
+	if (gpio_get_value(GPIO_EAR_SENSE)) {
+		printk(KERN_INFO "Ignore hook key event\n");
+		*value = 0;
+	}
+
 	return gpio_value;
 }
 

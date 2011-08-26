@@ -205,13 +205,15 @@ ssize_t mipi_r61529_lcd_store_onoff(struct device *dev, struct device_attribute 
 {
 	/*struct platform_device dummy_pdev;*/
 	int onoff;
+	struct platform_device *pdev = to_platform_device(dev);
 
 	sscanf(buf, "%d", &onoff);
 	printk("%s: onoff : %d\n", __func__, onoff);
+	
 	if (onoff) {
-		mipi_r61529_lcd_on(NULL);
+		mipi_r61529_lcd_on(pdev);
 	} else {
-		mipi_r61529_lcd_off(NULL);
+		mipi_r61529_lcd_off(pdev);
 	}
 	return count;
 }
