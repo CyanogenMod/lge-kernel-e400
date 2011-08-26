@@ -43,6 +43,14 @@ static void sdcc_gpio_init(void)
 	if (rc)
 		printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
 					__func__, rc);
+/*LGE_CHANGE_S[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
+	gpio_tlmm_config(GPIO_CFG(78, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), GPIO_CFG_ENABLE ) ;
+	gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), GPIO_CFG_ENABLE ) ;
+
+	gpio_set_value(78,0);
+	gpio_set_value(77,0);
+/*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
+
 #endif
 }
 
@@ -160,16 +168,27 @@ static int msm_sdcc_setup_gpio(int dev_id, unsigned int enable)
 		return rc;
 
 	if (enable) {
-		set_bit(dev_id, &gpio_sts);
+		set_bit(dev_id, &gpio_sts);	
 		rc = msm_gpios_request_enable(curr->cfg_data, curr->size);
+		if(dev_id == 4 || dev_id == 3)
+		{	
+			printk("msm_sdcc_setup_vreg, dev_id = %d,enable=%d\n",dev_id,enable);
+			return 0;
+		}		
 		if (rc)
 			pr_err("%s: Failed to turn on GPIOs for slot %d\n",
 					__func__,  dev_id);
 	} else {
 		clear_bit(dev_id, &gpio_sts);
+		
+		if(dev_id == 4 || dev_id == 3)
+		{	
+			printk("msm_sdcc_setup_vreg, dev_id = %d,enable=%d\n",dev_id,enable);
+			return rc;	
+		}
 		if (curr->sleep_cfg_data) {
 			rc = msm_gpios_enable(curr->sleep_cfg_data, curr->size);
-			msm_gpios_free(curr->sleep_cfg_data, curr->size);
+			msm_gpios_free(curr->sleep_cfg_data, curr->size);	
 			return rc;
 		}
 		msm_gpios_disable_free(curr->cfg_data, curr->size);
@@ -320,14 +339,36 @@ static struct mmc_platform_data sdc3_plat_data = {
 
 #if (defined(CONFIG_MMC_MSM_SDC4_SUPPORT)\
 		&& !defined(CONFIG_MMC_MSM_SDC3_8_BIT_SUPPORT))
-static struct mmc_platform_data sdc4_plat_data = {
-	.ocr_mask	= MMC_VDD_28_29,
-	.translate_vdd  = msm_sdcc_setup_power,
-	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+
+/*LGE_CHANGE_S[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
+static unsigned int sms2130_sdcc_slot_status(struct device *dev)
+{
+  unsigned int ret1;
+  ret1=gpio_get_value(78);
+  printk("[SOOLIM]%s\tReset[%d]\n", __FUNCTION__,ret1);
+  return ret1;
+}
+
+static struct mmc_platform_data sms2130_sdcc_data = {
+  .ocr_mask       = MMC_VDD_28_29,/*MMC_VDD_30_31*//*MMC_VDD_28_29*/
+  .translate_vdd  = msm_sdcc_setup_power,
+  .status         = sms2130_sdcc_slot_status,
+  .status_irq	  = MSM_GPIO_TO_INT(78),
+  .irq_flags      = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+  .mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 24576000,
-	.msmsdcc_fmax	= 49152000,
+	.msmsdcc_fmid	= 16027000,
+//	.msmsdcc_fmax	= 400000,		
+//  	.msmsdcc_fmax   = 5000000,
+	 .msmsdcc_fmax  = 24576000,
+//	.msmsdcc_fmax	= 16027000,	
+//	.msmsdcc_fmax	= 17000000,
+//	.msmsdcc_fmax	= 20000000,
+//	.msmsdcc_fmax	= 24576000,
+//	.msmsdcc_fmax	= 49152000,
+	.nonremovable	= 0,
 };
+/*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
 #endif
 #endif
 
@@ -367,13 +408,21 @@ static void __init msm7x27a_init_mmc(void)
 	sdcc_vreg_data[1].level = 2850;
 	msm_add_sdcc(2, &sdc2_plat_data);
 #endif
-	/* Not Used */
+
+/*LGE_CHANGE_S[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
 #if (defined(CONFIG_MMC_MSM_SDC4_SUPPORT)\
-		&& !defined(CONFIG_MMC_MSM_SDC3_8_BIT_SUPPORT))
-	sdcc_vreg_data[3].vreg_data = vreg_mmc;
-	sdcc_vreg_data[3].level = 2850;
-	msm_add_sdcc(4, &sdc4_plat_data);
+			&& !defined(CONFIG_MMC_MSM_SDC3_8_BIT_SUPPORT))
+		sdcc_vreg_data[3].vreg_data = vreg_mmc;
+		sdcc_vreg_data[3].level = 2850;
+		msm_add_sdcc(4, &sms2130_sdcc_data);
 #endif
+
+/*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
+
+/*LGE_CHANGE_S[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
+	enable_irq(gpio_to_irq(78));
+/*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
+
 }
 
 void __init lge_add_mmc_devices(void)

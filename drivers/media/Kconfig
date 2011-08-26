@@ -67,6 +67,10 @@ config VIDEO_MEDIA
 	tristate
 	default (DVB_CORE && (VIDEO_DEV = n)) || (VIDEO_DEV && (DVB_CORE = n)) || (DVB_CORE && VIDEO_DEV)
 
+config ONESEG
+	bool
+	default y
+
 comment "Multimedia drivers"
 
 source "drivers/media/common/Kconfig"
@@ -92,4 +96,8 @@ source "drivers/media/radio/Kconfig"
 
 source "drivers/media/dvb/Kconfig"
 
+#
+# oneseg adapters
+#
+source "drivers/media/oneseg/Kconfig"
 endif # MEDIA_SUPPORT

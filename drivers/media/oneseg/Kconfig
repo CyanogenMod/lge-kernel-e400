@@ -1,0 +1,6 @@
+
+config ONESEG_SMS2130
+	bool
+	default y
+	
+source "drivers/media/oneseg/sms2130_sdio/Kconfig"
