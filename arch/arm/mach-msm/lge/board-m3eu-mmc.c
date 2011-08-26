@@ -342,7 +342,7 @@ static struct mmc_platform_data sdc4_plat_data = {
 
 static void __init msm7x27a_init_mmc(void)
 {
-	vreg_emmc = vreg_get(NULL, "emmc");
+	vreg_emmc = vreg_get(NULL, "gp2");
 	if (IS_ERR(vreg_emmc)) {
 		pr_err("%s: vreg get failed (%ld)\n",
 				__func__, PTR_ERR(vreg_emmc));
