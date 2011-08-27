@@ -20,7 +20,7 @@ static struct msm_psy_batt_pdata msm_psy_batt_data = {
 
 static u32 m3_spg_batt_capacity(u32 current_soc)
 {
-	if(current_soc > 100)
+	if (current_soc > 100)
 		current_soc = 100;
 
 	return current_soc;
