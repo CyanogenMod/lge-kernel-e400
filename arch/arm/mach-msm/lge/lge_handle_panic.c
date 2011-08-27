@@ -1,4 +1,4 @@
-/* 
+/*
  * arch/arm/mach-msm/lge/lge_handle_panic.c
  *
  * Copyright (C) 2010 LGE, Inc
@@ -36,8 +36,8 @@ struct crash_log_dump {
 };
 
 static struct crash_log_dump *crash_dump_log;
-static unsigned int crash_buf_size = 0;
-static int crash_store_flag = 0;
+static unsigned int crash_buf_size;
+static int crash_store_flag;
 
 static DEFINE_SPINLOCK(lge_panic_lock);
 
@@ -115,12 +115,6 @@ static int restore_crash_log(struct notifier_block *this, unsigned long event,
 	crash_store_flag = 0;
 
 	spin_lock_irqsave(&lge_panic_lock, flags);
-
-#if 0
-	printk(KERN_EMERG"%s", crash_dump_log->buffer);
-	printk(KERN_EMERG"%s: buffer size %d\n",__func__, crash_dump_log->size);
-	printk(KERN_EMERG"%s: %d\n",__func__, crash_buf_size);
-#endif
 
 	lge_set_reboot_reason(CRASH_REBOOT);
 	crash_dump_log->magic_key = PANIC_MAGIC_KEY;
