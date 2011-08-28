@@ -82,8 +82,9 @@ enum {
 #define GPIO_BUTTON_DETECT  28
 #define GPIO_MIC_MODE		127
 
-/* LGE_BT_FW by suhui.kim@lge.com, bluetooth gpio */
+/* connectivity gpio */
 #define BT_SYS_REST_EN		6
+/* suhui.kim@lge.com, added bluetooth gpio using I2C1 */
 #define BT_GPIO_I2C_SCL  	131
 #define BT_GPIO_I2C_SDA  	132
 

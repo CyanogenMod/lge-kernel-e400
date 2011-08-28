@@ -27,7 +27,6 @@
 
 #include "board-msm7x27a_hdk.h"
 
-#if defined(CONFIG_MARIMBA_CORE)
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
 #define BAHAMA_SLAVE_ID_FM_REG 0x02
@@ -35,6 +34,7 @@
 
 	/* FM Platform power and shutdown routines */
 #define FPGA_MSM_CNTRL_REG2 0x90008010
+
 static void config_pcm_i2s_mode(int mode)
 {
 	void __iomem *cfg_ptr;
@@ -362,19 +362,17 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 	.is_fm_soc_i2s_master = true,
 	.config_i2s_gpio = msm_bahama_setup_pcm_i2s,
 };
-#endif
 
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 
 static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
 };
-	struct bahama_config_register {
+struct bahama_config_register {
 		u8 reg;
 		u8 value;
 		u8 mask;
-	};
-
+};
 struct bt_vreg_info {
 	const char *name;
 	unsigned int pmapp_id;
@@ -382,9 +380,17 @@ struct bt_vreg_info {
 	unsigned int is_pin_controlled;
 	struct vreg *vregs;
 };
+
 static struct bt_vreg_info bt_vregs[] = {
 	{"msme1", 2, 1800, 0, NULL},
+#if 1 /* suhui.kim@lge.com, add "wlan2" power for MSM7x27A HDK */
+	{"wlan2", 9, 1300, 1, NULL}
+#endif
+#if 0 /* suhui.kim@lge.com, for M3 */
+	{"bt", 21, 3000, 1, NULL}
+#else /* QCT Original, for MSM7x27A HDK */
 	{"bt", 21, 2900, 1, NULL}
+#endif
 };
 
 static int bahama_bt(int on)
@@ -483,7 +489,6 @@ static int bahama_bt(int on)
 	u8 offset = 0; /* index into bahama configs */
 	on = on ? 1 : 0;
 	version = marimba_read_bahama_ver(&config);
-
 	if ((int)version < 0 || version == BAHAMA_VER_UNSUPPORTED) {
 		dev_err(&msm_bt_power_device.dev, "%s: Bahama \
 				version read Error, version = %d \n",
@@ -585,6 +590,9 @@ vreg_fail:
 vreg_set_level_fail:
 	vreg_put(bt_vregs[0].vregs);
 	vreg_put(bt_vregs[1].vregs);
+	#if 1  /* suhui.kim@lge.com, for MSM7x27A HDK only */
+	vreg_put(bt_vregs[2].vregs);
+	#endif
 	return rc;
 }
 
@@ -654,14 +662,13 @@ static unsigned int msm_bahama_shutdown_power(int value)
 	return rc;
 }
 
-
 static unsigned int msm_bahama_core_config(int type)
 {
 	int rc = 0;
 
 	if (type == BAHAMA_ID) {
 		int i;
-		struct marimba config = { .mod_id = SLAVE_ID_BAHAMA };
+		struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
 		const struct bahama_config_register v20_init[] = {
 			/* reg, value, mask */
 			{ 0xF4, 0x84, 0xFF }, /* AREG */
@@ -708,7 +715,6 @@ static int bluetooth_power(int on)
 					__func__, cid);
 		return -ENODEV;
 	}
-
 	if (on) {
 		/*setup power for BT SOC*/
 		rc = bt_set_gpio(on);
@@ -856,7 +862,7 @@ static struct i2c_board_info bahama_devices[] = {
 #endif
 
 static struct platform_device *hdk_connectivity_devices[] __initdata = {
-#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
+#ifdef CONFIG_BT
 	&msm_bt_power_device,
 #endif
 };
@@ -864,6 +870,15 @@ static struct platform_device *hdk_connectivity_devices[] __initdata = {
 void __init lge_add_connectivity_devices(void)
 {
 	int rc;
+
+#if 1  /* suhui.kim@lge.com */
+ 	gpio_tlmm_config(GPIO_CFG(BT_GPIO_I2C_SCL, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_tlmm_config(GPIO_CFG(BT_GPIO_I2C_SDA, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_set_value(BT_GPIO_I2C_SCL, 1);
+	gpio_set_value(BT_GPIO_I2C_SDA, 1);
+#endif
 
 	rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
 	if (rc) {
@@ -879,7 +894,7 @@ void __init lge_add_connectivity_devices(void)
 		ARRAY_SIZE(hdk_connectivity_devices));
 
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+	i2c_register_board_info(MSM_GSBI0_QUP_I2C_BUS_ID,  /* suhui.kim@lge.com, MSM7x27A HDK : MSM_GSBI0_QUP_I2C_BUS_ID */
 				bahama_devices,
 				ARRAY_SIZE(bahama_devices));
 #endif

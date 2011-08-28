@@ -25,7 +25,7 @@
 
 #include <mach/board_lge.h>
 
-#include "board-m3eu.h"
+#include "board-m3dopen.h"
 
 #define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
 #define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
@@ -34,6 +34,7 @@
 
 	/* FM Platform power and shutdown routines */
 #define FPGA_MSM_CNTRL_REG2 0x90008010
+
 static void config_pcm_i2s_mode(int mode)
 {
 	void __iomem *cfg_ptr;
@@ -79,7 +80,6 @@ static unsigned fm_i2s_config_power_off[] = {
 	GPIO_CFG(71, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
-/* LGE_BT_FW by suhui.kim@lge.com */
 static unsigned bt_config_power_on[] = {
 	/*RFR*/
 	GPIO_CFG(43, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
@@ -301,8 +301,6 @@ static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
 		goto fm_gpio_config_fail;
 	}
 
-	msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR, added sleep to modify the issue for turning on FM, same as BT */
-
 	return 0;
 
 fm_gpio_config_fail:
@@ -370,19 +368,30 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
 };
-	struct bahama_config_register {
+struct bahama_config_register {
 		u8 reg;
 		u8 value;
 		u8 mask;
-	};
-static const char * const vregs_bahama_name[] = {
-	"msme1",
-	#if 0  /* LGE_BT_FW by suhui.kim@lge.com, power for MSM7x27A HDK only */	
-	"wlan2",
-	#endif
-	"bt",
 };
-static struct vreg *vregs_bahama[ARRAY_SIZE(vregs_bahama_name)];
+struct bt_vreg_info {
+	const char *name;
+	unsigned int pmapp_id;
+	unsigned int level;
+	unsigned int is_pin_controlled;
+	struct vreg *vregs;
+};
+
+static struct bt_vreg_info bt_vregs[] = {
+	{"msme1", 2, 1800, 0, NULL},
+#if 0 /* suhui.kim@lge.com, add "wlan2" power for MSM7x27A HDK */
+	{"wlan2", 9, 1300, 1, NULL}
+#endif
+#if 1 /* suhui.kim@lge.com, for M3 */
+	{"bt", 21, 3000, 1, NULL}
+#else /* QCT Original, for MSM7x27A HDK */
+	{"bt", 21, 2900, 1, NULL}
+#endif
+};
 
 static int bahama_bt(int on)
 {
@@ -480,7 +489,6 @@ static int bahama_bt(int on)
 	u8 offset = 0; /* index into bahama configs */
 	on = on ? 1 : 0;
 	version = marimba_read_bahama_ver(&config);
-
 	if ((int)version < 0 || version == BAHAMA_VER_UNSUPPORTED) {
 		dev_err(&msm_bt_power_device.dev, "%s: Bahama \
 				version read Error, version = %d \n",
@@ -537,75 +545,53 @@ static int bahama_bt(int on)
 static int bluetooth_switch_regulators(int on)
 {
 	int i, rc = 0;
+	const char *id = "BTPW";
 
-	for (i = 0; i < ARRAY_SIZE(vregs_bahama_name); i++) {
-		if (!vregs_bahama[i]) {
+	for (i = 0; i < ARRAY_SIZE(bt_vregs); i++) {
+		if (!bt_vregs[i].vregs) {
 			pr_err("%s: vreg_get %s failed(%d)\n",
-			__func__, vregs_bahama_name[i], rc);
+			__func__, bt_vregs[i].name, rc);
 			goto vreg_fail;
 		}
-
-		#if 1  /* LGE_BT_FW by suhui.kim@lge.com, power for M3 */
-		if(i == 0)
-			rc = vreg_set_level(vregs_bahama[i], 1800);
-		else
-			rc = vreg_set_level(vregs_bahama[i], 3000);
-		#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */
-		rc = on ? vreg_set_level(vregs_bahama[i], i ? 2900 :
-			1800) : 0;
-		#endif
+		rc = on ? vreg_set_level(bt_vregs[i].vregs,
+				bt_vregs[i].level) : 0;
 
 		if (rc < 0) {
 			pr_err("%s: vreg set level failed (%d)\n",
 					__func__, rc);
 			goto vreg_set_level_fail;
 		}
-
-		#if 1 /* LGE_BT_FW by suhui.kim@lge.com */
-		if (on)
-		{
-			rc = vreg_enable(vregs_bahama[i]);
-			if (rc < 0) {
-				pr_err("%s: vreg %s %s failed(%d)\n",
-					__func__, vregs_bahama_name[i],
-					on ? "enable" : "disable", rc);
-				goto vreg_fail;
-			}
+		if (bt_vregs[i].is_pin_controlled == 1) {
+			rc = pmapp_vreg_pincntrl_vote(id,
+					bt_vregs[i].pmapp_id,
+					PMAPP_CLOCK_ID_D1,
+					on ? PMAPP_CLOCK_VOTE_ON :
+					PMAPP_CLOCK_VOTE_OFF);
+		} else {
+		rc = on ? vreg_enable(bt_vregs[i].vregs) :
+			  vreg_disable(bt_vregs[i].vregs);
 		}
-		else
-		{
-			rc = vreg_disable(vregs_bahama[i]);
-			if (rc < 0) {
-				pr_err("%s: vreg %s %s failed(%d)\n",
-					__func__, vregs_bahama_name[i],
-					on ? "enable" : "disable", rc);
-				goto vreg_fail;
-			}
-		}
-		#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT Original */
-		rc = on ? vreg_enable(vregs_bahama[i]) :
-			  vreg_disable(vregs_bahama[i]);
 
 		if (rc < 0) {
 			pr_err("%s: vreg %s %s failed(%d)\n",
-				__func__, vregs_bahama_name[i],
-			       on ? "enable" : "disable", rc);
+					__func__, bt_vregs[i].name,
+					on ? "enable" : "disable", rc);
 			goto vreg_fail;
-			}
-		#endif
+		}
 	}
+
 	return rc;
 
 vreg_fail:
 	while (i) {
 		if (on)
-			vreg_disable(vregs_bahama[--i]);
+			vreg_disable(bt_vregs[--i].vregs);
 		}
 vreg_set_level_fail:
-	vreg_put(vregs_bahama[0]);
-	vreg_put(vregs_bahama[1]);
-	#if 0  /* LGE_BT_FW by suhui.kim@lge.com, power for MSM7x27A HDK only */
-	vreg_put(vregs_bahama[2]);
+	vreg_put(bt_vregs[0].vregs);
+	vreg_put(bt_vregs[1].vregs);
+	#if 0  /* suhui.kim@lge.com, for MSM7x27A HDK only */
+	vreg_put(bt_vregs[2].vregs);
 	#endif
 	return rc;
 }
@@ -634,7 +620,6 @@ static unsigned int msm_bahama_setup_power(void)
 		goto vreg_fail;
 	}
 
-#if 1  /* LGE_BT_FW by bsp */
 	/*setup Bahama_sys_reset_n*/
 	rc = bt_set_gpio(1);
 	if (rc < 0) {
@@ -642,30 +627,7 @@ static unsigned int msm_bahama_setup_power(void)
 			BT_SYS_REST_EN, rc);
 		goto vreg_fail;
 	}
-
-	//msleep(100); /* LGE_BT_FW by suhui.kim@lge.com, QCT Patch for CR#295572, added sleep to modify the issue for turning on BT */
-	
 	return rc;
-#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT1060 Original */
-	/*setup Bahama_sys_reset_n*/
-	rc = gpio_request(GPIO_BT_SYS_REST_EN, "bahama sys_rst_n");
-	if (rc < 0) {
-		pr_err("%s: gpio_request %d = %d\n", __func__,
-			GPIO_BT_SYS_REST_EN, rc);
-		goto vreg_fail;
-	}
-	rc = gpio_direction_output(GPIO_BT_SYS_REST_EN, 1);
-	if (rc < 0) {
-		pr_err("%s: gpio_direction_output %d = %d\n", __func__,
-			GPIO_BT_SYS_REST_EN, rc);
-		goto gpio_fail;
-	}
-	
-	return rc;
-
-gpio_fail:
-	gpio_free(GPIO_BT_SYS_REST_EN);
-#endif
 
 vreg_fail:
 	vreg_put(vreg_s3);
@@ -700,14 +662,13 @@ static unsigned int msm_bahama_shutdown_power(int value)
 	return rc;
 }
 
-
 static unsigned int msm_bahama_core_config(int type)
 {
 	int rc = 0;
 
 	if (type == BAHAMA_ID) {
 		int i;
-		struct marimba config = { .mod_id = SLAVE_ID_BAHAMA };
+		struct marimba config = { .mod_id =  SLAVE_ID_BAHAMA};
 		const struct bahama_config_register v20_init[] = {
 			/* reg, value, mask */
 			{ 0xF4, 0x84, 0xFF }, /* AREG */
@@ -748,13 +709,12 @@ static int bluetooth_power(int on)
 	const char *id = "BTPW";
 	int cid = 0;
 
-	cid = adie_get_detected_connectivity_type();  /* LGE_BT_FW by bsp */
+	cid = adie_get_detected_connectivity_type();
 	if (cid != BAHAMA_ID) {
 		pr_err("%s: unexpected adie connectivity type: %d\n",
 					__func__, cid);
 		return -ENODEV;
 	}
-
 	if (on) {
 		/*setup power for BT SOC*/
 		rc = bt_set_gpio(on);
@@ -789,12 +749,7 @@ static int bluetooth_power(int on)
 			pr_err("Failed to vote for TCXO_D1 ON\n");
 			goto fail_clock;
 		}
-
-#if 1  /* LGE_BT_FW by suhui.kim@lge.com, QCT Guide */
-		msleep(100);
-#else  /* LGE_BT_FW by suhui.kim@lge.com, QCT1060 Original */	
 		msleep(20);
-#endif
 
 		/*I2C config for Bahama*/
 		rc = bahama_bt(1);
@@ -864,14 +819,14 @@ exit:
 static int __init bt_power_init(void)
 {
 	int i, rc = 0;
-	for (i = 0; i < ARRAY_SIZE(vregs_bahama_name); i++) {
-			vregs_bahama[i] = vreg_get(NULL,
-						vregs_bahama_name[i]);
-			if (IS_ERR(vregs_bahama[i])) {
+	for (i = 0; i < ARRAY_SIZE(bt_vregs); i++) {
+			bt_vregs[i].vregs = vreg_get(NULL,
+					bt_vregs[i].name);
+			if (IS_ERR(bt_vregs[i].vregs)) {
 				pr_err("%s: vreg get %s failed (%ld)\n",
-				       __func__, vregs_bahama_name[i],
-				       PTR_ERR(vregs_bahama[i]));
-				rc = PTR_ERR(vregs_bahama[i]);
+				       __func__, bt_vregs[i].name,
+				       PTR_ERR(bt_vregs[i].vregs));
+				rc = PTR_ERR(bt_vregs[i].vregs);
 				goto vreg_get_fail;
 			}
 		}
@@ -882,7 +837,7 @@ static int __init bt_power_init(void)
 
 vreg_get_fail:
 	while (i)
-		vreg_put(vregs_bahama[--i]);
+		vreg_put(bt_vregs[--i].vregs);
 	return rc;
 }
 
@@ -906,23 +861,24 @@ static struct i2c_board_info bahama_devices[] = {
 };
 #endif
 
-static struct platform_device *m3eu_connectivity_devices[] __initdata = {
-#ifdef CONFIG_BT  /* LGE_BT_FW by suhui.kim@lge.com */
+static struct platform_device *m3dopen_connectivity_devices[] __initdata = {
+#ifdef CONFIG_BT
 	&msm_bt_power_device,
 #endif
 };
 
 void __init lge_add_connectivity_devices(void)
 {
-#if 1  /* LGE_BT_FW by suhui.kim@lge.com, QCT Guide */
 	int rc;
-	
+
+#if 1  /* suhui.kim@lge.com */
  	gpio_tlmm_config(GPIO_CFG(BT_GPIO_I2C_SCL, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_tlmm_config(GPIO_CFG(BT_GPIO_I2C_SDA, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_set_value(BT_GPIO_I2C_SCL, 1);
 	gpio_set_value(BT_GPIO_I2C_SDA, 1);
+#endif
 
 	rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
 	if (rc) {
@@ -933,29 +889,16 @@ void __init lge_add_connectivity_devices(void)
 		if (rc)
 			printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
 	}
-#else  /* LGE_BT_FW by bsp */
-		int rc;
-	
-		rc = gpio_request(BT_SYS_REST_EN, "bt_reset");
-		if (rc) {
-			printk(KERN_ERR "%d gpio request is failed\n", BT_SYS_REST_EN);
-		} else {
-			rc = gpio_tlmm_config(GPIO_CFG(BT_SYS_REST_EN, 0, GPIO_CFG_OUTPUT,
-					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-			if (rc)
-				printk(KERN_ERR "%d gpio tlmm config is failed\n", BT_SYS_REST_EN);
-		}	
-#endif
 
-	platform_add_devices(m3eu_connectivity_devices,
-		ARRAY_SIZE(m3eu_connectivity_devices));
+	platform_add_devices(m3dopen_connectivity_devices,
+		ARRAY_SIZE(m3dopen_connectivity_devices));
 
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,  /* LGE_BT_FW by suhui.kim@lge.com, MSM7x27A HDK : MSM_GSBI0_QUP_I2C_BUS_ID */
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,  /* suhui.kim@lge.com, MSM7x27A HDK : MSM_GSBI0_QUP_I2C_BUS_ID */
 				bahama_devices,
 				ARRAY_SIZE(bahama_devices));
 #endif
-#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)  /* LGE_BT_FW by suhui.kim@lge.com */
+#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 	bt_power_init();
 #endif
 }

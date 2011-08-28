@@ -201,7 +201,7 @@ static void __init msm7x2x_init(void)
 	lge_add_camera_devices();
 	lge_add_pm_devices();
 	lge_add_usb_devices();
-	lge_add_connectivity_devices();
+	lge_add_connectivity_devices(); /* suhui.kim@lge.com, for Bluetooth/FM */
 
 	/* gpio i2c devices should be registered at latest point */
 	lge_add_gpio_i2c_devices();

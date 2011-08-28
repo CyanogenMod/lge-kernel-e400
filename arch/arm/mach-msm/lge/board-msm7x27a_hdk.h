@@ -100,6 +100,9 @@ enum {
 #define GPIO_HS_MIC_BIAS_EN  127
 
 /* connectivity gpio */
-#define BT_SYS_REST_EN       6
+#define BT_SYS_REST_EN		6
+/* suhui.kim@lge.com, added bluetooth gpio using I2C0 */
+#define BT_GPIO_I2C_SCL  	60
+#define BT_GPIO_I2C_SDA  	61
 
 #endif
