@@ -46,6 +46,7 @@
  * using ADB test & changed default PID 618E -> 61FC
  */
 #define M3_DEFENSE_CODE
+#undef  M3_DEBUG_TEST
 #endif
 
 /* LGE_CHANGE
@@ -647,9 +648,22 @@ static void android_force_reset(void)
 
 	usb_composite_force_reset(dev->cdev);
 }
+
+static void android_force_sw_reset(void)
+{
+	struct android_dev *dev = _android_dev;
+	int product_id;
+
+	product_id = get_product_id(dev);
+	device_desc.idProduct = __constant_cpu_to_le16(product_id);
+	if (dev->cdev)
+		dev->cdev->desc.idProduct = device_desc.idProduct;
+
+	usb_composite_force_sw_reset(dev->cdev);
+}
 #endif
 
-#ifndef M3_DEFENSE_CODE
+#ifdef M3_DEBUG_TEST
 static void android_disable_all_function(void)
 { 
 	struct usb_function *f;
@@ -705,18 +719,22 @@ int android_enable_function(struct usb_function *f, int enable)
 		/* We force to change mode even if mass storage is already enabled */
 		f->disabled = disable;
 		if (enable) {
-#ifndef M3_DEFENSE_CODE			
+#ifdef M3_DEBUG_TEST			
 			android_disable_all_function();
 #endif
 			/* switch to mass storage only */
 			android_set_class_product(LGE_UMSONLY_PID, USB_CLASS_PER_INTERFACE);
 			lgeusb_info("Switch to UMS only %x\n", LGE_UMSONLY_PID);
-		} else {
-			android_set_class_product(dev->product_id, USB_CLASS_MISC);
-		}
 
-		android_force_reset();
-		return 0;
+			android_force_reset();
+			return 0;
+			
+		} else {
+		
+			android_set_class_product(dev->product_id, USB_CLASS_MISC);
+			android_force_sw_reset();
+			return 0;
+		}
 	}
 #endif
 
@@ -741,14 +759,10 @@ int android_enable_function(struct usb_function *f, int enable)
 		f->disabled = disable;
 		if (enable) {
 			/* switch to modem(default) mode */
-#ifdef M3_DEFENSE_CODE
 			android_set_class_product(LGE_DEFAULT_PID, USB_CLASS_MISC);
-#else
-			android_set_class_product(LGE_DEFAULT_PID, USB_CLASS_COMM);
-#endif
 			lgeusb_info("Switch to modem mode %x\n", LGE_DEFAULT_PID);
 		} else {
-			android_set_class_product(dev->product_id, USB_CLASS_COMM);
+			android_set_class_product(dev->product_id, USB_CLASS_MISC);
 		}
 
 		android_force_reset();
@@ -765,7 +779,7 @@ int android_enable_function(struct usb_function *f, int enable)
 
 			/* Not use usb_composite_force_reset() */
 		} else {
-			android_set_class_product(dev->product_id, USB_CLASS_COMM);
+			android_set_class_product(dev->product_id, USB_CLASS_MISC);
 			android_force_reset();
 		}
 		return 0;
@@ -783,18 +797,12 @@ int android_enable_function(struct usb_function *f, int enable)
 			if (enable) {
 				set_device_class(dev->cdev->desc, USB_CLASS_MISC, 0x02, 0x01);
 			} else {
-#ifdef M3_DEFENSE_CODE
 				set_device_class(dev->cdev->desc, USB_CLASS_MISC, 0x02, 0x01);
-#else
-				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
-#endif
 			}
 			
-#if 0
-			if(device_desc.idProduct == LGE_DEFAULT_PID)
-				return 0;
-#endif				
 			android_config_functions(f, enable);
+			android_force_sw_reset();
+			return 0;
 		}
 
 #ifdef CONFIG_USB_ANDROID_MTP
@@ -803,7 +811,7 @@ int android_enable_function(struct usb_function *f, int enable)
 				set_device_class(dev->cdev->desc, USB_CLASS_PER_INTERFACE,
 						0x00, 0x00);
 			} else {
-				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
+				set_device_class(dev->cdev->desc, USB_CLASS_MISC, 0x00, 0x00);
 			}
 
 			android_config_functions(f, enable);
@@ -819,12 +827,9 @@ int android_enable_function(struct usb_function *f, int enable)
 			){ 
 			/* When adb enable during mass storage only */
 			if (!strcmp(f->name, "adb")) {
-#ifdef M3_DEFENSE_CODE
 				set_device_class(dev->cdev->desc, USB_CLASS_MISC, 0x02, 0x01);
-#else
-				set_device_class(dev->cdev->desc, USB_CLASS_COMM, 0x00, 0x00);
-#endif
 				android_set_default_product(dev->product_id);
+				
 			}
 		}
 #endif

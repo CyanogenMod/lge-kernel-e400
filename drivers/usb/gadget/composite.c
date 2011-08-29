@@ -138,6 +138,30 @@ void usb_composite_force_reset(struct usb_composite_dev *cdev)
 	}
 }
 
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+/* hyunjin2.lim@lge.com added for mute switching. */
+void usb_composite_force_sw_reset(struct usb_composite_dev *cdev)
+{
+	unsigned long			flags;
+
+	spin_lock_irqsave(&cdev->lock, flags);
+	/* force reenumeration */
+	if (cdev && cdev->gadget && cdev->gadget->speed != USB_SPEED_UNKNOWN) {
+
+		/* avoid sending a disconnect switch event until after we disconnect */
+		cdev->mute_switch = 1;
+		
+		spin_unlock_irqrestore(&cdev->lock, flags);
+
+		usb_gadget_disconnect(cdev->gadget);
+		msleep(10);
+		usb_gadget_connect(cdev->gadget);
+	} else {
+		spin_unlock_irqrestore(&cdev->lock, flags);
+	}
+}
+#endif
+
 /**
  * usb_add_function() - add a function to a configuration
  * @config: the configuration
@@ -1295,12 +1319,23 @@ static void composite_disconnect(struct usb_gadget *gadget)
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->config)
 		reset_config(cdev);
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	if (cdev->mute_switch) {
+		; /* nothing. */
+	} else {
+		if (composite->disconnect)
+		composite->disconnect(cdev);
 
+		cdev->connected = 0;
+		schedule_work(&cdev->switch_work);
+	}
+#else
 	if (composite->disconnect)
 		composite->disconnect(cdev);
 
 	cdev->connected = 0;
 	schedule_work(&cdev->switch_work);
+#endif	
 	spin_unlock_irqrestore(&cdev->lock, flags);
 }
 
@@ -1368,6 +1403,9 @@ composite_unbind(struct usb_gadget *gadget)
 	}
 	switch_dev_unregister(&cdev->sw_connected);
 	switch_dev_unregister(&cdev->sw_config);
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	switch_dev_unregister(&cdev->sw_mute_connected);
+#endif	
 	device_remove_file(&gadget->dev, &dev_attr_suspended);
 	kfree(cdev);
 	set_gadget_data(gadget, NULL);
@@ -1395,7 +1433,16 @@ composite_switch_work(struct work_struct *data)
 	struct usb_configuration *config = cdev->config;
 	int connected;
 	unsigned long flags;
-
+	
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+/* hyunjin2.lim@lge.com for mute switch */
+	if ( cdev->mute_switch ) {
+		switch_set_state(&cdev->sw_mute_connected, cdev->mute_switch);
+/*		cdev->connected = 1; */
+		cdev->mute_switch = 0;
+		return;
+	}
+#endif
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->connected != cdev->sw_connected.state) {
 		connected = cdev->connected;
@@ -1468,6 +1515,15 @@ static int composite_bind(struct usb_gadget *gadget)
 	status = switch_dev_register(&cdev->sw_config);
 	if (status < 0)
 		goto fail;
+	
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	/* hyunjin2.lim@lge.com for mute switch */
+	cdev->sw_mute_connected.name = "usb_mute_connected";
+	status = switch_dev_register(&cdev->sw_mute_connected);
+	if (status < 0)
+		goto fail;
+#endif
+	
 	INIT_WORK(&cdev->switch_work, composite_switch_work);
 
 	cdev->desc = *composite->dev;

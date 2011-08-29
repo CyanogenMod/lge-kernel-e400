@@ -320,16 +320,21 @@ static const char fsg_string_interface[] = "Mass Storage";
 #if defined (CONFIG_MACH_LGE)
 #define PRODUCT_NAME "LGE"
 #if defined (CONFIG_MACH_MSM7X27A_M3EU)
+#define PRODUCT_NAME_INTERNAL "P590"
 #define PRODUCT_NAME_EXTERNAL "P590 SD Card"
 #elif defined(CONFIG_MACH_MSM7X27A_M3MPCS)
+#define PRODUCT_NAME_INTERNAL "MS695"
 #define PRODUCT_NAME_EXTERNAL "MS695 SD Card"
 #elif defined(CONFIG_MACH_MSM7X25A_M3DOPEN)
+#define PRODUCT_NAME_INTERNAL "E525"
 #define PRODUCT_NAME_EXTERNAL "E525 SD Card"
 #else
-#define PRODUCT_NAME_EXTERNAL "P590 SD Card"
+#define PRODUCT_NAME_INTERNAL "MS695 "
+#define PRODUCT_NAME_EXTERNAL "MS695 SD Card"
 #endif
 
 static const char product_name[] = PRODUCT_NAME;
+static const char product_name_internal[] = PRODUCT_NAME_INTERNAL;
 static const char product_name_external[] = PRODUCT_NAME_EXTERNAL;
 
 enum
@@ -1294,15 +1299,15 @@ static int do_inquiry(struct fsg_common *common, struct fsg_buffhd *bh)
 	buf[5] = 0;		/* No special options */
 	buf[6] = 0;
 	buf[7] = 0;
-	memcpy(buf + 8, common->inquiry_string, sizeof common->inquiry_string);
 
 #if defined(CONFIG_MACH_LGE)
-	if(common->lun == EXTERNAL_MASS_STORAGE)
-		/* sprintf(buf + 8, "%-8s%-16s", common->inquiry_string, product_name_external); */
-		/* memcpy(buf + 8, product_name_external, sizeof product_name_external); */
-		sprintf(buf + 8, "%-8s%-16s%04x", product_name, product_name_external, release);
+	if (common->lun == INTERNAL_MASS_STORAGE)
+		sprintf(common->inquiry_string+8, "%-16s%04x", product_name_internal, release);
+	if (common->lun == EXTERNAL_MASS_STORAGE)
+		sprintf(common->inquiry_string+8, "%-16s%04x", product_name_external, release);
 #endif
-	
+	memcpy(buf + 8, common->inquiry_string, sizeof common->inquiry_string);
+
 	return 36;
 }
 
