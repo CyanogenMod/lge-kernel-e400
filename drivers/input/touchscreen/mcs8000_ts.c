@@ -663,15 +663,13 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	
 	/* [LGE_S] FW Upgrade function */
 	mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
-#if 0
 	if (hw_ver == TS_MODULE_B) {
 		printk(KERN_INFO "Checking HW Revision is success");
-		if (comp_ver == TS_COMPATIBILITY_A && fw_ver != TS_LATEST_FW_VERSION_HW_10) {
+		if (comp_ver == TS_COMPATIBILITY_A && fw_ver < TS_LATEST_FW_VERSION_HW_10) {
 			printk(KERN_INFO "Checking Latest FW Version & Compatibility is success");
-			//err = mcsdl_download_binary_data(1, 1);
+			mcsdl_download_binary_data(1, 1);
 		}
 	}
-#endif
 	/* [LGE_E] */
 	enable_irq(dev->num_irq);
 	return 0;

@@ -40,28 +40,24 @@ static const unsigned short keypad_keymap_m3[] = {
 	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEDOWN,
 };
 
-int m3_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,
-						   struct gpio_event_info *info, void **data, int func)
+int m3_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,struct gpio_event_info *info, void **data, int func)
 {
-	int ret;
-	if (func == GPIO_EVENT_FUNC_RESUME) {
-		gpio_tlmm_config(
-			GPIO_CFG(keypad_row_gpios[0], 0,
-					 GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		gpio_tlmm_config(
-			GPIO_CFG(keypad_row_gpios[1], 0,
-					 GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-	}
+        int ret ;
+		if (func == GPIO_EVENT_FUNC_RESUME) {
+			gpio_tlmm_config(GPIO_CFG(keypad_row_gpios[0], 0,
+						GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			gpio_tlmm_config(GPIO_CFG(keypad_row_gpios[1], 0,
+						GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		}
 
-	ret = gpio_event_matrix_func(input_dev, info, data, func);
-	return ret;
+		ret = gpio_event_matrix_func(input_dev,info, data,func);
+        return ret ;
 }
 
 static int m3_gpio_matrix_power(
-	const struct gpio_event_platform_data *pdata, bool on)
+                const struct gpio_event_platform_data *pdata, bool on)
 {
-	/* this is dummy function
-	 * to make gpio_event driver register suspend function
+	/* this is dummy function to make gpio_event driver register suspend function
 	 * 2010-01-29, cleaneye.kim@lge.com
 	 * copy from ALOHA code
 	 * 2010-04-22 younchan.kim@lge.com
@@ -101,6 +97,7 @@ struct platform_device keypad_device_m3 = {
 	},
 };
 
+
 /* input platform device */
 static struct platform_device *m3_input_devices[] __initdata = {
 	&hs_pdev,
@@ -134,65 +131,59 @@ static struct platform_device ts_i2c_device = {
 
 int ts_set_vreg(unsigned char onoff)
 {
-	if (lge_bd_rev == LGE_REV_A) {
+	if(lge_bd_rev == LGE_REV_A){
 		struct vreg *vreg_touch;
 		int rc;
 
-		printk(KERN_INFO "[Touch] %s() onoff:%d\n", __func__, onoff);
+		printk("[Touch] %s() onoff:%d\n",__FUNCTION__, onoff);
 
 		vreg_touch = vreg_get(0, "bt");
 
-		if (IS_ERR(vreg_touch)) {
-			printk(KERN_INFO"[Touch] vreg_get fail : touch\n");
-			return -EBUSY;
+		if(IS_ERR(vreg_touch)) {
+			printk("[Touch] vreg_get fail : touch\n");
+			return -1;
 		}
 
 		if (onoff) {
 			rc = vreg_set_level(vreg_touch, 2850);
 			if (rc != 0) {
-				printk(KERN_INFO "[Touch] vreg_set_level failed\n");
-				return -EBUSY;
+				printk("[Touch] vreg_set_level failed\n");
+				return -1;
 			}
 			vreg_enable(vreg_touch);
 		} else {
 			vreg_disable(vreg_touch);
 		}
-	} else if (lge_bd_rev >= LGE_REV_B) {
-		static struct regulator *ldo1;
-		int rc;
-		static int init;
+	}else if(lge_bd_rev >= LGE_REV_B){
+	static struct regulator* ldo1 = NULL;
+	int rc;
+	static int init = 0;
 
-		ldo1 = NULL;
-		init = 0;
-		ldo1 = regulator_get(NULL, "RT8053_LDO1");
-		if (ldo1 == NULL)
-			pr_err("%s: regulator_get(ldo1) failed\n", __func__);
+	ldo1 = regulator_get(NULL, "RT8053_LDO1");
+	if (ldo1 == NULL) {
+		pr_err("%s: regulator_get(ldo1) failed\n", __func__);
+	}
 
-		if (onoff) {
-			rc = regulator_set_voltage(ldo1, 3000000, 3000000);
-			if (rc < 0)
-				pr_err(
-					"%s: regulator_set_voltage(ldo1) failed\n",
-					__func__);
-
-			rc = regulator_enable(ldo1);
-			if (rc < 0)
-				pr_err(
-					"%s: regulator_enable(ldo1) failed\n",
-					__func__);
-
-			init = 1;
-		} else {
-			if (init > 0) {
-				rc = regulator_disable(ldo1);
-				if (rc < 0)
-					pr_err(
-						"%s: regulator_disble(ldo1) failed\n",
-						__func__);
-
-				regulator_put(ldo1);
-			}
+	if(onoff){
+		rc = regulator_set_voltage(ldo1, 3000000, 3000000);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo1) failed\n", __func__);
 		}
+		rc = regulator_enable(ldo1);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo1) failed\n", __func__);
+		}
+		init = 1;
+	}
+	else{
+		if(init > 0){
+			rc = regulator_disable(ldo1);
+			if (rc < 0) {
+				pr_err("%s: regulator_disble(ldo1) failed\n", __func__);
+			}
+			regulator_put(ldo1);
+		}
+	}
 	}
 	return 0;
 }
@@ -217,65 +208,56 @@ static struct i2c_board_info ts_i2c_bdinfo[] = {
 };
 
 /* this routine should be checked for nessarry */
-static int init_gpio_i2c_pin_touch(
-	struct i2c_gpio_platform_data *i2c_adap_pdata,
-	struct gpio_i2c_pin gpio_i2c_pin,
-	struct i2c_board_info *i2c_board_info_data)
+static int init_gpio_i2c_pin_touch(struct i2c_gpio_platform_data *i2c_adap_pdata,
+		struct gpio_i2c_pin gpio_i2c_pin, struct i2c_board_info *i2c_board_info_data)
 {
-	if (lge_bd_rev == LGE_REV_A) {
+	if(lge_bd_rev == LGE_REV_A){
 		i2c_adap_pdata->sda_pin = 120;
 		i2c_adap_pdata->scl_pin = 119;
 
-		gpio_tlmm_config(
-			GPIO_CFG(120, 0, GPIO_CFG_OUTPUT,
-					 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		gpio_tlmm_config(
-			GPIO_CFG(119, 0, GPIO_CFG_OUTPUT,
-					 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(120, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(119, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 		gpio_set_value(120, 1);
 		gpio_set_value(119, 1);
 
 		if (gpio_i2c_pin.reset_pin) {
-			gpio_tlmm_config(
-				GPIO_CFG(gpio_i2c_pin.reset_pin, 0, GPIO_CFG_OUTPUT,
-						 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.reset_pin, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 			gpio_set_value(gpio_i2c_pin.reset_pin, 1);
 		}
 
 		if (gpio_i2c_pin.irq_pin) {
-			gpio_tlmm_config(
-				GPIO_CFG(gpio_i2c_pin.irq_pin, 0, GPIO_CFG_INPUT,
-						 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.irq_pin, 0, GPIO_CFG_INPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 			i2c_board_info_data->irq =
 				MSM_GPIO_TO_INT(gpio_i2c_pin.irq_pin);
 		}
-	} else if (lge_bd_rev >= LGE_REV_B) {
-		i2c_adap_pdata->sda_pin = gpio_i2c_pin.sda_pin;
-		i2c_adap_pdata->scl_pin = gpio_i2c_pin.scl_pin;
+	}
+	else if(lge_bd_rev >= LGE_REV_B){
+	i2c_adap_pdata->sda_pin = gpio_i2c_pin.sda_pin;
+	i2c_adap_pdata->scl_pin = gpio_i2c_pin.scl_pin;
 
-		gpio_tlmm_config(
-			GPIO_CFG(gpio_i2c_pin.sda_pin, 0, GPIO_CFG_OUTPUT,
-					 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		gpio_tlmm_config(
-			GPIO_CFG(gpio_i2c_pin.scl_pin, 0, GPIO_CFG_OUTPUT,
-					 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		gpio_set_value(gpio_i2c_pin.sda_pin, 1);
-		gpio_set_value(gpio_i2c_pin.scl_pin, 1);
+	gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.sda_pin, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.scl_pin, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_set_value(gpio_i2c_pin.sda_pin, 1);
+	gpio_set_value(gpio_i2c_pin.scl_pin, 1);
 
-		if (gpio_i2c_pin.reset_pin) {
-			gpio_tlmm_config(
-				GPIO_CFG(gpio_i2c_pin.reset_pin, 0, GPIO_CFG_OUTPUT,
-						 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-			gpio_set_value(gpio_i2c_pin.reset_pin, 1);
-		}
+	if (gpio_i2c_pin.reset_pin) {
+		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.reset_pin, 0, GPIO_CFG_OUTPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_set_value(gpio_i2c_pin.reset_pin, 1);
+	}
 
-		if (gpio_i2c_pin.irq_pin) {
-			gpio_tlmm_config(
-				GPIO_CFG(gpio_i2c_pin.irq_pin, 0, GPIO_CFG_INPUT,
-						 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-			i2c_board_info_data->irq =
-				MSM_GPIO_TO_INT(gpio_i2c_pin.irq_pin);
-		}
+	if (gpio_i2c_pin.irq_pin) {
+		gpio_tlmm_config(GPIO_CFG(gpio_i2c_pin.irq_pin, 0, GPIO_CFG_INPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		i2c_board_info_data->irq =
+			MSM_GPIO_TO_INT(gpio_i2c_pin.irq_pin);
+	}
 	}
 	return 0;
 }
@@ -284,10 +266,8 @@ static void __init m3_init_i2c_touch(int bus_num)
 {
 	ts_i2c_device.id = bus_num;
 
-	init_gpio_i2c_pin_touch(
-		&ts_i2c_pdata, ts_i2c_pin[0], &ts_i2c_bdinfo[0]);
-	i2c_register_board_info(
-		bus_num, &ts_i2c_bdinfo[0], 1);
+	init_gpio_i2c_pin_touch(&ts_i2c_pdata, ts_i2c_pin[0], &ts_i2c_bdinfo[0]);
+	i2c_register_board_info(bus_num, &ts_i2c_bdinfo[0], 1);
 	platform_device_register(&ts_i2c_device);
 }
 #endif /* CONFIG_TOUCH_MCS8000 */
@@ -316,20 +296,20 @@ static int ts_set_vreg(unsigned char onoff)
 	struct vreg *vreg_touch;
 	int rc;
 
-	printk(KERN_INFO "[Touch] %s() onoff:%d\n", __func__, onoff);
+	printk("[Touch] %s() onoff:%d\n",__FUNCTION__, onoff);
 
 	vreg_touch = vreg_get(0, "bt");
 
-	if (IS_ERR(vreg_touch)) {
-		printk(KERN_INFO "[Touch] vreg_get fail : touch\n");
-		return -EBUSY;
+	if(IS_ERR(vreg_touch)) {
+		printk("[Touch] vreg_get fail : touch\n");
+		return -1;
 	}
 
 	if (onoff) {
 		rc = vreg_set_level(vreg_touch, 3000);
 		if (rc != 0) {
-			printk(KERN_INFO "[Touch] vreg_set_level failed\n");
-			return -EBUSY;
+			printk("[Touch] vreg_set_level failed\n");
+			return -1;
 		}
 		vreg_enable(vreg_touch);
 	} else {
@@ -366,10 +346,8 @@ static void __init m3_init_i2c_touch(int bus_num)
 {
 	ts_i2c_device.id = bus_num;
 	/* workaround for HDK rev_a no pullup */
-	lge_init_gpio_i2c_pin(
-		&ts_i2c_pdata, ts_i2c_pin, &ts_i2c_bdinfo[0]);
-	i2c_register_board_info(
-		bus_num, &ts_i2c_bdinfo[0], 1);
+	lge_init_gpio_i2c_pin(&ts_i2c_pdata, ts_i2c_pin, &ts_i2c_bdinfo[0]);
+	i2c_register_board_info(bus_num, &ts_i2c_bdinfo[0], 1);
 	platform_device_register(&ts_i2c_device);
 }
 #endif /* CONFIG_TOUCH_mxt_140 */
@@ -379,13 +357,13 @@ static int accel_power(unsigned char onoff)
 {
 	int ret = 0;
 	struct vreg *usim2_vreg = vreg_get(0, "usim2");
-
+	
 	if (onoff) {
 		printk(KERN_INFO "accel_power_on\n");
-
+		
 		ret = vreg_set_level(usim2_vreg, 3000);
 		if (ret != 0) {
-			printk(KERN_INFO "[Accel] vreg_set_level failed\n");
+			printk("[Accel] vreg_set_level failed\n");
 			return ret;
 		}
 		vreg_enable(usim2_vreg);
@@ -433,11 +411,9 @@ static void __init m3_init_i2c_acceleration(int bus_num)
 {
 	accel_i2c_device.id = bus_num;
 
-	lge_init_gpio_i2c_pin(
-		&accel_i2c_pdata, accel_i2c_pin[0], &accel_i2c_bdinfo[0]);
+	lge_init_gpio_i2c_pin(&accel_i2c_pdata, accel_i2c_pin[0], &accel_i2c_bdinfo[0]);
 
-	i2c_register_board_info(
-		bus_num, &accel_i2c_bdinfo[0], 1);
+	i2c_register_board_info(bus_num, &accel_i2c_bdinfo[0], 1);
 
 	platform_device_register(&accel_i2c_device);
 }
@@ -471,13 +447,14 @@ static struct ecom_platform_data ecom_pdata = {
  *
  * 2011-07-05
  */
-.fdata_sign_x = 1,
-.fdata_sign_y = 1,
-.fdata_sign_z = -1,
-.fdata_order0 = 1,
-.fdata_order1 = 0,
-.fdata_order2 = 2,
-.sensitivity1g = 64,
+	.fdata_sign_x = 1,
+    .fdata_sign_y = 1,
+    .fdata_sign_z = -1,
+    .fdata_order0 = 1,
+    .fdata_order1 = 0,
+    .fdata_order2 = 2,
+    .sensitivity1g = 64,
+
 };
 
 static struct i2c_board_info ecom_i2c_bdinfo[] = {
@@ -504,61 +481,56 @@ static struct i2c_gpio_platform_data ecom_i2c_pdata = {
 };
 
 static struct platform_device ecom_i2c_device = {
-	.name = "i2c-gpio",
-	.dev.platform_data = &ecom_i2c_pdata,
+        .name = "i2c-gpio",
+        .dev.platform_data = &ecom_i2c_pdata,
 };
 
 static void __init m3_init_i2c_ecom(int bus_num)
 {
 	ecom_i2c_device.id = bus_num;
 
-	lge_init_gpio_i2c_pin(
-		&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[0]);
+	lge_init_gpio_i2c_pin(&ecom_i2c_pdata, ecom_i2c_pin[0], &ecom_i2c_bdinfo[0]);
 
-	i2c_register_board_info(
-		bus_num, &ecom_i2c_bdinfo[0], 1);
+	i2c_register_board_info(bus_num, &ecom_i2c_bdinfo[0], 1);
 	platform_device_register(&ecom_i2c_device);
 }
 
 /* proximity */
 static int prox_power_set(unsigned char onoff)
 {
-	static bool init_done;
+	static bool init_done = 0;
+	
 	int ret = 0;
 /* for vreg using SUB PMIC */
 
-	struct regulator *ldo5 = NULL;
+	struct regulator* ldo5 = NULL;
 
-	init_done = 0;
 	ldo5 = regulator_get(NULL, "RT8053_LDO5");
-	if (ldo5 == NULL)
+	if (ldo5 == NULL) {
 		pr_err("%s: regulator_get(ldo5) failed\n", __func__);
+	}
 
-	printk(KERN_INFO "[Proximity] %s() : Power %s\n",
-		   __func__, onoff ? "On" : "Off");
-
-	if (init_done == 0 && onoff) {
+	printk("[Proximity] %s() : Power %s\n",__FUNCTION__, onoff ? "On" : "Off");
+	
+	if (init_done == 0 && onoff)
+	{
 		if (onoff) {
 			printk(KERN_INFO "LDO5 vreg set.\n");
 			ret = regulator_set_voltage(ldo5, 2800000, 2800000);
-			if (ret < 0)
-				pr_err(
-					"%s: regulator_set_voltage(ldo5) failed\n",
-					__func__);
-
+			if (ret < 0) {
+				pr_err("%s: regulator_set_voltage(ldo5) failed\n", __func__);
+			}
 			ret = regulator_enable(ldo5);
-			if (ret < 0)
-				pr_err(
-					"%s: regulator_enable(ldo5) failed\n",
-					__func__);
-
+			if (ret < 0) {
+                pr_err("%s: regulator_enable(ldo5) failed\n", __func__);
+            }
+			
 			init_done = 1;
 		} else {
 			ret = regulator_disable(ldo5);
-			if (ret < 0)
-				pr_err(
-					"%s: regulator_disable(ldo5) failed\n",
-					__func__);
+			if (ret < 0) {
+                pr_err("%s: regulator_disable(ldo5) failed\n", __func__);
+            }
 
 		}
 	}
@@ -566,9 +538,10 @@ static int prox_power_set(unsigned char onoff)
 
 /*	struct vreg *temp_vreg = vreg_get(0, "");
 
-	printk("[Proximity] %s() : Power %s\n", __func__, onoff ? "On" : "Off");
-
-	if (init_done == 0 && onoff) {
+	printk("[Proximity] %s() : Power %s\n",__FUNCTION__, onoff ? "On" : "Off");
+	
+	if (init_done == 0 && onoff)
+	{
 		if (onoff) {
 			vreg_set_level(temp_vreg, 2800);
 			vreg_enable(temp_vreg);
@@ -616,16 +589,15 @@ static struct i2c_gpio_platform_data proxi_i2c_pdata = {
 };
 
 static struct platform_device proxi_i2c_device = {
-	.name = "i2c-gpio",
-	.dev.platform_data = &proxi_i2c_pdata,
+        .name = "i2c-gpio",
+        .dev.platform_data = &proxi_i2c_pdata,
 };
 
 static void __init m3_init_i2c_prox(int bus_num)
 {
 	proxi_i2c_device.id = bus_num;
 
-	lge_init_gpio_i2c_pin(
-		&proxi_i2c_pdata, proxi_i2c_pin[0], &prox_i2c_bdinfo[0]);
+	lge_init_gpio_i2c_pin(&proxi_i2c_pdata, proxi_i2c_pin[0], &prox_i2c_bdinfo[0]);
 
 	i2c_register_board_info(bus_num, &prox_i2c_bdinfo[0], 1);
 	platform_device_register(&proxi_i2c_device);
@@ -634,10 +606,8 @@ static void __init m3_init_i2c_prox(int bus_num)
 /* common function */
 void __init lge_add_input_devices(void)
 {
-	platform_add_devices(
-		m3_input_devices, ARRAY_SIZE(m3_input_devices));
-	platform_add_devices(
-		m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
+	platform_add_devices(m3_input_devices, ARRAY_SIZE(m3_input_devices));
+	platform_add_devices(m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
 	lge_add_gpio_i2c_device(m3_init_i2c_touch);
 	lge_add_gpio_i2c_device(m3_init_i2c_acceleration);
 	lge_add_gpio_i2c_device(m3_init_i2c_ecom);
