@@ -65,6 +65,8 @@ static void config_pcm_i2s_mode(int mode)
 static unsigned fm_i2s_config_power_on[] = {
 	/*FM_I2S_SD*/
 	GPIO_CFG(68, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	/*PCM_DIN*/
+	GPIO_CFG(69, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 	/*FM_I2S_WS*/
 	GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 	/*FM_I2S_SCK*/
@@ -74,6 +76,8 @@ static unsigned fm_i2s_config_power_on[] = {
 static unsigned fm_i2s_config_power_off[] = {
 	/*FM_I2S_SD*/
 	GPIO_CFG(68, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	/*PCM_DIN*/
+	GPIO_CFG(69, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	/*FM_I2S_WS*/
 	GPIO_CFG(70, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	/*FM_I2S_SCK*/
