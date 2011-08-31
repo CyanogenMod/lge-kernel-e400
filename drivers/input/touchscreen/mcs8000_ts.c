@@ -667,7 +667,9 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 		printk(KERN_INFO "Checking HW Revision is success");
 		if (comp_ver == TS_COMPATIBILITY_A && fw_ver < TS_LATEST_FW_VERSION_HW_10) {
 			printk(KERN_INFO "Checking Latest FW Version & Compatibility is success");
+#if defined(CONFIG_MACH_MSM7X27A_M3EU) || defined(CONFIG_MACH_MSM7X27A_M3MPCS)
 			mcsdl_download_binary_data(1, 1);
+#endif
 		}
 	}
 	/* [LGE_E] */
