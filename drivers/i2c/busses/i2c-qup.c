@@ -254,6 +254,67 @@ intr_done:
 	return IRQ_HANDLED;
 }
 
+static int
+qup_i2c_poll_state(struct qup_i2c_dev *dev, uint32_t req_state, bool only_valid)
+{
+	uint32_t retries = 0;
+
+	dev_dbg(dev->dev, "Polling for state:0x%x, or valid-only:%d\n",
+				req_state, only_valid);
+
+	while (retries != 2000) {
+		uint32_t status = readl_relaxed(dev->base + QUP_STATE);
+
+		/*
+		 * If only valid bit needs to be checked, requested state is
+		 * 'don't care'
+		 */
+		if (status & QUP_STATE_VALID) {
+			if (only_valid)
+				return 0;
+			else if ((req_state & QUP_I2C_MAST_GEN) &&
+					(status & QUP_I2C_MAST_GEN))
+				return 0;
+			else if ((status & QUP_STATE_MASK) == req_state)
+				return 0;
+		}
+		if (retries++ == 1000)
+			udelay(100);
+	}
+	return -ETIMEDOUT;
+}
+
+static int
+qup_update_state(struct qup_i2c_dev *dev, uint32_t state)
+{
+	if (qup_i2c_poll_state(dev, 0, true) != 0)
+		return -EIO;
+	writel_relaxed(state, dev->base + QUP_STATE);
+	if (qup_i2c_poll_state(dev, state, false) != 0)
+		return -EIO;
+	return 0;
+}
+
+/*
+ * Before calling qup_config_core_on_en(), please make
+ * sure that QuPE core is in RESET state.
+ *
+ * Configuration of CORE_ON_EN - BIT13 in QUP_CONFIG register
+ * is only required for targets like 7x27a, where it needs
+ * be turned on for disabling the QuPE pclks.
+ */
+static void
+qup_config_core_on_en(struct qup_i2c_dev *dev)
+{
+	uint32_t status;
+
+	status = readl_relaxed(dev->base + QUP_CONFIG);
+	status |= BIT(13);
+	writel_relaxed(status, dev->base + QUP_CONFIG);
+	/* making sure that write has really gone through */
+	mb();
+}
+
 static void
 qup_i2c_pwr_mgmt(struct qup_i2c_dev *dev, unsigned int state)
 {
@@ -263,9 +324,12 @@ qup_i2c_pwr_mgmt(struct qup_i2c_dev *dev, unsigned int state)
 		if (dev->pclk)
 			clk_enable(dev->pclk);
 	} else {
+		qup_update_state(dev, QUP_RESET_STATE);
 		clk_disable(dev->clk);
-		if (dev->pclk)
+		if (dev->pclk) {
+			qup_config_core_on_en(dev);
 			clk_disable(dev->pclk);
+		}
 	}
 }
 
@@ -323,25 +387,6 @@ static int qup_i2c_poll_clock_ready(struct qup_i2c_dev *dev)
 	}
 
 	dev_err(dev->dev, "Error waiting for clk ready\n");
-	return -ETIMEDOUT;
-}
-
-static int
-qup_i2c_poll_state(struct qup_i2c_dev *dev, uint32_t state)
-{
-	uint32_t retries = 0;
-
-	dev_dbg(dev->dev, "Polling Status for state:0x%x\n", state);
-
-	while (retries != 2000) {
-		uint32_t status = readl_relaxed(dev->base + QUP_STATE);
-
-		if ((status & (QUP_STATE_VALID | state)) ==
-				(QUP_STATE_VALID | state))
-			return 0;
-		else if (retries++ == 1000)
-			udelay(100);
-	}
 	return -ETIMEDOUT;
 }
 
@@ -548,17 +593,6 @@ qup_issue_write(struct qup_i2c_dev *dev, struct i2c_msg *msg, int rem,
 	dev->cnt = msg->len - dev->pos;
 }
 
-static int
-qup_update_state(struct qup_i2c_dev *dev, uint32_t state)
-{
-	if (qup_i2c_poll_state(dev, 0) != 0)
-		return -EIO;
-	writel_relaxed(state, dev->base + QUP_STATE);
-	if (qup_i2c_poll_state(dev, state) != 0)
-		return -EIO;
-	return 0;
-}
-
 static void
 qup_set_read_mode(struct qup_i2c_dev *dev, int rd_len)
 {
@@ -687,7 +721,7 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	}
 
 	writel_relaxed(1, dev->base + QUP_SW_RESET);
-	ret = qup_i2c_poll_state(dev, QUP_RESET_STATE);
+	ret = qup_i2c_poll_state(dev, QUP_RESET_STATE, false);
 	if (ret) {
 		dev_err(dev->dev, "QUP Busy:Trying to recover\n");
 		goto out_err;
@@ -720,7 +754,7 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		dev->err = 0;
 		dev->complete = &complete;
 
-		if (qup_i2c_poll_state(dev, QUP_I2C_MAST_GEN) != 0) {
+		if (qup_i2c_poll_state(dev, QUP_I2C_MAST_GEN, false) != 0) {
 			ret = -EIO;
 			goto out_err;
 		}
