@@ -158,7 +158,7 @@ static struct detection_cycle gp2ap_cycle_table[] = {
 	{0x3C, "1024ms"},
 };
 
-static struct proximity_gp2ap_device *gp2ap_pdev;
+static struct proximity_gp2ap_device *gp2ap_pdev = NULL;
 static struct workqueue_struct *proximity_wq;
 
 enum gp2ap_dev_mode {

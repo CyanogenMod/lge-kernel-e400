@@ -42,7 +42,7 @@ static struct ecom_platform_data *ecom_pdata;
 /* #define ALPS_DEBUG 1 */
 
 static struct i2c_driver hscd_driver;
-static struct i2c_client *client_hscd;
+static struct i2c_client *client_hscd = NULL;
 
 static atomic_t flgEna;
 static atomic_t delay;
@@ -277,12 +277,6 @@ static int __init hscd_init(void)
 #endif
 /* LGE_CHANGE_E */
 	int rc;
-
-/* LGE_CHANGE
- * follow linux coding rule
- * 2011-08-19, jihyun.seong@lge.com
- */
-	client_hscd = NULL;
 
 #ifdef ALPS_DEBUG
 	printk("[HSCD] init\n");
