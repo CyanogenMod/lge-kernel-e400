@@ -189,19 +189,16 @@ static char *usb_functions_all[] = {
 };
 
 static struct android_usb_product usb_products[] = {
-	
-	
 	{
-		.product_id = 0x9025,
+		.product_id     = 0x9026,
+		.num_functions	= ARRAY_SIZE(usb_functions_default),
+		.functions      = usb_functions_default,
+	},
+	{
+		.product_id	= 0x9025,
 		.num_functions	= ARRAY_SIZE(usb_functions_default_adb),
 		.functions	= usb_functions_default_adb,
 	},
-	{
-		.product_id 	= 0x9026,
-		.num_functions	= ARRAY_SIZE(usb_functions_default),
-		.functions		= usb_functions_default,
-	},
-	
 	{
 		.product_id	= 0xf00e,
 		.num_functions	= ARRAY_SIZE(usb_functions_rndis),

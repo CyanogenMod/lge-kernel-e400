@@ -103,7 +103,7 @@ unsigned char *data, unsigned char len);
 static void bma222_i2c_delay(unsigned int msec);
 
 /* globe variant */
-static struct i2c_client *bma222_client;
+static struct i2c_client *bma222_client = NULL;
 struct bma222_data {
 	bma222_t			bma222;
 	int IRQ;
@@ -285,7 +285,7 @@ static void run_suspend_resume(int mode)
 		if (atomic_read(&bma222_report_enabled) == 0) {
 			/* turn on vreg power */
 			accel_pdata->power(1);
-			mdelay(1);
+			mdelay(2);
 			bma222_set_mode(bma222_MODE_NORMAL);
 			bma222_set_bandwidth(bandwidth);/* bandwidth set */
 			atomic_set(&bma222_report_enabled, 1);
@@ -2141,7 +2141,7 @@ static int bma222_probe(struct i2c_client *client,
 
     accel_pdata->power(1);
 
-	mdelay(1);
+	mdelay(2);
 
 	atomic_set(&bma222_report_enabled, 1);
 /* LGE_CHANGE_E */
@@ -2336,7 +2336,6 @@ static int __init BMA222_init(void)
 #ifdef BMA222_DEBUG
 	printk(KERN_INFO "%s\n", __func__);
 #endif
-	bma222_client = NULL;
 	return i2c_add_driver(&bma222_driver);
 }
 

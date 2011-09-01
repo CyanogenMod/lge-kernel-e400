@@ -49,9 +49,9 @@ static struct input_polled_dev *alps_idev;
 
 #define POLL_STOP_TIME		400	/* (msec) */
 
-static int flgM, flgA;
-static int delay;
-static int poll_stop_cnt;
+static int flgM, flgA = 0;
+static int delay = 200;
+static int poll_stop_cnt = 0;
 
 /*****************************************************************************/
 /* for I/O Control */
@@ -290,15 +290,7 @@ static int __init alps_init(void)
 {
 	struct input_dev *idev;
 	int ret;
-/* LGE_CHANGE
- * follow linux coding rule
- * 2011-08-19, jihyun.seong@lge.com
- */
-	flgM = 0;
-	flgA = 0;
-	delay = 200;
-	poll_stop_cnt = 0;
-/* LGE_CHANGE end */
+
 	ret = platform_driver_register(&alps_driver);
 	if (ret)
 		goto out_region;

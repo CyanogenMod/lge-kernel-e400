@@ -1372,17 +1372,17 @@ static struct msm_gpio sdc2_cfg_data[] = {
 };
 
 static struct msm_gpio sdc2_sleep_cfg_data[] = {
-	{GPIO_CFG(62, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	{GPIO_CFG(62, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 								"sdc2_clk"},
-	{GPIO_CFG(63, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	{GPIO_CFG(63, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 								"sdc2_cmd"},
-	{GPIO_CFG(64, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	{GPIO_CFG(64, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 								"sdc2_dat_3"},
-	{GPIO_CFG(65, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	{GPIO_CFG(65, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 								"sdc2_dat_2"},
-	{GPIO_CFG(66, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	{GPIO_CFG(66, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 								"sdc2_dat_1"},
-	{GPIO_CFG(67, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	{GPIO_CFG(67, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 								"sdc2_dat_0"},
 };
 static struct msm_gpio sdc3_cfg_data[] = {
@@ -2002,7 +2002,7 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(FM_DIGITAL_STEREO_HEADSET, 26),
 	SND(FM_DIGITAL_SPEAKER_PHONE, 27),
 	SND(FM_DIGITAL_BT_A2DP_HEADSET, 28),
-	SND(CURRENT, 34),
+	SND(CURRENT, 0x7FFFFFFE),
 	SND(FM_ANALOG_STEREO_HEADSET, 35),
 	SND(FM_ANALOG_STEREO_HEADSET_CODEC, 36),
 };
@@ -2679,7 +2679,6 @@ static struct platform_device *surf_ffa_devices[] __initdata = {
 	&asoc_msm_pcm,
 	&asoc_msm_dai0,
 	&asoc_msm_dai1,
-	&msm_wlan_ar6000_pm_device,
 };
 
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
@@ -3318,12 +3317,20 @@ static struct platform_device hs_pdev = {
 
 #define LED_GPIO_PDM		96
 #define UART1DM_RX_GPIO		45
+
+static int __init msm7x27a_init_ar6000pm(void)
+{
+	return platform_device_register(&msm_wlan_ar6000_pm_device);
+}
+
 static void __init msm7x2x_init(void)
 {
 	msm7x2x_misc_init();
 
 	/* Common functions for SURF/FFA/RUMI3 */
 	msm_device_i2c_init();
+	/* Ensure ar6000pm device is registered before MMC/SDC */
+	msm7x27a_init_ar6000pm();
 	msm7x27a_init_mmc();
 	msm7x27a_init_ebi2();
 	msm7x27a_cfg_uart2dm_serial();
