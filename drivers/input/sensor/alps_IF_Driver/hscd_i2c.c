@@ -212,6 +212,8 @@ static int hscd_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	ecom_pdata = client->dev.platform_data;
 
 	ecom_pdata->power(1);
+
+	mdelay(5);
 /* LGE_CHANGE_E */
 
 	hscd_register_init();
