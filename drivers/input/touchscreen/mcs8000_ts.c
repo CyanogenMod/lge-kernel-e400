@@ -260,6 +260,10 @@ static void mcs8000_work(struct work_struct *work)
 #endif
 	if (ret < 0) {
 		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+		/* [LGE_S] To Avoid irq disable */
+		usleep(10);
+		enable_irq(ts->client->irq);
+		/* [LGE_E] */
 		return ;
 	} else {
 		touchType  = (buf[0]>>5)&0x03;
