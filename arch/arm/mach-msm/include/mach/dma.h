@@ -238,7 +238,11 @@ unsigned int msm_dmov_build_crci_mask(int n, ...);
 #define DMOV_SDC2_CHAN        8
 #define DMOV_SDC2_CRCI        7
 
-#define DMOV_SDC3_CHAN        8
+#ifdef CONFIG_MACH_LGE
+#define DMOV_SDC3_CHAN        11
+#else
+#define DMOV_SDC3_CHAN        8	/* QCT original */
+#endif
 #define DMOV_SDC3_CRCI        12
 
 #define DMOV_SDC4_CHAN        8
