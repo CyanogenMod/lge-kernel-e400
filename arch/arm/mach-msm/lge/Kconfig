@@ -90,6 +90,14 @@ config LGE_BDI_TIMER_BUG_PATCH
 	  So, I add the codes which checks whether bdi is unregitered or not 
 	  before removing timer.
 
+config LGE_REPORT_RMT_STORAGE_CLIENT_READY
+	bool "Report that RMT_STORAGE_CLIENT is ready to modem"
+	depends on MACH_LGE
+	default n
+	help
+	 Report that Remote storage client is ready to modem.
+	 After this signal modem can call efs_sync().
+
 endmenu
  
 endmenu
