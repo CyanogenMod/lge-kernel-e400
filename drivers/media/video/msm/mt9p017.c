@@ -440,7 +440,7 @@ static int32_t mt9p017_write_exp_gain(uint16_t gain, uint32_t line)
 	CDBG("[mt9p017_write_NoiseReduction]Gain = %d, Line = %d\n", gain_NR,
 		line_NR);
 
-	if (gain_NR < 100 && line_NR < 800) {
+	if (gain_NR < 2135 && line_NR < 900) {
 		/* around 3.0x  Indoor & Outdoor */
 		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
 		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x28); /* 25 */
@@ -448,17 +448,17 @@ static int32_t mt9p017_write_exp_gain(uint16_t gain, uint32_t line)
 	} else if (gain_NR < 2135) {
 		/* 5.4  Indoor */
 		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
-		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x28); /* 82 */
+		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x38); /* 82 */
 		CDBG("[NOISE] Indoor...\n");
 	} else if (gain_NR < 2172) {
 		/* 7.7x  ND2 */
 		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
-		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x50); /* E0 */
+		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x48); /* E0 */
 		CDBG("[NOISE] Dark[ND2] Indoor...\n");
 	} else {
 		/* over 7.7x to 12x  ND8 */
-		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0003);
-		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x70); /* 112 */
+		rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
+		rc = mt9p017_i2c_write_w_sensor(0x3102, 0x58); /* 112 */
 		CDBG("[NOISE] Low light[ND8]Indoor...\n");
 	}
 
@@ -696,19 +696,22 @@ static int32_t mt9p017_sensor_setting(int update_type, int rt)
 /* LGE_UPDATE_S jeonghoon.cho@lge.com : modification QCTK */
 			if (nr_option) { /* QCTK_20110124_Setting for NR */
 				rc = mt9p017_i2c_write_w_sensor(0x3100, 0x0002);
-				rc = mt9p017_i2c_write_w_sensor(0x3102, 0x0028);
+				rc = mt9p017_i2c_write_w_sensor(0x3102, 0x0064);
+
 				rc = mt9p017_i2c_write_w_sensor(0x3104, 0x0B6D);
-				rc = mt9p017_i2c_write_w_sensor(0x3106, 0x0302);
-				rc = mt9p017_i2c_write_w_sensor(0x3108, 0x0804);
+				rc = mt9p017_i2c_write_w_sensor(0x3106, 0x0402);
+				rc = mt9p017_i2c_write_w_sensor(0x3108, 0x0b09);
 				rc = mt9p017_i2c_write_w_sensor(0x310A, 0x002A);
 				rc = mt9p017_i2c_write_w_sensor(0x310C, 0x0080);
 				rc = mt9p017_i2c_write_w_sensor(0x310E, 0x0100);
 				rc = mt9p017_i2c_write_w_sensor(0x3110, 0x0200);
+
+				/* <DPC> */
 				rc = mt9p017_i2c_write_w_sensor(0x31E0, 0x1F01);
-				rc = mt9p017_i2c_write_w_sensor(0x3F02, 0x0001);
-				rc = mt9p017_i2c_write_w_sensor(0x3F04, 0x0032);
-				rc = mt9p017_i2c_write_w_sensor(0x3F06, 0x015E);
-				rc = mt9p017_i2c_write_w_sensor(0x3F08, 0x0190);
+				rc = mt9p017_i2c_write_w_sensor(0x3F02, 0x0030);
+				rc = mt9p017_i2c_write_w_sensor(0x3F04, 0x0120);
+				rc = mt9p017_i2c_write_w_sensor(0x3F06, 0x00F0);
+				rc = mt9p017_i2c_write_w_sensor(0x3F08, 0x0170);
 
 				if (rc < 0)
 					return rc;

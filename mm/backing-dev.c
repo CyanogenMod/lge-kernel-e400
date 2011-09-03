@@ -616,6 +616,15 @@ void bdi_unregister(struct backing_dev_info *bdi)
 		bdi_prune_sb(bdi);
 		del_timer_sync(&bdi->wb.wakeup_timer);
 
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+		/* FIXME : for getting debugging information
+		 * this should be removed after debugging.
+		 * 2011-08-01, cleaneye.kim@lge.com
+		 */
+		printk(KERN_INFO"%s: bdi->name %s \n",__func__, bdi->name);
+		printk(KERN_INFO"%s: bdi->wb.task %p\n",__func__, bdi->wb.task);
+		printk(KERN_INFO"%s: current jiffies %lu\n", __func__, jiffies);
+#endif
 		if (!bdi_cap_flush_forker(bdi))
 			bdi_wb_shutdown(bdi);
 		bdi_debug_unregister(bdi);

@@ -853,6 +853,54 @@ long wb_do_writeback(struct bdi_writeback *wb, int force_wait)
 	return wrote;
 }
 
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+/*
+ * dump a block of kernel memory from around the given address
+ */
+static void show_data(unsigned long addr, int nbytes, const char *name)
+{
+	int	i, j;
+	int	nlines;
+	u32	*p;
+
+	/*
+	 * don't attempt to dump non-kernel addresses or
+	 * values that are probably just small negative numbers
+	 */
+	if (addr < PAGE_OFFSET || addr > -256UL)
+		return;
+
+	printk("\n%s: %#lx:\n", name, addr);
+
+	/*
+	 * round address down to a 32 bit boundary
+	 * and always dump a multiple of 32 bytes
+	 */
+	p = (u32 *)(addr & ~(sizeof(u32) - 1));
+	nbytes += (addr & (sizeof(u32) - 1));
+	nlines = (nbytes + 31) / 32;
+
+
+	for (i = 0; i < nlines; i++) {
+		/*
+		 * just display low 16 bits of address to keep
+		 * each line of the dump < 80 characters
+		 */
+		printk("%04lx ", (unsigned long)p & 0xffff);
+		for (j = 0; j < 8; j++) {
+			u32	data;
+			if (probe_kernel_address(p, data)) {
+				printk(" ********");
+			} else {
+				printk(" %08x", data);
+			}
+			++p;
+		}
+		printk("\n");
+	}
+}
+#endif
+
 /*
  * Handle writeback of dirty data for the device backed by this bdi. Also
  * wakes up periodically and does kupdated style flushing.
@@ -875,6 +923,46 @@ int bdi_writeback_thread(void *data)
 	trace_writeback_thread_start(bdi);
 
 	while (!kthread_should_stop()) {
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+		/* FIXME : for getting debugging information
+		 * this should be removed after debugging.
+		 * 2011-08-01, cleaneye.kim@lge.com
+		 */
+		if (wb->wakeup_timer.entry.prev == NULL) {
+			printk(KERN_INFO"%s: wakeup timer is already removed\n", __func__);
+			printk(KERN_INFO"%s: current jiffies %lu\n", __func__, jiffies);
+			printk(KERN_INFO"%s: prev %p\n",__func__, wb->wakeup_timer.entry.prev);
+			printk(KERN_INFO"%s: next %p\n",__func__, wb->wakeup_timer.entry.next);
+			printk(KERN_INFO"%s: bdi->dev %p\n",__func__, bdi->dev);
+			printk(KERN_INFO"%s: kthread_should_stop %d\n",__func__, kthread_should_stop());
+			if (wb->wakeup_timer.entry.next != NULL) {
+				printk(KERN_INFO"%s: information of wb structure\n", __func__);
+				show_data((unsigned long)wb, sizeof(struct bdi_writeback), "wb data");
+			}
+		}
+
+		/*
+		 * This patch is added for preventing from kernel panic which is
+		 * generated during executing bdi_writeback_thread(). Root cause of
+		 * this kernel panic starts from the synchronization problem between
+		 * kernel threads. When mmc card is once removed, kernel tries to
+		 * unregister data structures of bdi and delete bdi timer in kthread
+		 * context. But, if bdi writeback kthread is already in execution,
+		 * there is a probablity that that kthread tries to delete bdi timer
+		 * which has been deleted already.
+		 * In some cases, timer list data are abnormal. "prev" pointer
+		 * has NULL, but "next" pointer has non-NULL. This case is very
+		 * abnormal. I think that this case is caused by synchronization
+		 * problem between kernel threads.
+		 * In that case, "del_timer(&wb->wakeup_timer)" code can generate
+		 * kernel panic. So, I add the codes which checks whether abnormal
+		 * timer list data. If so, force timer list to be initialized.
+		 * 2011-08-11, cleaneye.kim@lge.com
+		 */
+		if (wb->wakeup_timer.entry.prev == NULL &&
+			wb->wakeup_timer.entry.next != NULL)
+			wb->wakeup_timer.entry.next = NULL;
+#endif
 		/*
 		 * Remove own delayed wake-up timer, since we are already awake
 		 * and we'll take care of the preriodic write-back.
