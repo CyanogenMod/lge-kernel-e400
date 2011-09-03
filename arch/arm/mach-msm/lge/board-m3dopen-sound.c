@@ -185,6 +185,7 @@ static int m3eu_gpio_earsense_work_func(int *value)
 		state = EAR_STATE_EJECT;
 		*value = 0;
 		gpio_set_value(GPIO_MIC_MODE, 0);
+		
 	} else {
 		state = EAR_STATE_INJECT;
 		msleep(100);
@@ -251,6 +252,12 @@ static int m3eu_gpio_hook_key_work_func(int *value)
 	gpio_value = !gpio_get_value(GPIO_BUTTON_DETECT);
 	printk(KERN_INFO "%s: hook key detected : %s\n", __func__,
 		gpio_value ? "pressed" : "released");
+
+	msleep(150);
+	if (gpio_get_value(GPIO_EAR_SENSE)) {
+		printk(KERN_INFO "Ignore hook key event\n");
+		*value = 0;
+	}
 
 	return gpio_value;
 }
