@@ -1017,6 +1017,21 @@ static int  dsatHandleAT_ARM11(uint32_t at_cmd, uint32_t at_act, uint32_t at_par
         	break;
         /* LGE_CHANGE_E [zugwan@lge.com] 2009-07-03, for AT%CAM */
 
+		// +s LG_BTUI_ATCMD_DUTMODE munho2.lee@lge.com 110902, process AT command for BT DUT mode
+		case ATCMD_BTTM:   /*53*/
+			if(at_act != ATCMD_ACTION)
+				result = HANLDE_FAIL;
+			printk("[ ATCMD_BTTM ] bttm kernel at_param = %d",at_param);
+			if (atpdev != NULL){
+				update_atcmd_state(atpdev, "bttm", at_param);
+			}
+			else 
+			{
+				printk("\n[%s] error BTTM", __func__ );
+			}			
+		break;
+		// +e LG_BTUI_ATCMD_DUTMODE
+
 		default :
 			result = HANDLE_ERROR;
 			break;
