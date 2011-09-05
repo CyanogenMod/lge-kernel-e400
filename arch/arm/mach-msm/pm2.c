@@ -1784,6 +1784,10 @@ static int msm_reboot_call
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned code = simple_strtoul(cmd + 4, 0, 16) & 0xff;
 			restart_reason = 0x6f656d00 | code;
+		//20110819 inho@lge.com for LG B&R [start]
+                } else if (!strcmp(cmd, "--bnr_recovery")) {
+                        restart_reason = 0x77665555;
+		//20110819 inho@lge.com for LG B&R [end]
 		} else if (!strcmp(cmd, "charge_reset")) {
 		/* LGE: murali.ramaiah@lge.com [2011-07-21]- to handle reboot cmd from chargerlogo */
 			restart_reason = 0x776655AA;
