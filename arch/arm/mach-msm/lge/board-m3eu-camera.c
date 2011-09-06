@@ -24,12 +24,13 @@ static uint32_t camera_on_gpio_table[] = {
 	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
+#ifdef CONFIG_MT9P017
 static void msm_camera_vreg_config(int vreg_en)
 {
-	static int gpio_initialzed;
-	static struct regulator *ldo2;
-	static struct regulator *ldo3;
-	static struct regulator *ldo4;
+	static int gpio_initialzed = 0;
+	static struct regulator* ldo2 = NULL;
+	static struct regulator* ldo3 = NULL;
+	static struct regulator* ldo4 = NULL;
 	int rc;
 
 	if (!gpio_initialzed) {
@@ -44,67 +45,160 @@ static void msm_camera_vreg_config(int vreg_en)
 
 		/* TODO : error checking */
 		ldo4 = regulator_get(NULL, "RT8053_LDO4");
-		if (ldo4 == NULL)
+		if (ldo4 == NULL) {
 			pr_err("%s: regulator_get(ldo4) failed\n", __func__);
+		}
 
 		ldo2 = regulator_get(NULL, "RT8053_LDO2");
-		if (ldo2 == NULL)
+		if (ldo2 == NULL) {
 			pr_err("%s: regulator_get(ldo2) failed\n", __func__);
+		}
 
 		ldo3 = regulator_get(NULL, "RT8053_LDO3");
-		if (ldo3 == NULL)
+		if (ldo3 == NULL) {
 			pr_err("%s: regulator_get(ldo3) failed\n", __func__);
+		}
 
 		rc = regulator_set_voltage(ldo4, 1800000, 1800000);
-		if (rc < 0)
-			pr_err("%s: regulator_set_voltage(ldo4) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo4) failed\n", __func__);
+		}
 		rc = regulator_enable(ldo4);
-		if (rc < 0)
-			pr_err("%s: regulator_enable(ldo4) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo4) failed\n", __func__);
+		}
 
 		rc = regulator_set_voltage(ldo2, 2800000, 2800000);
-		if (rc < 0)
-			pr_err("%s: regulator_set_voltage(ldo2) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo2) failed\n", __func__);
+		}
 		rc = regulator_enable(ldo2);
-		if (rc < 0)
-			pr_err("%s: regulator_enable(ldo2) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo2) failed\n", __func__);
+		}
 
 		rc = regulator_set_voltage(ldo3, 2800000, 2800000);
-		if (rc < 0)
-			pr_err("%s: regulator_set_voltage(ldo3) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo3) failed\n", __func__);
+		}
 		rc = regulator_enable(ldo3);
-		if (rc < 0)
-			pr_err("%s: regulator_enable(ldo3) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo3) failed\n", __func__);
+		}
 	} else {
 		gpio_set_value(GPIO_CAM_RESET, 0);
 
 		rc = regulator_disable(ldo3);
-		if (rc < 0)
-			pr_err("%s: regulator_disable(ldo3) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_disable(ldo3) failed\n", __func__);
+		}
 		regulator_put(ldo3);
 
 		rc = regulator_disable(ldo2);
-		if (rc < 0)
-			pr_err("%s: regulator_disble(ldo2) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_disble(ldo2) failed\n", __func__);
+		}
 		regulator_put(ldo2);
 
 		rc = regulator_disable(ldo4);
-		if (rc < 0)
-			pr_err("%s: regulator_disable(ldo4) failed\n",
-				__func__);
+		if (rc < 0) {
+			pr_err("%s: regulator_disable(ldo4) failed\n", __func__);
+		}
 		regulator_put(ldo4);
 	}
 
 	return;
 }
+#endif//CONFIG_MT9P017
+
+#ifdef CONFIG_HI542
+static void msm_camera_vreg_config(int vreg_en)
+{
+	static int gpio_initialzed = 0;
+	static struct regulator* ldo2 = NULL;
+	static struct regulator* ldo3 = NULL;
+	static struct regulator* ldo4 = NULL;
+	int rc;
+
+	if (!gpio_initialzed) {
+		gpio_request(GPIO_CAM_RESET, "cam_reset");
+		gpio_direction_output(GPIO_CAM_RESET, 0);
+		gpio_initialzed = 1;
+	}
+
+	if (vreg_en) {
+		gpio_set_value(GPIO_CAM_RESET, 0);
+		mdelay(1);
+
+		/* TODO : error checking */
+		ldo4 = regulator_get(NULL, "RT8053_LDO4");
+		if (ldo4 == NULL) {
+			pr_err("%s: regulator_get(ldo4) failed\n", __func__);
+		}
+
+		ldo2 = regulator_get(NULL, "RT8053_LDO2");
+		if (ldo2 == NULL) {
+			pr_err("%s: regulator_get(ldo2) failed\n", __func__);
+		}
+
+		ldo3 = regulator_get(NULL, "RT8053_LDO3");
+		if (ldo3 == NULL) {
+			pr_err("%s: regulator_get(ldo3) failed\n", __func__);
+		}
+
+		rc = regulator_set_voltage(ldo4, 1800000, 1800000);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo4) failed\n", __func__);
+		}
+		rc = regulator_enable(ldo4);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo4) failed\n", __func__);
+		}
+
+		rc = regulator_set_voltage(ldo2, 2800000, 2800000);
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo2) failed\n", __func__);
+		}
+		rc = regulator_enable(ldo2);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo2) failed\n", __func__);
+		}
+
+		rc = regulator_set_voltage(ldo3, 1800000, 1800000); //smt 이미지는 1.8v 로 수정
+		if (rc < 0) {
+			pr_err("%s: regulator_set_voltage(ldo3) failed\n", __func__);
+		}
+		rc = regulator_enable(ldo3);
+		if (rc < 0) {
+			pr_err("%s: regulator_enable(ldo3) failed\n", __func__);
+		}
+	} else {
+		gpio_set_value(GPIO_CAM_RESET, 0);
+
+		mdelay(20);
+
+		rc = regulator_disable(ldo3);
+		if (rc < 0) {
+			pr_err("%s: regulator_disable(ldo3) failed\n", __func__);
+		}
+		regulator_put(ldo3);
+
+		rc = regulator_disable(ldo2);
+		if (rc < 0) {
+			pr_err("%s: regulator_disble(ldo2) failed\n", __func__);
+		}
+		regulator_put(ldo2);
+
+		rc = regulator_disable(ldo4);
+		if (rc < 0) {
+			pr_err("%s: regulator_disable(ldo4) failed\n", __func__);
+		}
+		regulator_put(ldo4);
+	}
+
+	return;
+}
+#endif
 
 static int config_gpio_table(uint32_t *table, int len)
 {
@@ -148,6 +242,7 @@ static void config_camera_off_gpios_rear(void)
 			ARRAY_SIZE(camera_off_gpio_table));
 }
 
+#ifdef CONFIG_MT9P017
 static int camera_power_on_rear(void)
 {
 	/* mt9p017 power on sequence: cam reset after enabling MCLK */
@@ -157,6 +252,19 @@ static int camera_power_on_rear(void)
 	mdelay(2);
 	return 0;
 }
+#endif//CONFIG_MT9P017
+
+#ifdef CONFIG_HI542
+static int camera_power_on_rear(void)
+{
+	/* hi542 power on sequence: cam reset after enabling MCLK */
+	gpio_set_value(GPIO_CAM_RESET, 0);
+	mdelay(10);
+	gpio_set_value(GPIO_CAM_RESET, 1);
+	mdelay(1);
+	return 0;
+}
+#endif
 
 static int camera_power_off_rear(void)
 {
@@ -213,12 +321,41 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
 };
 
 static struct platform_device msm_camera_sensor_mt9p017 = {
-	.name = "msm_camera_mt9p017",
-	.dev  = {
-		.platform_data = &msm_camera_sensor_mt9p017_data,
-	},
+        .name      = "msm_camera_mt9p017",
+        .dev       = {
+                .platform_data = &msm_camera_sensor_mt9p017_data,
+        },
 };
-#endif
+#endif//CONFIG_MT9P017
+#ifdef CONFIG_HI542
+static struct msm_camera_sensor_platform_info hi542_sensor_info = {
+	.mount_angle = 0
+};
+
+static struct msm_camera_sensor_flash_data led_flash_data = {
+	.flash_type = MSM_CAMERA_FLASH_NONE,
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_hi542_data = {
+	.sensor_name    = "hi542",
+	.sensor_reset_enable = 1,
+	.sensor_reset   = GPIO_CAM_RESET,
+	.sensor_pwd     = 0,
+	.vcm_pwd        = 0,
+	.vcm_enable     = 0,
+	.pdata          = &msm_camera_device_data_rear,
+	.flash_data     = &led_flash_data,
+	.csi_if         = 1,
+	.sensor_platform_info = &hi542_sensor_info,
+};
+
+static struct platform_device msm_camera_sensor_hi542 = {
+        .name      = "msm_camera_hi542",
+        .dev       = {
+                .platform_data = &msm_camera_sensor_hi542_data,
+        },
+};
+#endif//CONFIG_HI542
 
 static struct i2c_board_info i2c_camera_devices[] = {
 #ifdef CONFIG_MT9P017
@@ -226,6 +363,12 @@ static struct i2c_board_info i2c_camera_devices[] = {
 		I2C_BOARD_INFO("mt9p017", 0x1B),
 	},
 #endif
+#ifdef CONFIG_HI542
+	{
+		I2C_BOARD_INFO("hi542", 0x10),
+	},
+#endif
+
 };
 
 #ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
@@ -268,6 +411,10 @@ static struct platform_device *m3eu_camera_devices[] __initdata = {
 #ifdef CONFIG_MT9P017
 	&msm_camera_sensor_mt9p017,
 #endif
+#ifdef CONFIG_HI542
+    &msm_camera_sensor_hi542,
+#endif
+
 };
 
 #ifdef CONFIG_MSM_CAMERA_FLASH_LM3559

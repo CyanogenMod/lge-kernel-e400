@@ -75,6 +75,14 @@ config MT9P017
 	default n
 	---help---
 	  APTINA 5M Bayer Sensor
+
+config HI542
+	bool "Hynix Sensor HI542 (BAYER 5M)"
+	depends on MSM_CAMERA && ARCH_MSM7X27A
+	default n
+	---help---
+	  HYNIX 5M Bayer Sensor
+
 choice
 	prompt "AF module"
 	depends on MT9P012 && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
