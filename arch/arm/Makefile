@@ -261,6 +261,10 @@ core-y				+= arch/arm/perfmon/
 
 libs-y				:= arch/arm/lib/ $(libs-y)
 
+#[110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
+#platform.team@lge.com 2011.01
+core-y		+= lge/
+#[110906 kkh8318@lge.com M3_ALL] [END]
 # Default target when executing plain make
 ifeq ($(CONFIG_XIP_KERNEL),y)
 KBUILD_IMAGE := xipImage

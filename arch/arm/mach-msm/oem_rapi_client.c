@@ -333,6 +333,17 @@ static const struct file_operations debug_ops = {
 	.write = debug_write,
 };
 
+// [110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
+/* BEGIN: 0014110 jihoon.lee@lge.com 20110115 */
+/* MOD 0014110: [FACTORY RESET] stability */
+/* sync up with oem_rapi */
+uint32_t get_oem_rapi_open_cnt(void)
+{
+	return open_count;
+}
+EXPORT_SYMBOL(get_oem_rapi_open_cnt);
+// [110906 kkh8318@lge.com M3_ALL] [END]
+
 static void __exit oem_rapi_client_mod_exit(void)
 {
 	debugfs_remove(dent);

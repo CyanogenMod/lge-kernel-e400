@@ -34,6 +34,12 @@
 
 #include "board-m3eu.h"
 
+// [110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
+#ifdef CONFIG_LGE_DIAGTEST
+#include <../../../lge/include/lg_fw_diag_communication.h>
+#endif 
+// [110906 kkh8318@lge.com M3_ALL] [END]
+
 static struct msm_gpio qup_i2c_gpios_io[] = {
 	{ GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 		"qup_scl" },
@@ -134,6 +140,30 @@ static struct platform_device eve_atcmd_device = {
 	},
 }; 
 // END: eternalblue@lge.com:2009-11-11
+// [110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
+#ifdef CONFIG_LGE_DIAGTEST
+// MOD 0009214: [DIAG] LG Diag feature added in side of android
+static struct diagcmd_platform_data lg_fw_diagcmd_pdata = {
+	.name = "lg_fw_diagcmd",
+};
+
+static struct platform_device lg_fw_diagcmd_device = {
+	.name = "lg_fw_diagcmd",
+	.id = -1,
+	.dev = {
+		.platform_data = &lg_fw_diagcmd_pdata
+	},
+};
+
+static struct platform_device lg_diag_cmd_device = {
+	.name = "lg_diag_cmd",
+	.id = -1,
+	.dev = {
+		.platform_data = 0, //&lg_diag_cmd_pdata
+	},
+};
+#endif
+// [110906 kkh8318@lge.com M3_ALL] [END]
 static struct platform_device *m3eu_devices[] __initdata = {
 	&msm_device_dmov,
 	&msm_device_smd,
@@ -145,6 +175,12 @@ static struct platform_device *m3eu_devices[] __initdata = {
 // 0001905: [ARM9] Sound related AT CMD & Hidden menu added 
 	&eve_atcmd_device, //vlc	
 // END: eternalblue@lge.com:2009-11-11
+// [110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
+#ifdef CONFIG_LGE_DIAGTEST
+		&lg_fw_diagcmd_device,	
+		&lg_diag_cmd_device,
+#endif 
+// [110906 kkh8318@lge.com M3_ALL] [END]
 };
 
 static void __init msm_device_i2c_init(void)

@@ -193,7 +193,11 @@ config VECTORS_BASE
 	default 0x00000000
 	help
 	  The base address of exception vectors.
-
+	  
+#[110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
+#platform.team@lge.com 2011.01
+source "lge/Kconfig"
+#[110906 kkh8318@lge.com M3_ALL] [END]
 source "init/Kconfig"
 
 source "kernel/Kconfig.freezer"
