@@ -46,7 +46,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define SMS_PROTOCOL_MAX_RAOUNDTRIP_MS			(10000)
+#define SMS_PROTOCOL_MAX_RAOUNDTRIP_MS			(1000)
 #define SMS_ALLOC_ALIGNMENT				128
 #define SMS_DMA_ALIGNMENT				16
 #define SMS_ALIGN_ADDRESS(addr) \
