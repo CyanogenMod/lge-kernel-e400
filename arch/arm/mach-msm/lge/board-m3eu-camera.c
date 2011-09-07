@@ -286,11 +286,6 @@ struct msm_camera_device_platform_data msm_camera_device_data_rear = {
 	.camera_power_off  = camera_power_off_rear,
 };
 
-#ifdef CONFIG_MT9P017
-static struct msm_camera_sensor_platform_info mt9p017_sensor_info = {
-	.mount_angle = 0
-};
-
 #ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
 static struct msm_camera_sensor_flash_src led_flash_src = {
 	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
@@ -307,6 +302,11 @@ static struct msm_camera_sensor_flash_data led_flash_data = {
 };
 #endif
 
+#ifdef CONFIG_MT9P017
+static struct msm_camera_sensor_platform_info mt9p017_sensor_info = {
+	.mount_angle = 0
+};
+
 static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
 	.sensor_name    = "mt9p017",
 	.sensor_reset_enable = 1,
@@ -321,19 +321,16 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
 };
 
 static struct platform_device msm_camera_sensor_mt9p017 = {
-        .name      = "msm_camera_mt9p017",
-        .dev       = {
-                .platform_data = &msm_camera_sensor_mt9p017_data,
-        },
+	.name = "msm_camera_mt9p017",
+	.dev  = {
+		.platform_data = &msm_camera_sensor_mt9p017_data,
+	},
 };
 #endif//CONFIG_MT9P017
+
 #ifdef CONFIG_HI542
 static struct msm_camera_sensor_platform_info hi542_sensor_info = {
 	.mount_angle = 0
-};
-
-static struct msm_camera_sensor_flash_data led_flash_data = {
-	.flash_type = MSM_CAMERA_FLASH_NONE,
 };
 
 static struct msm_camera_sensor_info msm_camera_sensor_hi542_data = {
