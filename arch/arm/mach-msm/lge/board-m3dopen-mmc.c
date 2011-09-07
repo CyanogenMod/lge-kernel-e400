@@ -44,18 +44,18 @@ static void sdcc_gpio_init(void)
 		printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
 					__func__, rc);
 /*LGE_CHANGE_S[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
-	if (gpio_request(77, "SMS2130_IO"))
-		printk("failed to request gpio SMS2130_IO\n");
+//	if (gpio_request(77, "SMS2130_IO"))
+//		printk("failed to request gpio SMS2130_IO\n");
 
-	if (gpio_request(78, "SMS2130_RESET"))
-		printk("failed to request gpio SMS2130_RESET\n");
+//	if (gpio_request(78, "SMS2130_RESET"))
+//		printk("failed to request gpio SMS2130_RESET\n");
 
 	gpio_tlmm_config(GPIO_CFG(78, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), GPIO_CFG_ENABLE ) ;
 	gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), GPIO_CFG_ENABLE ) ;
 
 	gpio_set_value(78,0);
-	gpio_set_value(77,1);
-	printk("gpio77 = %d",gpio_get_value(77));
+//	gpio_set_value(77,1);
+//	printk("gpio77 = %d",gpio_get_value(77));
 	gpio_set_value(77,0);
 /*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
 
