@@ -1833,31 +1833,40 @@ int mmc_suspend_host(struct mmc_host *host)
 
 	if (host->caps & MMC_CAP_DISABLE)
 		cancel_delayed_work(&host->disable);
-	cancel_delayed_work(&host->detect);
-	mmc_flush_scheduled_work();
 
-	mmc_bus_get(host);
-	if (host->bus_ops && !host->bus_dead) {
-		if (host->bus_ops->suspend)
-			err = host->bus_ops->suspend(host);
-		if (err == -ENOSYS || !host->bus_ops->resume) {
-			/*
-			 * We simply "remove" the card in this case.
-			 * It will be redetected on resume.
-			 */
-			if (host->bus_ops->remove)
-				host->bus_ops->remove(host);
-			mmc_claim_host(host);
-			mmc_detach_bus(host);
-			mmc_release_host(host);
-			host->pm_flags = 0;
-			err = 0;
-		}
+	
+	if (!strncmp(mmc_hostname(host),"mmc1",4))
+	{
+		// printk("mmc1 : skip sd card suspend...\n"); // do nothing! for do not issue cmd0,cmd41 at wakekup time
 	}
-	mmc_bus_put(host);
+	else
+	{
+		cancel_delayed_work(&host->detect);
+		mmc_flush_scheduled_work();
 
-	if (!err && !(host->pm_flags & MMC_PM_KEEP_POWER))
+		mmc_bus_get(host);
+		if (host->bus_ops && !host->bus_dead) {
+			if (host->bus_ops->suspend)
+				err = host->bus_ops->suspend(host);
+			if (err == -ENOSYS || !host->bus_ops->resume) {
+				/*
+				 * We simply "remove" the card in this case.
+				 * It will be redetected on resume.
+				 */
+				if (host->bus_ops->remove)
+					host->bus_ops->remove(host);
+				mmc_claim_host(host);
+				mmc_detach_bus(host);
+				mmc_release_host(host);
+				host->pm_flags = 0;
+				err = 0;
+			}
+		}
+		mmc_bus_put(host);
+
+		if (!err && !(host->pm_flags & MMC_PM_KEEP_POWER))
 		mmc_power_off(host);
+	}
 
 	return err;
 }
@@ -1878,31 +1887,38 @@ int mmc_resume_host(struct mmc_host *host)
 		mmc_bus_put(host);
 		return 0;
 	}
+	if (!strncmp(mmc_hostname(host),"mmc1",4))
+	{
+		// printk("mmc1 : skip sd card resume...\n"); // do nothing! for do not issue cmd0,cmd41 at wakekup time
+	}
+	else
+	{
 
-	if (host->bus_ops && !host->bus_dead) {
-		if (!(host->pm_flags & MMC_PM_KEEP_POWER)) {
-			mmc_power_up(host);
-			mmc_select_voltage(host, host->ocr);
-			/*
-			 * Tell runtime PM core we just powered up the card,
-			 * since it still believes the card is powered off.
-			 * Note that currently runtime PM is only enabled
-			 * for SDIO cards that are MMC_CAP_POWER_OFF_CARD
-			 */
-			if (mmc_card_sdio(host->card) &&
-			    (host->caps & MMC_CAP_POWER_OFF_CARD)) {
-				pm_runtime_disable(&host->card->dev);
-				pm_runtime_set_active(&host->card->dev);
-				pm_runtime_enable(&host->card->dev);
+		if (host->bus_ops && !host->bus_dead) {
+			if (!(host->pm_flags & MMC_PM_KEEP_POWER)) {
+				mmc_power_up(host);
+				mmc_select_voltage(host, host->ocr);
+				/*
+				 * Tell runtime PM core we just powered up the card,
+				 * since it still believes the card is powered off.
+				 * Note that currently runtime PM is only enabled
+				 * for SDIO cards that are MMC_CAP_POWER_OFF_CARD
+				 */
+				if (mmc_card_sdio(host->card) &&
+				    (host->caps & MMC_CAP_POWER_OFF_CARD)) {
+					pm_runtime_disable(&host->card->dev);
+					pm_runtime_set_active(&host->card->dev);
+					pm_runtime_enable(&host->card->dev);
+				}
 			}
-		}
-		BUG_ON(!host->bus_ops->resume);
-		err = host->bus_ops->resume(host);
-		if (err) {
-			printk(KERN_WARNING "%s: error %d during resume "
-					    "(card was removed?)\n",
-					    mmc_hostname(host), err);
-			err = 0;
+			BUG_ON(!host->bus_ops->resume);
+			err = host->bus_ops->resume(host);
+			if (err) {
+				printk(KERN_WARNING "%s: error %d during resume "
+						    "(card was removed?)\n",
+						    mmc_hostname(host), err);
+				err = 0;
+			}
 		}
 	}
 	mmc_bus_put(host);

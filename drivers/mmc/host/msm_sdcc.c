@@ -3917,6 +3917,16 @@ msmsdcc_runtime_suspend(struct device *dev)
 		pm_runtime_put_noidle(dev);
 
 		if (!rc) {
+			if (!strncmp(mmc_hostname(mmc),"mmc1",4) ){
+				/*
+				 * If MMC core level suspend is not supported,
+				 * turn off clocks to allow deep sleep (TCXO
+				 * shutdown).
+				 */
+				mmc->ios.clock = 0;
+				mmc->ops->set_ios(host->mmc, &host->mmc->ios);
+			}
+			
 			if (mmc->card && (mmc->card->type == MMC_TYPE_SDIO) &&
 				(mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ)) {
 				disable_irq(host->core_irqres->start);
