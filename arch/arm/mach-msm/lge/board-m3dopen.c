@@ -34,11 +34,7 @@
 
 #include "board-m3eu.h"
 
-// [110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
-#ifdef CONFIG_LGE_DIAGTEST
-#include <../../../lge/include/lg_fw_diag_communication.h>
-#endif 
-// [110906 kkh8318@lge.com M3_ALL] [END]
+
 
 static struct msm_gpio qup_i2c_gpios_io[] = {
 	{ GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
@@ -140,30 +136,7 @@ static struct platform_device eve_atcmd_device = {
 	},
 }; 
 // END: myunghwan.kim@lge.com:2011-08-26
-//[110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
-#ifdef CONFIG_LGE_DIAGTEST
-// MOD 0009214: [DIAG] LG Diag feature added in side of android
-static struct diagcmd_platform_data lg_fw_diagcmd_pdata = {
-	.name = "lg_fw_diagcmd",
-};
 
-static struct platform_device lg_fw_diagcmd_device = {
-	.name = "lg_fw_diagcmd",
-	.id = -1,
-	.dev = {
-		.platform_data = &lg_fw_diagcmd_pdata
-	},
-};
-
-static struct platform_device lg_diag_cmd_device = {
-	.name = "lg_diag_cmd",
-	.id = -1,
-	.dev = {
-		.platform_data = 0, //&lg_diag_cmd_pdata
-	},
-};
-#endif
-// [110906 kkh8318@lge.com M3_ALL] [END]
 
 static struct platform_device *m3eu_devices[] __initdata = {
 	&msm_device_dmov,
@@ -177,12 +150,7 @@ static struct platform_device *m3eu_devices[] __initdata = {
 	// [AT-CMD] for AT-CMD(RPC) Support
 	&eve_atcmd_device,
 	// END: myunghwan.kim@lge.com:2011-08-26	
-// [110906 kkh8318@lge.com M3_ALL]Added TestMode interface [START]
-#ifdef CONFIG_LGE_DIAGTEST
-		&lg_fw_diagcmd_device,	
-		&lg_diag_cmd_device,
-#endif 
-// [110906 kkh8318@lge.com M3_ALL] [END]
+
 };
 
 static void __init msm_device_i2c_init(void)
