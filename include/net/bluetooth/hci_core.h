@@ -192,8 +192,15 @@ struct hci_dev {
 
 	struct workqueue_struct	*workqueue;
 
+	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
+	/* QCT1090 CS Original
 	struct work_struct	power_on;
 	struct work_struct	power_off;
+	*/
+	struct delayed_work	power_on;
+	struct delayed_work	power_off;
+	// *e QCT_BT_PATCH_SR00564343_2
+
 	struct timer_list	off_timer;
 
 	struct timer_list	cmd_timer;

@@ -958,7 +958,13 @@ EXPORT_SYMBOL(hci_free_dev);
 
 static void hci_power_on(struct work_struct *work)
 {
+	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
+	/* QCT1090 CS Original
 	struct hci_dev *hdev = container_of(work, struct hci_dev, power_on);
+	*/
+	struct hci_dev *hdev = container_of(work, struct hci_dev,
+			power_on.work);
+	// *e QCT_BT_PATCH_SR00564343_2
 
 	BT_DBG("%s", hdev->name);
 
@@ -975,9 +981,17 @@ static void hci_power_on(struct work_struct *work)
 
 static void hci_power_off(struct work_struct *work)
 {
+	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
+	/* QCT1090 CS Original
 	struct hci_dev *hdev = container_of(work, struct hci_dev, power_off);
 
 	BT_DBG("%s", hdev->name);
+	*/
+	struct hci_dev *hdev = container_of(work, struct hci_dev,
+			power_off.work);
+
+	BT_DBG("hdev->name");
+	// *e QCT_BT_PATCH_SR00564343_2
 
 	hci_dev_close(hdev->id);
 }
@@ -990,7 +1004,12 @@ static void hci_auto_off(unsigned long data)
 
 	clear_bit(HCI_AUTO_OFF, &hdev->flags);
 
+	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
+	/* QCT1090 CS Original
 	queue_work(hdev->workqueue, &hdev->power_off);
+	*/
+	queue_delayed_work(hdev->workqueue, &hdev->power_off, 0);
+	// *e QCT_BT_PATCH_SR00564343_2
 }
 
 void hci_del_off_timer(struct hci_dev *hdev)
@@ -1420,8 +1439,15 @@ int hci_register_dev(struct hci_dev *hdev)
 	rwlock_init(&hdev->adv_entries_lock);
 	setup_timer(&hdev->adv_timer, hci_adv_clear, (unsigned long) hdev);
 
+	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
+	/* QCT1090 CS Original
 	INIT_WORK(&hdev->power_on, hci_power_on);
 	INIT_WORK(&hdev->power_off, hci_power_off);
+	*/
+	INIT_DELAYED_WORK(&hdev->power_on, hci_power_on);
+	INIT_DELAYED_WORK(&hdev->power_off, hci_power_off);
+	// *e QCT_BT_PATCH_SR00564343_2
+	
 	setup_timer(&hdev->off_timer, hci_auto_off, (unsigned long) hdev);
 
 	memset(&hdev->stat, 0, sizeof(struct hci_dev_stats));
@@ -1452,7 +1478,14 @@ int hci_register_dev(struct hci_dev *hdev)
 
 	set_bit(HCI_AUTO_OFF, &hdev->flags);
 	set_bit(HCI_SETUP, &hdev->flags);
+
+	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
+	/* QCT1090 CS Original
 	queue_work(hdev->workqueue, &hdev->power_on);
+	*/
+	queue_delayed_work(hdev->workqueue, &hdev->power_on,
+			msecs_to_jiffies(100));
+	// *e QCT_BT_PATCH_SR00564343_2	
 
 	hci_notify(hdev, HCI_DEV_REG);
 

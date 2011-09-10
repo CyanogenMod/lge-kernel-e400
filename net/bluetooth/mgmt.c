@@ -335,10 +335,18 @@ static int set_powered(struct sock *sk, u16 index, unsigned char *data, u16 len)
 		goto failed;
 	}
 
+	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
+	/* QCT1090 CS Original
 	if (cp->val)
 		queue_work(hdev->workqueue, &hdev->power_on);
 	else
 		queue_work(hdev->workqueue, &hdev->power_off);
+	*/
+	if (cp->val)
+		queue_delayed_work(hdev->workqueue, &hdev->power_on, 0);
+	else
+		queue_delayed_work(hdev->workqueue, &hdev->power_off, 0);
+	// *e QCT_BT_PATCH_SR00564343_2	
 
 	err = 0;
 
