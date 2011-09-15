@@ -424,7 +424,7 @@ gp2ap_work_func(struct work_struct *work)
 clear_interrupt:
 	if (dev->methods) {	/* Interrupt mode */
 		if (dev->vout_level == 0) {
-			if (PROX_OPMODE_B1) {
+			if (dev->op_mode == PROX_OPMODE_B1) {
 				(vo_data) ? prox_i2c_write(GP2AP_REG_HYS, 0x20, GP2AP_NO_INTCLEAR) : \
 					prox_i2c_write(GP2AP_REG_HYS, 0x40, GP2AP_NO_INTCLEAR);
 			} else { /* PROX_OPMODE_B2 */

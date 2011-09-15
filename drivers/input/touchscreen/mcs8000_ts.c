@@ -112,24 +112,16 @@ static void mcs8000_late_resume(struct early_suspend *h);
 /********************************/
 /*	To Enable FW Download	*/
 /********************************/
-#define TS_MODULE_A	0x00
 #define TS_MODULE_B	0x10
-#define TS_MODULE_C	0x11
-#define TS_MODULE_EXCEPTION	0x00
 /*
  * Compatibility Value
 */
-#define TS_COMPATIBILITY_0	0x00
 #define TS_COMPATIBILITY_A	0x01
-#define TS_COMPATIBILITY_B	0x02
-#define TS_COMPATIBILITY_EXCEIPTION	0x00
 
 /*
  * To confirm the latest FW Version
  */
-#define TS_LATEST_FW_VERSION_HW_00	0x05
-#define TS_LATEST_FW_VERSION_HW_10	0x09
-#define TS_LATEST_FW_VERSION_HW_11	0x07
+#define TS_LATEST_FW_VERSION_HW_10	0x0b
 
 enum {
 	None = 0,
@@ -678,7 +670,6 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	DMSG(KERN_INFO "%s: ts driver probed\n", __FUNCTION__);
 	
 	/* [LGE_S] FW Upgrade function */
-	/* mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver); */
 	if (hw_ver == TS_MODULE_B) {
 		printk(KERN_INFO "Checking HW Revision is success");
 		if (comp_ver == TS_COMPATIBILITY_A && fw_ver < TS_LATEST_FW_VERSION_HW_10) {
@@ -687,12 +678,7 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 			mcsdl_download_binary_data(1, 1);
 #endif
 		}
-	} else if (hw_ver == TS_MODULE_EXCEPTION) {
-		printk(KERN_INFO "In case of Fail FW Upgrade");
-#if defined(CONFIG_MACH_MSM7X27A_M3EU) || defined(CONFIG_MACH_MSM7X27A_M3MPCS)
-		mcsdl_download_binary_data(1, 1);
-#endif
-	}
+	} 
 	/* [LGE_E] */
 	enable_irq(dev->num_irq);
 	return 0;
