@@ -361,24 +361,29 @@ static unsigned int sms2130_sdcc_slot_status(struct device *dev)
 }
 
 static struct mmc_platform_data sms2130_sdcc_data = {
-  .ocr_mask       = MMC_VDD_28_29,/*MMC_VDD_30_31*//*MMC_VDD_28_29*/
-  .translate_vdd  = msm_sdcc_setup_power,
-  .status         = sms2130_sdcc_slot_status,
-  .status_irq	  = MSM_GPIO_TO_INT(78),
-  .irq_flags      = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-  .mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+	.ocr_mask       = MMC_VDD_28_29,/*MMC_VDD_30_31*//*MMC_VDD_28_29*/
+	.translate_vdd  = msm_sdcc_setup_power,
+	.status         = sms2130_sdcc_slot_status,
+	.status_irq	  = MSM_GPIO_TO_INT(78),
+	.irq_flags      = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 16027000,
-//	.msmsdcc_fmax	= 400000,		
-//  .msmsdcc_fmid  = 4000000,
-//	.msmsdcc_fmax   = 5000000,
-//	.msmsdcc_fmax  = 24576000,
-//  .msmsdcc_fmid  = 5000000,	
-// 	.msmsdcc_fmax	= 16027000,	
-//	.msmsdcc_fmax	= 17000000,
-//	.msmsdcc_fmax	= 20000000,
-	.msmsdcc_fmax	= 24576000,
-//	.msmsdcc_fmax	= 49152000,
+	//16MHz
+	.msmsdcc_fmid  = 400000,
+	.msmsdcc_fmax  = 16000000,
+	//17mHz
+	//.msmsdcc_fmid  = 400000,
+	//.msmsdcc_fmax  = 17000000,	
+	//20Mhz
+	//.msmsdcc_fmid  = 16000000,
+	//.msmsdcc_fmax  = 20000000,	
+	//20Mhz
+	//.msmsdcc_fmid  = 400000,
+	//.msmsdcc_fmax  = 20000000, 
+	//25MHz
+	//.msmsdcc_fmid	= 16000000,
+	//.msmsdcc_fmax	= 24576000,
+
 	.nonremovable	= 0,
 };
 /*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
