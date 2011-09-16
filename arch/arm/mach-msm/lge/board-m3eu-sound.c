@@ -172,6 +172,8 @@ enum {
 	EAR_INJECT = 1,
 };
 
+int headset_state;
+
 static int m3eu_gpio_earsense_work_func(int *value)
 {
 	int state;
@@ -199,6 +201,8 @@ static int m3eu_gpio_earsense_work_func(int *value)
 			gpio_set_value(GPIO_MIC_MODE, 1);
 		}
 	}
+
+	headset_state = *value;
 
 	return state;
 }
@@ -316,6 +320,8 @@ static struct platform_device *m3eu_sound_devices[] __initdata = {
 void __init lge_add_sound_devices(void)
 {
 	int rc;
+
+	headset_state = 0;
 
 	rc = gpio_request(GPIO_MIC_MODE, "mic_en");
 	if (rc) {

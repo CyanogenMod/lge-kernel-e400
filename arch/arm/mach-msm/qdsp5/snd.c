@@ -36,6 +36,10 @@
 static int fm_enable;
 #endif
 
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
+extern int headset_state;
+#endif
+
 struct snd_ctxt {
 	struct mutex lock;
 	int opened;
@@ -249,6 +253,12 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
+		if (headset_state == SW_HEADPHONE_INSERT) {
+			if (dev.device == 21)
+				dev.device = 22;
+		}
+#endif
 		dmsg.args.device = cpu_to_be32(dev.device);
 		dmsg.args.ear_mute = cpu_to_be32(dev.ear_mute);
 		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
@@ -270,6 +280,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		else
 			fm_enable = 0;
 #endif
+
 		rc = msm_rpc_call(snd->ept,
 			SND_SET_DEVICE_PROC,
 			&dmsg, sizeof(dmsg), 5 * HZ);
