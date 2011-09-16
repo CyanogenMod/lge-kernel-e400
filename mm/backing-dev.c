@@ -614,8 +614,6 @@ void bdi_unregister(struct backing_dev_info *bdi)
 	if (bdi->dev) {
 		trace_writeback_bdi_unregister(bdi);
 		bdi_prune_sb(bdi);
-		del_timer_sync(&bdi->wb.wakeup_timer);
-
 #ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
 		/* FIXME : for getting debugging information
 		 * this should be removed after debugging.
@@ -624,7 +622,19 @@ void bdi_unregister(struct backing_dev_info *bdi)
 		printk(KERN_INFO"%s: bdi->name %s \n",__func__, bdi->name);
 		printk(KERN_INFO"%s: bdi->wb.task %p\n",__func__, bdi->wb.task);
 		printk(KERN_INFO"%s: current jiffies %lu\n", __func__, jiffies);
+		printk(KERN_INFO"%s: prev %p\n",__func__, bdi->wb.wakeup_timer.entry.prev);
+		printk(KERN_INFO"%s: next %p\n",__func__, bdi->wb.wakeup_timer.entry.next);
+
+
+		if (bdi->wb.wakeup_timer.entry.prev == NULL &&
+			bdi->wb.wakeup_timer.entry.next != NULL) {
+			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev %p\n",__func__, bdi->wb.wakeup_timer.entry.next->prev);
+			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev->next %p\n",__func__, bdi->wb.wakeup_timer.entry.next->prev->next);
+            bdi->wb.wakeup_timer.entry.next = NULL;
+		}
 #endif
+		del_timer_sync(&bdi->wb.wakeup_timer);
+
 		if (!bdi_cap_flush_forker(bdi))
 			bdi_wb_shutdown(bdi);
 		bdi_debug_unregister(bdi);
