@@ -401,7 +401,6 @@ int smscore_register_device(struct smsdevice_params_t *params,
 static int smscore_sendrequest_and_wait(struct smscore_device_t *coredev,
 		void *buffer, size_t size, struct completion *completion) {
 	int rc;
-	unsigned int ret;
 //	sms_info("IN~!!");
 
 	if (completion == NULL)
@@ -423,10 +422,6 @@ static int smscore_sendrequest_and_wait(struct smscore_device_t *coredev,
     
 	return wait_for_completion_timeout(completion,
 			msecs_to_jiffies(SMS_PROTOCOL_MAX_RAOUNDTRIP_MS)) ? 0 : -ETIME;	
-	//ret = (unsigned int)wait_for_completion_timeout(completion,
-	//		msecs_to_jiffies(SMS_PROTOCOL_MAX_RAOUNDTRIP_MS));
-	//sms_info("ret = %d",ret);
-	return ret ? 0:-ETIME;
 }
 
 /**
