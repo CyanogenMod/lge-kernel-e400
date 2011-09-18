@@ -267,6 +267,17 @@ typedef enum
 
 #define BT_ADDR_CNT 12
 
+// +s LG_BTUI_DIAGCMD_DUTMODE munho2.lee@lge.com 110915
+typedef enum
+{
+  BT_GET_ADDR, //no use anymore
+  BT_TEST_MODE_1=1,
+  BT_TEST_MODE_CHECK=2,
+  BT_TEST_MODE_RELEASE=5,
+  BT_TEST_MODE_11=11 // 11~42
+}test_mode_req_bt_type;
+// +e LG_BTUI_DIAGCMD_DUTMODE
+
 typedef enum
 {
     BLUETOOTH_ADDRESS_WRITE,
@@ -334,6 +345,9 @@ typedef union
     test_mode_req_change_usb_driver_type change_usb_driver;
     test_mode_req_irda_fmrt_finger_uim_type ext_device_cmd;
     test_mode_req_reset_production_type reset_production_cmd;
+	// +s LG_BTUI_DIAGCMD_DUTMODE munho2.lee@lge.com 110915
+	test_mode_req_bt_type bt;
+	// +e LG_BTUI_DIAGCMD_DUTMODE
     test_mode_req_bt_addr_type bt_ad;
     test_mode_req_wifi_addr_type wifi_mac_ad;
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;

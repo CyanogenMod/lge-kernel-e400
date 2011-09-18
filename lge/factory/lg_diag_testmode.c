@@ -847,6 +847,96 @@ struct MmcPartition {
 // END: 0010090 sehyuny.kim@lge.com 2010-10-21
 #endif
 
+// +s LG_BTUI_DIAGCMD_DUTMODE munho2.lee@lge.com 110915
+void* LGF_TestModeBlueTooth(
+        test_mode_req_type*	pReq,
+        DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+    int fd;
+	char *src = (void *)0;		
+    mm_segment_t old_fs=get_fs();
+    set_fs(get_ds());
+
+	printk(KERN_ERR "[_BTUI_] [%s:%d] BTSubCmd=<%d>\n", __func__, __LINE__, pReq->bt);
+
+	if (diagpdev != NULL)
+	{
+		update_diagcmd_state(diagpdev, "BT_TEST_MODE", pReq->bt);
+
+		printk(KERN_ERR "[_BTUI_] [%s:%d] BTSubCmd=<%d>\n", __func__, __LINE__, pReq->bt);
+
+		/* Set Test Mode */
+		if(pReq->bt==1 || (pReq->bt>=11 && pReq->bt<=42)) 
+		{			
+			msleep(5900); //6sec timeout
+		}
+		/*Test Mode Check*/
+		else if(pReq->bt==2) 
+		{
+			ssleep(1);
+			if ( (fd = sys_open((const char __user *) "/data/bt_dut_test.txt", O_CREAT | O_RDWR, 0777) ) < 0 )
+		    {
+		    	printk(KERN_ERR "[BT_TEST_MODE] Can not open file .\n");
+				pRsp->ret_stat_code = TEST_FAIL_S;
+				goto file_fail;
+		    }
+			if ( (src = kmalloc(20, GFP_KERNEL)) )
+			{
+				if ((sys_read(fd, (char __user *) src, 3)) < 0)
+				{
+					printk(KERN_ERR "[BT_TEST_MODE] Can not read file.\n");
+					pRsp->ret_stat_code = TEST_FAIL_S;
+					goto file_fail;
+				}
+		        if ((memcmp(src, "on", 2)) == 0)
+		        {
+		        	kfree(src);
+		        	sys_unlink((const char __user *)"/data/bt_dut_test.txt");	
+		       		pRsp->ret_stat_code = TEST_OK_S;
+					printk(KERN_ERR "[##LMH_TEST] TEST_OK \n");	
+					return pRsp; 
+		        }	
+		        else
+		        {
+		        	kfree(src);
+					sys_unlink((const char __user *)"/data/bt_dut_test.txt");	
+		       		pRsp->ret_stat_code = TEST_FAIL_S;
+					printk(KERN_ERR "[##LMH_TEST] TEST_FAIL \n");	
+					return pRsp;
+		        }	
+			}		
+		}	
+		/*Test Mode Release*/
+		else if(pReq->bt==5)
+		{
+			ssleep(3);
+		}
+		/*Test Mode Not Supported*/
+		else
+		{
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+			return pRsp;
+		}
+
+		pRsp->ret_stat_code = TEST_OK_S;
+		return pRsp;
+	}
+	else
+	{
+		printk(KERN_ERR "[_BTUI_] [%s:%d] BTSubCmd=<%d> ERROR\n", __func__, __LINE__, pReq->bt);
+		pRsp->ret_stat_code = TEST_FAIL_S;
+		return pRsp;
+	}  
+file_fail:
+	kfree(src);
+	
+	sys_close(fd);
+	set_fs(old_fs); 
+	sys_unlink((const char __user *)"/data/bt_dut_test.txt");	
+	return pRsp;	
+}
+// +e LG_BTUI_DIAGCMD_DUTMODE
+
 extern const MmcPartition *lge_mmc_find_partition_by_name(const char *name);
 
 void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
@@ -1478,7 +1568,12 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     /* 21 ~ 30 */
     {TEST_MODE_KEY_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_EXT_SOCKET_TEST,             LGF_ExternalSocketMemory,         ARM11_PROCESSOR},
+	// *s LG_BTUI_DIAGCMD_DUTMODE munho2.lee@lge.com 110915
+	/* Original
     {TEST_MODE_BLUETOOTH_TEST,              not_supported_command_handler,    ARM11_PROCESSOR},
+	*/
+	{TEST_MODE_BLUETOOTH_TEST,				LGF_TestModeBlueTooth,	          ARM11_PROCESSOR},
+	// *e LG_BTUI_DIAGCMD_DUTMODE
     {TEST_MODE_BATT_LEVEL_TEST,             LGF_TestModeBattLevel,            ARM11_PROCESSOR},
     {TEST_MODE_MP3_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
     /* 31 ~ 40 */
