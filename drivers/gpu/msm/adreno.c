@@ -527,7 +527,7 @@ static int adreno_start(struct kgsl_device *device, unsigned int init_ram)
 			      KGSL_DEVICE_MEMSTORE_OFFSET(ref_wait_ts),
 			      init_reftimestamp);
 
-	adreno_regwrite(device, REG_RBBM_DEBUG, 0x00080000);
+	adreno_regwrite(device, REG_RBBM_DEBUG, 0x000C0000);
 
 	/* Make sure interrupts are disabled */
 
@@ -563,9 +563,6 @@ static int adreno_stop(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
-	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
-	del_timer_sync(&device->idle_timer);
-
 	adreno_dev->drawctxt_active = NULL;
 
 	adreno_ringbuffer_stop(&adreno_dev->ringbuffer);
@@ -573,6 +570,9 @@ static int adreno_stop(struct kgsl_device *device)
 	adreno_gmemclose(device);
 
 	kgsl_mmu_stop(device);
+
+	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
+	del_timer_sync(&device->idle_timer);
 
 	/* Power down the device */
 	kgsl_pwrctrl_disable(device);

@@ -257,6 +257,7 @@ obj-$(CONFIG_BT_MSM_PINTEST)  += btpintest.o
 obj-$(CONFIG_MSM_FAKE_BATTERY) += fish_battery.o
 obj-$(CONFIG_MSM_RPC_VIBRATOR) += msm_vibrator.o
 obj-$(CONFIG_MSM_NATIVE_RESTART) += restart.o
+obj-$(CONFIG_MSM_PROC_COMM_REGULATOR) += proccomm-regulator.o
 obj-$(CONFIG_MACH_LGE) += lge/
 # BEGIN: eternalblue@lge.com:2009-10-12
 # 0001734: [ARM9] Factory AT CMD feature added based on EVE.        
