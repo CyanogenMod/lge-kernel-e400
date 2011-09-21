@@ -371,12 +371,12 @@ struct device_attribute *attr, const char *buf, size_t count)
     return 0;
 }
 
-static DEVICE_ATTR(bma222_enable, S_IRUGO | S_IWUGO, \
+static DEVICE_ATTR(bma222_enable, S_IRUGO | S_IWUSR | S_IWGRP, \
 show_bma222_enable, store_bma222_enable);
 static DEVICE_ATTR(bma222_sensordata, S_IRUGO, \
 show_bma222_sensordata, NULL);
 /* add bandwidth node */
-static DEVICE_ATTR(bma222_bandwidth, S_IRUGO | S_IWUGO, \
+static DEVICE_ATTR(bma222_bandwidth, S_IRUGO | S_IWUSR | S_IWGRP, \
 show_bma222_bandwidth, store_bma222_bandwidth);
 
 static struct attribute *bma222_attributes[] = {
