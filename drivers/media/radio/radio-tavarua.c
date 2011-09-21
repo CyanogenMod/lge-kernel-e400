@@ -2772,8 +2772,8 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 			if (retval >= 0) {
 				FMDBG("Setting audio path ...\n");
 				retval = tavarua_set_audio_path(
-					TAVARUA_AUDIO_OUT_DIGITAL_ON,
-					TAVARUA_AUDIO_OUT_ANALOG_OFF);
+					TAVARUA_AUDIO_OUT_DIGITAL_OFF,
+					TAVARUA_AUDIO_OUT_ANALOG_ON);
 				if (retval < 0) {
 					FMDERR("Error in tavarua_set_audio_path"
 						" %d\n", retval);
