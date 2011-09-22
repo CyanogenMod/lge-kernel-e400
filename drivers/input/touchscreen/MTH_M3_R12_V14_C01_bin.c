@@ -2,7 +2,7 @@
 
 const UINT16 MELFAS_binary_nLength1 = 0x79F0;			// 30.5 KBytes ( 31216 Bytes ) 
 
-const  UINT8 MELFAS_binary[]1 = {
+const  UINT8 MELFAS_binary1[] = {
 
 	// Model name       : ÙJ
 	// Module revision  : ÙJ
