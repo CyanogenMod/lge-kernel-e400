@@ -1182,6 +1182,7 @@ FUNCTION:  tavarua_search
 static int tavarua_search(struct tavarua_device *radio, int on, int dir)
 {
 	enum search_t srch = radio->registers[SRCHCTRL] & SRCH_MODE;
+	int retval;
 
 	FMDBG("In tavarua_search\n");
 	if (on) {
@@ -1219,8 +1220,12 @@ static int tavarua_search(struct tavarua_device *radio, int on, int dir)
 
 	FMDBG("SRCHCTRL <%x>\n", radio->registers[SRCHCTRL]);
 	FMDBG("Search Started\n");
-	return tavarua_write_registers(radio, SRCHRDS1,
+	retval = tavarua_write_registers(radio, SRCHRDS1,
 				&radio->registers[SRCHRDS1], 3);
+	if (!on)
+		msleep(TAVARUA_DELAY*10);
+
+	return retval;
 }
 
 /*=============================================================================
