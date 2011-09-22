@@ -56,21 +56,27 @@ static void sdcc_gpio_init(void)
 	{
 		gpio_tlmm_config(GPIO_CFG(SMS2130_RESET, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
 		gpio_tlmm_config(GPIO_CFG(SMS2130_1_8V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
 
 		gpio_set_value(SMS2130_1_8V_EN,1);
 		gpio_set_value(SMS2130_RESET,0);
+		gpio_set_value(SMS2130_1_2V_EN,0);
 	}
 	else if(lge_bd_rev == LGE_REV_A)
 	{
 		gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
 
-		gpio_set_value(77,1);	
+		gpio_set_value(77,0);
+		gpio_set_value(SMS2130_1_2V_EN,0);		
 	}
 	else //rev B
 	{
 		gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
 
-		gpio_set_value(77,1);			
+		gpio_set_value(77,0);
+		gpio_set_value(SMS2130_1_2V_EN,0);		
 	}
 
 /*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
@@ -368,8 +374,13 @@ static struct mmc_platform_data sdc3_plat_data = {
 static unsigned int sms2130_sdcc_slot_status(struct device *dev)
 {
   unsigned int ret1;
-  ret1=gpio_get_value(SMS2130_RESET);
-  printk("[Shawn]%s\tReset[%d]\n", __FUNCTION__,ret1);
+  	if(lge_bd_rev == EVB)
+  		ret1=gpio_get_value(78);
+	else if(lge_bd_rev == LGE_REV_A)
+		ret1=gpio_get_value(77);
+	else
+		ret1=gpio_get_value(77);
+  printk("[Shawn]%s\tReset[%d], board=%d\n", __FUNCTION__,ret1,lge_bd_rev);
   return ret1;
 }
 
@@ -448,13 +459,15 @@ static void __init msm7x27a_init_mmc(void)
 			&& !defined(CONFIG_MMC_MSM_SDC3_8_BIT_SUPPORT))
 		sdcc_vreg_data[3].vreg_data = vreg_mmc;
 		sdcc_vreg_data[3].level = 2850;
+
+		printk("[shawn]lge_bd_rev=%d\n",lge_bd_rev);
 		
 		if(lge_bd_rev == EVB)
-			sms2130_sdcc_data.status_irq = 78;
+			sms2130_sdcc_data.status_irq = MSM_GPIO_TO_INT(78);
 		else if(lge_bd_rev == LGE_REV_A)
-			sms2130_sdcc_data.status_irq = 77;
+			sms2130_sdcc_data.status_irq = MSM_GPIO_TO_INT(77);
 		else //rev B
-			sms2130_sdcc_data.status_irq = 77;	
+			sms2130_sdcc_data.status_irq = MSM_GPIO_TO_INT(77);	
 		
 		msm_add_sdcc(4, &sms2130_sdcc_data);
 #endif
