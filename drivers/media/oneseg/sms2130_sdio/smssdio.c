@@ -157,8 +157,8 @@ static void smssdio_interrupt(struct sdio_func *func)
 	struct SmsMsgHdr_ST *hdr;
 	size_t size;
 
-	//printk("[SOOLIM][%s] interrupt~!!\n",__func__);
-	//sms_err("[SOOLIM][%s] interrupt~!!\n",__func__);
+	//printk("[Shawn][%s] interrupt~!!\n",__func__);
+	//sms_err("[Shawn][%s] interrupt~!!\n",__func__);
 	smsdev = sdio_get_drvdata(func);
 
 	/*
@@ -399,7 +399,7 @@ static int smssdio_probe(struct sdio_func *func,
 
 	board_id = id->driver_data;
 
-	printk("[SOOLIM][%s] Probe start~!\n",__func__);
+	printk("[Shawn][%s] Probe start~!\n",__func__);
 	smsdev = kzalloc(sizeof(struct smssdio_device), GFP_KERNEL);
 	if (!smsdev)
 		return -ENOMEM;
@@ -456,7 +456,7 @@ static int smssdio_probe(struct sdio_func *func,
 
 	sdio_release_host(func);
 
-	printk("[SOOLIM][%s] Probe end\n",__func__);
+	printk("[Shawn][%s] Probe end\n",__func__);
 
 	//mdelay(5000);
 
@@ -464,14 +464,14 @@ static int smssdio_probe(struct sdio_func *func,
 	if (ret < 0)
 		goto reclaim;
 	
-	printk("[SOOLIM][%s] Probe end2\n",__func__);
+	printk("[Shawn][%s] Probe end2\n",__func__);
 
 	//printk("[CHANG] EBI CS_CFG(0x%x) = 0x%x\n",(unsigned int)EBI2_CHIP_SELECT_CFG0,readl(EBI2_CHIP_SELECT_CFG0));
 	//printk("[CHANG] EBI CFG(0x%x) = 0x%x\n",(unsigned int)EBI2_CFG_REG,readl(EBI2_CFG_REG));
 	return 0;
 
 reclaim:
-	printk("[SOOLIM][%s] Probe reclaim\n",__func__);
+	printk("[Shawn][%s] Probe reclaim\n",__func__);
 	sdio_claim_host(func);
 	sdio_release_irq(func);
 disable:

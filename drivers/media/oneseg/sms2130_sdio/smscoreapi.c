@@ -418,7 +418,7 @@ static int smscore_sendrequest_and_wait(struct smscore_device_t *coredev,
 		return rc;
 	}
 
-	sms_info("before wait_for_completion_timeout ~!!");
+	//sms_info("before wait_for_completion_timeout ~!!");
     
 	return wait_for_completion_timeout(completion,
 			msecs_to_jiffies(SMS_PROTOCOL_MAX_RAOUNDTRIP_MS)) ? 0 : -ETIME;	
@@ -545,7 +545,8 @@ int smscore_start_device(struct smscore_device_t *coredev)
 			return -ENOEXEC;
 
 		/* second try */
-		mode = sms_get_board(board_id)->default_mode;
+//jason110921	 mode = sms_get_board(board_id)->default_mode;
+		mode = default_mode;
 		rc = smscore_set_device_mode(coredev, mode);	
 		if (rc < 0) {
 			sms_info("set device mode to %d failed", mode);
@@ -634,7 +635,7 @@ static int smscore_load_firmware_family2(struct smscore_device_t *coredev,
 		mem_address = *(u32 *) &payload[20];
 	}
 
-	while (size /*&& rc >= 0*/) {
+	while (size && rc >= 0) {
 		struct SmsDataDownload_ST *DataMsg =
 				(struct SmsDataDownload_ST *) msg;
 		int payload_size = min((int)size, SMS_MAX_PAYLOAD_SIZE);
@@ -760,7 +761,7 @@ static int smscore_load_firmware_from_file(struct smscore_device_t *coredev,
 	fw_buf = fw_image;//jason110210 for FW with header file
 	fw_buf_size = sizeof(fw_image);
 	sms_info("fw_buf_size = %d\n", fw_buf_size);
-    printk("[SOOLIM][%s] fw download start ~!!, fw_buf_size = %d\n",__func__, fw_buf_size);
+    printk("[Shawn][%s] fw download start ~!!, fw_buf_size = %d\n",__func__, fw_buf_size);
 #else
 	if (!coredev->fw_buf) {
 		sms_info("missing fw file buffer");
@@ -1053,7 +1054,7 @@ int smscore_set_device_mode(struct smscore_device_t *coredev, int mode)
 			}
 
 			sms_info("firmware download success");
-			printk("[SOOLIM][%s]:firmware download success\n",__func__);
+			printk("[Shawn][%s]:firmware download success\n",__func__);
 		} else {
 			sms_info("mode %d is already supported by running "
 					"firmware", mode);
@@ -1312,7 +1313,7 @@ void smscore_onresponse(struct smscore_device_t *coredev,
 			complete(&coredev->reload_start_done);
 			break;
 		case MSG_SMS_DATA_DOWNLOAD_RES:
-			printk("[SOOLIM][%s] MSG_SMS_DATA_DOWNLOAD_RES, complete next~!!",__func__);
+			printk("[Shawn][%s] MSG_SMS_DATA_DOWNLOAD_RES, complete next~!!",__func__);
 			complete(&coredev->data_download_done);
 			break;
 		case MSG_SW_RELOAD_EXEC_RES:
