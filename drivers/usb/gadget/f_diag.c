@@ -146,6 +146,10 @@ static void usb_config_work_func(struct work_struct *work)
 
 	if (ctxt->ch.notify)
 		ctxt->ch.notify(ctxt->ch.priv, USB_DIAG_CONNECT, NULL);
+	
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	return;
+#endif
 
 	if (!ctxt->pdata || !ctxt->pdata->update_pid_and_serial_num)
 		return;
