@@ -414,6 +414,9 @@ typedef struct DIAG_TEST_MODE_F_rsp_tag {
     word					sub_cmd_code;
     test_mode_ret_stat_type	ret_stat_code;
     test_mode_rsp_type		test_mode_rsp;
+// [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+    byte					factory_flag;
+// [110919 kkh8318@lge.com M3_ALL] [END]
 } PACKED DIAG_TEST_MODE_F_rsp_type;
 
 typedef enum

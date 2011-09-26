@@ -822,7 +822,9 @@ file_fail:
 
 
 #ifndef SKW_TEST
-static unsigned char test_mode_factory_reset_status = FACTORY_RESET_START;
+// [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+//static unsigned char test_mode_factory_reset_status = FACTORY_RESET_START;
+// [110919 kkh8318@lge.com M3_ALL] [END]
 #define BUF_PAGE_SIZE 2048
 // BEGIN: 0010090 sehyuny.kim@lge.com 2010-10-21
 // MOD 0010090: [FactoryReset] Enable Recovery mode FactoryReset
@@ -941,7 +943,22 @@ extern const MmcPartition *lge_mmc_find_partition_by_name(const char *name);
 
 void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
- 
+// [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+/* BEGIN: 0014656 jihoon.lee@lge.com 20110124 */
+/* MOD 0014656: [LG RAPI] OEM RAPI PACKET MISMATCH KERNEL CRASH FIX */
+  DIAG_TEST_MODE_F_req_type req_ptr;
+
+  req_ptr.sub_cmd_code = TEST_MODE_FACTORY_RESET_CHECK_TEST;
+  req_ptr.test_mode_req.factory_reset = pReq->factory_reset;
+/* END: 0014656 jihoon.lee@lge.com 2011024 */
+
+/* BEGIN: 0014110 jihoon.lee@lge.com 20110115 */
+/* MOD 0014110: [FACTORY RESET] stability */
+/* handle operation or rpc failure as well */
+  pRsp->ret_stat_code = TEST_FAIL_S;
+/* END: 0014110 jihoon.lee@lge.com 20110115 */
+
+#if 0
   unsigned char pbuf[50]; //no need to have huge size, this is only for the flag
   const MmcPartition *pMisc_part; 
   unsigned char startStatus = FACTORY_RESET_NA; 
@@ -966,6 +983,8 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
   factoryreset_bytes_pos_in_emmc = (pMisc_part->dfirstsec*512)+PTN_FRST_PERSIST_POSITION_IN_MISC_PARTITION;
   
   printk("LGF_TestModeFactoryReset> mmc info sec : 0x%x, size : 0x%x type : 0x%x frst sec: 0x%lx\n", pMisc_part->dfirstsec, pMisc_part->dsize, pMisc_part->dtype, factoryreset_bytes_pos_in_emmc);
+#endif
+// [110919 kkh8318@lge.com M3_ALL] [END]
 
 /* BEGIN: 0013861 jihoon.lee@lge.com 20110111 */
 /* MOD 0013861: [FACTORY RESET] emmc_direct_access factory reset flag access */
@@ -974,7 +993,8 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
   switch(pReq->factory_reset)
   {
     case FACTORY_RESET_CHECK :
-#if 1  // def CONFIG_LGE_MTD_DIRECT_ACCESS
+// [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+#if 0  // def CONFIG_LGE_MTD_DIRECT_ACCESS
 /* BEGIN: 0014110 jihoon.lee@lge.com 20110115 */
 /* MOD 0014110: [FACTORY RESET] stability */
 /* handle operation or rpc failure as well */
@@ -1082,8 +1102,24 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
 #else /**/
       //send_to_arm9((void*)(((byte*)pReq) -sizeof(diagpkt_header_type) - sizeof(word)) , pRsp);
       send_to_arm9((void*)&req_ptr, (void*)pRsp);
+
+/* BEGIN: 0014110 jihoon.lee@lge.com 20110115 */
+/* MOD 0014110: [FACTORY RESET] stability */
+/* handle operation or rpc failure as well */
+      if(pRsp->ret_stat_code != TEST_OK_S)
+      {
+        printk(KERN_ERR "[Testmode]send_to_arm9 response : %d\n", pRsp->ret_stat_code);
+        pRsp->ret_stat_code = TEST_OK_S;
+      }
+	else
+	{
+	  printk(KERN_ERR "[Testmode]send_to_arm9 response : %d\n", pRsp->ret_stat_code);
+         pRsp->ret_stat_code = TEST_FAIL_S;
+	}
+/* END: 0014110 jihoon.lee@lge.com 20110115 */
 #endif /*CONFIG_LGE_MTD_DIRECT_ACCESS*/
 
+#if 0
       if((startStatus == FACTORY_RESET_COLD_BOOT_END) || (startStatus == FACTORY_RESET_HOME_SCREEN_END))
       {
         if (diagpdev != NULL)
@@ -1095,25 +1131,24 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
           break;
         }
       }
+#endif
 
-      printk(KERN_INFO "%s, factory reset check completed \n", __func__);
-      pRsp->ret_stat_code = TEST_OK_S;
+      //printk(KERN_INFO "%s, factory reset check completed \n", __func__);
+      //pRsp->ret_stat_code = TEST_OK_S;
       break;
-
+// [110919 kkh8318@lge.com M3_ALL] [END]
     case FACTORY_RESET_COMPLETE_CHECK:
 
-	 send_to_arm9((void*)&req_ptr, (void*)pRsp);
+	 		send_to_arm9((void*)&req_ptr, (void*)pRsp);
       if(pRsp->ret_stat_code != TEST_OK_S)
       {
         printk(KERN_ERR "[Testmode]send_to_arm9 response : %d\n", pRsp->ret_stat_code);
         pRsp->ret_stat_code = TEST_FAIL_S;
         break;
       }
-
-       break;
-
+      break;
     case FACTORY_RESET_STATUS_CHECK:
-#if 1 // def CONFIG_LGE_MTD_DIRECT_ACCESS
+#if 0 // def CONFIG_LGE_MTD_DIRECT_ACCESS
       memset((void*)pbuf, 0, sizeof(pbuf));
       mtd_op_result = lge_read_block(factoryreset_bytes_pos_in_emmc, pbuf, FACTORY_RESET_STR_SIZE+2 );
 /* BEGIN: 0014110 jihoon.lee@lge.com 20110115 */
@@ -1143,13 +1178,30 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
       }  
 /* END: 0014110 jihoon.lee@lge.com 20110115 */
 #endif /*CONFIG_LGE_MTD_DIRECT_ACCESS*/
-
+// [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+			send_to_arm9((void*)&req_ptr, (void*)pRsp);
+// [110919 kkh8318@lge.com M3_ALL] [END]
       break;
-
     case FACTORY_RESET_COLD_BOOT:
 // remove requesting sync to CP as all sync will be guaranteed on their own.
-
-#if 1 // def CONFIG_LGE_MTD_DIRECT_ACCESS
+// [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+			send_to_arm9((void*)&req_ptr, (void*)pRsp);
+      if(pRsp->ret_stat_code == TEST_OK_S)
+      {				
+				if (diagpdev != NULL)
+          update_diagcmd_state(diagpdev, "REBOOT", 0);
+        else
+        {
+          printk(KERN_INFO "%s, factory reset reboot failed \n", __func__);
+          pRsp->ret_stat_code = TEST_FAIL_S;
+          break;
+        }
+			}
+			else
+				printk(KERN_INFO "[Testmode]pRsp->ret_stat_code : TEST_FAIL_S\n");			
+// [110919 kkh8318@lge.com M3_ALL] [END]
+// [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+#if 0 // def CONFIG_LGE_MTD_DIRECT_ACCESS
       test_mode_factory_reset_status = FACTORY_RESET_COLD_BOOT_START;
       memset((void *)pbuf, 0, sizeof(pbuf));
       sprintf(pbuf, "%s%d",FACTORY_RESET_STR, test_mode_factory_reset_status);
@@ -1174,12 +1226,13 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
         }
       }
 /* END: 0014110 jihoon.lee@lge.com 20110115 */
+// [110919 kkh8318@lge.com M3_ALL] [END]
 #endif /*CONFIG_LGE_MTD_DIRECT_ACCESS*/
       pRsp->ret_stat_code = TEST_OK_S;
       break;
 
     case FACTORY_RESET_ERASE_USERDATA:
-#if 1 // def CONFIG_LGE_MTD_DIRECT_ACCESS
+#if 0 // def CONFIG_LGE_MTD_DIRECT_ACCESS
       test_mode_factory_reset_status = FACTORY_RESET_COLD_BOOT_START;
       memset((void *)pbuf, 0, sizeof(pbuf));
       sprintf(pbuf, "%s%d",FACTORY_RESET_STR, test_mode_factory_reset_status);
@@ -1245,6 +1298,8 @@ void* LGF_TestScriptItemSet(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
   switch(pReq->test_mode_test_scr_mode)
   {
     case TEST_SCRIPT_ITEM_SET:
+ // [110919 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]   	
+    	/*
 	mtd_op_result = lge_erase_block(factoryreset_bytes_pos_in_emmc, (FACTORY_RESET_STR_SIZE+1) );	
 	if(mtd_op_result!=(FACTORY_RESET_STR_SIZE+1))
       {
@@ -1252,7 +1307,9 @@ void* LGF_TestScriptItemSet(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
       	 pRsp->ret_stat_code = TEST_FAIL_S;
       	 break;
 	 }
-		 
+	 */
+// [110919 kkh8318@lge.com M3_ALL] [END]
+	 
 /* BEGIN: 0014656 jihoon.lee@lge.com 20110124 */
 /* MOD 0014656: [LG RAPI] OEM RAPI PACKET MISMATCH KERNEL CRASH FIX */
       	 //send_to_arm9((void*)(((byte*)pReq) -sizeof(diagpkt_header_type) - sizeof(word)) , pRsp);
