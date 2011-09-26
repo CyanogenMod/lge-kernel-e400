@@ -1109,12 +1109,12 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
       if(pRsp->ret_stat_code != TEST_OK_S)
       {
         printk(KERN_ERR "[Testmode]send_to_arm9 response : %d\n", pRsp->ret_stat_code);
-        pRsp->ret_stat_code = TEST_OK_S;
+        pRsp->ret_stat_code = TEST_FAIL_S;
       }
 	else
 	{
 	  printk(KERN_ERR "[Testmode]send_to_arm9 response : %d\n", pRsp->ret_stat_code);
-         pRsp->ret_stat_code = TEST_FAIL_S;
+         pRsp->ret_stat_code = TEST_OK_S;
 	}
 /* END: 0014110 jihoon.lee@lge.com 20110115 */
 #endif /*CONFIG_LGE_MTD_DIRECT_ACCESS*/
