@@ -1277,7 +1277,7 @@ void* LGF_TestScriptItemSet(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
 /* BEGIN: 0014656 jihoon.lee@lge.com 20110124 */
 /* MOD 0014656: [LG RAPI] OEM RAPI PACKET MISMATCH KERNEL CRASH FIX */
   DIAG_TEST_MODE_F_req_type req_ptr;
-  int mtd_op_result = 0;
+  //int mtd_op_result = 0;
   const MmcPartition *pMisc_part; 
   unsigned long factoryreset_bytes_pos_in_emmc = 0; 
 //jaeo.park@lge.com [[
