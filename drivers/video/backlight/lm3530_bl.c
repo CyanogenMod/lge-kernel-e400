@@ -67,7 +67,8 @@
 #define LCD_LED_MIN 0
 
 //#define DEFAULT_BRIGHTNESS 0x32
-#define DEFAULT_BRIGHTNESS 0x6B
+//#define DEFAULT_BRIGHTNESS 0x6B //for 26mA
+#define DEFAULT_BRIGHTNESS 0x73 //for 20mA
 
 #define LM3530_MIN_BRIGHTNESS	0x4F
 #define LM3530_DEFAULT_BRIGHTNESS	0x6B
@@ -193,7 +194,8 @@ module_param(debug, uint, 0644);
 /* Set to Normal mode */
 static struct aat28xx_ctrl_tbl lm3530_normal_tbl[] = {
 //	{ LM3530BL_REG_GENERAL_CONFIGURATION, 0x15 },   // Full Scale Current Select 22.5mA, exponential
-	{ LM3530BL_REG_GENERAL_CONFIGURATION, 0x19 },   // Full Scale Current Select 26mA, exponential
+        { LM3530BL_REG_GENERAL_CONFIGURATION, 0x11 },   // Full Scale Current Select 20mA, exponential
+//	{ LM3530BL_REG_GENERAL_CONFIGURATION, 0x19 },   // Full Scale Current Select 26mA, exponential
 //	{ LM3530BL_REG_GENERAL_CONFIGURATION, 0x1D },   // Full Scale Current Select 29.5mA, exponential
 	{ 0xFF, 0xFE }	 /* end of command */
 };
