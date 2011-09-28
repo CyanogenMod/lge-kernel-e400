@@ -240,6 +240,11 @@ static void __init msm7x2x_init(void)
 #if defined(CONFIG_ANDROID_RAM_CONSOLE) && defined(CONFIG_LGE_HANDLE_PANIC)
 	lge_add_panic_handler_devices();
 #endif
+/* murali.ramaiah@lge.com [2011-09-22] - Read power on status and update boot reason */
+#ifdef CONFIG_LGE_POWER_ON_STATUS_PATCH
+	lge_board_pwr_on_status();
+#endif
+
 }
 
 static void __init msm7x2x_init_early(void)

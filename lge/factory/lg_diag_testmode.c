@@ -460,9 +460,9 @@ void* LGF_TestModeKeyData(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type *
 
     pRsp->ret_stat_code = TEST_OK_S;
 
-#ifdef CONFIG_LGE_DIAG_KEYPRESS
+// #ifdef CONFIG_LGE_DIAG_KEYPRESS
     LGF_SendKey(LGF_KeycodeTrans(pReq->key_data));
-#endif
+// #endif
 
     return pRsp;
 }
@@ -938,6 +938,187 @@ file_fail:
 	return pRsp;	
 }
 // +e LG_BTUI_DIAGCMD_DUTMODE
+
+/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+void* LGF_TestMotor(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	if (diagpdev != NULL){
+		update_diagcmd_state(diagpdev, "MOTOR", pReq->motor);
+	}
+	else
+	{
+		printk("\n[%s] error MOTOR", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+	}
+	return pRsp;
+}
+
+void* LGF_TestAcoustic(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	if (diagpdev != NULL){
+		update_diagcmd_state(diagpdev, "ACOUSTIC", pReq->acoustic);
+	}
+	else
+	{
+		printk("\n[%s] error ACOUSTIC", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+	}
+	return pRsp;
+}
+
+void* LGF_TestCam(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	switch(pReq->camera)
+	{
+		case CAM_TEST_SAVE_IMAGE:
+		case CAM_TEST_CAMERA_SELECT:
+		case CAM_TEST_FLASH_ON:
+		case CAM_TEST_FLASH_OFF:
+		case CAM_TEST_CAMCORDER_SAVE_MOVING_FILE:
+		case CAM_TEST_CAMCORDER_FLASH_ON:
+		case CAM_TEST_CAMCORDER_FLASH_OFF:
+		case CAM_TEST_STROBE_LIGHT_ON:
+		case CAM_TEST_STROBE_LIGHT_OFF:
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+
+		default:
+			if (diagpdev != NULL){
+
+				update_diagcmd_state(diagpdev, "CAMERA", pReq->camera);
+			}
+			else
+			{
+				printk("\n[%s] error CAMERA", __func__ );
+				pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+			}
+			break;
+	}
+	return pRsp;
+}
+
+void* LGF_TestModeMP3 (
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	if (diagpdev != NULL){
+		if(pReq->mp3_play == MP3_SAMPLE_FILE)
+		{
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+		}
+		else
+		{
+			update_diagcmd_state(diagpdev, "MP3", pReq->mp3_play);
+		}
+	}
+	else
+	{
+		printk("\n[%s] error MP3", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+	}
+	return pRsp;
+}
+
+void* LGF_MemoryVolumeCheck (
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	struct statfs_local  sf;
+	unsigned int total = 0;
+	unsigned int used = 0;
+	unsigned int remained = 0;
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	if (sys_statfs("/data", (struct statfs *)&sf) != 0)
+	{
+		printk(KERN_ERR "[Testmode]can not get sdcard infomation \n");
+		pRsp->ret_stat_code = TEST_FAIL_S;
+	}
+	else
+	{
+
+		total = (sf.f_blocks * sf.f_bsize) >> 20;
+		remained = (sf.f_bavail * sf.f_bsize) >> 20;
+		used = total - remained;
+
+		switch(pReq->mem_capa)
+		{
+			case MEMORY_TOTAL_CAPA_TEST:
+				pRsp->test_mode_rsp.mem_capa = total;
+				break;
+
+			case MEMORY_USED_CAPA_TEST:
+				pRsp->test_mode_rsp.mem_capa = used;
+				break;
+
+			case MEMORY_REMAIN_CAPA_TEST:
+				pRsp->test_mode_rsp.mem_capa = remained;
+				break;
+
+			default :
+				pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+				break;
+		}
+	}
+	return pRsp;
+}
+
+void* LGF_TestModeSpeakerPhone(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	if (diagpdev != NULL){
+		if((pReq->speaker_phone == NOMAL_Mic1) || (pReq->speaker_phone == NC_MODE_ON)
+				|| (pReq->speaker_phone == ONLY_MIC2_ON_NC_ON) || (pReq->speaker_phone == ONLY_MIC1_ON_NC_ON)
+		  )
+		{
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+		}
+		else
+		{
+			update_diagcmd_state(diagpdev, "SPEAKERPHONE", pReq->speaker_phone);
+		}
+	}
+	else
+	{
+		printk("\n[%s] error SPEAKERPHONE", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+	}
+	return pRsp;
+}
+
+void* LGT_TestModeVolumeLevel (
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type *pRsp)
+{
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	if (diagpdev != NULL){
+		update_diagcmd_state(diagpdev, "VOLUMELEVEL", pReq->volume_level);
+	}
+	else
+	{
+		printk("\n[%s] error VOLUMELEVEL", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+	}
+	return pRsp;
+}
+/* LGE_CHANGE_E [myunghwan.kim@lge.com] 2011-09-27 support test mode */
 
 extern const MmcPartition *lge_mmc_find_partition_by_name(const char *name);
 
@@ -1618,9 +1799,9 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     /* 0 ~ 10 */
     {TEST_MODE_VERSION,                     NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_LCD,                         not_supported_command_handler,    ARM11_PROCESSOR},
-    {TEST_MODE_MOTOR,                       not_supported_command_handler,    ARM11_PROCESSOR},
-    {TEST_MODE_ACOUSTIC,                    not_supported_command_handler,    ARM11_PROCESSOR},
-    {TEST_MODE_CAM,                         not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_MOTOR,                       LGF_TestMotor,                    ARM11_PROCESSOR},
+    {TEST_MODE_ACOUSTIC,                    LGF_TestAcoustic,                 ARM11_PROCESSOR},
+    {TEST_MODE_CAM,                         LGF_TestCam,                      ARM11_PROCESSOR},
     /* 11 ~ 20 */
     /* 21 ~ 30 */
     {TEST_MODE_KEY_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
@@ -1632,7 +1813,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
 	{TEST_MODE_BLUETOOTH_TEST,				LGF_TestModeBlueTooth,	          ARM11_PROCESSOR},
 	// *e LG_BTUI_DIAGCMD_DUTMODE
     {TEST_MODE_BATT_LEVEL_TEST,             LGF_TestModeBattLevel,            ARM11_PROCESSOR},
-    {TEST_MODE_MP3_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_MP3_TEST,                    LGF_TestModeMP3,                  ARM11_PROCESSOR},
     /* 31 ~ 40 */
     {TEST_MODE_ACCEL_SENSOR_TEST,           not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_WIFI_TEST,                   not_supported_command_handler,    ARM11_PROCESSOR},
@@ -1640,9 +1821,9 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_FORMAT_MEMORY_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_KEY_DATA_TEST,               LGF_TestModeKeyData,              ARM11_PROCESSOR},
     /* 41 ~ 50 */
-    {TEST_MODE_MEMORY_CAPA_TEST,            not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_MEMORY_CAPA_TEST,            LGF_MemoryVolumeCheck,            ARM11_PROCESSOR},
     {TEST_MODE_SLEEP_MODE_TEST,             LGF_TestModeSleepMode,            ARM11_PROCESSOR},
-    {TEST_MODE_SPEAKER_PHONE_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_SPEAKER_PHONE_TEST,          LGF_TestModeSpeakerPhone,         ARM11_PROCESSOR},
     {TEST_MODE_VIRTUAL_SIM_TEST,            LGF_TestModeVirtualSimTest,       ARM11_PROCESSOR},
     {TEST_MODE_PHOTO_SENSER_TEST,           not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_MRD_USB_TEST,                NULL,                             ARM9_PROCESSOR},
@@ -1650,7 +1831,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_TEST_SCRIPT_MODE,            LGF_TestScriptItemSet,            ARM11_PROCESSOR},
     {TEST_MODE_FACTORY_RESET_CHECK_TEST,    LGF_TestModeFactoryReset,         ARM11_PROCESSOR},
     /* 51 ~60 */
-    {TEST_MODE_VOLUME_TEST,                 not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_VOLUME_TEST,                 LGT_TestModeVolumeLevel,          ARM11_PROCESSOR},
     {TEST_MODE_FIRST_BOOT_COMPLETE_TEST,    LGF_TestModeFBoot,                ARM11_PROCESSOR},
     {TEST_MODE_MAX_CURRENT_CHECK,           NULL,                             ARM9_PROCESSOR},
     /* 61 ~70 */

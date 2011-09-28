@@ -263,6 +263,12 @@ unsigned lge_clear_elt_test(void);
 #endif
 //LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
 
+/* LGE_CHANGE_S: murali.ramaiah@lge.com [2011-09-22]  */
+#ifdef CONFIG_LGE_POWER_ON_STATUS_PATCH
+void __init lge_board_pwr_on_status(void);
+#endif
+/* LGE_CHANGE_E: murali.ramaiah@lge.com [2011-09-22]  */
+
 typedef void (gpio_i2c_init_func_t)(int bus_num);
 
 void __init lge_add_gpio_i2c_device(gpio_i2c_init_func_t *init_func);
