@@ -152,12 +152,11 @@ static int get_factory_cable(void)
 {
 	int pif_detect = 0;
 
-#ifdef CONFIG_LGE_DETECT_PIF_PATCH
 	pif_detect = lge_get_pif_info();
-#endif
+	
 	lgeusb_info("Using PIF ZIG (%d)\n", pif_detect);
 
-	if (pif_detect == LT_ADB_CABLE)
+	if (pif_detect == LGE_PIF_CABLE)
 		return LGE_FACTORY_CABLE_TYPE;
 	else
 		return 0;
@@ -284,7 +283,6 @@ int lgeusb_set_current_mode(int need_reset)
 	struct lgeusb_info *info = usb_info;
 	int ret =0;
 
-#if 0 //hyunjin2.lim for compile 
 	if (!info->serialno || !info->defaultno) {
 		lgeusb_info("serial numbers are invalid, skip configuration.\n");
 		return -EINVAL;
@@ -309,16 +307,13 @@ int lgeusb_set_current_mode(int need_reset)
 	/* We already are in android mode, skip it. */
 	if (info->current_mode == LGEUSB_ANDROID_MODE)
 		return info->current_pid;
-#endif
 
 	lgeusb_info("We detect Normal USB cable......\n");
 	lgeusb_switch_android_mode(need_reset);
 	
 #if 0 //hyunjin2.lim for compile 
-
 	ret = get_serial_number(info->serialno);
 	
-
 	msm_hsusb_send_productID(info->current_pid);
 	msm_hsusb_is_serial_num_null(0);
 

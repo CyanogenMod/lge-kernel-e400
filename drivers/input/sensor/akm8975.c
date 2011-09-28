@@ -132,7 +132,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 
 }
 
-static DEVICE_ATTR(ak8975_enable, S_IRUGO | S_IWUGO, \
+static DEVICE_ATTR(ak8975_enable, S_IRUGO | S_IWUSR | S_IWGRP, \
 ak8975_enable_show, ak8975_enable_store);
 static struct attribute *ak8975_attributes[] = {
     &dev_attr_ak8975_enable.attr,

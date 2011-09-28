@@ -121,7 +121,7 @@ static void mcs8000_late_resume(struct early_suspend *h);
 /*
  * To confirm the latest FW Version
  */
-#define TS_LATEST_FW_VERSION_HW_10	0x0b
+#define TS_LATEST_FW_VERSION_HW_10	0x0e
 
 enum {
 	None = 0,
@@ -207,6 +207,41 @@ static int melfas_init_panel(struct mcs8000_ts_device *ts)
 	return true;
 }
 */
+static int mcs8000_ts_off(void)
+{
+	struct mcs8000_ts_device *dev = NULL;
+	int ret = 0;
+
+	dev = &mcs8000_ts_dev;
+
+	ret = dev->power(OFF);
+	if (ret < 0) {
+		printk(KERN_ERR "mcs8000_ts_on power on failed\n");
+		goto err_power_failed;
+	}
+	msleep(10);
+
+err_power_failed:
+	return ret;
+}
+
+static int mcs8000_ts_on(void)
+{
+	struct mcs8000_ts_device *dev = NULL;
+	int ret = 0;
+
+	dev = &mcs8000_ts_dev;
+
+	ret = dev->power(ON);
+	if (ret < 0) {
+		printk(KERN_ERR "mcs8000_ts_on power on failed\n");
+		goto err_power_failed;
+	}
+	msleep(10);
+
+err_power_failed:
+	return ret;
+}
 static void mcs8000_work(struct work_struct *work)
 {
 	struct mcs8000_ts_device *ts = container_of(work, struct mcs8000_ts_device, work);
@@ -266,6 +301,14 @@ static void mcs8000_work(struct work_struct *work)
 		/* [LGE_E] */
 		return ;
 	} else {
+		if( buf[0] == 0x0f )
+		{
+			mcs8000_ts_off();
+			msleep(100);
+			mcs8000_ts_on();
+			enable_irq(ts->client->irq);
+			return;
+		}
 		touchType  = (buf[0]>>5)&0x03;
 		touchState = (buf[0]>>4)&0x01;
 		reportID = (buf[0]&0x0f);
@@ -352,41 +395,6 @@ static irqreturn_t mcs8000_ts_irq_handler(int irq, void *handle)
 	return IRQ_HANDLED;
 }
 
-static int mcs8000_ts_off(void)
-{
-	struct mcs8000_ts_device *dev = NULL;
-	int ret = 0;
-
-	dev = &mcs8000_ts_dev;
-
-	ret = dev->power(OFF);
-	if (ret < 0) {
-		printk(KERN_ERR "mcs8000_ts_on power on failed\n");
-		goto err_power_failed;
-	}
-	msleep(10);
-
-err_power_failed:
-	return ret;
-}
-
-static int mcs8000_ts_on(void)
-{
-	struct mcs8000_ts_device *dev = NULL;
-	int ret = 0;
-
-	dev = &mcs8000_ts_dev;
-
-	ret = dev->power(ON);
-	if (ret < 0) {
-		printk(KERN_ERR "mcs8000_ts_on power on failed\n");
-		goto err_power_failed;
-	}
-	msleep(10);
-
-err_power_failed:
-	return ret;
-}
 
 void mcs8000_firmware_info(unsigned char *fw_ver, unsigned char *hw_ver, unsigned char *comp_ver)
 {

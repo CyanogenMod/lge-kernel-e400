@@ -9,6 +9,14 @@
 
 #include "board-m3eu.h"
 
+#include <mach/board_lge.h>
+
+//LGE_CHANGE_S[shawn.park@lge.com] 2011-09-22
+#define SMS2130_RESET 78
+#define SMS2130_1_2V_EN  85
+#define SMS2130_1_8V_EN  77
+//LGE_CHANGE_E[shawn.park@lge.com] 2011-09-22
+
 #if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT)\
 	|| defined(CONFIG_MMC_MSM_SDC3_SUPPORT)\
@@ -44,19 +52,33 @@ static void sdcc_gpio_init(void)
 		printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
 					__func__, rc);
 /*LGE_CHANGE_S[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
-//	if (gpio_request(77, "SMS2130_IO"))
-//		printk("failed to request gpio SMS2130_IO\n");
+	if(lge_bd_rev == EVB )
+	{
+		gpio_tlmm_config(GPIO_CFG(SMS2130_RESET, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_8V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
 
-//	if (gpio_request(78, "SMS2130_RESET"))
-//		printk("failed to request gpio SMS2130_RESET\n");
+		gpio_set_value(SMS2130_1_8V_EN,1);
+		gpio_set_value(SMS2130_RESET,0);
+		gpio_set_value(SMS2130_1_2V_EN,0);
+	}
+	else if(lge_bd_rev == LGE_REV_A)
+	{
+		gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
 
-	gpio_tlmm_config(GPIO_CFG(78, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), GPIO_CFG_ENABLE ) ;
-	gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), GPIO_CFG_ENABLE ) ;
+		gpio_set_value(77,0);
+		gpio_set_value(SMS2130_1_2V_EN,0);		
+	}
+	else //rev B
+	{
+		gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
 
-	gpio_set_value(78,0);
-//	gpio_set_value(77,1);
-//	printk("gpio77 = %d",gpio_get_value(77));
-	gpio_set_value(77,0);
+		gpio_set_value(77,0);
+		gpio_set_value(SMS2130_1_2V_EN,0);		
+	}
+
 /*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
 
 #endif
@@ -352,8 +374,13 @@ static struct mmc_platform_data sdc3_plat_data = {
 static unsigned int sms2130_sdcc_slot_status(struct device *dev)
 {
   unsigned int ret1;
-  ret1=gpio_get_value(78);
-  printk("[SOOLIM]%s\tReset[%d]\n", __FUNCTION__,ret1);
+  	if(lge_bd_rev == EVB)
+  		ret1=gpio_get_value(78);
+	else if(lge_bd_rev == LGE_REV_A)
+		ret1=gpio_get_value(77);
+	else
+		ret1=gpio_get_value(77);
+  printk("[Shawn]%s\tReset[%d], board=%d\n", __FUNCTION__,ret1,lge_bd_rev);
   return ret1;
 }
 
@@ -361,13 +388,16 @@ static struct mmc_platform_data sms2130_sdcc_data = {
 	.ocr_mask       = MMC_VDD_28_29,/*MMC_VDD_30_31*//*MMC_VDD_28_29*/
 	.translate_vdd  = msm_sdcc_setup_power,
 	.status         = sms2130_sdcc_slot_status,
-	.status_irq	  = MSM_GPIO_TO_INT(78),
+	.status_irq	  = MSM_GPIO_TO_INT(SMS2130_RESET),
 	.irq_flags      = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.msmsdcc_fmin	= 144000,
-	//16MHz
+	//5MHz
 	.msmsdcc_fmid  = 400000,
-	.msmsdcc_fmax  = 16000000,
+	.msmsdcc_fmax  = 5000000,
+	//16MHz
+	//.msmsdcc_fmid  = 400000,
+	//.msmsdcc_fmax  = 16000000,
 	//17mHz
 	//.msmsdcc_fmid  = 400000,
 	//.msmsdcc_fmax  = 17000000,	
@@ -429,13 +459,28 @@ static void __init msm7x27a_init_mmc(void)
 			&& !defined(CONFIG_MMC_MSM_SDC3_8_BIT_SUPPORT))
 		sdcc_vreg_data[3].vreg_data = vreg_mmc;
 		sdcc_vreg_data[3].level = 2850;
+
+		printk("[shawn]lge_bd_rev=%d\n",lge_bd_rev);
+		
+		if(lge_bd_rev == EVB)
+			sms2130_sdcc_data.status_irq = MSM_GPIO_TO_INT(78);
+		else if(lge_bd_rev == LGE_REV_A)
+			sms2130_sdcc_data.status_irq = MSM_GPIO_TO_INT(77);
+		else //rev B
+			sms2130_sdcc_data.status_irq = MSM_GPIO_TO_INT(77);	
+		
 		msm_add_sdcc(4, &sms2130_sdcc_data);
 #endif
 
 /*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
 
 /*LGE_CHANGE_S[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
-	enable_irq(gpio_to_irq(78));
+	if(lge_bd_rev == EVB)
+		enable_irq(gpio_to_irq(78));
+	else if(lge_bd_rev == LGE_REV_A)
+		enable_irq(gpio_to_irq(77));
+	else //rev B
+		enable_irq(gpio_to_irq(77));
 /*LGE_CHANGE_E[shawn.park@lge.com] 2011.07.26, SMS2130 For Mobile TV */
 
 }

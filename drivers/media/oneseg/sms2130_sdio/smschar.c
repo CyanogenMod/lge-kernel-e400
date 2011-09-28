@@ -39,6 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef SMS2130_PWR_CTRL_TEST
 #include <linux/delay.h>
 #include <mach/gpio.h>
+#include <mach/board_lge.h>
 #endif//SMS2130_PWR_CTRL_TEST
 
 /* max number of packets allowed to be pending on queue*/
@@ -574,38 +575,57 @@ static void SMS2130_Power_On(void)
 	int ret;
 
    printk("SMS2130 device is Power On......\n");
-	//gpio_set_value(SMS2130_RESET,0);
-	//gpio_set_value(SMS2130_1_8V_EN,0); 
-   //gpio_set_value(SMS2130_1_2V_EN,0);
-   //   mdelay(100);   
-#if 1
-	//if(gpio_flag==0)
-	//{
-	//	gpio_flag=1;
-	   //gpio_tlmm_config(GPIO_CFG(SMS2130_1_8V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
-	   ret = gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
-	   ret |= gpio_tlmm_config(GPIO_CFG(SMS2130_RESET, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
-		//gpio_set_value(83,1);
-	//}
-#endif//0
+
+	if(lge_bd_rev == EVB)
+	{
+	   gpio_tlmm_config(GPIO_CFG(SMS2130_1_8V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE ) ;
+	   ret = gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+	   ret |= gpio_tlmm_config(GPIO_CFG(SMS2130_RESET, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+
 		if(ret) {
 			printk("[CHANG] SMS2130_Power_On::gpio_tlmm_config failed!!!\n");
 
 		}
-//   udelay(100);		/* 100us wait */
-   gpio_set_value(SMS2130_1_2V_EN,1); // core
-   mdelay(1);
-   gpio_set_value(SMS2130_1_8V_EN,1); // I/O
-   mdelay(300);		/* minimum 200us wait */
+	   gpio_set_value(SMS2130_1_2V_EN,1); // core
+	   gpio_set_value(SMS2130_1_8V_EN,1); // I/O
+	   mdelay(300);		/* minimum 200us wait */
 
-   gpio_set_value(SMS2130_RESET,1);
+	   gpio_set_value(SMS2130_RESET,1);
 
-//   mdelay(200);	
-   en_value = gpio_get_value(SMS2130_1_2V_EN);
-   io_value = gpio_get_value(SMS2130_1_8V_EN);
-   rst_value = gpio_get_value(SMS2130_RESET);
+	   en_value = gpio_get_value(SMS2130_1_2V_EN);
+	   io_value = gpio_get_value(SMS2130_1_8V_EN);
+	   rst_value = gpio_get_value(SMS2130_RESET);
 
-   printk("SMS2130 Power On P_EN[%d] P_IO[%d] Reset[%d]\n", en_value, io_value, rst_value);
+	   printk("SMS2130 Power On P_EN[%d] P_IO[%d] Reset[%d]\n", en_value, io_value, rst_value);
+	}
+	else if(lge_bd_rev == LGE_REV_A)
+	{
+	   ret = gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+	   ret |= gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+
+	   gpio_set_value(SMS2130_1_2V_EN,1); // core		
+	   mdelay(300);
+
+		gpio_set_value(77,1);
+	   rst_value = gpio_get_value(77);
+	   en_value = gpio_get_value(SMS2130_1_2V_EN);
+
+		printk("SMS2130 Power On P_EN[%d] Reset[%d]\n", en_value, rst_value);
+	}
+	else //rev B
+	{
+	   ret = gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+	   ret |= gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_10MA), GPIO_CFG_ENABLE ) ;
+
+	   gpio_set_value(SMS2130_1_2V_EN,1); // core		
+	   mdelay(300);
+
+		gpio_set_value(77,1);
+	   rst_value = gpio_get_value(77);
+	   en_value = gpio_get_value(SMS2130_1_2V_EN);
+
+		printk("SMS2130 Power On P_EN[%d] Reset[%d]\n", en_value, rst_value);
+	}
 }
 
 static void SMS2130_Power_Off(void)
@@ -617,19 +637,53 @@ static void SMS2130_Power_Off(void)
    printk("SMS2130 device is Power Off......\n");
    //gpio_set_value(SMS2130_1_8V_EN,0); 
    //mdelay(10);   
-   gpio_set_value(SMS2130_1_2V_EN,0);
-   gpio_set_value(SMS2130_RESET,0);
-   mdelay(20);
+	if(lge_bd_rev == EVB)
+	{
+	   gpio_set_value(SMS2130_1_2V_EN,0);
+		mdelay(100); 
+	   gpio_set_value(SMS2130_1_8V_EN,1); 
 
-   en_value = gpio_get_value(SMS2130_1_2V_EN);
-   io_value = gpio_get_value(SMS2130_1_8V_EN);   
-   rst_value = gpio_get_value(SMS2130_RESET);
+	   gpio_set_value(SMS2130_RESET,0);
+	   //mdelay(20);
 
-   printk("SMS2130 Power Off P_EN[%d] P_IO[%d] Reset[%d]\n", en_value, io_value, rst_value);
+	   en_value = gpio_get_value(SMS2130_1_2V_EN);
+	   io_value = gpio_get_value(SMS2130_1_8V_EN);   
+	   rst_value = gpio_get_value(SMS2130_RESET);
 
-   gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;   
-   //gpio_tlmm_config(GPIO_CFG(SMS2130_1_8V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;
-   gpio_tlmm_config(GPIO_CFG(SMS2130_RESET, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;
+	   printk("SMS2130 Power Off P_EN[%d] P_IO[%d] Reset[%d]\n", en_value, io_value, rst_value);
+
+	   gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;   
+	   gpio_tlmm_config(GPIO_CFG(SMS2130_1_8V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;
+	   //gpio_tlmm_config(GPIO_CFG(SMS2130_RESET, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;
+	}
+	else if(lge_bd_rev == LGE_REV_A)
+	{
+	   gpio_set_value(SMS2130_1_2V_EN,0);
+		mdelay(100); 
+	   gpio_set_value(77,0); 
+		
+	   en_value = gpio_get_value(SMS2130_1_2V_EN); 
+	   rst_value = gpio_get_value(77);
+
+		printk("SMS2130 Power Off P_EN[%d] Reset[%d]\n", en_value, rst_value);
+
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;	 
+		gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;
+	}
+	else
+	{
+	   gpio_set_value(SMS2130_1_2V_EN,0);
+		mdelay(100); 
+	   gpio_set_value(77,0); 
+		
+	   en_value = gpio_get_value(SMS2130_1_2V_EN); 
+	   rst_value = gpio_get_value(77);
+
+		printk("SMS2130 Power Off P_EN[%d] Reset[%d]\n", en_value, rst_value);
+
+		gpio_tlmm_config(GPIO_CFG(SMS2130_1_2V_EN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;	 
+		gpio_tlmm_config(GPIO_CFG(77, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_DISABLE ) ;
+	}
 }
 #endif//SMS2130_PWR_CTRL_TEST
 

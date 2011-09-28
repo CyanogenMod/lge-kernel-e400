@@ -960,8 +960,12 @@ int bdi_writeback_thread(void *data)
 		 * 2011-08-11, cleaneye.kim@lge.com
 		 */
 		if (wb->wakeup_timer.entry.prev == NULL &&
-			wb->wakeup_timer.entry.next != NULL)
+			wb->wakeup_timer.entry.next != NULL) {
+			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev %p\n",__func__, wb->wakeup_timer.entry.next->prev);
+			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev->next %p\n",__func__, wb->wakeup_timer.entry.next->prev->next);
+			printk(KERN_INFO"%s: \n",__func__);
 			wb->wakeup_timer.entry.next = NULL;
+		}
 #endif
 		/*
 		 * Remove own delayed wake-up timer, since we are already awake
