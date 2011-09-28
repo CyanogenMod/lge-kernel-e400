@@ -460,9 +460,9 @@ void* LGF_TestModeKeyData(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type *
 
     pRsp->ret_stat_code = TEST_OK_S;
 
-#ifdef CONFIG_LGE_DIAG_KEYPRESS
+// #ifdef CONFIG_LGE_DIAG_KEYPRESS
     LGF_SendKey(LGF_KeycodeTrans(pReq->key_data));
-#endif
+// #endif
 
     return pRsp;
 }
