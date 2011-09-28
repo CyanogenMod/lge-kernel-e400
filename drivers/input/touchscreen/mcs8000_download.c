@@ -31,7 +31,8 @@
 //============================================================
 
 //#include "MTH_M3_R10_V11_C01_bin.c"
-#include "MTH_M3_R12_V14_C01_bin.c"
+#include "MTH_M3_R10_V18(0x12)_C01_bin.c"
+#include "MTH_M3_R12_V19(0x13)_C03_bin.c"
 #if 0
 #include "Master_bin_test.c"
 #include "Slave_bin_test.c"
@@ -96,7 +97,7 @@ void melfas_send_download_enable_command(void)
 //
 //============================================================
 
-int mcsdl_download_binary_data(UINT8 master_dl_retry, int val)
+int mcsdl_download_binary_data(UINT8 master_dl_retry, int val,unsigned char fw_ver, unsigned char comp_ver)
 {
 	int nRet;
 #ifdef FW_FROM_FILE
@@ -198,7 +199,11 @@ int mcsdl_download_binary_data(UINT8 master_dl_retry, int val)
 
     if (MELFAS_ISP_DOWNLOAD || master_dl_retry) {
 	if (val == 1) {
-		nRet = mcsdl_download( (const UINT8*) MELFAS_binary1, (const UINT16)MELFAS_binary_nLength1, 0);
+		if(comp_ver==0x01){
+			nRet = mcsdl_download( (const UINT8*) MELFAS_binary1, (const UINT16)MELFAS_binary_nLength1, 0);
+		}
+		else
+			nRet = mcsdl_download( (const UINT8*) MELFAS_binary2, (const UINT16)MELFAS_binary_nLength2, 0);
 		if (nRet)
 			goto fw_error;
 	}

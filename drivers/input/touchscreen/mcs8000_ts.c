@@ -112,16 +112,17 @@ static void mcs8000_late_resume(struct early_suspend *h);
 /********************************/
 /*	To Enable FW Download	*/
 /********************************/
-#define TS_MODULE_B	0x10
+#define TS_MODULE_A	0x10
+#define TS_MODULE_B	0x12
 /*
  * Compatibility Value
 */
 #define TS_COMPATIBILITY_A	0x01
-
+#define TS_COMPATIBILITY_B	0x03
 /*
  * To confirm the latest FW Version
  */
-#define TS_LATEST_FW_VERSION_HW_10	0x0e
+#define TS_LATEST_FW_VERSION	0x12
 
 enum {
 	None = 0,
@@ -241,6 +242,36 @@ static int mcs8000_ts_on(void)
 
 err_power_failed:
 	return ret;
+}
+static void release_all_finger(void)
+{
+	int i;
+	struct mcs8000_ts_device *ts;
+
+	ts = &mcs8000_ts_dev;
+	
+	for (i = 0; i < MELFAS_MAX_TOUCH; i++) {
+		if (g_Mtouch_info[i].strength == -1)
+		{
+			g_Mtouch_info[i].posX = 0;
+			g_Mtouch_info[i].posY = 0;
+			
+			continue;
+		}
+		g_Mtouch_info[i].width = 0;
+		g_Mtouch_info[i].strength = 0;
+
+		input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
+		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[i].posX);
+		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[i].posY);
+		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[i].strength);
+		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width);
+		input_mt_sync(ts->input_dev);
+		if (g_Mtouch_info[i].strength == 0)
+			g_Mtouch_info[i].strength = -1;
+		g_Mtouch_info[i].posX = 0;
+		g_Mtouch_info[i].posY = 0;	
+	}	
 }
 static void mcs8000_work(struct work_struct *work)
 {
@@ -597,7 +628,7 @@ int mcs8000_remove_file(struct input_dev *pdev)
 
 static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	int err = 0;
+	int err = 0,i;
 	/* int try_cnt = 0; */ /* For Touch FW Upgrade */
 	/* unsigned char data; */ /* For Touch FW Upgrade */
 	struct touch_platform_data *ts_pdata;
@@ -678,17 +709,14 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	DMSG(KERN_INFO "%s: ts driver probed\n", __FUNCTION__);
 	
 	/* [LGE_S] FW Upgrade function */
-	if (hw_ver == TS_MODULE_B) {
+	if (fw_ver < TS_LATEST_FW_VERSION) {
 		printk(KERN_INFO "Checking HW Revision is success");
-		if (comp_ver == TS_COMPATIBILITY_A && fw_ver < TS_LATEST_FW_VERSION_HW_10) {
-			printk(KERN_INFO "Checking Latest FW Version & Compatibility is success");
-#if defined(CONFIG_MACH_MSM7X27A_M3EU) || defined(CONFIG_MACH_MSM7X27A_M3MPCS)
-			mcsdl_download_binary_data(1, 1);
-#endif
-		}
+			mcsdl_download_binary_data(1, 1,hw_ver,comp_ver);
 	} 
 	/* [LGE_E] */
 	enable_irq(dev->num_irq);
+	for (i = 0; i < MELFAS_MAX_TOUCH ; i++)  /* _SUPPORT_MULTITOUCH_ */
+		g_Mtouch_info[i].strength = -1;	
 	return 0;
 }
 
@@ -741,6 +769,7 @@ static void mcs8000_early_suspend(struct early_suspend *h)
 
 	if (is_downloading == 0) {
 		DMSG(KERN_INFO"%s: start! \n", __FUNCTION__);
+		release_all_finger();
 		disable_irq(dev->num_irq);
 		DMSG("%s: irq disable\n", __FUNCTION__);
 		/* touch disable */

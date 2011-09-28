@@ -158,7 +158,7 @@ void mcsdl_vdd_off(void);
 //	Functions
 //----------------------------------------------------
 
-int mcsdl_download_binary_data(UINT8 master_dl_retry, int val);	// with binary type .c   file.
+int mcsdl_download_binary_data(UINT8 master_dl_retry, int val,unsigned char fw_ver, unsigned char comp_ver);	// with binary type .c   file.
 int mcsdl_download_binary_file(void);			// with binary type .bin file.
 
 int mms100_ISC_download_binary_data(void);
