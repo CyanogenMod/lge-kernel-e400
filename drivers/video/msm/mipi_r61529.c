@@ -133,9 +133,9 @@ static struct dsi_cmd_desc r61529_disp_off_cmds[] = {
 		sizeof(sleep_display_off), sleep_display_off},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 100,
 		sizeof(sleep_mode_on), sleep_mode_on},
-	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_mcap), sleep_mcap},
-	{DTYPE_DCS_WRITE, 1, 0, 0, R61529_CMD_DELAY,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, R61529_CMD_DELAY,
 		sizeof(sleep_low_power_mode), sleep_low_power_mode}
 };
 
@@ -297,7 +297,8 @@ static int __init mipi_r61529_lcd_init(void)
 
 static void mipi_ldp_lcd_panel_poweroff(void)
 {
-	gpio_set_value(GPIO_LCD_RESET, 0);
+        /* stay GPIO_LCD_RESET high in deep sleep*/
+	/*gpio_set_value(GPIO_LCD_RESET, 0);*/
 	mdelay(10);
 }
 
