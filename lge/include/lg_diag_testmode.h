@@ -313,6 +313,76 @@ typedef enum
     FOTA_ID_CHECK,
 }test_mode_req_fota_id_check_type;
 
+/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+typedef enum
+{
+  MOTOR_OFF,
+  MOTOR_ON
+}test_mode_req_motor_type;
+
+typedef enum
+{
+  ACOUSTIC_OFF=0,
+  ACOUSTIC_ON,
+  HEADSET_PATH_OPEN,
+  HANDSET_PATH_OPEN,
+  ACOUSTIC_LOOPBACK_ON,
+  ACOUSTIC_LOOPBACK_OFF
+}test_mode_req_acoustic_type;
+
+typedef enum
+{
+	CAM_TEST_MODE_OFF = 0,
+	CAM_TEST_MODE_ON,
+	CAM_TEST_SHOT,
+	CAM_TEST_SAVE_IMAGE,
+	CAM_TEST_CALL_IMAGE,
+	CAM_TEST_ERASE_IMAGE,
+	CAM_TEST_FLASH_ON,
+	CAM_TEST_FLASH_OFF = 9,
+	CAM_TEST_CAMCORDER_MODE_OFF,
+	CAM_TEST_CAMCORDER_MODE_ON,
+	CAM_TEST_CAMCORDER_SHOT,
+	CAM_TEST_CAMCORDER_SAVE_MOVING_FILE,
+	CAM_TEST_CAMCORDER_PLAY_MOVING_FILE,
+	CAM_TEST_CAMCORDER_ERASE_MOVING_FILE,
+	CAM_TEST_CAMCORDER_FLASH_ON,
+	CAM_TEST_CAMCORDER_FLASH_OFF,
+	CAM_TEST_STROBE_LIGHT_ON,
+	CAM_TEST_STROBE_LIGHT_OFF,
+	CAM_TEST_CAMERA_SELECT = 22,
+}test_mode_req_cam_type;
+
+typedef enum
+{
+  MP3_128KHZ_0DB,
+  MP3_128KHZ_0DB_L,
+  MP3_128KHZ_0DB_R,
+  MP3_MULTISINE_20KHZ,
+  MP3_PLAYMODE_OFF,
+  MP3_SAMPLE_FILE,
+  MP3_NoSignal_LR_128k
+}test_mode_req_mp3_test_type;
+
+typedef enum
+{
+  SPEAKER_PHONE_OFF,
+  SPEAKER_PHONE_ON,
+  NOMAL_Mic1,
+  NC_MODE_ON,
+  ONLY_MIC2_ON_NC_ON,
+  ONLY_MIC1_ON_NC_ON
+}test_mode_req_speaker_phone_type;
+
+typedef enum
+{
+  VOL_LEV_OFF,
+  VOL_LEV_MIN,
+  VOL_LEV_MEDIUM,
+  VOL_LEV_MAX
+}test_mode_req_volume_level_type;
+/* LGE_CHANGE_E [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+
 #define MAX_NTCODE_SIZE (512-3)
 
 typedef union
@@ -352,6 +422,16 @@ typedef union
     test_mode_req_wifi_addr_type wifi_mac_ad;
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;
     test_mode_req_fota_id_check_type fota_id_check;
+
+	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+    test_mode_req_motor_type motor;
+    test_mode_req_acoustic_type acoustic;
+    test_mode_req_cam_type camera;
+    test_mode_req_mp3_test_type mp3_play;
+    test_mode_req_speaker_phone_type speaker_phone;
+    test_mode_req_volume_level_type volume_level;
+    /* LGE_CHANGE_E [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+
 	byte NTCode[MAX_NTCODE_SIZE];
 } test_mode_req_type;
 
@@ -406,6 +486,16 @@ typedef union
     byte read_bd_addr[BT_ADDR_CNT];
     byte read_wifi_mac_addr[WIFI_MAC_ADDR_CNT];    
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;
+	
+	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+    test_mode_req_motor_type motor;
+    test_mode_req_acoustic_type acoustic;
+    test_mode_req_cam_type camera;
+    test_mode_req_mp3_test_type mp3_play;
+    test_mode_req_speaker_phone_type speaker_phone;
+    test_mode_req_volume_level_type volume_level;
+    /* LGE_CHANGE_E [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+
 } PACKED test_mode_rsp_type;
 /* END: 0014654 jihoon.lee@lge.com 2011024 */
 
