@@ -26,11 +26,6 @@ char *usb_functions_lge_all[] = {
 
 	"acm",
 	"diag",
-	"ecm",
-#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
-	"usb_cdrom_storage",
-	"charge_only",
-#endif
 	"usb_mass_storage",
 	"adb",
 };
@@ -38,14 +33,12 @@ char *usb_functions_lge_all[] = {
 static char *usb_functions_ndis[] = {
 	"acm",
 	"diag",
-	"ecm",
 	"usb_mass_storage",
 };
 
 static char *usb_functions_ndis_adb[] = {
 	"acm",
 	"diag",
-	"ecm",
 	"usb_mass_storage",
 	"adb",
 };
@@ -77,12 +70,12 @@ char *usb_functions_lge_charge_only[] = {
 
 struct android_usb_product usb_products[] = {
 	{
-		.product_id = 0x61FC,
+		.product_id = 0x61FA,
 		.num_functions = ARRAY_SIZE(usb_functions_ndis),
 		.functions = usb_functions_ndis,
 	},
 	{
-		.product_id = 0x61FC,
+		.product_id = 0x61FA,
 		.num_functions = ARRAY_SIZE(usb_functions_ndis_adb),
 		.functions = usb_functions_ndis_adb,
 	},
@@ -228,23 +221,6 @@ static struct platform_device usb_mass_storage_device = {
 #endif	/*Qualcomm Original*/
 
 
-
-#ifdef CONFIG_USB_ANDROID_CDC_ECM
-struct usb_ether_platform_data ecm_pdata = {
-	/* ethaddr is filled by board_serialno_setup */
-	.vendorID   	= 0x1004,
-	.vendorDescr    = "LG Electronics Inc.",
-};
-
-struct platform_device ecm_device = {
-	.name   = "ecm",
-	.id 	= -1,
-	.dev    = {
-		.platform_data = &ecm_pdata,
-	},
-};
-#endif
-
 #ifdef CONFIG_USB_ANDROID_ACM
 struct acm_platform_data acm_pdata = {
 	.num_inst	    = 1,
@@ -281,7 +257,7 @@ struct platform_device usb_cdrom_storage_device = {
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id  = 0x1004,
-	.product_id = 0x61FC,
+	.product_id = 0x61FA,
 	.version    = 0x0100,
 	.product_name       = "LGE Android Phone",
 	.manufacturer_name  = "LG Electronics Inc.",
@@ -523,9 +499,6 @@ static struct platform_device *m3mpcs_usb_devices[] __initdata = {
 	&rndis_device,
 #endif	
 	&usb_diag_device,
-#ifdef CONFIG_USB_ANDROID_CDC_ECM
-	&ecm_device,
-#endif
 #ifdef CONFIG_USB_ANDROID_ACM
 	&acm_device,
 #endif

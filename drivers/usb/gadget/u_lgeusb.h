@@ -39,7 +39,11 @@
 #define LGE_FACTORY_PID 0x6000
 /*#define LGE_DEFAULT_PID 0x618E*/
 
+#if defined (CONFIG_MACH_MSM7X27A_M3MPCS)
+#define LGE_DEFAULT_PID 0x61FA
+#else
 #define LGE_DEFAULT_PID 0x61FC
+#endif
 
 /* #define LGE_PLATFORM_PID 0x618E */
 #define LGE_UMSONLY_PID 0x61C5 /* For LGP500, It will be fixed */
