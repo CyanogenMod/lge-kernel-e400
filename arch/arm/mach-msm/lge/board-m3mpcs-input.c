@@ -462,25 +462,12 @@ static struct ecom_platform_data ecom_pdata = {
 	.pin_rst		= 0,
 	.power          = ecom_power_set,
 	.accelerator_name = "bma222",
-/* LGE_CHANGE,
- * add accel tuning data for H/W accerleration sensor direction,
- * based on [hyesung.shin@lge.com] for <Sensor driver structure>
- *
- * 2011-07-05
- */
-.fdata_sign_x = 1,
-.fdata_sign_y = 1,
-.fdata_sign_z = -1,
-.fdata_order0 = 1,
-.fdata_order1 = 0,
-.fdata_order2 = 2,
-.sensitivity1g = 64,
 };
 
 static struct i2c_board_info ecom_i2c_bdinfo[] = {
 	[0] = {
-		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
-		.type = "akm8975",
+		I2C_BOARD_INFO("hscd_i2c", ECOM_I2C_ADDRESS),
+		.type = "hscd_i2c",
 		.platform_data = &ecom_pdata,
 	},
 };
