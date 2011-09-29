@@ -122,8 +122,8 @@ static void mcs8000_late_resume(struct early_suspend *h);
 /*
  * To confirm the latest FW Version
  */
-#define TS_LATEST_FW_VERSION	0x12
-
+#define TS_LATEST_FW_VERSION_A	0x12
+#define TS_LATEST_FW_VERSION_B	0x13
 enum {
 	None = 0,
 	TOUCH_SCREEN,
@@ -709,7 +709,7 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	DMSG(KERN_INFO "%s: ts driver probed\n", __FUNCTION__);
 	
 	/* [LGE_S] FW Upgrade function */
-	if (fw_ver < TS_LATEST_FW_VERSION) {
+	if (fw_ver !=TS_LATEST_FW_VERSION_A && fw_ver !=TS_LATEST_FW_VERSION_B) {
 		printk(KERN_INFO "Checking HW Revision is success");
 			mcsdl_download_binary_data(1, 1,hw_ver,comp_ver);
 	} 
