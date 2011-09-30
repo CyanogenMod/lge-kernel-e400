@@ -1022,16 +1022,9 @@ void* LGF_TestCam(
 
 	switch(pReq->camera)
 	{
-		case CAM_TEST_SAVE_IMAGE:
 		case CAM_TEST_CAMERA_SELECT:
-		case CAM_TEST_FLASH_ON:
-		case CAM_TEST_FLASH_OFF:
-		case CAM_TEST_CAMCORDER_SAVE_MOVING_FILE:
-		case CAM_TEST_CAMCORDER_FLASH_ON:
-		case CAM_TEST_CAMCORDER_FLASH_OFF:
-		case CAM_TEST_STROBE_LIGHT_ON:
-		case CAM_TEST_STROBE_LIGHT_OFF:
 			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+			break;
 
 		default:
 			if (diagpdev != NULL){
