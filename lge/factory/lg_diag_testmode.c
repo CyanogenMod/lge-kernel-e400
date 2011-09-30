@@ -1001,7 +1001,10 @@ void* LGF_TestAcoustic(
 	pRsp->ret_stat_code = TEST_OK_S;
 
 	if (diagpdev != NULL){
-		update_diagcmd_state(diagpdev, "ACOUSTIC", pReq->acoustic);
+		if(pReq->acoustic > ACOUSTIC_LOOPBACK_OFF)
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+		else
+			update_diagcmd_state(diagpdev, "ACOUSTIC", pReq->acoustic);
 	}
 	else
 	{
