@@ -28,7 +28,11 @@
 #include <linux/mfd/pmic8058.h>
 #include <mach/irqs.h>
 
+#if 1 // M3 use Internal SD, not External SD
+// m3 use Internal SD, so we dont use this
+#else
 #define PMIC_GPIO_SDC3_DET 22
+#endif
 #define PM8058_GPIO_BASE NR_MSM_GPIOS
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio) (pm_gpio + PM8058_GPIO_BASE)
 
@@ -281,6 +285,9 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
     pRsp->ret_stat_code = TEST_FAIL_S;
 
     // ADD: 0013541: 0014142: [Test_Mode] To remove Internal memory information in External memory test when SD-card is not exist
+#if 1
+// m3 use Internal SD, so we dont use this
+#else
     if(gpio_get_value(PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC3_DET - 1)))
     {
         if (pReq->esm == EXTERNAL_SOCKET_MEMORY_CHECK)
@@ -292,6 +299,7 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
         printk(KERN_ERR "[Testmode Memory Test] Can not detect SD card\n");
         return pRsp;
     }
+#endif
 
     switch( pReq->esm){
         case EXTERNAL_SOCKET_MEMORY_CHECK:
@@ -311,6 +319,11 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
             break;
 
         case EXTERNAL_SOCKET_ERASE:
+            if (diagpdev == NULL){
+                  diagpdev = diagcmd_get_dev();
+                  printk("\n[%s] diagpdev is Null", __func__ );
+            }
+            
             if (diagpdev != NULL)
             {
                 update_diagcmd_state(diagpdev, "MMCFORMAT", 1);
