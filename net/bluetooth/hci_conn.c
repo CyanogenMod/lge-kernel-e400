@@ -1102,6 +1102,10 @@ int hci_get_conn_info(struct hci_dev *hdev, void __user *arg)
 		ci.out   = conn->out;
 		ci.state = conn->state;
 		ci.link_mode = conn->link_mode;
+		// +s QCT_BT_PATCH_SR00627191 suhui.kim@lge.com 111002, fix issue to reset bluetoothd after A2DP resume in sniff mode
+		ci.mode = conn->mode;
+		// +e QCT_BT_PATCH_SR00627191
+		
 		if (req.type == SCO_LINK) {
 			ci.mtu = hdev->sco_mtu;
 			ci.cnt = hdev->sco_cnt;
