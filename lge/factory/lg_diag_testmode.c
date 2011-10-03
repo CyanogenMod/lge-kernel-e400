@@ -1861,7 +1861,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_BATT_LEVEL_TEST,             LGF_TestModeBattLevel,            ARM11_PROCESSOR},
     {TEST_MODE_MP3_TEST,                    LGF_TestModeMP3,                  ARM11_PROCESSOR},
     /* 31 ~ 40 */
-    {TEST_MODE_ACCEL_SENSOR_TEST,           not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_ACCEL_SENSOR_TEST,   linux_app_handler,    ARM11_PROCESSOR},
     {TEST_MODE_WIFI_TEST,                   not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_MANUAL_TEST_MODE,            NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_FORMAT_MEMORY_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
@@ -1873,7 +1873,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_VIRTUAL_SIM_TEST,            LGF_TestModeVirtualSimTest,       ARM11_PROCESSOR},
     {TEST_MODE_PHOTO_SENSER_TEST,           not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_MRD_USB_TEST,                NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_PROXIMITY_SENSOR_TEST,       not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_PROXIMITY_SENSOR_TEST,       linux_app_handler,    ARM11_PROCESSOR},
     {TEST_MODE_TEST_SCRIPT_MODE,            LGF_TestScriptItemSet,            ARM11_PROCESSOR},
     {TEST_MODE_FACTORY_RESET_CHECK_TEST,    LGF_TestModeFactoryReset,         ARM11_PROCESSOR},
     /* 51 ~60 */

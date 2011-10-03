@@ -178,7 +178,7 @@ static ssize_t accsns_position_show(struct device *dev,
 		y = 0;
 		z = 0;
 	}
-	return snprintf(buf, PAGE_SIZE, "(%d %d %d)\n", x, y, z);
+	return snprintf(buf, PAGE_SIZE, "accel (%d %d %d)\n", x, y, z);
 }
 
 static ssize_t hscd_position_show(struct device *dev,
@@ -196,7 +196,7 @@ static ssize_t hscd_position_show(struct device *dev,
 		y = 0;
 		z = 0;
 	}
-	return snprintf(buf, PAGE_SIZE, "(%d %d %d)\n", x, y, z);
+	return snprintf(buf, PAGE_SIZE, "hscd (%d %d %d)\n", x, y, z);
 }
 
 static ssize_t alps_position_show(struct device *dev,
@@ -210,10 +210,98 @@ static ssize_t alps_position_show(struct device *dev,
 	return cnt;
 }
 
+static ssize_t alps_enable_show(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+	char strbuf[256];
+	snprintf(strbuf, PAGE_SIZE, "%d", flgM);
+	return snprintf(buf, PAGE_SIZE, "%s\n", strbuf);
+}
+
+static ssize_t alps_enable_store(struct device *dev, \
+struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode, iCmode;
+
+	sscanf(buf, "%d", &mode);
+	iCmode = flgM;
+	printk("fnclamp alps_enable_store()  %d -> %d\n", iCmode ,mode);
+	if(iCmode != mode)
+	{
+		hscd_activate(0, 1, 200);
+		flgM = 1;
+	}	
+	else
+	{
+		hscd_activate(0, 0, 200);	
+		flgM=0;
+	}
+	return 0;
+}
+
+static ssize_t alps_x_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int x, y, z;
+	int xyz[3];
+
+	if (hscd_get_magnetic_field_data(xyz) == 0) {
+		x = xyz[0];
+		y = xyz[1];
+		z = xyz[2];
+	} else {
+		x = 0;
+		y = 0;
+		z = 0;
+	}
+	return snprintf(buf, PAGE_SIZE, "%d \n", x);
+}
+static ssize_t alps_y_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int x, y, z;
+	int xyz[3];
+
+	if (hscd_get_magnetic_field_data(xyz) == 0) {
+		x = xyz[0];
+		y = xyz[1];
+		z = xyz[2];
+	} else {
+		x = 0;
+		y = 0;
+		z = 0;
+	}
+	return snprintf(buf, PAGE_SIZE, "%d \n", y);
+}
+static ssize_t alps_z_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int x, y, z;
+	int xyz[3];
+
+	if (hscd_get_magnetic_field_data(xyz) == 0) {
+		x = xyz[0];
+		y = xyz[1];
+		z = xyz[2];
+	} else {
+		x = 0;
+		y = 0;
+		z = 0;
+	}
+	return snprintf(buf, PAGE_SIZE, "%d \n", z);
+}
 static DEVICE_ATTR(position, 0444, alps_position_show, NULL);
+static DEVICE_ATTR(x, 0444, alps_x_show, NULL);
+static DEVICE_ATTR(y, 0444, alps_y_show, NULL);
+static DEVICE_ATTR(z, 0444, alps_z_show, NULL);
+static DEVICE_ATTR(enable, 0777, alps_enable_show, alps_enable_store);
 
 static struct attribute *alps_attributes[] = {
 	&dev_attr_position.attr,
+	&dev_attr_enable.attr,
+	&dev_attr_x.attr,
+	&dev_attr_y.attr,
+	&dev_attr_z.attr,
 	NULL,
 };
 

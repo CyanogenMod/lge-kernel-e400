@@ -371,6 +371,66 @@ struct device_attribute *attr, const char *buf, size_t count)
     return 0;
 }
 
+static ssize_t show_bma222_sensordataX(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    char strbuf[BMA222_BUFSIZE];
+    int x = 0, y = 0, z = 0;
+
+    bma222acc_t acc;
+
+    bma222_read_accel_xyz(&acc);
+
+    memset(strbuf, 0x00, BMA222_BUFSIZE);
+
+    /* snprintf(strbuf, PAGE_SIZE, "%d %d %d", (int)acc.x, (int)acc.y, (int)acc.z); */
+    x = ((int)acc.x);
+    y = ((int)acc.y);
+    z = ((int)acc.z);
+    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", x, y, z);
+    return snprintf(buf, PAGE_SIZE, "%d\n", x);
+}
+
+static ssize_t show_bma222_sensordataY(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+    char strbuf[BMA222_BUFSIZE];
+    int x = 0, y = 0, z = 0;
+
+    bma222acc_t acc;
+
+    bma222_read_accel_xyz(&acc);
+
+    memset(strbuf, 0x00, BMA222_BUFSIZE);
+
+    /* snprintf(strbuf, PAGE_SIZE, "%d %d %d", (int)acc.x, (int)acc.y, (int)acc.z); */
+    x = ((int)acc.x);
+    y = ((int)acc.y);
+    z = ((int)acc.z);
+    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", x, y, z);
+    return snprintf(buf, PAGE_SIZE, "%d\n", y);
+}
+
+static ssize_t show_bma222_sensordataZ(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+    char strbuf[BMA222_BUFSIZE];
+    int x = 0, y = 0, z = 0;
+
+    bma222acc_t acc;
+
+    bma222_read_accel_xyz(&acc);
+
+    memset(strbuf, 0x00, BMA222_BUFSIZE);
+
+    /* snprintf(strbuf, PAGE_SIZE, "%d %d %d", (int)acc.x, (int)acc.y, (int)acc.z); */
+    x = ((int)acc.x);
+    y = ((int)acc.y);
+    z = ((int)acc.z);
+    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", x, y, z);
+    return snprintf(buf, PAGE_SIZE, "%d\n", z);
+}
+
+
 static DEVICE_ATTR(bma222_enable, S_IRUGO | S_IWUSR | S_IWGRP, \
 show_bma222_enable, store_bma222_enable);
 static DEVICE_ATTR(bma222_sensordata, S_IRUGO, \
@@ -379,11 +439,20 @@ show_bma222_sensordata, NULL);
 static DEVICE_ATTR(bma222_bandwidth, S_IRUGO | S_IWUSR | S_IWGRP, \
 show_bma222_bandwidth, store_bma222_bandwidth);
 
+static DEVICE_ATTR(bma222_x, S_IRUGO, show_bma222_sensordataX, NULL);
+
+static DEVICE_ATTR(bma222_y, S_IRUGO, show_bma222_sensordataY, NULL);
+
+static DEVICE_ATTR(bma222_z, S_IRUGO, show_bma222_sensordataZ, NULL);
+
 static struct attribute *bma222_attributes[] = {
     &dev_attr_bma222_enable.attr,
     &dev_attr_bma222_sensordata.attr,
 /* add bandwidth node */
 	&dev_attr_bma222_bandwidth.attr,
+	&dev_attr_bma222_x.attr,
+	&dev_attr_bma222_y.attr,
+	&dev_attr_bma222_z.attr,
     NULL,
 };
 
