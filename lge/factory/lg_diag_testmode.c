@@ -1007,6 +1007,24 @@ void* LGF_TestMotor(
 	return pRsp;
 }
 
+void* LGF_TestLCD(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	pRsp->ret_stat_code = TEST_OK_S;
+
+	if (diagpdev != NULL){
+		update_diagcmd_state(diagpdev, "LCD", pReq->lcd);
+	}
+	else
+	{
+		printk("\n[%s] error LCD", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+	}
+	return pRsp;
+}
+
+
 void* LGF_TestAcoustic(
 		test_mode_req_type* pReq ,
 		DIAG_TEST_MODE_F_rsp_type	*pRsp)
@@ -1014,10 +1032,7 @@ void* LGF_TestAcoustic(
 	pRsp->ret_stat_code = TEST_OK_S;
 
 	if (diagpdev != NULL){
-		if(pReq->acoustic > ACOUSTIC_LOOPBACK_OFF)
-			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
-		else
-			update_diagcmd_state(diagpdev, "ACOUSTIC", pReq->acoustic);
+		update_diagcmd_state(diagpdev, "ACOUSTIC", pReq->acoustic);
 	}
 	else
 	{
@@ -1844,7 +1859,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     /* sub_command                          fun_ptr                           which procesor*/
     /* 0 ~ 10 */
     {TEST_MODE_VERSION,                     NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_LCD,                         not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_LCD,                         LGF_TestLCD,   					 ARM11_PROCESSOR},
     {TEST_MODE_MOTOR,                       LGF_TestMotor,                    ARM11_PROCESSOR},
     {TEST_MODE_ACOUSTIC,                    LGF_TestAcoustic,                 ARM11_PROCESSOR},
     {TEST_MODE_CAM,                         LGF_TestCam,                      ARM11_PROCESSOR},

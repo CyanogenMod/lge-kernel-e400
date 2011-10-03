@@ -316,6 +316,15 @@ typedef enum
 /* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
 typedef enum
 {
+  LCD_INITIAL=0,
+  LCD_TILT=2,
+  LCD_COLOR,
+  LCD_ON,
+  LCD_OFF
+}test_mode_req_lcd_type;
+
+typedef enum
+{
   MOTOR_OFF,
   MOTOR_ON
 }test_mode_req_motor_type;
@@ -424,6 +433,7 @@ typedef union
     test_mode_req_fota_id_check_type fota_id_check;
 
 	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+    test_mode_req_lcd_type lcd;
     test_mode_req_motor_type motor;
     test_mode_req_acoustic_type acoustic;
     test_mode_req_cam_type camera;
@@ -488,6 +498,7 @@ typedef union
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;
 	
 	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+    test_mode_req_lcd_type lcd;
     test_mode_req_motor_type motor;
     test_mode_req_acoustic_type acoustic;
     test_mode_req_cam_type camera;
@@ -512,7 +523,7 @@ typedef struct DIAG_TEST_MODE_F_rsp_tag {
 typedef enum
 {
     TEST_MODE_VERSION=0,
-    TEST_MODE_LCD,
+    TEST_MODE_LCD=1,
     TEST_MODE_MOTOR=3,
     TEST_MODE_ACOUSTIC,
     TEST_MODE_CAM=7,
