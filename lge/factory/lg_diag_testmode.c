@@ -1027,6 +1027,26 @@ void* LGF_TestAcoustic(
 	return pRsp;
 }
 
+byte key_buf[MAX_KEY_BUFF_SIZE];
+int count_key_buf = 0;
+
+void* LGT_TestModeKeyTest(test_mode_req_type* pReq, DIAG_TEST_MODE_F_rsp_type *pRsp)
+{
+  pRsp->ret_stat_code = TEST_OK_S;
+
+  if(pReq->key_test_start){
+	memset((void *)key_buf,0x00,MAX_KEY_BUFF_SIZE);
+	count_key_buf=0;
+//	diag_event_log_start();
+  }
+  else
+  {
+	memcpy((void *)((DIAG_TEST_MODE_KEY_F_rsp_type *)pRsp)->key_pressed_buf, (void *)key_buf, MAX_KEY_BUFF_SIZE);
+	memset((void *)key_buf,0x00,MAX_KEY_BUFF_SIZE);
+//	diag_event_log_end();
+  }  
+  return pRsp;
+}
 void* LGF_TestCam(
 		test_mode_req_type* pReq ,
 		DIAG_TEST_MODE_F_rsp_type	*pRsp)
