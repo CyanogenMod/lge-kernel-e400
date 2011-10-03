@@ -21,6 +21,10 @@
 #include <linux/slab.h>
 #endif 
 
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+#include <linux/parser.h>
+// LGE_CHANGE_E, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+
 #include <mach/board_lge.h>
 #include <lg_backup_items.h>
 
@@ -35,6 +39,9 @@
 #endif
 #define PM8058_GPIO_BASE NR_MSM_GPIOS
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio) (pm_gpio + PM8058_GPIO_BASE)
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+#define WL_IS_WITHIN(min,max,expr)         (((min)<=(expr))&&((max)>(expr)))
+// LGE_CHANGE_E, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
 
 static struct diagcmd_dev *diagpdev;
 
@@ -99,6 +106,30 @@ struct statfs_local {
 ===========================================================================*/
 
 extern int lge_bd_rev;
+
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+typedef struct _rx_packet_info 
+{
+	int goodpacket;
+	int badpacket;
+} rx_packet_info_t;
+
+enum {
+	Param_none = -1,
+	Param_goodpacket,
+	Param_badpacket,
+	Param_end,
+	Param_err,
+};
+
+static const match_table_t param_tokens = {
+	{Param_goodpacket, "good=%d"},
+	{Param_badpacket, "bad=%d"},
+	{Param_end,	"END"},
+	{Param_err, NULL}
+};
+// LGE_CHANGE_E, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+
 
 void CheckHWRev(byte *pStr)
 {
@@ -756,10 +787,338 @@ fota_fail:
 }
 // LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/09/29
 
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+static char wifi_get_rx_packet_info(rx_packet_info_t* rx_info)
+{
+	const char* src = "/data/misc/wifi/diag_wifi_result";
+	char return_value = TEST_FAIL_S;
+	char *dest = (void *)0;
+	char buf[30];
+	off_t fd_offset;
+	int fd;
+	char *tok, *holder = NULL;
+	char *delimiter = ":\r\n";
+	substring_t args[MAX_OPT_ARGS];	
+	int token;	
+	char tmpstr[10];
+
+    mm_segment_t old_fs=get_fs();
+    set_fs(get_ds());
+
+	if (rx_info == NULL) {
+		goto file_fail;
+	}
+	
+	memset(buf, 0x00, sizeof(buf));
+
+    if ( (fd = sys_open((const char __user *)src, O_CREAT | O_RDWR, 0) ) < 0 )
+    {
+        printk(KERN_ERR "[Testmode Wi-Fi] sys_open() failed!!\n");
+        goto file_fail;
+    }
+
+    if ( (dest = kmalloc(30, GFP_KERNEL)) )
+    {
+        fd_offset = sys_lseek(fd, 0, 0);
+
+        if ((sys_read(fd, (char __user *) dest, 30)) < 0)
+        {
+            printk(KERN_ERR "[Testmode Wi-Fi] can't read path %s \n", src);
+            goto file_fail;
+        }
+
+#if 0 
+		/*	sscanf(dest, "%d:%d", &(rx_info->goodpacket), &(rx_info->badpacket));    */
+		strncpy(buf, (const char *)dest, sizeof(buf) - 1) ;
+
+		tok = strtok_r(dest, delimiter, &holder);
+
+		if ( holder != NULL && tok != NULL)
+		{
+			rx_info->goodpacket = simple_strtoul(tok, (char**)NULL, 10);
+			tok = strtok_r(NULL, delimiter, &holder);
+			rx_info->badpacket = simple_strtoul(tok, (char**)NULL, 10);
+			printk(KERN_ERR "[Testmode Wi-Fi] rx_info->goodpacket %lu, rx_info->badpacket = %lu \n",
+				rx_info->goodpacket, rx_info->badpacket);
+			return_value = TEST_OK_S;
+		}
+#else
+		if ((memcmp(dest, "30", 2)) == 0) {
+			printk(KERN_INFO "rx_packet_cnt read error \n");
+			goto file_fail;
+		}
+
+		strncpy(buf, (const char *)dest, sizeof(buf) - 1);
+		buf[sizeof(buf)-1] = 0;
+		holder = &(buf[2]); // skip index, result
+		
+		while (holder != NULL) {
+			tok = strsep(&holder, delimiter);
+			
+			if (!*tok)
+				continue;
+
+			token = match_token(tok, param_tokens, args);
+			switch (token) {
+			case Param_goodpacket:
+				memset(tmpstr, 0x00, sizeof(tmpstr));
+				if (0 == match_strlcpy(tmpstr, &args[0], sizeof(tmpstr)))
+				{
+					printk(KERN_ERR "Error GoodPacket %s", args[0].from);
+					continue;
+				}
+				rx_info->goodpacket = simple_strtol(tmpstr, NULL, 0);
+				printk(KERN_INFO "[Testmode Wi-Fi] rx_info->goodpacket = %d", rx_info->goodpacket);
+				break;
+
+			case Param_badpacket:
+				memset(tmpstr, 0x00, sizeof(tmpstr));
+				if (0 == match_strlcpy(tmpstr, &args[0], sizeof(tmpstr)))
+				{
+					printk(KERN_ERR "Error BadPacket %s\n", args[0].from);
+					continue;
+				}
+
+				rx_info->badpacket = simple_strtol(tmpstr, NULL, 0);
+				printk(KERN_INFO "[Testmode Wi-Fi] rx_info->badpacket = %d", rx_info->badpacket);
+				return_value = TEST_OK_S;
+				break;
+
+			case Param_end:
+			case Param_err:
+			default:
+				/* silently ignore unknown settings */
+				printk(KERN_ERR "[Testmode Wi-Fi] ignore unknown token %s\n", tok);
+				break;
+			}
+		}
+#endif
+    }
+
+	printk(KERN_INFO "[Testmode Wi-Fi] return_value %d!!\n", return_value);
+	
+file_fail:    
+    kfree(dest);
+    sys_close(fd);
+    set_fs(old_fs);
+    sys_unlink((const char __user *)src);
+    return return_value;
+}
+
+
+static char wifi_get_test_results(int index)
+{
+	const char* src = "/data/misc/wifi/diag_wifi_result";
+    char return_value = TEST_FAIL_S;
+    char *dest = (void *)0;
+	char buf[4]={0};
+    off_t fd_offset;
+    int fd;
+    mm_segment_t old_fs=get_fs();
+    set_fs(get_ds());
+
+    if ( (fd = sys_open((const char __user *)src, O_CREAT | O_RDWR, 0) ) < 0 )
+    {
+        printk(KERN_ERR "[Testmode Wi-Fi] sys_open() failed!!\n");
+        goto file_fail;
+    }
+
+    if ( (dest = kmalloc(20, GFP_KERNEL)) )
+    {
+        fd_offset = sys_lseek(fd, 0, 0);
+
+        if ((sys_read(fd, (char __user *) dest, 20)) < 0)
+        {
+            printk(KERN_ERR "[Testmode Wi-Fi] can't read path %s \n", src);
+            goto file_fail;
+        }
+
+		sprintf(buf, "%d""1", index);
+		buf[3]='\0';
+        printk(KERN_INFO "[Testmode Wi-Fi] result %s!!\n", buf);
+
+        if ((memcmp(dest, buf, 2)) == 0)
+            return_value = TEST_OK_S;
+        else
+            return_value = TEST_FAIL_S;
+		
+        printk(KERN_ERR "[Testmode Wi-Fi] return_value %d!!\n", return_value);
+
+    }
+	
+file_fail:
+    kfree(dest);
+    sys_close(fd);
+    set_fs(old_fs);
+    sys_unlink((const char __user *)src);
+
+    return return_value;
+}
+
+
+static test_mode_ret_wifi_ctgry_t divide_into_wifi_category(test_mode_req_wifi_type input)
+{
+	test_mode_ret_wifi_ctgry_t sub_category = WLAN_TEST_MODE_CTGRY_NOT_SUPPORTED;
+	
+	if ( input == WLAN_TEST_MODE_54G_ON || 
+		WL_IS_WITHIN(WLAN_TEST_MODE_11B_ON, WLAN_TEST_MODE_11A_CH_RX_START, input)) {
+		sub_category = WLAN_TEST_MODE_CTGRY_ON;
+	} else if ( input == WLAN_TEST_MODE_OFF ) {
+		sub_category = WLAN_TEST_MODE_CTGRY_OFF;
+	} else if ( input == WLAN_TEST_MODE_RX_RESULT ) {
+		sub_category = WLAN_TEST_MODE_CTGRY_RX_STOP;
+	} else if ( WL_IS_WITHIN(WLAN_TEST_MODE_RX_START, WLAN_TEST_MODE_RX_RESULT, input) || 
+			WL_IS_WITHIN(WLAN_TEST_MODE_LF_RX_START, WLAN_TEST_MODE_MF_TX_START, input)) {
+        sub_category = WLAN_TEST_MODE_CTGRY_RX_START;
+	} else if ( WL_IS_WITHIN(WLAN_TEST_MODE_TX_START, WLAN_TEST_MODE_TXRX_STOP, input) || 
+			WL_IS_WITHIN( WLAN_TEST_MODE_MF_TX_START, WLAN_TEST_MODE_11B_ON, input)) {
+		sub_category = WLAN_TEST_MODE_CTGRY_TX_START;
+	} else if ( input == WLAN_TEST_MODE_TXRX_STOP) {
+		sub_category = WLAN_TEST_MODE_CTGRY_TX_STOP;
+	}
+	
+	printk(KERN_INFO "[divide_into_wifi_category] input = %d, sub_category = %d!!\n", input, sub_category );
+	
+	return sub_category;	
+}
+
+
+void* LGF_TestModeWLAN(
+        test_mode_req_type*	pReq,
+        DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	int i;
+	test_mode_ret_wifi_ctgry_t wl_category;
+
+	if (diagpdev != NULL)
+	{
+		update_diagcmd_state(diagpdev, "WIFI_TEST_MODE", pReq->wifi);
+
+		printk(KERN_ERR "[WI-FI] [%s:%d] WiFiSubCmd=<%d>\n", __func__, __LINE__, pReq->wifi);
+
+		wl_category = divide_into_wifi_category(pReq->wifi);
+
+		/* Set Test Mode */
+		switch (wl_category) {
+
+			case WLAN_TEST_MODE_CTGRY_ON:
+				//5sec timeout
+				for (i = 0; i< 5; i++)
+					msleep(1000);
+				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
+				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
+				break;
+
+			case WLAN_TEST_MODE_CTGRY_OFF:
+				//5sec timeout
+				for (i = 0; i< 3; i++)
+					msleep(1000);
+				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
+				break;
+
+			case WLAN_TEST_MODE_CTGRY_RX_START:
+				for (i = 0; i< 1; i++)
+					msleep(1000);
+				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
+				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
+				break;
+
+			case WLAN_TEST_MODE_CTGRY_RX_STOP:
+			{
+				rx_packet_info_t rx_info;
+				int total_packet = 0;
+				int m_rx_per = 0;
+				// init
+				rx_info.goodpacket = 0;
+				rx_info.badpacket = 0;
+				// wait 3 sec
+				for (i = 0; i< 3; i++)
+					msleep(1000);
+				
+				pRsp->test_mode_rsp.wlan_rx_results.packet = 0;
+				pRsp->test_mode_rsp.wlan_rx_results.per = 0;
+
+				pRsp->ret_stat_code = wifi_get_rx_packet_info(&rx_info);
+				if (pRsp->ret_stat_code == TEST_OK_S) {
+					total_packet = rx_info.badpacket + rx_info.goodpacket;
+					if(total_packet > 0) {
+						m_rx_per = (rx_info.badpacket * 1000 / total_packet);
+						printk(KERN_INFO "[WI-FI] per = %d, rx_info.goodpacket = %d, rx_info.badpacket = %d ",
+							m_rx_per, rx_info.goodpacket, rx_info.badpacket);
+					}
+					pRsp->test_mode_rsp.wlan_rx_results.packet = rx_info.goodpacket;
+					pRsp->test_mode_rsp.wlan_rx_results.per = m_rx_per;
+				}				
+				break;
+			}
+
+			case WLAN_TEST_MODE_CTGRY_TX_START:
+				for (i = 0; i< 1; i++)
+					msleep(1000);
+				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
+				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
+				break;
+
+			case WLAN_TEST_MODE_CTGRY_TX_STOP:
+				for (i = 0; i< 1; i++)
+					msleep(1000);
+				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
+				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
+				break;
+
+			default:
+				pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+				break;
+		}
+	}
+	else
+	{
+		printk(KERN_ERR "[WI-FI] [%s:%d] diagpdev %d ERROR\n", __func__, __LINE__, pReq->wifi);
+		pRsp->ret_stat_code = TEST_FAIL_S;
+	}
+
+	return pRsp;
+}
+
+// LGE_CHANGE_E, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+
+
 
 // LGE_CHANGE_S, bill.jung@lge.com, 20110808, WiFi MAC R/W Function by DIAG
 void* LGF_TestModeWiFiMACRW(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+	DIAG_TEST_MODE_F_req_type req_ptr;
+
+	req_ptr.sub_cmd_code = TEST_MODE_WIFI_MAC_RW;
+	printk(KERN_ERR "[LGF_TestModeWiFiMACRW] req_type=%d, wifi_mac_addr=[%s]\n", pReq->wifi_mac_ad.req_type, pReq->wifi_mac_ad.wifi_mac_addr);
+
+	if (diagpdev != NULL)
+	{
+		pRsp->ret_stat_code = TEST_FAIL_S;
+		if( pReq->wifi_mac_ad.req_type == 0) {
+			req_ptr.test_mode_req.wifi_mac_ad.req_type = 0;
+			memcpy(req_ptr.test_mode_req.wifi_mac_ad.wifi_mac_addr, (void*)(pReq->wifi_mac_ad.wifi_mac_addr), WIFI_MAC_ADDR_CNT);
+			send_to_arm9((void*)&req_ptr, (void*)pRsp);
+			printk(KERN_INFO "[Wi-Fi] %s, result : %s\n", __func__, pRsp->ret_stat_code==TEST_OK_S?"OK":"FAILURE");
+		} else if ( pReq->wifi_mac_ad.req_type == 1) {
+			req_ptr.test_mode_req.wifi_mac_ad.req_type = 1;
+			send_to_arm9((void*)&req_ptr, (void*)pRsp);
+			printk(KERN_INFO "[Wi-Fi] %s, result : %s\n", __func__, pRsp->ret_stat_code==TEST_OK_S?"OK":"FAILURE");
+		}
+		else{
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+		}
+	}
+	else
+	{
+		printk(KERN_ERR "[WI-FI] [%s:%d] diagpdev %d ERROR\n", __func__, __LINE__, pReq->wifi_mac_ad.req_type);
+		pRsp->ret_stat_code = TEST_FAIL_S;
+	}
+
+	return pRsp;
+// LGE_CHANGE_E, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+#if 0
 	int fd=0; 
 	int i=0;
     char *src = (void *)0;	
@@ -866,6 +1225,7 @@ file_fail:
 	set_fs(old_fs); 
 	
 	return pRsp;
+#endif
 }
 // LGE_CHANGE_E, bill.jung@lge.com, 20110808, WiFi MAC R/W Function by DIAG
 
@@ -1042,6 +1402,26 @@ void* LGF_TestAcoustic(
 	return pRsp;
 }
 
+byte key_buf[MAX_KEY_BUFF_SIZE];
+int count_key_buf = 0;
+
+void* LGT_TestModeKeyTest(test_mode_req_type* pReq, DIAG_TEST_MODE_F_rsp_type *pRsp)
+{
+  pRsp->ret_stat_code = TEST_OK_S;
+
+  if(pReq->key_test_start){
+	memset((void *)key_buf,0x00,MAX_KEY_BUFF_SIZE);
+	count_key_buf=0;
+//	diag_event_log_start();
+  }
+  else
+  {
+	memcpy((void *)((DIAG_TEST_MODE_KEY_F_rsp_type *)pRsp)->key_pressed_buf, (void *)key_buf, MAX_KEY_BUFF_SIZE);
+	memset((void *)key_buf,0x00,MAX_KEY_BUFF_SIZE);
+//	diag_event_log_end();
+  }  
+  return pRsp;
+}
 void* LGF_TestCam(
 		test_mode_req_type* pReq ,
 		DIAG_TEST_MODE_F_rsp_type	*pRsp)
@@ -1865,7 +2245,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_CAM,                         LGF_TestCam,                      ARM11_PROCESSOR},
     /* 11 ~ 20 */
     /* 21 ~ 30 */
-    {TEST_MODE_KEY_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_KEY_TEST,                    LGT_TestModeKeyTest,              ARM11_PROCESSOR},
     {TEST_MODE_EXT_SOCKET_TEST,             LGF_ExternalSocketMemory,         ARM11_PROCESSOR},
 	// *s LG_BTUI_DIAGCMD_DUTMODE munho2.lee@lge.com 110915
 	/* Original
@@ -1877,10 +2257,10 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_MP3_TEST,                    LGF_TestModeMP3,                  ARM11_PROCESSOR},
     /* 31 ~ 40 */
     {TEST_MODE_ACCEL_SENSOR_TEST,   linux_app_handler,    ARM11_PROCESSOR},
-    {TEST_MODE_WIFI_TEST,                   not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_WIFI_TEST,                   LGF_TestModeWLAN,                 ARM11_PROCESSOR},
     {TEST_MODE_MANUAL_TEST_MODE,            NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_FORMAT_MEMORY_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
-    {TEST_MODE_KEY_DATA_TEST,               LGF_TestModeKeyData,              ARM11_PROCESSOR},
+    {TEST_MODE_KEY_DATA_TEST,               linux_app_handler,                ARM11_PROCESSOR},
     /* 41 ~ 50 */
     {TEST_MODE_MEMORY_CAPA_TEST,            LGF_MemoryVolumeCheck,            ARM11_PROCESSOR},
     {TEST_MODE_SLEEP_MODE_TEST,             LGF_TestModeSleepMode,            ARM11_PROCESSOR},
@@ -1902,7 +2282,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_LTE_CALL,                    not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_CHANGE_USB_DRIVER,           not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_GET_HKADC_VALUE,             NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_LED_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_LED_TEST,                    linux_app_handler,                ARM11_PROCESSOR},
     {TEST_MODE_PID_TEST,                    NULL,                             ARM9_PROCESSOR},
     /* 71 ~ 80 */
     {TEST_MODE_SW_VERSION,                  NULL,                             ARM9_PROCESSOR},
