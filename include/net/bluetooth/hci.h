@@ -1502,6 +1502,9 @@ struct hci_conn_info {
 	__u32    pkts;
 	__u8     pending_sec_level;
 	__u8     ssp_mode;
+	// +s QCT_BT_PATCH_SR00627191 suhui.kim@lge.com 111002, fix issue to reset bluetoothd after A2DP resume in sniff mode
+	__u8     mode;
+	// +e QCT_BT_PATCH_SR00627191
 };
 
 struct hci_dev_req {
