@@ -21,14 +21,14 @@ config LGE_SUPPORT_RAPI
 
 config LGE_DIAGTEST
         depends on LGE_FACTORY
-        default n
+        default y
         bool "LGE TestMode Diag Support"
         help
                 LGE TestMode Diag Supports
 
 config LGE_DIAG_KEYPRESS
         depends on LGE_DIAGTEST
-        default n
+        default y
         bool "LGE UTS KEYPRESS Support"
         help
                 LGE UTS KEYPRESS Supports

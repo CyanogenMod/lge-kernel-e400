@@ -1850,7 +1850,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_CAM,                         LGF_TestCam,                      ARM11_PROCESSOR},
     /* 11 ~ 20 */
     /* 21 ~ 30 */
-    {TEST_MODE_KEY_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_KEY_TEST,                    LGT_TestModeKeyTest,              ARM11_PROCESSOR},
     {TEST_MODE_EXT_SOCKET_TEST,             LGF_ExternalSocketMemory,         ARM11_PROCESSOR},
 	// *s LG_BTUI_DIAGCMD_DUTMODE munho2.lee@lge.com 110915
 	/* Original
@@ -1865,7 +1865,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_WIFI_TEST,                   not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_MANUAL_TEST_MODE,            NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_FORMAT_MEMORY_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
-    {TEST_MODE_KEY_DATA_TEST,               LGF_TestModeKeyData,              ARM11_PROCESSOR},
+    {TEST_MODE_KEY_DATA_TEST,               linux_app_handler,                ARM11_PROCESSOR},
     /* 41 ~ 50 */
     {TEST_MODE_MEMORY_CAPA_TEST,            LGF_MemoryVolumeCheck,            ARM11_PROCESSOR},
     {TEST_MODE_SLEEP_MODE_TEST,             LGF_TestModeSleepMode,            ARM11_PROCESSOR},
@@ -1887,7 +1887,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_LTE_CALL,                    not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_CHANGE_USB_DRIVER,           not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_GET_HKADC_VALUE,             NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_LED_TEST,                    not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_LED_TEST,                    linux_app_handler,                ARM11_PROCESSOR},
     {TEST_MODE_PID_TEST,                    NULL,                             ARM9_PROCESSOR},
     /* 71 ~ 80 */
     {TEST_MODE_SW_VERSION,                  NULL,                             ARM9_PROCESSOR},

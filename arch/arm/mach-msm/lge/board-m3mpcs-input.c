@@ -289,6 +289,21 @@ static void __init m3_init_i2c_touch(int bus_num)
 }
 #endif /* CONFIG_TOUCH_MCS8000 */
 
+#ifdef CONFIG_LGE_DIAGTEST
+
+static struct platform_device lg_diag_input_device = {	
+	.name = "ats_input",	
+	.id = -1,	
+	.dev    = 	{		
+		.platform_data = 0, 
+				},
+};
+ 
+
+static struct platform_device *m3_ats_input_devices[] __initdata = {
+	&lg_diag_input_device,
+};
+#endif
 /* Atmel Touch for M3 EVB */
 #if defined(CONFIG_TOUCHSCREEN_MXT140)
 
@@ -621,6 +636,8 @@ void __init lge_add_input_devices(void)
 		m3_input_devices, ARRAY_SIZE(m3_input_devices));
 	platform_add_devices(
 		m3_gpio_input_devices, ARRAY_SIZE(m3_gpio_input_devices));
+	platform_add_devices(
+		m3_ats_input_devices, ARRAY_SIZE(m3_ats_input_devices));
 	lge_add_gpio_i2c_device(m3_init_i2c_touch);
 	lge_add_gpio_i2c_device(m3_init_i2c_acceleration);
 	lge_add_gpio_i2c_device(m3_init_i2c_ecom);
