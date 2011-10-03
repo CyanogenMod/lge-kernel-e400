@@ -71,7 +71,7 @@
 #define DEFAULT_BRIGHTNESS 0x73 //for 20mA
 
 #define LM3530_MIN_BRIGHTNESS	0x4F
-#define LM3530_DEFAULT_BRIGHTNESS	0x6B
+#define LM3530_DEFAULT_BRIGHTNESS	0x73//for 20mA
 
 #define AAT2862BL_REG_BLS   0x04  /* Register address for Main BL brightness */
 #define AAT2862BL_REG_FADE	0x07  /* Register address for Backlight Fade control */
