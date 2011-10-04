@@ -988,6 +988,7 @@ void* LGF_TestModeWLAN(
         DIAG_TEST_MODE_F_rsp_type	*pRsp)
 {
 	int i;
+	static int first_on_try = 10;
 	test_mode_ret_wifi_ctgry_t wl_category;
 
 	if (diagpdev != NULL)
@@ -1002,9 +1003,13 @@ void* LGF_TestModeWLAN(
 		switch (wl_category) {
 
 			case WLAN_TEST_MODE_CTGRY_ON:
-				//5sec timeout
-				for (i = 0; i< 5; i++)
+				//[10sec timeout] when wifi turns on, it takes about 9seconds to bring up FTM mode.
+				for (i = 0; i< first_on_try ; i++) {
 					msleep(1000);
+				}
+				
+				first_on_try = 5;
+
 				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
 				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
 				break;
