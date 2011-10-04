@@ -294,7 +294,7 @@ static DEVICE_ATTR(position, 0444, alps_position_show, NULL);
 static DEVICE_ATTR(x, 0444, alps_x_show, NULL);
 static DEVICE_ATTR(y, 0444, alps_y_show, NULL);
 static DEVICE_ATTR(z, 0444, alps_z_show, NULL);
-static DEVICE_ATTR(enable, 0777, alps_enable_show, alps_enable_store);
+static DEVICE_ATTR(enable, 0664, alps_enable_show, alps_enable_store);
 
 static struct attribute *alps_attributes[] = {
 	&dev_attr_position.attr,
