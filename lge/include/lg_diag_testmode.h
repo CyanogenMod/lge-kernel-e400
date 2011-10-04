@@ -473,7 +473,10 @@ typedef union
     uint32 socket_memory_usedsize;
     unsigned int mem_capa;
     char batt_voltage[5];
-    byte chg_stat;
+  	byte	chg_stat;
+  	//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-04
+  	char	battery_soc[3];
+  	//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-04
     int manual_test;
     test_mode_req_pid_type pid;
     test_mode_req_sw_version_type sw_version;

@@ -437,7 +437,17 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
 
 void* LGF_TestModeBattLevel(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
-#ifdef CONFIG_LGE_BATT_SOC_FOR_NPST
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-03
+
+	DIAG_TEST_MODE_F_req_type req_ptr;
+
+  	req_ptr.sub_cmd_code = TEST_MODE_BATT_LEVEL_TEST;
+  	req_ptr.test_mode_req.batt = pReq->batt;
+
+ 	pRsp->ret_stat_code = TEST_FAIL_S;
+
+//#ifdef CONFIG_LGE_BATT_SOC_FOR_NPST
+#if 0
     int battery_soc = 0;
     extern int max17040_get_battery_capacity_percent(void);
 
@@ -465,6 +475,20 @@ void* LGF_TestModeBattLevel(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
     printk(KERN_ERR "%s, battery_soc : %s\n", __func__, (char *)pRsp->test_mode_rsp.batt_voltage);
 #endif
 
+	send_to_arm9((void*)&req_ptr, (void*)pRsp);
+	//printk(KERN_INFO "%s, result : %s\n", __func__, pRsp->ret_stat_code==TEST_OK_S?"OK":"FALSE");
+
+	if(pRsp->ret_stat_code == TEST_FAIL_S)
+	{
+		printk(KERN_ERR "[Testmode]send_to_arm9 response : %d\n", pRsp->ret_stat_code);
+		pRsp->ret_stat_code = TEST_FAIL_S;
+	}
+	else if(pRsp->ret_stat_code == TEST_OK_S)
+	{
+	  	printk(KERN_ERR "[Testmode]send_to_arm9 response : %d\n", pRsp->ret_stat_code);
+        pRsp->ret_stat_code = TEST_OK_S;
+	}
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-03
     return pRsp;
 }
 
