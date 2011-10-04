@@ -662,7 +662,7 @@ static struct device_attribute gp2ap_device_attrs[] = {
 	__ATTR(show, S_IRUGO | S_IWUSR, gp2ap_status_show, NULL),
 	__ATTR(method, S_IRUGO | S_IWUSR, gp2ap_method_show, gp2ap_method_store),
 	__ATTR(cycle, S_IRUGO | S_IWUSR, gp2ap_cycle_show, gp2ap_cycle_store),
-	__ATTR(enable, S_IRUGO | S_IWUSR, gp2ap_enable_show, gp2ap_enable_store),
+	__ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP, gp2ap_enable_show, gp2ap_enable_store),
 	__ATTR(debounce, S_IRUGO | S_IWUSR, gp2ap_debounce_show, gp2ap_debounce_store),
 	__ATTR(asd, S_IRUGO | S_IWUSR, gp2ap_asd_show, gp2ap_asd_store),
 };
