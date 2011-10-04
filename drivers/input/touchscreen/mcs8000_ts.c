@@ -122,8 +122,8 @@ static void mcs8000_late_resume(struct early_suspend *h);
 /*
  * To confirm the latest FW Version
  */
-#define TS_LATEST_FW_VERSION_A	0x12
-#define TS_LATEST_FW_VERSION_B	0x13
+#define TS_LATEST_FW_VERSION_A	0x16
+#define TS_LATEST_FW_VERSION_B	0x17
 enum {
 	None = 0,
 	TOUCH_SCREEN,

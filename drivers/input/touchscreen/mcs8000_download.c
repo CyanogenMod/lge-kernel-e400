@@ -31,8 +31,8 @@
 //============================================================
 
 //#include "MTH_M3_R10_V11_C01_bin.c"
-#include "MTH_M3_R10_V18(0x12)_C01_bin.c"
-#include "MTH_M3_R12_V19(0x13)_C03_bin.c"
+#include "MTH_M3_R10_V22(0x16)_C01_MTSI_bin.c"
+#include "MTH_M3_R12_V23(0x17)_C03_MTSI_bin.c"
 #if 0
 #include "Master_bin_test.c"
 #include "Slave_bin_test.c"

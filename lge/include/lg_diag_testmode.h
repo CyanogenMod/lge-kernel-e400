@@ -290,6 +290,41 @@ typedef struct {
 }test_mode_req_bt_addr_type;
 
 #define WIFI_MAC_ADDR_CNT 12
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+typedef enum
+{
+  WLAN_TEST_MODE_54G_ON=4,
+  WLAN_TEST_MODE_OFF,
+  WLAN_TEST_MODE_RX_START,
+  WLAN_TEST_MODE_RX_RESULT=9,
+  WLAN_TEST_MODE_TX_START=10,
+  WLAN_TEST_MODE_TXRX_STOP=13,
+  WLAN_TEST_MODE_LF_RX_START=31,
+  WLAN_TEST_MODE_MF_TX_START=44,
+  WLAN_TEST_MODE_11B_ON=57,
+  WLAN_TEST_MODE_11N_MIXED_LONG_GI_ON=69,
+  WLAN_TEST_MODE_11N_MIXED_SHORT_GI_ON=77,
+  WLAN_TEST_MODE_11N_GREEN_LONG_GI_ON=85,
+  WLAN_TEST_MODE_11N_GREEN_SHORT_GI_ON=93,
+  WLAN_TEST_MODE_11A_CH_RX_START=101, // not support
+  WLAN_TEST_MODE_11BG_CH_TX_START=128,
+  WLAN_TEST_MODE_11A_ON=155,
+  WLAN_TEST_MODE_11AN_MIXED_LONG_GI_ON=163,
+  WLAN_TEST_MODE_MAX=195,
+}test_mode_req_wifi_type;
+
+typedef enum
+{
+  WLAN_TEST_MODE_CTGRY_ON,
+  WLAN_TEST_MODE_CTGRY_OFF,
+  WLAN_TEST_MODE_CTGRY_RX_START,
+  WLAN_TEST_MODE_CTGRY_RX_STOP,
+  WLAN_TEST_MODE_CTGRY_TX_START,
+  WLAN_TEST_MODE_CTGRY_TX_STOP,
+  WLAN_TEST_MODE_CTGRY_NOT_SUPPORTED,
+} test_mode_ret_wifi_ctgry_t;
+
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
 
 typedef enum
 {
@@ -314,6 +349,15 @@ typedef enum
 }test_mode_req_fota_id_check_type;
 
 /* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+typedef enum
+{
+  LCD_INITIAL=0,
+  LCD_TILT=2,
+  LCD_COLOR,
+  LCD_ON,
+  LCD_OFF
+}test_mode_req_lcd_type;
+
 typedef enum
 {
   MOTOR_OFF,
@@ -419,11 +463,15 @@ typedef union
 	test_mode_req_bt_type bt;
 	// +e LG_BTUI_DIAGCMD_DUTMODE
     test_mode_req_bt_addr_type bt_ad;
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+    test_mode_req_wifi_type wifi;
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]	
     test_mode_req_wifi_addr_type wifi_mac_ad;
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;
     test_mode_req_fota_id_check_type fota_id_check;
 
 	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+    test_mode_req_lcd_type lcd;
     test_mode_req_motor_type motor;
     test_mode_req_acoustic_type acoustic;
     test_mode_req_cam_type camera;
@@ -460,6 +508,14 @@ typedef struct
     uint16 MeasuredCNo;
 } PACKED CGPSResultType;
 
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+typedef struct
+{
+	int packet;
+	int per;
+} PACKED WlRxResults;
+// LGE_CHANGE_E, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+
 /* BEGIN: 0014654 jihoon.lee@lge.com 20110124 */
 /* MOD 0014654: [TESTMODE] SYNC UP TESTMODE PACKET STRUCTURE TO KERNEL */
 typedef union
@@ -480,6 +536,10 @@ typedef union
     byte hkadc_value;
     byte uim_state;
     byte vco_value;
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
+    byte wlan_status;
+    WlRxResults wlan_rx_results;
+// LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]
     test_mode_req_cal_check_type cal_check;
     test_mode_req_factory_reset_mode_type factory_reset;
     test_mode_req_test_script_mode_type test_mode_test_scr_mode;
@@ -488,6 +548,7 @@ typedef union
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;
 	
 	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
+    test_mode_req_lcd_type lcd;
     test_mode_req_motor_type motor;
     test_mode_req_acoustic_type acoustic;
     test_mode_req_cam_type camera;
@@ -512,7 +573,7 @@ typedef struct DIAG_TEST_MODE_F_rsp_tag {
 typedef enum
 {
     TEST_MODE_VERSION=0,
-    TEST_MODE_LCD,
+    TEST_MODE_LCD=1,
     TEST_MODE_MOTOR=3,
     TEST_MODE_ACOUSTIC,
     TEST_MODE_CAM=7,
