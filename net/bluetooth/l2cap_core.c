@@ -4514,6 +4514,7 @@ static inline int l2cap_create_channel_req(struct l2cap_conn *conn,
 	sk = l2cap_create_connect(conn, cmd, data, L2CAP_CREATE_CHAN_RSP,
 					req->amp_id);
 
+//QCT 1097 pactch 2011.10.05 
 	// *s QCT_BT_PATCH_CERT_L2CAP suhui.kim@lge.com 110928, fix L2CAP issues for AMP (TP/MCH/BV-14-C, TP/CCH/BV-04-C)
 	/* QCT1095 Original
 	l2cap_pi(sk)->conf_state |= L2CAP_CONF_LOCKSTEP;
@@ -4762,6 +4763,7 @@ static inline int l2cap_move_channel_rsp(struct l2cap_conn *conn,
 				l2cap_amp_move_revert(sk);
 				pi->amp_move_role = L2CAP_AMP_MOVE_NONE;
 			}
+
 		// -s QCT_BT_PATCH_CERT_L2CAP suhui.kim@lge.com 110928, fix L2CAP issues for AMP (TP/MCH/BV-14-C, TP/CCH/BV-04-C)
 		/* QCT1095 Original
 		} else {
@@ -4769,9 +4771,7 @@ static inline int l2cap_move_channel_rsp(struct l2cap_conn *conn,
 			// ignored.
 			//
 			pi->amp_move_state = L2CAP_AMP_STATE_STABLE;
-		*/
-		// -e QCT_BT_PATCH_CERT_L2CAP
-		}
+		*/		}
 
 		l2cap_send_move_chan_cfm(conn, pi, pi->scid,
 					L2CAP_MOVE_CHAN_UNCONFIRMED);
@@ -7145,8 +7145,6 @@ static int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 fl
 
 	if (flags & ACL_START) {
 		struct l2cap_hdr *hdr;
-		struct sock *sk;
-		u16 cid;
 		int len;
 
 		if (conn->rx_len) {
@@ -7166,7 +7164,6 @@ static int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 fl
 
 		hdr = (struct l2cap_hdr *) skb->data;
 		len = __le16_to_cpu(hdr->len) + L2CAP_HDR_SIZE;
-		cid = __le16_to_cpu(hdr->cid);
 
 		if (len == skb->len) {
 			/* Complete frame received */
@@ -7191,26 +7188,13 @@ static int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 fl
 			goto drop;
 		}
 
-		sk = l2cap_get_chan_by_scid(&conn->chan_list, cid);
-
-		if (sk && l2cap_pi(sk)->imtu < len - L2CAP_HDR_SIZE) {
-			BT_ERR("Frame exceeding recv MTU (len %d, MTU %d)",
-					len, l2cap_pi(sk)->imtu);
-			bh_unlock_sock(sk);
-			l2cap_conn_unreliable(conn, ECOMM);
-			goto drop;
-		}
-
-		if (sk)
-			bh_unlock_sock(sk);
-
 		/* Allocate skb for the complete frame (with header) */
 		conn->rx_skb = bt_skb_alloc(len, GFP_ATOMIC);
 		if (!conn->rx_skb)
 			goto drop;
 
 		skb_copy_from_linear_data(skb, skb_put(conn->rx_skb, skb->len),
-								skb->len);
+							skb->len);
 		conn->rx_len = len - skb->len;
 	} else {
 		BT_DBG("Cont: frag len %d (expecting %d)", skb->len, conn->rx_len);
