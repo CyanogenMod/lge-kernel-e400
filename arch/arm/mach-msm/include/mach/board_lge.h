@@ -74,6 +74,18 @@ struct touch_platform_data {
 };
 #endif
 
+#if defined(CONFIG_TOUCHSCREEN_MELFAS_TS)
+struct touch_platform_data {
+	int ts_x_min;
+	int ts_x_max;
+	int ts_y_min;
+	int ts_y_max;
+	int (*power)(unsigned char onoff);
+	int irq;
+	int scl;
+	int sda;
+};
+#endif
 #if defined(CONFIG_TOUCHSCREEN_MXT140)
 struct touch_platform_data {
 	int ts_x_min;
