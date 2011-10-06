@@ -1046,7 +1046,7 @@ void* LGF_TestModeWLAN(
 				break;
 
 			case WLAN_TEST_MODE_CTGRY_RX_START:
-				for (i = 0; i< 1; i++)
+				for (i = 0; i< 2; i++)
 					msleep(1000);
 				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
 				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
@@ -1082,14 +1082,14 @@ void* LGF_TestModeWLAN(
 			}
 
 			case WLAN_TEST_MODE_CTGRY_TX_START:
-				for (i = 0; i< 1; i++)
+				for (i = 0; i< 2; i++)
 					msleep(1000);
 				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
 				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
 				break;
 
 			case WLAN_TEST_MODE_CTGRY_TX_STOP:
-				for (i = 0; i< 1; i++)
+				for (i = 0; i< 2; i++)
 					msleep(1000);
 				pRsp->ret_stat_code = wifi_get_test_results(wl_category);
 				pRsp->test_mode_rsp.wlan_status = !(pRsp->ret_stat_code);
