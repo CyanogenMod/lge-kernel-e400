@@ -4514,19 +4514,11 @@ static inline int l2cap_create_channel_req(struct l2cap_conn *conn,
 	sk = l2cap_create_connect(conn, cmd, data, L2CAP_CREATE_CHAN_RSP,
 					req->amp_id);
 
-//QCT 1097 pactch 2011.10.05 
-	// *s QCT_BT_PATCH_CERT_L2CAP suhui.kim@lge.com 110928, fix L2CAP issues for AMP (TP/MCH/BV-14-C, TP/CCH/BV-04-C)
-	/* QCT1095 Original
-	l2cap_pi(sk)->conf_state |= L2CAP_CONF_LOCKSTEP;
-
-	if (sk && req->amp_id)
-	*/
-	if (sk)  
+	if (sk)
 		l2cap_pi(sk)->conf_state |= L2CAP_CONF_LOCKSTEP;
-		
-	if (sk && req->amp_id &&  
-		(conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_DONE))
-	// *e QCT_BT_PATCH_CERT_L2CAP
+
+	if (sk && req->amp_id &&
+			(conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_DONE))
 		amp_accept_physical(conn, req->amp_id, sk);
 
 	return 0;
@@ -4763,15 +4755,7 @@ static inline int l2cap_move_channel_rsp(struct l2cap_conn *conn,
 				l2cap_amp_move_revert(sk);
 				pi->amp_move_role = L2CAP_AMP_MOVE_NONE;
 			}
-
-		// -s QCT_BT_PATCH_CERT_L2CAP suhui.kim@lge.com 110928, fix L2CAP issues for AMP (TP/MCH/BV-14-C, TP/CCH/BV-04-C)
-		/* QCT1095 Original
-		} else {
-			// State is STABLE so the confirm response is
-			// ignored.
-			//
-			pi->amp_move_state = L2CAP_AMP_STATE_STABLE;
-		*/		}
+		}
 
 		l2cap_send_move_chan_cfm(conn, pi, pi->scid,
 					L2CAP_MOVE_CHAN_UNCONFIRMED);
@@ -7194,7 +7178,7 @@ static int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 fl
 			goto drop;
 
 		skb_copy_from_linear_data(skb, skb_put(conn->rx_skb, skb->len),
-							skb->len);
+								skb->len);
 		conn->rx_len = len - skb->len;
 	} else {
 		BT_DBG("Cont: frag len %d (expecting %d)", skb->len, conn->rx_len);
