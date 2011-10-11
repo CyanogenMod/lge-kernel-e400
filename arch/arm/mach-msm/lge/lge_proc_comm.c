@@ -247,4 +247,25 @@ unsigned lge_get_nv_qem(void)
 	return ret;
 }
 EXPORT_SYMBOL(lge_get_nv_qem);
+
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
+unsigned lge_get_batt_id(void)
+{
+	int err;
+	unsigned ret = 0;
+	unsigned cmd = 0x4;
+	
+	err = msm_proc_comm(PCOM_CUSTOMER_CMD2, &ret, &cmd);
+	if (err < 0) {
+		pr_err("%s: msm_proc_comm(PCOM_CUSTOMER_CMD2) failed. cmd(%d)\n",
+		       __func__, cmd);
+		return err;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(lge_get_batt_id);
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
+
+
 #endif
