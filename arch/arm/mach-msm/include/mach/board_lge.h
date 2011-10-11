@@ -272,6 +272,9 @@ unsigned lge_get_chg_stat_reg(void);
 unsigned lge_get_chg_en_reg(void);
 unsigned lge_set_elt_test(void);
 unsigned lge_clear_elt_test(void);
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
+unsigned lge_get_batt_id(void);
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
 #endif
 //LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
 
