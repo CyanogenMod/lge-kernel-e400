@@ -187,6 +187,8 @@ static int m3mpcs_gpio_earsense_work_func(int *value)
 	int state;
 	int gpio_value;
 
+	msleep(50);
+	
 	gpio_value = !gpio_get_value(GPIO_EAR_SENSE);
 	printk(KERN_INFO "%s: ear sense detected : %s\n", __func__,
 		gpio_value ? "injected" : "ejected");
