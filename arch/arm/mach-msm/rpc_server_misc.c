@@ -706,6 +706,11 @@ static int  dsatHandleAT_ARM11(uint32_t at_cmd, uint32_t at_act, uint32_t at_par
 			ret_value2 = 20;
 		}
 		break;
+		/* LGE_CHANGE_S, M3, myunghwan.kim, 2011-10-11 */
+		case ATCMD_QEM:
+			update_atcmd_state(atpdev, "qem", at_param);
+		break;
+		/* LGE_CHANGE_E, M3, myunghwan.kim, 2011-10-11 */
 #if defined(LGE_MODEL_M3_EU) || defined(LGE_MODEL_M3_MPCS) 	
 		/* LGE_CHANGE_S, M3, jungsoo.shim@lge.com, 2011-07-28, For ADBON command */
 		case ATCMD_ADBON:
