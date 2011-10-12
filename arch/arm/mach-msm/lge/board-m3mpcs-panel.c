@@ -205,90 +205,12 @@ static int mipi_dsi_panel_power(int on)
 			Isfirstbootend = 1;
 		}
 		mdelay(10);
-
-        // daewon.seo@lge.com 20111009 power on sum_pm_en & lcd_bl_en
-        {
-            #define GPIO_SUM_PM_EN 23
-            rc = gpio_request(GPIO_SUM_PM_EN, "sub_pm_en");
-            if (rc) {
-                pr_err("%s: gpio_request GPIO_SUM_PM_EN failed\n", __func__);
-            }
-		    rc = gpio_tlmm_config(GPIO_CFG(GPIO_SUM_PM_EN, 0, GPIO_CFG_OUTPUT,
-				    GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		    if (rc) {
-			    printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
-					    __func__, rc);
-		    }
-		    rc = gpio_direction_output(GPIO_SUM_PM_EN, 1);
-		    if (rc) {
-			    pr_err("%s: gpio_direction_output failed for sub_pm_en\n", __func__);
-		    }            
-			gpio_set_value(GPIO_SUM_PM_EN, 1);  
-            gpio_free(GPIO_SUM_PM_EN);
-
-            #define GPIO_LCD_BL_EN 124                    
-            rc = gpio_request(GPIO_LCD_BL_EN, "lcd_bl_en");
-            if (rc) {
-                pr_err("%s: gpio_request GPIO_LCD_BL_EN failed\n", __func__);
-            }
-		    rc = gpio_tlmm_config(GPIO_CFG(GPIO_LCD_BL_EN, 0, GPIO_CFG_OUTPUT,
-				    GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		    if (rc) {
-			    printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
-					    __func__, rc);
-		    }
-		    rc = gpio_direction_output(GPIO_LCD_BL_EN, 1);
-		    if (rc) {
-			    pr_err("%s: gpio_direction_output failed for lcd_bl_en\n", __func__);
-		    }            
-			gpio_set_value(GPIO_LCD_BL_EN, 1);   
-            gpio_free(GPIO_LCD_BL_EN);            
-        }        
 	} else {
 		rc = vreg_disable(vreg_mipi_dsi_v28);
 		if (rc) {
 			pr_err("%s: vreg_disable failed for mipi_dsi_v28\n", __func__);
 			goto vreg_put_dsi_v28;
 		}
-
-        // daewon.seo@lge.com 20111009 power off sum_pm_en & lcd_bl_en
-        {
-            #define GPIO_SUM_PM_EN 23
-            rc = gpio_request(GPIO_SUM_PM_EN, "sub_pm_en");
-            if (rc) {
-                pr_err("%s: gpio_request GPIO_SUM_PM_EN failed\n", __func__);
-            }
-		    rc = gpio_tlmm_config(GPIO_CFG(GPIO_SUM_PM_EN, 0, GPIO_CFG_OUTPUT,
-				    GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		    if (rc) {
-			    printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
-					    __func__, rc);
-		    }
-		    rc = gpio_direction_output(GPIO_SUM_PM_EN, 1);
-		    if (rc) {
-			    pr_err("%s: gpio_direction_output failed for sub_pm_en\n", __func__);
-		    }            
-			gpio_set_value(GPIO_SUM_PM_EN, 0);  
-            gpio_free(GPIO_SUM_PM_EN);
-
-            #define GPIO_LCD_BL_EN 124                    
-            rc = gpio_request(GPIO_LCD_BL_EN, "lcd_bl_en");
-            if (rc) {
-                pr_err("%s: gpio_request GPIO_LCD_BL_EN failed\n", __func__);
-            }
-		    rc = gpio_tlmm_config(GPIO_CFG(GPIO_LCD_BL_EN, 0, GPIO_CFG_OUTPUT,
-				    GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		    if (rc) {
-			    printk(KERN_ERR "%s: Failed to configure GPIO %d\n",
-					    __func__, rc);
-		    }
-		    rc = gpio_direction_output(GPIO_LCD_BL_EN, 1);
-		    if (rc) {
-			    pr_err("%s: gpio_direction_output failed for lcd_bl_en\n", __func__);
-		    }            
-			gpio_set_value(GPIO_LCD_BL_EN, 0);   
-            gpio_free(GPIO_LCD_BL_EN);            
-        }
 	}
 
 vreg_put_dsi_v28:
