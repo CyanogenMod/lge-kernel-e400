@@ -187,7 +187,7 @@ static int m3mpcs_gpio_earsense_work_func(int *value)
 	int state;
 	int gpio_value;
 
-	msleep(50);
+	msleep(100);
 	
 	gpio_value = !gpio_get_value(GPIO_EAR_SENSE);
 	printk(KERN_INFO "%s: ear sense detected : %s\n", __func__,
@@ -200,7 +200,7 @@ static int m3mpcs_gpio_earsense_work_func(int *value)
 	} else {
 		state = EAR_STATE_INJECT;
 
-		msleep(100);
+		msleep(50);
 
 		if (lge_bd_rev >= LGE_REV_B)
 			gpio_value = !gpio_get_value(hook_key_gpios[lge_bd_rev]);
