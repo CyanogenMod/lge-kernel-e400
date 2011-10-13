@@ -70,7 +70,8 @@
 //#define DEFAULT_BRIGHTNESS 0x6B //for 26mA
 #define DEFAULT_BRIGHTNESS 0x73 //for 20mA
 
-#define LM3530_MIN_BRIGHTNESS	0x4F
+#define LM3530_BAR_MIN_BRIGHTNESS   0x50//in brightness bar of settings
+#define LM3530_MIN_BRIGHTNESS	0x57//0x4F
 #define LM3530_DEFAULT_BRIGHTNESS	0x73//for 20mA
 
 #define AAT2862BL_REG_BLS   0x04  /* Register address for Main BL brightness */
@@ -658,26 +659,41 @@ static void leds_brightness_set(struct led_classdev *led_cdev, enum led_brightne
 	}
 
 	brightness = lm3530_get_intensity(drvdata);
-
+	
+//	printk("input brightness before tuning value=%d]\n", value);
 //	next = value * drvdata->max_intensity / LED_FULL;
 
 	if (value <= 56)
 	{
+//		next = value * LM3530_MIN_BRIGHTNESS / 56;
+ 		if(value>=30)	// in brightness bar, min value is 30..
+		{
+		next = (value -30) * ( LM3530_MIN_BRIGHTNESS-LM3530_BAR_MIN_BRIGHTNESS) / (56-30) + LM3530_BAR_MIN_BRIGHTNESS;
+		//printk("input brightness in tuning value<=56 next=%d, value=%d]\n", next, value);
+		}
+		else
+		{
 		next = value * LM3530_MIN_BRIGHTNESS / 56;
+		//printk("input brightness in tuning value<=56 next=%d, value=%d]\n", next, value);
+		}		
 	}
 	else if(value > 56 && value <= 102)
 	{
 		next = (value - 56) * (LM3530_DEFAULT_BRIGHTNESS - LM3530_MIN_BRIGHTNESS) / (102 - 56) + LM3530_MIN_BRIGHTNESS;
+		//printk("input brightness in tuning 56~102 next=%d, value=%d]\n", next, value);
 	}
 	else if(value >102)
 	{
 		next = (value - 102) * (drvdata->max_intensity - LM3530_DEFAULT_BRIGHTNESS) / (LED_FULL - 102) + LM3530_DEFAULT_BRIGHTNESS;
+		//printk("input brightness in tuning value>102 next=%d, value=%d]\n", next, value);
 	}
 
 	dprintk("input brightness value=%d]\n", next);
+	//	printk("input brightness after tuning next=%d]\n", next);
 
 	if (brightness != next) {
 		dprintk("brightness[current=%d, next=%d]\n", brightness, next);
+		//printk("brightness[current=%d, next=%d]\n", brightness, next);
 		lm3530_send_intensity(drvdata, next);
 	}
 }
