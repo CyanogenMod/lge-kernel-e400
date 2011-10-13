@@ -23,6 +23,8 @@ extern int accsns_get_acceleration_data(int *xyz);
 extern int hscd_get_magnetic_field_data(int *xyz);
 extern void hscd_activate(int flgatm, int flg, int dtime);
 extern void accsns_activate(int flgatm, int flg);
+extern int hscd_self_test_A(void);
+extern int hscd_self_test_B(void);
 
 static DEFINE_MUTEX(alps_lock);
 
@@ -49,7 +51,7 @@ static struct input_polled_dev *alps_idev;
 
 #define POLL_STOP_TIME		400	/* (msec) */
 
-static int flgM, flgA = 0;
+static int flgM = 0, flgA = 0;
 static int delay = 200;
 static int poll_stop_cnt = 0;
 
@@ -58,7 +60,8 @@ static int poll_stop_cnt = 0;
 
 /* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
    replace unlocked ioctl - from kernel 2.6.36.x */
-static long alps_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+//static int alps_ioctl(struct inode* inode, struct file* filp, unsigned int cmd, unsigned long arg)
+static long alps_ioctl(struct file* filp, unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	int ret = -1, tmpval;
@@ -123,6 +126,38 @@ static long alps_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #ifdef ALPS_DEBUG
 		printk("     delay = %d\n", delay);
 #endif
+		break;
+
+	case ALPSIO_ACT_SELF_TEST_A:
+#ifdef ALPS_DEBUG
+	   	printk("alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_A)\n");
+#endif
+        mutex_lock(&alps_lock);
+        ret = hscd_self_test_A();
+	    mutex_unlock(&alps_lock);
+#ifdef ALPS_DEBUG
+        printk("[HSCD] Self test-A result : %d\n", ret);
+#endif
+        if (copy_to_user(argp, &ret, sizeof(ret))) {
+			printk( "error : alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_A)\n" );
+			return -EFAULT;
+        }
+		break;
+
+	case ALPSIO_ACT_SELF_TEST_B:
+#ifdef ALPS_DEBUG
+	   	printk("alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_B)\n");
+#endif
+        mutex_lock(&alps_lock);
+        ret = hscd_self_test_B();
+	    mutex_unlock(&alps_lock);
+#ifdef ALPS_DEBUG
+        printk("[HSCD] Self test-B result : %d\n", ret);
+#endif
+        if (copy_to_user(argp, &ret, sizeof(ret))) {
+			printk( "error : alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_B)\n" );
+			return -EFAULT;
+        }
 		break;
 
 	default:
