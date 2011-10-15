@@ -50,7 +50,7 @@
 #define TS_READ_REGS_LEN 		66
 #define MELFAS_MAX_TOUCH		5
 
-#define DEBUG_PRINT 			1
+#define DEBUG_PRINT 			0
 
 #define SET_DOWNLOAD_BY_GPIO	1
 
@@ -96,13 +96,6 @@ static void melfas_ts_late_resume(struct early_suspend *h);
 static struct muti_touch_info g_Mtouch_info[MELFAS_MAX_TOUCH];
 unsigned char ex_fw_ver;
 
-static struct input_dev *ats_input_dev=NULL;
-
-struct input_dev *get_ats_input_dev(void)
-{
-	return ats_input_dev;
-}
-EXPORT_SYMBOL(get_ats_input_dev);
 
 void Send_Touch(unsigned int x, unsigned int y)
 {
@@ -192,7 +185,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	ret = i2c_master_send(ts->client, buf, 1);
 	if(ret < 0){
 #if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func1: i2c failed\n");
+		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
 		enable_irq(ts->client->irq);
 		return ;	
 #endif 
@@ -201,7 +194,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	ret = i2c_master_recv(ts->client, buf, 1);
 	if(ret < 0){
 #if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func2: i2c failed\n");
+		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
 		enable_irq(ts->client->irq);
 		return ;	
 #endif 
@@ -215,7 +208,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 		ret = i2c_master_send(ts->client, buf, 1);
 		if(ret < 0){
 #if DEBUG_PRINT
-			printk(KERN_ERR "melfas_ts_work_func3: i2c failed\n");
+			printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
 			enable_irq(ts->client->irq);
 			return ;	
 #endif 
@@ -223,7 +216,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 		ret = i2c_master_recv(ts->client, buf, read_num);
 		if(ret < 0){
 #if DEBUG_PRINT
-			printk(KERN_ERR "melfas_ts_work_func4: i2c failed\n");
+			printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
 			enable_irq(ts->client->irq);
 			return ;	
 #endif 
@@ -246,7 +239,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	}
 
 	if (ret < 0){
-		printk(KERN_ERR "melfas_ts_work_func5: i2c failed\n");
+		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
 		enable_irq(ts->client->irq);
 		return ;	
 	}
@@ -410,7 +403,6 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	input_set_abs_params(ts->input_dev, ABS_MT_TRACKING_ID, 0, MELFAS_MAX_TOUCH-1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, TS_MAX_W_TOUCH, 0, 0);
 
-	ats_input_dev=ts->input_dev;
 	ret = input_register_device(ts->input_dev);
 	if (ret){
         printk(KERN_ERR "melfas_ts_probe: Failed to register device\n");
@@ -463,11 +455,6 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 #elif defined(CONFIG_MACH_MSM7X27A_M3MPCS)
 	if (fw_ver !=TS_LATEST_FW_VERSION_A && fw_ver !=TS_LATEST_FW_VERSION_B) {
 		mcsdl_download_binary_data(1, 1,hw_ver,comp_ver);
-	}
-#else 	
-	mcsdl_download_binary_data(1, 1,hw_ver,0x00);
-#endif
-	 
 	} 
 #else 	
 	mcsdl_download_binary_data(1, 1,hw_ver,0x00);
