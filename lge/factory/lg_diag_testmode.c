@@ -1434,6 +1434,16 @@ void* LGF_TestAcoustic(
 byte key_buf[MAX_KEY_BUFF_SIZE];
 int count_key_buf = 0;
 
+boolean lgf_factor_key_test_rsp (char key_code)
+{
+	/* sanity check */
+	if (count_key_buf>=MAX_KEY_BUFF_SIZE)
+		return FALSE;
+
+	key_buf[count_key_buf++] = key_code;
+	return TRUE;
+}
+EXPORT_SYMBOL(lgf_factor_key_test_rsp);
 void* LGT_TestModeKeyTest(test_mode_req_type* pReq, DIAG_TEST_MODE_F_rsp_type *pRsp)
 {
   pRsp->ret_stat_code = TEST_OK_S;
@@ -1441,13 +1451,13 @@ void* LGT_TestModeKeyTest(test_mode_req_type* pReq, DIAG_TEST_MODE_F_rsp_type *p
   if(pReq->key_test_start){
 	memset((void *)key_buf,0x00,MAX_KEY_BUFF_SIZE);
 	count_key_buf=0;
-//	diag_event_log_start();
+	diag_event_log_start();
   }
   else
   {
 	memcpy((void *)((DIAG_TEST_MODE_KEY_F_rsp_type *)pRsp)->key_pressed_buf, (void *)key_buf, MAX_KEY_BUFF_SIZE);
 	memset((void *)key_buf,0x00,MAX_KEY_BUFF_SIZE);
-//	diag_event_log_end();
+	diag_event_log_end();
   }  
   return pRsp;
 }
