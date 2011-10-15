@@ -220,10 +220,12 @@ static void __init msm7x2x_init(void)
 
 	// START : wooyul.kim@lge.com 2011-09-14 m3dviv for REV A
 	if (lge_get_uart_mode()) {
-		if (lge_bd_rev >= LGE_REV_B)
-			platform_device_register(&msm_device_uart1);
-		else
+// START: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A Uart changed
+		if (lge_bd_rev == EVB) // [M3D]  For EVB Uart , M3DVIV, M3DOPEN
 			platform_device_register(&msm_device_uart3);
+		else
+			platform_device_register(&msm_device_uart1);
+// END: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A Uart changed
 	}
 	// END : wooyul.kim@lge.com 2011-09-14
 	
