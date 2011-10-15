@@ -36,7 +36,8 @@
 static int fm_enable;
 #endif
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
+#if 0 //tamedwolph unnecessary
+//#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
 extern int headset_state;
 #endif
 
@@ -253,7 +254,9 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
+#if 0 //tamedwolph unnecessary
+
+//#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
 		if (headset_state == SW_HEADPHONE_INSERT) {
 			if (dev.device == 21)
 				dev.device = 22;

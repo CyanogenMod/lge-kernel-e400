@@ -172,13 +172,17 @@ enum {
 	EAR_INJECT = 1,
 };
 
+#if 0 //tamedwolph unnecessary
 int headset_state;
+#endif
 
 static int m3eu_gpio_earsense_work_func(int *value)
 {
 	int state;
 	int gpio_value;
 
+	msleep(100);
+	
 	gpio_value = !gpio_get_value(GPIO_EAR_SENSE);
 	printk(KERN_INFO "%s: ear sense detected : %s\n", __func__,
 		gpio_value ? "injected" : "ejected");
@@ -190,7 +194,7 @@ static int m3eu_gpio_earsense_work_func(int *value)
 		snd_fm_vol_mute();
 	} else {
 		state = EAR_STATE_INJECT;
-		msleep(100);
+		msleep(50);
 		gpio_value = !gpio_get_value(GPIO_BUTTON_DETECT);
 		if (gpio_value) {
 			printk(KERN_INFO "headphone was inserted!\n");
@@ -201,8 +205,9 @@ static int m3eu_gpio_earsense_work_func(int *value)
 			gpio_set_value(GPIO_MIC_MODE, 1);
 		}
 	}
-
+#if 0 //tamedwolph unnecessary
 	headset_state = *value;
+#endif
 
 	return state;
 }
@@ -320,9 +325,9 @@ static struct platform_device *m3eu_sound_devices[] __initdata = {
 void __init lge_add_sound_devices(void)
 {
 	int rc;
-
+#if 0 //tamedwolph unnecessary
 	headset_state = 0;
-
+#endif
 	rc = gpio_request(GPIO_MIC_MODE, "mic_en");
 	if (rc) {
 		printk(KERN_ERR "%d gpio request is failed\n", GPIO_MIC_MODE);

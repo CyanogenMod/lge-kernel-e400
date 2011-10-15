@@ -180,8 +180,9 @@ static unsigned hook_key_gpios[] = {
 	GPIO_BUTTON_DETECT_REV_B,
 };
 
+#if 0 //tamedwolph unnecessary
 int headset_state;
-
+#endif
 static int m3mpcs_gpio_earsense_work_func(int *value)
 {
 	int state;
@@ -217,8 +218,9 @@ static int m3mpcs_gpio_earsense_work_func(int *value)
 		}
 	}
 
+#if 0 //tamedwolph unnecessary
 	headset_state = *value;
-
+#endif
 	return state;
 }
 
@@ -340,7 +342,9 @@ void __init lge_add_sound_devices(void)
 {
 	int rc;
 
+#if 0 //tamedwolph unnecessary
 	headset_state = 0;
+#endif
 
 	rc = gpio_request(GPIO_MIC_MODE, "mic_en");
 	if (rc) {
