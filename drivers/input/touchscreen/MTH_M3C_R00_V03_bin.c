@@ -1,8 +1,8 @@
 // MELFAS HEX to C converter v1.6 [2008.05.25]
 
-const UINT16 MELFAS_binary_nLength1 = 0x79F0;			// 30.5 KBytes ( 31216 Bytes ) 
+const UINT16 MELFAS_binary_nLength3 = 0x79F0;			// 30.5 KBytes ( 31216 Bytes ) 
 
-const  UINT8 MELFAS_binary1[] = {
+const  UINT8 MELFAS_binary3[] = {
 
 	// Model name       : K
 	// Module revision  : K

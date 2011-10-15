@@ -46,7 +46,7 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x19
+#define TS_LATEST_FW_VERSION_B	0x1d //0x1b
 #define TS_READ_REGS_LEN 		66
 #define MELFAS_MAX_TOUCH		5
 
@@ -468,6 +468,10 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	mcsdl_download_binary_data(1, 1,hw_ver,0x00);
 #endif
 	 
+	} 
+#else 	
+	mcsdl_download_binary_data(1, 1,hw_ver,0x00);
+#endif
 #endif // SET_DOWNLOAD_BY_GPIO
 	
 	enable_irq(ts->num_irq);
