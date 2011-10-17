@@ -1755,18 +1755,7 @@ static void msm_pm_power_off(void)
 
 static void msm_pm_restart(char str, const char *cmd)
 {
-// [111013 bk.seol@lge.com M3_COMMON] Power On/Off Test workaround [START]
-    if (!strcmp(cmd, "charge_reset"))
-    {
-	    printk(KERN_INFO"%s: msm_rpcrouter - not closed: charge_reset \n", __func__);
-	    //msm_rpcrouter_close();
-    }
-    else
-    {
-	    printk(KERN_INFO"%s: msm_rpcrouter - closed\n", __func__);
-	    msm_rpcrouter_close();
-    }
-// [111013 bk.seol@lge.com M3_COMMON] [END]
+	msm_rpcrouter_close();
 #ifdef CONFIG_LGE_HANDLE_PANIC
 #define CRASH_REBOOT    0x618E1000
 	if (restart_reason == CRASH_REBOOT)
