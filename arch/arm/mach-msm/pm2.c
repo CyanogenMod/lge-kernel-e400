@@ -1758,10 +1758,12 @@ static void msm_pm_restart(char str, const char *cmd)
 // [111017 bk.seol@lge.com M3_COMMON] Power On/Off Test [START]
     int i   = 0;
     for (i=0; i< 50; i++) {
-        msleep(100);        // sleep 100ms x 50
-        printk(KERN_INFO"%s: wait rmt_storage_ioctl %d\n",__func__, rmt_storage_ioctl_1st);
+        if (cmd == NULL)
+            break;
         if (rmt_storage_ioctl_1st == 1)
             break;
+        printk(KERN_INFO"%s: wait rmt_storage_ioctl %d\n",__func__, rmt_storage_ioctl_1st);
+        msleep(100);        // sleep 100ms x 50
         }
 // [111017 bk.seol@lge.com M3_COMMON] [END]
 	msm_rpcrouter_close();
