@@ -218,7 +218,7 @@ ssize_t mipi_r61529_lcd_store_onoff(struct device *dev, struct device_attribute 
 	return count;
 }
 
-DEVICE_ATTR(lcd_onoff, 0664, mipi_r61529_lcd_show_onoff, mipi_r61529_lcd_store_onoff);
+/*DEVICE_ATTR(lcd_onoff, 0664, mipi_r61529_lcd_show_onoff, mipi_r61529_lcd_store_onoff);*/
 
 
 static int __devinit mipi_r61529_lcd_probe(struct platform_device *pdev)
