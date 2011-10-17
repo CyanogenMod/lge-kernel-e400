@@ -137,5 +137,6 @@ extern spinlock_t smem_lock;
 
 
 void smd_diag(void);
+extern uint32_t rmt_storage_ioctl_1st;     // [111017 bk.seol@lge.com M3_COMMON] Power On/Off Test
 
 #endif
