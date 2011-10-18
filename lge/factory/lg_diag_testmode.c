@@ -32,10 +32,10 @@
 #include <linux/mfd/pmic8058.h>
 #include <mach/irqs.h>
 
-#if 1 // M3 use Internal SD, not External SD
+#if 0 // M3 use Internal SD, not External SD
 // m3 use Internal SD, so we dont use this
 #else
-#define PMIC_GPIO_SDC3_DET 22
+#define SYS_GPIO_SD_DET 40
 #endif
 #define PM8058_GPIO_BASE NR_MSM_GPIOS
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio) (pm_gpio + PM8058_GPIO_BASE)
@@ -265,7 +265,7 @@ char external_memory_copy_test(void)
     mm_segment_t old_fs=get_fs();
     set_fs(get_ds());
 
-    if ( (fd = sys_open((const char __user *) "/sdcard/SDTest.txt", O_CREAT | O_RDWR, 0) ) < 0 )
+    if ( (fd = sys_open((const char __user *) "/sdcard/_ExternalSD/SDTest.txt", O_CREAT | O_RDWR, 0) ) < 0 )
     {
         printk(KERN_ERR "[Testmode Memory Test] Can not access SD card\n");
         goto file_fail;
@@ -303,7 +303,7 @@ char external_memory_copy_test(void)
 file_fail:
     sys_close(fd);
     set_fs(old_fs);
-    sys_unlink((const char __user *)"/sdcard/SDTest.txt");
+    sys_unlink((const char __user *)"/sdcard/_ExternalSD/SDTest.txt");
 
     return return_value;
 }
@@ -316,10 +316,11 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
     pRsp->ret_stat_code = TEST_FAIL_S;
 
     // ADD: 0013541: 0014142: [Test_Mode] To remove Internal memory information in External memory test when SD-card is not exist
-#if 1
+#if 0
 // m3 use Internal SD, so we dont use this
 #else
-    if(gpio_get_value(PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC3_DET - 1)))
+//    if(gpio_get_value(PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC3_DET - 1)))
+    if(gpio_get_value(SYS_GPIO_SD_DET)) //dy.lee
     {
         if (pReq->esm == EXTERNAL_SOCKET_MEMORY_CHECK)
         {
@@ -339,7 +340,7 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
             break;
 
         case EXTERNAL_FLASH_MEMORY_SIZE:
-            if (sys_statfs("/sdcard", (struct statfs *)&sf) != 0)
+            if (sys_statfs("/sdcard/_ExternalSD", (struct statfs *)&sf) != 0)
             {
                 printk(KERN_ERR "[Testmode Memory Test] can not get sdcard infomation \n");
                 break;
