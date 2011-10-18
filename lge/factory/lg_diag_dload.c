@@ -144,7 +144,10 @@ void webdload_common_cmd
 	    rsp_ptr->rsp_data.batt_lvl = is_batt_lvl_present();// range 0~10 확인 하고 수정 할것  
 #endif
 */
-	    break;	  
+		// [111018 dong.kim@lge.com M3_ALL] WEB Download[START]
+		rsp_ptr->rsp_data.batt_lvl = 5;
+		// [111018 dong.kim@lge.com M3_ALL] [END]
+		break;	  
 
 	case WEBDLOAD_READ_CNT:
 	    rsp_ptr->rsp_data.webdload_cnt = (word)((status_info_type*)si_page_buffer)->webdload_cnt; 
