@@ -745,9 +745,12 @@ void* LGF_TestModeDBIntegrityCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_r
 }
 
 // LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/09/29
+ #define fota_id_length 15
 void* LGF_TestModeFotaIDCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
 	int fd = -1;
+	int i = 0;
+	char fota_id_read[fota_id_length] = {0,};
 	char *src = (void *)0;	
 	mm_segment_t old_fs=get_fs();
     set_fs(get_ds());
@@ -793,6 +796,52 @@ void* LGF_TestModeFotaIDCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_ty
 				}
 				
                 break;
+				
+            case FOTA_ID_READ:
+                update_diagcmd_state(diagpdev, "FOTAIDREAD", 0);
+                msleep(500);
+
+				if ( (fd = sys_open((const char __user *) "/sys/module/lge_emmc_direct_access/parameters/fota_id_read", O_CREAT | O_RDWR, 0777) ) < 0 )
+			    {
+			    	printk(KERN_ERR "[FOTA_TEST_MODE] Can not open file .\n");
+					pRsp->ret_stat_code = TEST_FAIL_S;
+					goto fota_fail;
+			    }
+				printk(KERN_ERR "[##LMH_TEST] fota_id_check is %s \n", fota_id_read);
+
+				{
+					if (sys_read(fd, (char __user *) fota_id_read, fota_id_length) < 0)
+					{
+						printk(KERN_ERR "[FOTA_TEST_MODE] Can not read file.\n");
+						pRsp->ret_stat_code = TEST_FAIL_S;
+						goto fota_fail;
+					}
+			        if ((memcmp((void*)fota_id_read, "fail", 4)) != 0)	//f is fail, and f is not 0x
+			        {
+
+			        	sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_read");	
+						printk(KERN_ERR "[##LMH_TEST] fota_id_check is %s \n", fota_id_read);
+			       		pRsp->ret_stat_code = TEST_OK_S;
+		
+						for(i=0;i<fota_id_length;i++){
+							pRsp->test_mode_rsp.fota_id[i] = fota_id_read[i];
+							printk(KERN_ERR "[##LMH_TEST] fota_id_check is %d \n", fota_id_read[i]);
+						}
+						printk(KERN_ERR "[##LMH_TEST] TEST_OK \n");	
+						return pRsp; 
+			        }	
+				   
+			        else
+			        {
+						sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_read");	
+			       		pRsp->ret_stat_code = TEST_FAIL_S;
+						printk(KERN_ERR "[##LMH_TEST] TEST_FAIL \n");	
+						return pRsp;
+			        }	
+			        
+				}
+				
+                break;
 
             default:
                 pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
@@ -806,7 +855,8 @@ fota_fail:
 		kfree(src);
 		sys_close(fd);
 		set_fs(old_fs); 
-		sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_check");	
+		sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_check");
+		sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_read");
 
     return pRsp;
 }
@@ -2342,6 +2392,11 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_DB_INTEGRITY_CHECK,          LGF_TestModeDBIntegrityCheck,     ARM11_PROCESSOR},
     {TEST_MODE_NVCRC_CHECK,                 NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_RESET_PRODUCTION,            NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_FOTA_ID_CHECK,               LGF_TestModeFotaIDCheck,          ARM11_PROCESSOR},
+
+// LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
+    {TEST_MODE_FOTA_ID_CHECK,               LGF_TestModeFotaIDCheck,      ARM11_PROCESSOR},
+// LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
+		
+
     {TEST_MODE_XO_CAL_DATA_COPY,            NULL,                             ARM9_PROCESSOR}
 };

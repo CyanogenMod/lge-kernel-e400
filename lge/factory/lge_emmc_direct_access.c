@@ -233,8 +233,15 @@ module_param(db_copy_ready, int, S_IWUSR | S_IRUGO);
 int external_memory_test_diag = 0;
 module_param(external_memory_test_diag, int, S_IWUSR | S_IRUGO);
 
+// LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
 int fota_id_check = 0;
 module_param(fota_id_check, int, S_IWUSR | S_IRUGO);
+
+static char *fota_id_read = "fail";
+module_param(fota_id_read, charp, S_IWUSR | S_IRUGO);
+
+// LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
+
 
 testmode_rsp_from_diag_type integrity_ret;
 static int integrity_ret_write(const char *val, struct kernel_param *kp)
