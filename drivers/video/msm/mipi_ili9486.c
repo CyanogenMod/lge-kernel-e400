@@ -34,48 +34,9 @@ static struct dsi_buf *ili9486_tx_buf_msg;
 static char *ili9486_tmp;
 //#endif
 
-//ili9486
-#define before 0
-#define after 1 //10_17
-/* --------------------configuration------------------*/
-#if before//before init code
-static char config_mem_acc[2] = {0x36, 0x08};
-static char config_pixel_format[2]={0x3A,0x66};
-
-static char config_positive_gamma_cont[16]={0xE0,0x00,0x0A,0x12,0x0C,0x13,0x0A,0x34,0x8C,0x42,0x02,0x01,0x02,0x1B,0x19,0x1F};
-static char config_negativ_gamma_correc[16]={0xE1,0x00,0x26,0x24,0x0C,0x1E,0x0D,0x3D,0x37,0x4B,0x05,0x0D,0x03,0x2D,0x35,0x1F};
-
-static char config_F7[6]={0xF7,0xA9,0x91,0x2D,0x8A,0x4F};
-static char config_F8[3]={0xF8,0x21,0x06};
-static char config_F9[3]={0xF9,0x00,0x08};
 
 
-static char config_vcom[4]={0xC5,0x00,0x4E,0x34};
-
-static char config_power_ctrl_1[3]={0xC0,0x12,0x12};
-static char config_power_ctrl_2[3]={0xC1,0x42,0x06};
-static char config_power_ctrl_3normal[2]={0xC2,0x33};
-
-static char config_display_func[4]={0xB6,0x02,0x22,0x3B};
-static char config_display_inversion_cont[2]={0xB4,0x02};
-
-static char config_frame_rate[3]={0xB1,0xB0,0x11};
-
-static char config_display_inversion_on[1]={0x21};
-
-static char config_read_dispaly_MADCTL[3]={0x0B,0x00,0x00};
-
-
-static char config_sleep_out[1]={0x11};
-static char config_sleep_in[1]={0x10};
-static char config_display_on[1]={0x29};
-static char config_display_off[1]={0x28};
-
-
-static char config_memory_write[1]={0x2C};
-#endif
-
-#if after//10-17 init code
+/* --------------------start configuration---------------------*/
 
 static char config_mem_acc[2] = {0x36, 0x08}; //DCS
 static char config_pixel_format[2]={0x3A,0x66}; //DCS
@@ -95,7 +56,7 @@ static char config_display_func[4]={0xB6,0x02,0x22,0x3B};  //Gen
 static char config_display_inversion_cont[2]={0xB4,0x02}; //Gen
 static char config_frame_rate[3]={0xB1,0xB0,0x11}; //Gen
 static char config_sleep_out[1]={0x11}; //DCS
-//delay 120ms
+
 static char config_display_on[1]={0x29}; //DCS
 
 static char column_address_set[5]={0x2A, 0x00, 0x00, 0x01, 0x3F}; //DCS
@@ -103,90 +64,14 @@ static char page_address_set[5]={0x2B, 0x00, 0x00, 0x01, 0xDF}; //DCS
 
 static char config_memory_write[1]={0x2C}; //DCS
 
-//sleep in
 static char config_display_off[1]={0x28}; //DCS
 static char config_sleep_in[1]={0x10}; //DCS
+/* --------------------end configuration-----------------------*/
 
 
 
+/*----------------------start setting cmd----------------------*/
 
-#endif
-
-/*----------------------setting cmd------------------------*/
-#if before
-static struct dsi_cmd_desc ili9486_init_on_cmds[] = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_mem_acc), config_mem_acc},
-	{DTYPE_DCS_WRITE1, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_pixel_format), config_pixel_format},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_positive_gamma_cont),config_positive_gamma_cont },
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_negativ_gamma_correc),config_negativ_gamma_correc },
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_F7), config_F7},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 1,
-		sizeof(config_F8), config_F8},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_vcom), config_vcom},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-				sizeof(config_power_ctrl_1),config_power_ctrl_1 },
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-				sizeof(config_power_ctrl_2), config_power_ctrl_2},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 1,
-				sizeof(config_power_ctrl_3normal),config_power_ctrl_3normal },
-
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_display_func),config_display_func},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_display_inversion_cont),config_display_inversion_cont },
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_frame_rate),config_frame_rate },
-		
-	{DTYPE_GEN_WRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-			sizeof(config_display_inversion_on), config_display_inversion_on},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-			sizeof(config_read_dispaly_MADCTL), config_read_dispaly_MADCTL},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_F9),config_F9 },
-	//{DTYPE_DCS_WRITE, 1, 0, 0, 120,
-	//	sizeof(config_sleep_out),config_sleep_out },	
-
-	//{DTYPE_DCS_WRITE, 1, 0, 0, 10,
-	//		sizeof(config_display_on), config_display_on},
-			
-	//{DTYPE_GEN_WRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-	//		sizeof(config_memory_write), config_memory_write}	
-};
-
-static struct dsi_cmd_desc ili9486_disp_on_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
-		sizeof(config_display_on), config_display_on}
-};
-
-static struct dsi_cmd_desc ili9486_disp_off_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
-		sizeof(config_display_off),config_display_off },
-	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
-		sizeof(config_sleep_in), config_sleep_in},
-	{DTYPE_DCS_WRITE1, 1, 0, 0, ILI9486_CMD_DELAY,
-		sizeof(config_mem_acc), config_mem_acc},
-	//{DTYPE_DCS_WRITE, 1, 0, 0, 100, sizeof(sleep_low_power_mode), sleep_low_power_mode}
-};
-static struct dsi_cmd_desc ili9486_sleep_out_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 120, 
-		sizeof(config_sleep_out), config_sleep_out}
-};
-
-
-static struct dsi_cmd_desc ili9486_memory_write_cmds[] = {
-	{DTYPE_GEN_WRITE, 1, 0, 0, ILI9486_CMD_DELAY,
-			sizeof(config_memory_write), config_memory_write},
-};
-#endif
-
-#if after
-//start init code
 static struct dsi_cmd_desc ili9486_init_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, ILI9486_CMD_DELAY,
 		sizeof(config_mem_acc), config_mem_acc},
@@ -216,7 +101,6 @@ static struct dsi_cmd_desc ili9486_init_on_cmds[] = {
 		sizeof(config_frame_rate),config_frame_rate}
 };
 
-// in init code, start exit sleep
 static struct dsi_cmd_desc ili9486_sleep_out_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120, 
 		sizeof(config_sleep_out), config_sleep_out}
@@ -226,7 +110,7 @@ static struct dsi_cmd_desc ili9486_disp_on_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
 		sizeof(config_display_on), config_display_on}
 };
-//in init code, end exit sleep
+
 
 static struct dsi_cmd_desc ili9486_column_add_set[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, ILI9486_CMD_DELAY,
@@ -242,9 +126,7 @@ static struct dsi_cmd_desc ili9486_memory_write_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, ILI9486_CMD_DELAY,
 			sizeof(config_memory_write), config_memory_write},
 };
-//end init code
 
-//enter sleep
 static struct dsi_cmd_desc ili9486_disp_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
 		sizeof(config_display_off),config_display_off },
@@ -252,7 +134,9 @@ static struct dsi_cmd_desc ili9486_disp_off_cmds[] = {
 		sizeof(config_sleep_in), config_sleep_in}	
 };
 
-#endif
+/*----------------------end setting cmd----------------------*/
+
+
 static int mipi_ili9486_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
