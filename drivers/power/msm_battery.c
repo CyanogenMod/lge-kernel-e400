@@ -1586,6 +1586,9 @@ static unsigned pif_value;
 
 static ssize_t msm_batt_pif_show(struct device* dev, struct device_attribute* attr, char* buf)
 {
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-20
+	pif_value = lge_get_pif_info();
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-20
 	return sprintf(buf,"%d\n", pif_value);
 }
 
