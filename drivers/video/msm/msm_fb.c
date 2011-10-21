@@ -677,6 +677,9 @@ static void msmfb_early_suspend_early(struct early_suspend *h)
 
 static void msmfb_late_resume_late(struct early_suspend *h)
 {
+    /* to prevent from going resume after suspend, when pan_display function have not been called */
+	if(last_info == NULL)
+ 		return;
 	memset((void *)last_info->screen_base, 0, last_info->fix.smem_len);
 	msm_fb_pan_display(last_var, last_info);
 }
