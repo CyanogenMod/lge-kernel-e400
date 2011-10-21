@@ -245,6 +245,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	}
 	else{
 		if( buf[0] == 0x0f ){
+			release_all_finger(ts);
 			ts->power(0);
 			msleep(100);
 			ts->power(1);
