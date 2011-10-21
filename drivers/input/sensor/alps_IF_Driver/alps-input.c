@@ -55,6 +55,8 @@ static int flgM = 0, flgA = 0;
 static int delay = 200;
 static int poll_stop_cnt = 0;
 
+static char calibration;
+
 /*****************************************************************************/
 /* for I/O Control */
 
@@ -244,11 +246,24 @@ static ssize_t alps_position_show(struct device *dev,
 	mutex_unlock(&alps_lock);
 	return cnt;
 }
+static ssize_t alps_calibration_show(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+    return snprintf(buf, PAGE_SIZE, "%c\n", calibration);
+}
+static ssize_t alps_calibration_store(struct device *dev,\
+struct device_attribute *attr, const char *buf, size_t count)
+{
 
+    sscanf(buf, "%c", &calibration);
+    return 0;
+}
 static DEVICE_ATTR(position, 0444, alps_position_show, NULL);
+static DEVICE_ATTR(calibration, S_IRUGO | S_IWUGO, alps_calibration_show, alps_calibration_store);
 
 static struct attribute *alps_attributes[] = {
 	&dev_attr_position.attr,
+	&dev_attr_calibration.attr,
 	NULL,
 };
 
