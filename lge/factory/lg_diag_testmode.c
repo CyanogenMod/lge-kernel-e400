@@ -1848,7 +1848,9 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
 			send_to_arm9((void*)&req_ptr, (void*)pRsp);
       if(pRsp->ret_stat_code == TEST_OK_S)
 			{
-				printk(KERN_INFO "[Testmode]pRsp->ret_stat_code : TEST_OK_S\n");			
+				printk(KERN_INFO "[Testmode]pRsp->ret_stat_code : TEST_OK_S\n");
+// [111018 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
+				/*
 				if (diagpdev != NULL)
           update_diagcmd_state(diagpdev, "REBOOT", 0);
         else
@@ -1857,6 +1859,8 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
           pRsp->ret_stat_code = TEST_FAIL_S;
           break;
         }
+        */
+// [111018 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
 			}
 			else
 				printk(KERN_INFO "[Testmode]pRsp->ret_stat_code : TEST_FAIL_S\n");			
