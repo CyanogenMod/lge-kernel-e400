@@ -343,9 +343,11 @@ typedef enum {
     XO_FACTORY_CALIBRATION,
 } test_mode_req_XOCalDataBackup_Type;
 
+// LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
 typedef enum
 {
     FOTA_ID_CHECK,
+    FOTA_ID_READ
 }test_mode_req_fota_id_check_type;
 
 /* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
@@ -468,7 +470,12 @@ typedef union
 // LGE_CHANGE_S, real-wifi@lge.com, 20110928, [WLAN TEST MODE]	
     test_mode_req_wifi_addr_type wifi_mac_ad;
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;
+
+// LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
     test_mode_req_fota_id_check_type fota_id_check;
+// LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
+
+
 
 	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
     test_mode_req_lcd_type lcd;
@@ -549,6 +556,9 @@ typedef union
     byte read_bd_addr[BT_ADDR_CNT];
     byte read_wifi_mac_addr[WIFI_MAC_ADDR_CNT];    
     test_mode_req_XOCalDataBackup_Type XOCalDataBackup;
+
+// LGE_UPDATE_FOTA_S M3 hyunbae.jun@lge.com 2011/10/19
+   byte fota_id[15];
 	
 	/* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
     test_mode_req_lcd_type lcd;
@@ -651,7 +661,11 @@ typedef enum
     TEST_MODE_DB_INTEGRITY_CHECK=91,
     TEST_MODE_NVCRC_CHECK = 92,
     TEST_MODE_RESET_PRODUCTION = 96,
+
+// LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
     TEST_MODE_FOTA_ID_CHECK = 98,
+// LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
+
     TEST_MODE_XO_CAL_DATA_COPY=250,
 
     MAX_TEST_MODE_SUBCMD = 0xFFFF

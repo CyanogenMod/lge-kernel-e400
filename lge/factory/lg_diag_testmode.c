@@ -32,10 +32,10 @@
 #include <linux/mfd/pmic8058.h>
 #include <mach/irqs.h>
 
-#if 1 // M3 use Internal SD, not External SD
+#if 0 // M3 use Internal SD, not External SD
 // m3 use Internal SD, so we dont use this
 #else
-#define PMIC_GPIO_SDC3_DET 22
+#define SYS_GPIO_SD_DET 40
 #endif
 #define PM8058_GPIO_BASE NR_MSM_GPIOS
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio) (pm_gpio + PM8058_GPIO_BASE)
@@ -265,7 +265,7 @@ char external_memory_copy_test(void)
     mm_segment_t old_fs=get_fs();
     set_fs(get_ds());
 
-    if ( (fd = sys_open((const char __user *) "/sdcard/SDTest.txt", O_CREAT | O_RDWR, 0) ) < 0 )
+    if ( (fd = sys_open((const char __user *) "/sdcard/_ExternalSD/SDTest.txt", O_CREAT | O_RDWR, 0) ) < 0 )
     {
         printk(KERN_ERR "[Testmode Memory Test] Can not access SD card\n");
         goto file_fail;
@@ -303,7 +303,7 @@ char external_memory_copy_test(void)
 file_fail:
     sys_close(fd);
     set_fs(old_fs);
-    sys_unlink((const char __user *)"/sdcard/SDTest.txt");
+    sys_unlink((const char __user *)"/sdcard/_ExternalSD/SDTest.txt");
 
     return return_value;
 }
@@ -316,10 +316,11 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
     pRsp->ret_stat_code = TEST_FAIL_S;
 
     // ADD: 0013541: 0014142: [Test_Mode] To remove Internal memory information in External memory test when SD-card is not exist
-#if 1
+#if 0
 // m3 use Internal SD, so we dont use this
 #else
-    if(gpio_get_value(PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC3_DET - 1)))
+//    if(gpio_get_value(PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC3_DET - 1)))
+    if(gpio_get_value(SYS_GPIO_SD_DET)) //dy.lee
     {
         if (pReq->esm == EXTERNAL_SOCKET_MEMORY_CHECK)
         {
@@ -339,7 +340,7 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
             break;
 
         case EXTERNAL_FLASH_MEMORY_SIZE:
-            if (sys_statfs("/sdcard", (struct statfs *)&sf) != 0)
+            if (sys_statfs("/sdcard/_ExternalSD", (struct statfs *)&sf) != 0)
             {
                 printk(KERN_ERR "[Testmode Memory Test] can not get sdcard infomation \n");
                 break;
@@ -744,9 +745,12 @@ void* LGF_TestModeDBIntegrityCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_r
 }
 
 // LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/09/29
+ #define fota_id_length 15
 void* LGF_TestModeFotaIDCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
 	int fd = -1;
+	int i = 0;
+	char fota_id_read[fota_id_length] = {0,};
 	char *src = (void *)0;	
 	mm_segment_t old_fs=get_fs();
     set_fs(get_ds());
@@ -792,6 +796,52 @@ void* LGF_TestModeFotaIDCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_ty
 				}
 				
                 break;
+				
+            case FOTA_ID_READ:
+                update_diagcmd_state(diagpdev, "FOTAIDREAD", 0);
+                msleep(500);
+
+				if ( (fd = sys_open((const char __user *) "/sys/module/lge_emmc_direct_access/parameters/fota_id_read", O_CREAT | O_RDWR, 0777) ) < 0 )
+			    {
+			    	printk(KERN_ERR "[FOTA_TEST_MODE] Can not open file .\n");
+					pRsp->ret_stat_code = TEST_FAIL_S;
+					goto fota_fail;
+			    }
+				printk(KERN_ERR "[##LMH_TEST] fota_id_check is %s \n", fota_id_read);
+
+				{
+					if (sys_read(fd, (char __user *) fota_id_read, fota_id_length) < 0)
+					{
+						printk(KERN_ERR "[FOTA_TEST_MODE] Can not read file.\n");
+						pRsp->ret_stat_code = TEST_FAIL_S;
+						goto fota_fail;
+					}
+			        if ((memcmp((void*)fota_id_read, "fail", 4)) != 0)	//f is fail, and f is not 0x
+			        {
+
+			        	sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_read");	
+						printk(KERN_ERR "[##LMH_TEST] fota_id_check is %s \n", fota_id_read);
+			       		pRsp->ret_stat_code = TEST_OK_S;
+		
+						for(i=0;i<fota_id_length;i++){
+							pRsp->test_mode_rsp.fota_id[i] = fota_id_read[i];
+							printk(KERN_ERR "[##LMH_TEST] fota_id_check is %d \n", fota_id_read[i]);
+						}
+						printk(KERN_ERR "[##LMH_TEST] TEST_OK \n");	
+						return pRsp; 
+			        }	
+				   
+			        else
+			        {
+						sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_read");	
+			       		pRsp->ret_stat_code = TEST_FAIL_S;
+						printk(KERN_ERR "[##LMH_TEST] TEST_FAIL \n");	
+						return pRsp;
+			        }	
+			        
+				}
+				
+                break;
 
             default:
                 pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
@@ -805,7 +855,8 @@ fota_fail:
 		kfree(src);
 		sys_close(fd);
 		set_fs(old_fs); 
-		sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_check");	
+		sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_check");
+		sys_unlink((const char __user *)"/sys/module/lge_emmc_direct_access/parameters/fota_id_read");
 
     return pRsp;
 }
@@ -2345,6 +2396,11 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_DB_INTEGRITY_CHECK,          LGF_TestModeDBIntegrityCheck,     ARM11_PROCESSOR},
     {TEST_MODE_NVCRC_CHECK,                 NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_RESET_PRODUCTION,            NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_FOTA_ID_CHECK,               LGF_TestModeFotaIDCheck,          ARM11_PROCESSOR},
+
+// LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
+    {TEST_MODE_FOTA_ID_CHECK,               LGF_TestModeFotaIDCheck,      ARM11_PROCESSOR},
+// LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
+		
+
     {TEST_MODE_XO_CAL_DATA_COPY,            NULL,                             ARM9_PROCESSOR}
 };

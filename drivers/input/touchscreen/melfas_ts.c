@@ -46,7 +46,7 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x1d //0x1b
+#define TS_LATEST_FW_VERSION_B	0x1e //0x1b
 #define TS_READ_REGS_LEN 		66
 #define MELFAS_MAX_TOUCH		5
 
@@ -245,6 +245,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	}
 	else{
 		if( buf[0] == 0x0f ){
+			release_all_finger(ts);
 			ts->power(0);
 			msleep(100);
 			ts->power(1);

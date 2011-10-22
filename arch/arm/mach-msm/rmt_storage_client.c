@@ -972,6 +972,8 @@ static int rmt_storage_release(struct inode *ip, struct file *fp)
 	return 0;
 }
 
+uint32_t rmt_storage_ioctl_1st = 0;	// [111017 bk.seol@lge.com M3_COMMON] Power On/Off Test
+
 static long rmt_storage_ioctl(struct file *fp, unsigned int cmd,
 			    unsigned long arg)
 {
@@ -1072,6 +1074,7 @@ static long rmt_storage_ioctl(struct file *fp, unsigned int cmd,
 				__func__, ret);
 		if (atomic_dec_return(&rmc->wcount) == 0)
 			wake_unlock(&rmc->wlock);
+        rmt_storage_ioctl_1st   = 1;     // [111017 bk.seol@lge.com M3_COMMON] Power On/Off Test
 		break;
 
 	default:
