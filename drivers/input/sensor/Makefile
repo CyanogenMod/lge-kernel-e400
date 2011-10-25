@@ -12,6 +12,8 @@ obj-$(CONFIG_SENSOR_AMI304)     += ami304.o
 obj-$(CONFIG_SENSOR_AMI306)     += ami306.o
 obj-$(CONFIG_SENSORS_BH1721)	+= bh1721fvc.o
 obj-$(CONFIG_SENSOR_HSCDTD004A)	+= alps_IF_Driver/
+obj-$(CONFIG_SENSORS_BMA250)    += bma250_driver.o
+obj-$(CONFIG_SENSORS_BMM050)   += bmm050_driver.o bmm050.o
 
 ifeq ($(CONFIG_SENSOR_BMA222_USE_SMBUS),y)
 EXTRA_CFLAGS += -DBMA222_SMBUS

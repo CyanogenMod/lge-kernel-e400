@@ -74,6 +74,19 @@ struct touch_platform_data {
 };
 #endif
 
+#if defined(CONFIG_TOUCHSCREEN_MCS8000_MMS128)
+struct touch_platform_data {
+	int ts_x_min;
+	int ts_x_max;
+	int ts_y_min;
+	int ts_y_max;
+	int (*power)(unsigned char onoff);
+	int irq;
+	int scl;
+	int sda;
+};
+#endif
+
 #if defined(CONFIG_TOUCHSCREEN_MELFAS_TS)
 struct touch_platform_data {
 	int ts_x_min;
@@ -238,12 +251,20 @@ struct pp2106_platform_data {
 	unsigned char *keycode;
 	int (*power)(unsigned char onoff);
 };
-
+#if defined(CONFIG_MACH_MSM7X25A_E0EU)
+/* LCD panel */
+enum {
+	PANEL_ID_AUTO = 0,
+	PANEL_ID_LGDISPLAY = 1,
+	PANEL_ID_TOVIS = 2,
+};
+#else
 /* LCD panel */
 enum {
 	PANEL_ID_AUTO = 0,
 	PANEL_ID_LGDISPLAY = 1,
 };
+#endif
 
 struct msm_panel_ilitek_pdata {
 	int gpio;
