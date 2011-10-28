@@ -296,6 +296,9 @@ unsigned lge_clear_elt_test(void);
 //LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
 unsigned lge_get_batt_id(void);
 //LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
+//LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
+unsigned lge_get_cable_info(void);
+//LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 #endif
 //LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
 

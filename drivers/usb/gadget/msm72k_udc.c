@@ -46,6 +46,20 @@
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
 
+// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+#include <mach/board_lge.h>
+#include "u_lgeusb.h"
+
+// cable type & NV MANUAL TESTMODE Mask
+#define LGE_CABLE_TYPE_MASK					0x0000000F
+#define LGE_CABLE_TYPE_56K					0x00000007
+#define LGE_CABLE_TYPE_130K					0x00000008
+#define LGE_CABLE_TYPE_910K					0x00000009
+#define LGE_CABLE_TYPE_NV_MANUAL_TESTMODE	0x00001000
+#endif
+// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
+
 static const char driver_name[] = "msm72k_udc";
 
 /* #define DEBUG */
@@ -452,6 +466,55 @@ static int usb_ep_get_stall(struct msm_endpoint *ept)
 	else
 		return (CTRL_RXS & n) ? 1 : 0;
 }
+
+// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER //ulpi_read from SBA 2030_07
+static unsigned ulpi_read(struct usb_info *ui, unsigned reg)
+{
+	unsigned ret, timeout = 100000;
+	unsigned long flags;
+
+	spin_lock_irqsave(&ui->lock, flags);
+
+	/* initiate read operation */
+	writel(ULPI_RUN | ULPI_READ | ULPI_ADDR(reg),
+	       USB_ULPI_VIEWPORT);
+
+	/* wait for completion */
+	while ((readl(USB_ULPI_VIEWPORT) & ULPI_RUN) && (--timeout))
+		cpu_relax();
+
+	if (timeout == 0) {
+		printk(KERN_ERR "ulpi_read: timeout %08x\n",
+			readl(USB_ULPI_VIEWPORT));
+		spin_unlock_irqrestore(&ui->lock, flags);
+		return 0xffffffff;
+	}
+	ret = ULPI_DATA_READ(readl(USB_ULPI_VIEWPORT));
+
+	spin_unlock_irqrestore(&ui->lock, flags);
+
+	return ret;
+}
+
+static void ulpi_write(struct usb_info *ui, unsigned val, unsigned reg)
+{
+	unsigned timeout = 10000;
+
+	/* initiate write operation */
+	writel(ULPI_RUN | ULPI_WRITE |
+	       ULPI_ADDR(reg) | ULPI_DATA(val),
+	       USB_ULPI_VIEWPORT);
+
+	/* wait for completion */
+	while ((readl(USB_ULPI_VIEWPORT) & ULPI_RUN) && (--timeout))
+		;
+
+	if (timeout == 0)
+		dev_err(&ui->pdev->dev, "ulpi_write: timeout\n");
+}
+#endif
+// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 
 static void init_endpoints(struct usb_info *ui)
 {
@@ -1373,6 +1436,14 @@ static void usb_prepare(struct usb_info *ui)
 
 static void usb_reset(struct usb_info *ui)
 {
+// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	unsigned long flags;
+	unsigned tmp = 0; 
+	unsigned udc_cable = 0;
+	unsigned is_manual_testmode = 0;
+#endif
+// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 	struct msm_otg *otg = to_msm_otg(ui->xceiv);
 
 	dev_dbg(&ui->pdev->dev, "reset controller\n");
@@ -1393,6 +1464,45 @@ static void usb_reset(struct usb_info *ui)
 							USB_USBCMD);
 
 	writel(ui->dma, USB_ENDPOINTLISTADDR);
+
+// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
+	tmp = lge_get_cable_info(); 
+	//printk(KERN_INFO "lge_get_cable_info : %x\n", tmp);
+	udc_cable = tmp & LGE_CABLE_TYPE_MASK;
+	is_manual_testmode = (tmp & LGE_CABLE_TYPE_NV_MANUAL_TESTMODE) > 0;
+
+	if(is_manual_testmode && udc_cable == 0)
+	{
+		//USB_DBG("lg_manual_test_mode factory usb\n");
+		udc_cable = LGE_CABLE_TYPE_56K;
+	}
+
+	if(udc_cable == LGE_CABLE_TYPE_56K)
+	{
+		//USB_DBG( "factory cable 56kohm, usb full-speed\n");
+		tmp = ulpi_read(ui, 0x04);
+		tmp |= 0x04;
+		ulpi_write(ui, tmp, 0x04);
+		writel(readl(USB_PORTSC) | (1<<24), USB_PORTSC);
+	}
+
+	if(udc_cable == LGE_CABLE_TYPE_56K || udc_cable == LGE_CABLE_TYPE_130K || udc_cable == LGE_CABLE_TYPE_910K)
+	{
+		// 4.7V defence code
+		ulpi_write(ui, 0x0A, 0x0F);
+		ulpi_write(ui, 0x0A, 0x12);
+
+		// change usb mode
+		if(lgeusb_get_pid() != LGE_FACTORY_PID)
+		{
+			spin_lock_irqsave(&ui->lock, flags);
+            lgeusb_switch_factory_mode(0);
+			spin_unlock_irqrestore(&ui->lock, flags);
+		}
+	}
+#endif
+// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 
 	configure_endpoints(ui);
 

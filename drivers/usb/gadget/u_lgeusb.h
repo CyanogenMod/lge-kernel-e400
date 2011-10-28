@@ -80,6 +80,7 @@ void lgeusb_switch_factory_mode(int need_reset);
 void lgeusb_switch_android_mode(int need_reset);
 
 void lgeusb_register_usbinfo(struct lgeusb_info *info);
+unsigned lgeusb_get_pid(void);
 
 /* LGE usb dynamic debugging & logging.
  * It is simplified from earlier version of
