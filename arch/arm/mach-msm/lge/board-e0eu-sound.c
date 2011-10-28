@@ -32,7 +32,8 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(HEADSET_WITHOUT_MIC, 4),
 	SND(HEADSET_WITHOUT_MIC_VR, 22),
 	SND(SPEAKER_LOOPBACK, 29),
-	SND(CURRENT, 31),
+	SND(SPEAKER_AUXMIC, 30),
+	SND(CURRENT, 32),
 };
 #undef SND
 
