@@ -1442,6 +1442,9 @@ static void usb_reset(struct usb_info *ui)
 	unsigned tmp = 0; 
 	unsigned udc_cable = 0;
 	unsigned is_manual_testmode = 0;
+
+	char *envp[] = { "HOME=/", "TERM=linux", NULL, };
+	char *argv[] = { "/system/bin/stop", "adbd", NULL, };
 #endif
 // LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 	struct msm_otg *otg = to_msm_otg(ui->xceiv);
@@ -1468,9 +1471,13 @@ static void usb_reset(struct usb_info *ui)
 // LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 	tmp = lge_get_cable_info(); 
-	//printk(KERN_INFO "lge_get_cable_info : %x\n", tmp);
-	udc_cable = tmp & LGE_CABLE_TYPE_MASK;
+	printk(KERN_INFO " *** lge_get_cable_info : %x\n", tmp);
 	is_manual_testmode = (tmp & LGE_CABLE_TYPE_NV_MANUAL_TESTMODE) > 0;
+	udc_cable = tmp & LGE_CABLE_TYPE_MASK;
+	if (udc_cable != LGE_CABLE_TYPE_56K  &&
+		udc_cable != LGE_CABLE_TYPE_130K &&
+		udc_cable != LGE_CABLE_TYPE_910K )
+		udc_cable = 0;
 
 	if(is_manual_testmode && udc_cable == 0)
 	{
@@ -1496,6 +1503,9 @@ static void usb_reset(struct usb_info *ui)
 		// change usb mode
 		if(lgeusb_get_pid() != LGE_FACTORY_PID)
 		{
+			// Disable NMEA Port
+			call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+
 			spin_lock_irqsave(&ui->lock, flags);
             lgeusb_switch_factory_mode(0);
 			spin_unlock_irqrestore(&ui->lock, flags);
