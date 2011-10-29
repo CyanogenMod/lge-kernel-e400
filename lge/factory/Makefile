@@ -4,6 +4,7 @@ obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_testmode.o
 obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_unifiedmsgtool.o
 obj-$(CONFIG_LGE_DIAGTEST) += lg_fw_diag_class.o
 obj-$(CONFIG_LGE_DIAGTEST) += lg_fw_diag_communication.o
+obj-$(CONFIG_LGE_DIAGTEST) += lg_diag_event_log.o
 obj-$(CONFIG_LGE_DIAG_KEYPRESS) += lg_diag_keypress.o
 obj-$(CONFIG_LGE_DIAG_SCREENSHOT) += lg_diag_screen_shot.o
 obj-$(CONFIG_LGE_DIAG_UDM) += lg_diag_udm.o

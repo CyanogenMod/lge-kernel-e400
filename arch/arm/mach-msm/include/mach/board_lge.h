@@ -74,6 +74,31 @@ struct touch_platform_data {
 };
 #endif
 
+#if defined(CONFIG_TOUCHSCREEN_MCS8000_MMS128)
+struct touch_platform_data {
+	int ts_x_min;
+	int ts_x_max;
+	int ts_y_min;
+	int ts_y_max;
+	int (*power)(unsigned char onoff);
+	int irq;
+	int scl;
+	int sda;
+};
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_MELFAS_TS)
+struct touch_platform_data {
+	int ts_x_min;
+	int ts_x_max;
+	int ts_y_min;
+	int ts_y_max;
+	int (*power)(unsigned char onoff);
+	int irq;
+	int scl;
+	int sda;
+};
+#endif
 #if defined(CONFIG_TOUCHSCREEN_MXT140)
 struct touch_platform_data {
 	int ts_x_min;
@@ -226,12 +251,20 @@ struct pp2106_platform_data {
 	unsigned char *keycode;
 	int (*power)(unsigned char onoff);
 };
-
+#if defined(CONFIG_MACH_MSM7X25A_E0EU)
+/* LCD panel */
+enum {
+	PANEL_ID_AUTO = 0,
+	PANEL_ID_LGDISPLAY = 1,
+	PANEL_ID_TOVIS = 2,
+};
+#else
 /* LCD panel */
 enum {
 	PANEL_ID_AUTO = 0,
 	PANEL_ID_LGDISPLAY = 1,
 };
+#endif
 
 struct msm_panel_ilitek_pdata {
 	int gpio;
@@ -260,6 +293,12 @@ unsigned lge_get_chg_stat_reg(void);
 unsigned lge_get_chg_en_reg(void);
 unsigned lge_set_elt_test(void);
 unsigned lge_clear_elt_test(void);
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
+unsigned lge_get_batt_id(void);
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
+//LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
+unsigned lge_get_cable_info(void);
+//LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 #endif
 //LGE_CHANGE_E, [hyo.park@lge.com] , 2011-07-28
 

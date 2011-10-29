@@ -177,6 +177,8 @@ static int m3eu_gpio_earsense_work_func(int *value)
 	int state;
 	int gpio_value;
 
+	msleep(100);
+	
 	gpio_value = !gpio_get_value(GPIO_EAR_SENSE);
 	printk(KERN_INFO "%s: ear sense detected : %s\n", __func__,
 		gpio_value ? "injected" : "ejected");
@@ -185,10 +187,10 @@ static int m3eu_gpio_earsense_work_func(int *value)
 		state = EAR_STATE_EJECT;
 		*value = 0;
 		gpio_set_value(GPIO_MIC_MODE, 0);
-		
+
 	} else {
 		state = EAR_STATE_INJECT;
-		msleep(100);
+		msleep(50);
 		gpio_value = !gpio_get_value(GPIO_BUTTON_DETECT);
 		if (gpio_value) {
 			printk(KERN_INFO "headphone was inserted!\n");

@@ -60,7 +60,7 @@ static struct rt8053_regulator_subdev rt8053_regulators[] = {
 
 static struct rt8053_platform_data rt8053_data = {
 	.num_regulators = 6,
-	.enable_gpio = 58,
+	.enable_gpio = 23,
 	.regulators = rt8053_regulators,
 };
 
@@ -74,6 +74,17 @@ static struct i2c_board_info subpm_i2c_bdinfo[] = {
 void __init msm7x27a_m3_init_i2c_subpm(int bus_num)
 {
 	subpm_i2c_device.id = bus_num;
+
+	// START : wooyul.kim@lge.com 2011-09-14 m3dviv for EVB
+// START: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A PMIC GPIO changed
+	if (lge_bd_rev == EVB) { //[M3D] For EVB PMIC GPIO changed , M3DVIV, M3DOPEN
+		struct rt8053_platform_data *pdata =
+			subpm_i2c_bdinfo[0].platform_data;
+		if (pdata)
+			pdata->enable_gpio = 58;
+	}
+// END: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A PMIC GPIO changed
+	//END : wooyul.kim@lge.com 2011-09-14
 
 	lge_init_gpio_i2c_pin(&subpm_i2c_pdata, subpm_i2c_pin, &subpm_i2c_bdinfo[0]);
 	i2c_register_board_info(bus_num, &subpm_i2c_bdinfo[0], 1);

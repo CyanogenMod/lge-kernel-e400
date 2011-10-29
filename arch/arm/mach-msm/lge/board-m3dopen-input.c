@@ -238,7 +238,7 @@ static struct platform_device *m3eu_gpio_input_devices[] __initdata = {
 };
 
 /* Melfas MCS8000 Touch (mms-128)*/
-#if defined(CONFIG_TOUCHSCREEN_MCS8000)
+#if defined(CONFIG_TOUCHSCREEN_MCS8000) || defined(CONFIG_TOUCHSCREEN_MELFAS_TS)
 static struct gpio_i2c_pin ts_i2c_pin[] = {
 	[0] = {
 		.sda_pin	= TS_GPIO_I2C_SDA,
@@ -534,7 +534,7 @@ static int ecom_power_set(unsigned char onoff)
 
 	return ret;
 }
-
+#if defined(CONFIG_SENSOR_AK8975)
 static struct ecom_platform_data ecom_pdata = {
 	.pin_int = ECOM_GPIO_INT,
 	.pin_rst = 0,
@@ -555,6 +555,25 @@ static struct ecom_platform_data ecom_pdata = {
     .sensitivity1g = 64,
 
 };
+#else
+static struct ecom_platform_data ecom_pdata = {
+	.pin_int = ECOM_GPIO_INT,
+	.pin_rst = 0,
+	.power = ecom_power_set,
+	.accelerator_name = "bma222",
+
+};
+#endif
+#if defined(CONFIG_SENSOR_HSCDTD004A)
+static struct i2c_board_info ecom_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("hscd_i2c", ECOM_I2C_ADDRESS),
+		.type = "hscd_i2c",
+		.platform_data = &ecom_pdata,
+	},
+};
+#endif
+#if defined(CONFIG_SENSOR_AK8975)
 static struct i2c_board_info ecom_i2c_bdinfo[] = {
 	[0] = {
 		I2C_BOARD_INFO("akm8975", ECOM_I2C_ADDRESS),
@@ -562,6 +581,7 @@ static struct i2c_board_info ecom_i2c_bdinfo[] = {
 		.platform_data = &ecom_pdata,
 	},
 };
+#endif
 
 static struct gpio_i2c_pin ecom_i2c_pin[] = {
 	[0] = {
@@ -579,8 +599,8 @@ static struct i2c_gpio_platform_data ecom_i2c_pdata = {
 };
 
 static struct platform_device ecom_i2c_device = {
-        .name = "i2c-gpio",
-        .dev.platform_data = &ecom_i2c_pdata,
+	.name = "i2c-gpio",
+	.dev.platform_data = &ecom_i2c_pdata,
 };
 
 
@@ -613,7 +633,7 @@ static int prox_power_set(unsigned char onoff)
 
 	printk(KERN_INFO "[Proximity] %s() : Power %s\n",
 		   __func__, onoff ? "On" : "Off");
-	
+
 	if (init_done == 0 && onoff) {
 		if (onoff) {
 			printk(KERN_INFO "LDO5 vreg set.\n");
@@ -702,8 +722,7 @@ static void __init m3eu_init_i2c_prox(int bus_num)
 {
 	proxi_i2c_device.id = bus_num;
 
-	lge_init_gpio_i2c_pin(
-		&proxi_i2c_pdata, proxi_i2c_pin[0], &prox_i2c_bdinfo[0]);
+	lge_init_gpio_i2c_pin(&proxi_i2c_pdata, proxi_i2c_pin[0], &prox_i2c_bdinfo[0]);
 
 	i2c_register_board_info(bus_num, &prox_i2c_bdinfo[0], 1);
 	platform_device_register(&proxi_i2c_device);
@@ -716,6 +735,7 @@ void __init lge_add_input_devices(void)
 		m3eu_input_devices, ARRAY_SIZE(m3eu_input_devices));
 	platform_add_devices(
 		m3eu_gpio_input_devices, ARRAY_SIZE(m3eu_gpio_input_devices));
+
 	lge_add_gpio_i2c_device(m3eu_init_i2c_touch);
 	lge_add_gpio_i2c_device(m3eu_init_i2c_acceleration);
 	lge_add_gpio_i2c_device(m3eu_init_i2c_ecom);

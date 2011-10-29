@@ -28,7 +28,8 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 		new_level >= pwr->thermal_pwrlevel &&
 		new_level != pwr->active_pwrlevel) {
 		pwr->active_pwrlevel = new_level;
-		if (test_bit(KGSL_PWRFLAGS_CLK_ON, &pwr->power_flags))
+		if ((test_bit(KGSL_PWRFLAGS_CLK_ON, &pwr->power_flags)) ||
+			(device->state == KGSL_STATE_NAP))
 			clk_set_rate(pwr->grp_clks[0],
 					pwr->pwrlevels[pwr->active_pwrlevel].
 					gpu_freq);
@@ -276,8 +277,10 @@ void kgsl_pwrctrl_axi(struct kgsl_device *device, int state)
 			&pwr->power_flags)) {
 			KGSL_PWR_INFO(device,
 				"axi off, device %d\n", device->id);
-			if (pwr->ebi1_clk)
+			if (pwr->ebi1_clk) {
+				clk_set_rate(pwr->ebi1_clk, 0);
 				clk_disable(pwr->ebi1_clk);
+			}
 			if (pwr->pcl)
 				msm_bus_scale_client_update_request(pwr->pcl,
 								    0);
@@ -287,8 +290,12 @@ void kgsl_pwrctrl_axi(struct kgsl_device *device, int state)
 			&pwr->power_flags)) {
 			KGSL_PWR_INFO(device,
 				"axi on, device %d\n", device->id);
-			if (pwr->ebi1_clk)
+			if (pwr->ebi1_clk) {
 				clk_enable(pwr->ebi1_clk);
+				clk_set_rate(pwr->ebi1_clk,
+					pwr->pwrlevels[pwr->active_pwrlevel].
+					bus_freq);
+			}
 			if (pwr->pcl)
 				msm_bus_scale_client_update_request(pwr->pcl,
 					pwr->pwrlevels[pwr->active_pwrlevel].

@@ -23,6 +23,8 @@ extern int accsns_get_acceleration_data(int *xyz);
 extern int hscd_get_magnetic_field_data(int *xyz);
 extern void hscd_activate(int flgatm, int flg, int dtime);
 extern void accsns_activate(int flgatm, int flg);
+extern int hscd_self_test_A(void);
+extern int hscd_self_test_B(void);
 
 static DEFINE_MUTEX(alps_lock);
 
@@ -49,16 +51,19 @@ static struct input_polled_dev *alps_idev;
 
 #define POLL_STOP_TIME		400	/* (msec) */
 
-static int flgM, flgA = 0;
+static int flgM = 0, flgA = 0;
 static int delay = 200;
 static int poll_stop_cnt = 0;
+
+static char calibration;
 
 /*****************************************************************************/
 /* for I/O Control */
 
 /* LGE_CHANGE_S [jihyun.seong@lge.com] 2011-05-24,
    replace unlocked ioctl - from kernel 2.6.36.x */
-static long alps_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+//static int alps_ioctl(struct inode* inode, struct file* filp, unsigned int cmd, unsigned long arg)
+static long alps_ioctl(struct file* filp, unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	int ret = -1, tmpval;
@@ -123,6 +128,38 @@ static long alps_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #ifdef ALPS_DEBUG
 		printk("     delay = %d\n", delay);
 #endif
+		break;
+
+	case ALPSIO_ACT_SELF_TEST_A:
+#ifdef ALPS_DEBUG
+	   	printk("alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_A)\n");
+#endif
+        mutex_lock(&alps_lock);
+        ret = hscd_self_test_A();
+	    mutex_unlock(&alps_lock);
+#ifdef ALPS_DEBUG
+        printk("[HSCD] Self test-A result : %d\n", ret);
+#endif
+        if (copy_to_user(argp, &ret, sizeof(ret))) {
+			printk( "error : alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_A)\n" );
+			return -EFAULT;
+        }
+		break;
+
+	case ALPSIO_ACT_SELF_TEST_B:
+#ifdef ALPS_DEBUG
+	   	printk("alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_B)\n");
+#endif
+        mutex_lock(&alps_lock);
+        ret = hscd_self_test_B();
+	    mutex_unlock(&alps_lock);
+#ifdef ALPS_DEBUG
+        printk("[HSCD] Self test-B result : %d\n", ret);
+#endif
+        if (copy_to_user(argp, &ret, sizeof(ret))) {
+			printk( "error : alps_ioctl(cmd = ALPSIO_ACT_SELF_TEST_B)\n" );
+			return -EFAULT;
+        }
 		break;
 
 	default:
@@ -209,99 +246,24 @@ static ssize_t alps_position_show(struct device *dev,
 	mutex_unlock(&alps_lock);
 	return cnt;
 }
-
-static ssize_t alps_enable_show(struct device *dev, \
+static ssize_t alps_calibration_show(struct device *dev, \
 struct device_attribute *attr, char *buf)
 {
-	char strbuf[256];
-	snprintf(strbuf, PAGE_SIZE, "%d", flgM);
-	return snprintf(buf, PAGE_SIZE, "%s\n", strbuf);
+    return snprintf(buf, PAGE_SIZE, "%c\n", calibration);
 }
-
-static ssize_t alps_enable_store(struct device *dev, \
+static ssize_t alps_calibration_store(struct device *dev,\
 struct device_attribute *attr, const char *buf, size_t count)
 {
-	int mode, iCmode;
 
-	sscanf(buf, "%d", &mode);
-	iCmode = flgM;
-	printk("fnclamp alps_enable_store()  %d -> %d\n", iCmode ,mode);
-	if(iCmode != mode)
-	{
-		hscd_activate(0, 1, 200);
-		flgM = 1;
-	}	
-	else
-	{
-		hscd_activate(0, 0, 200);	
-		flgM=0;
-	}
-	return 0;
-}
-
-static ssize_t alps_x_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
-{
-	int x, y, z;
-	int xyz[3];
-
-	if (hscd_get_magnetic_field_data(xyz) == 0) {
-		x = xyz[0];
-		y = xyz[1];
-		z = xyz[2];
-	} else {
-		x = 0;
-		y = 0;
-		z = 0;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d \n", x);
-}
-static ssize_t alps_y_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
-{
-	int x, y, z;
-	int xyz[3];
-
-	if (hscd_get_magnetic_field_data(xyz) == 0) {
-		x = xyz[0];
-		y = xyz[1];
-		z = xyz[2];
-	} else {
-		x = 0;
-		y = 0;
-		z = 0;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d \n", y);
-}
-static ssize_t alps_z_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
-{
-	int x, y, z;
-	int xyz[3];
-
-	if (hscd_get_magnetic_field_data(xyz) == 0) {
-		x = xyz[0];
-		y = xyz[1];
-		z = xyz[2];
-	} else {
-		x = 0;
-		y = 0;
-		z = 0;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d \n", z);
+    sscanf(buf, "%c", &calibration);
+    return 0;
 }
 static DEVICE_ATTR(position, 0444, alps_position_show, NULL);
-static DEVICE_ATTR(x, 0444, alps_x_show, NULL);
-static DEVICE_ATTR(y, 0444, alps_y_show, NULL);
-static DEVICE_ATTR(z, 0444, alps_z_show, NULL);
-static DEVICE_ATTR(enable, 0664, alps_enable_show, alps_enable_store);
+static DEVICE_ATTR(calibration, S_IRUGO | S_IWUGO, alps_calibration_show, alps_calibration_store);
 
 static struct attribute *alps_attributes[] = {
 	&dev_attr_position.attr,
-	&dev_attr_enable.attr,
-	&dev_attr_x.attr,
-	&dev_attr_y.attr,
-	&dev_attr_z.attr,
+	&dev_attr_calibration.attr,
 	NULL,
 };
 

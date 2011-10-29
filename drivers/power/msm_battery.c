@@ -1586,6 +1586,9 @@ static unsigned pif_value;
 
 static ssize_t msm_batt_pif_show(struct device* dev, struct device_attribute* attr, char* buf)
 {
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-20
+	pif_value = lge_get_pif_info();
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-20
 	return sprintf(buf,"%d\n", pif_value);
 }
 
@@ -1611,6 +1614,9 @@ static unsigned batt_volt_raw;
 #if 1 //#ifdef CONFIG_MACH_MSM7X27_GELATO
 static unsigned chg_stat_reg;
 static unsigned chg_en_reg;
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
+static unsigned batt_id;
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
 #endif
 
 
@@ -1671,6 +1677,15 @@ static ssize_t msm_batt_chg_en_reg_show(struct device* dev, struct device_attrib
 	return sprintf(buf,"%d\n", chg_en_reg);
 }
 static DEVICE_ATTR(chg_en_reg, S_IRUGO, msm_batt_chg_en_reg_show, NULL);
+
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
+static ssize_t msm_batt_batt_id_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	batt_id = lge_get_batt_id();
+	return sprintf(buf,"%d\n", batt_id);
+}
+static DEVICE_ATTR(batt_id, S_IRUGO, msm_batt_batt_id_show, NULL);
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
 #endif
 
 static struct attribute* dev_attrs_lge_batt_info[] = {
@@ -1684,6 +1699,9 @@ static struct attribute* dev_attrs_lge_batt_info[] = {
 	&dev_attr_chg_stat_reg.attr,
 	&dev_attr_chg_en_reg.attr,
 #endif	
+	//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
+	&dev_attr_batt_id.attr,
+	//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
 	NULL,
 };
 

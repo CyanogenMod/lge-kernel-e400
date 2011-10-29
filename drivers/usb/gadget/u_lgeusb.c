@@ -328,6 +328,13 @@ int lgeusb_set_current_mode(int need_reset)
 	return info->current_pid;
 }
 
+// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
+unsigned lgeusb_get_pid(void)
+{
+    return usb_info->get_pid();
+}
+// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
+
 /* LGE_CHANGE
  * Register lge usb information(which include callback functions).
  * 2011-01-14, hyunhui.park@lge.com

@@ -429,6 +429,13 @@ config LEDS_GPIO_M3
         default y
         help
           This option enables support for GPIO LEDs	  
+
+config LEDS_GPIO_E0
+        tristate "LED Support for GPIO LEDs"
+        default y
+        help
+          This option enables support for GPIO LEDs
+
 config LEDS_TRIGGERS
 	bool "LED Trigger support"
 	depends on LEDS_CLASS

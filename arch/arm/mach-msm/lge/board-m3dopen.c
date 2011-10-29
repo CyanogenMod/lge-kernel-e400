@@ -218,8 +218,17 @@ static void __init msm7x2x_init(void)
 	/*7x25a kgsl initializations*/
 	msm7x25a_kgsl_3d0_init();
 
-	platform_device_register(&msm_device_uart3);
-
+	// START : wooyul.kim@lge.com 2011-09-14 m3dviv for REV A
+	if (lge_get_uart_mode()) {
+// START: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A Uart changed
+		if (lge_bd_rev == EVB) // [M3D]  For EVB Uart , M3DVIV, M3DOPEN
+			platform_device_register(&msm_device_uart3);
+		else
+			platform_device_register(&msm_device_uart1);
+// END: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A Uart changed
+	}
+	// END : wooyul.kim@lge.com 2011-09-14
+	
 	lge_add_input_devices();
 	lge_add_misc_devices();
 	lge_add_mmc_devices();

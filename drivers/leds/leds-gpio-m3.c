@@ -23,8 +23,10 @@
 #include <linux/leds.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <mach/board_lge.h>
 
 #define KP_LEDS_GPIO 23
+int kp_leds_gp = 0;
 
 struct keypad_led_data {
 	struct led_classdev keypad_led_class_dev;
@@ -34,9 +36,9 @@ static void m3d_keypad_led_store(struct led_classdev *led_cdev,
 				enum led_brightness value)
 {
 	if (value > LED_OFF) {
-		gpio_set_value(KP_LEDS_GPIO, 1);
+		gpio_set_value(kp_leds_gp, 1);
 	} else {
-		gpio_set_value(KP_LEDS_GPIO, 0);
+		gpio_set_value(kp_leds_gp, 0);
 	}
 }
 
@@ -44,14 +46,23 @@ static int __devinit m3d_keypad_led_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct keypad_led_data *info;
+
+	kp_leds_gp = KP_LEDS_GPIO;
+
+// START: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A LEDS GPIO changed
+#if defined (CONFIG_MACH_MSM7X25A_M3DVIV) || defined (CONFIG_MACH_MSM7X25A_M3DOPEN)
+	if (lge_bd_rev == EVB) // [M3D] For EVB LEDS GPIO changed
+		kp_leds_gp = 96;
+#endif
+// END: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A LEDS GPIO changed
 	
-	ret = gpio_request(KP_LEDS_GPIO, "kp_leds_gpio"); 
+	ret = gpio_request(kp_leds_gp, "kp_leds_gpio"); 
 	if(ret){
 		printk(KERN_ERR "[kp_led]: request gpio %d failed!\n", KP_LEDS_GPIO);
 		return ret;
 	}
 		
-	ret = gpio_direction_output(KP_LEDS_GPIO, 0); 
+	ret = gpio_direction_output(kp_leds_gp, 0); 
 	if(ret){
 		printk(KERN_ERR"[kp_led]: set gpio %d direction out error!\n", KP_LEDS_GPIO);
 		return ret;

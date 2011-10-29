@@ -111,7 +111,7 @@ static struct platform_device *m3_gpio_input_devices[] __initdata = {
 };
 
 /* Melfas MCS8000 Touch (mms-128)*/
-#if defined(CONFIG_TOUCHSCREEN_MCS8000)
+#if defined(CONFIG_TOUCHSCREEN_MELFAS_TS)
 static struct gpio_i2c_pin ts_i2c_pin[] = {
 	[0] = {
 		.sda_pin	= TS_GPIO_I2C_SDA,

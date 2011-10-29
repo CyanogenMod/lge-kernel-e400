@@ -15,8 +15,8 @@
 
 /* backlight device */
 static struct gpio_i2c_pin bl_i2c_pin = {
-	.sda_pin = 123,
-	.scl_pin = 122,
+	.sda_pin = 112,
+	.scl_pin = 111,
 	.reset_pin = 124,
 };
 
@@ -172,6 +172,12 @@ void __init msm7x27a_m3eu_init_i2c_backlight(int bus_num)
 	bl_i2c_device.id = bus_num;
 	bl_i2c_bdinfo[0].platform_data = &lm3530bl_data;
 
+// START: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A bl GPIO changed
+if (lge_bd_rev == EVB) { // [M3D] For EVB bl GPIO changed , M3DVIV, M3DOPEN
+		bl_i2c_pin.scl_pin = 122;
+		bl_i2c_pin.sda_pin = 123;
+	}
+// END: youngbae.choi@lge.com 2011-09-23 [M3D] Rev A bl GPIO changed
 	/* workaround for HDK rev_a no pullup */
 	lge_init_gpio_i2c_pin_pullup(&bl_i2c_pdata, bl_i2c_pin, &bl_i2c_bdinfo[0]);
 	i2c_register_board_info(bus_num, &bl_i2c_bdinfo[0], 1);
