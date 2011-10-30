@@ -439,6 +439,7 @@ static void lm3530_wakeup(struct lm3530_driver_data *drvdata)
 	//#define LCD_BL_EN 124
     	gpio_tlmm_config(GPIO_CFG(124, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
     	gpio_set_value(124, 1); 
+    	udelay(10);
 
 	dprintk("operation mode is %s\n", (drvdata->mode == NORMAL_MODE) ? "normal_mode" : "alc_mode");
 
