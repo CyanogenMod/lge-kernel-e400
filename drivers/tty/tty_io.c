@@ -1043,7 +1043,12 @@ static inline ssize_t do_tty_write(
 		size_t size = count;
 		if (size > chunk)
 			size = chunk;
-		ret = -EFAULT;
+		ret = -EFAULT; 
+		if(buf == NULL || file == NULL)
+		{
+		    ret = -EIO;
+			goto out;
+		}
 		if (copy_from_user(tty->write_buf, buf, size))
 			break;
 		ret = write(tty, file, tty->write_buf, size);

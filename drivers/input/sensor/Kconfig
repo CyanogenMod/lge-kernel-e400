@@ -92,6 +92,18 @@ config SENSORS_BH1721
 	  This driver can also be built as a module.  If so, the module
 	  will be called bh1721fvc.
 
+config SENSORS_BMA250
+	tristate "BMA250 Acceleration Sensor Driver"
+	depends on I2C
+	help
+	 BMA250 Acceleration Sensor Driver implemented by Bosch-Sensortec.
+
+config SENSORS_BMM050
+	tristate "BMM050 Magnetic Sensor Driver"
+	depends on I2C
+	help
+	 BMM050 Magnetic Sensor Driver implemented by Bosch-Sensortec.	  
+
 # HSCDTD004A sensor
 source "drivers/input/sensor/alps_IF_Driver/Kconfig"
 endif

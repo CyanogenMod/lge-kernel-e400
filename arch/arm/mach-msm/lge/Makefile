@@ -1,6 +1,17 @@
 EXTRA_CFLAGS += -Iarch/arm/mach-msm
 obj-$(CONFIG_LGE_PROC_COMM) += lge_proc_comm.o
 
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-input.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-misc.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-mmc.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-sound.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-panel.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-camera.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-pm.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-usb.o
+obj-$(CONFIG_MACH_MSM7X25A_E0EU) += board-e0eu-connectivity.o
+
 obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu.o
 obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-input.o
 obj-$(CONFIG_MACH_MSM7X27A_M3EU) += board-m3eu-misc.o

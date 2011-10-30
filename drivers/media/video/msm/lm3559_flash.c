@@ -171,9 +171,11 @@ void lm3559_enable_torch_mode(int state)
 			0x09);
 	} else {
 		/* 111 : 112.5 mA  */
+		//lm3559_i2c_write(lm3559_client, LM3559_REG_TORCH_BRIGHTNESS,
+		//	0x1B);
 		lm3559_i2c_write(lm3559_client, LM3559_REG_TORCH_BRIGHTNESS,
-			0x1B);
-	}
+			0x36);   // Sangyoon_Kim_111024
+ 	}
 
 	lm3559_i2c_write(lm3559_client, LM3559_REG_ENABLE, 0x0A);
 }

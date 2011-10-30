@@ -36,6 +36,12 @@
 static int fm_enable;
 #endif
 
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#include "../lge/board-e0eu.h"
+
+static int fm_enable;
+#endif
+
 #if 0 //tamedwolph unnecessary
 //#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
 extern int headset_state;
@@ -277,7 +283,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		MM_INFO("snd_set_device %d %d %d\n", dev.device,
 				dev.ear_mute, dev.mic_mute);
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
 		if (dev.device == 10 || dev.device == 11)
 			fm_enable = 1;
 		else
@@ -741,7 +747,7 @@ static long snd_dev_enable(const char *arg)
 	MM_INFO("snd_set_device %d %d %d\n", dev.device, dev.ear_mute,
 			dev.mic_mute);
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
 	if (dev.device == 10 || dev.device == 11)
 		fm_enable = 1;
 	else
@@ -753,7 +759,7 @@ static long snd_dev_enable(const char *arg)
 	return rc;
 }
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
 void snd_fm_vol_mute()
 {
 	struct snd_sys_ctxt *snd_sys = &the_snd_sys;
@@ -839,7 +845,7 @@ static int snd_probe(struct platform_device *pdev)
 	struct snd_sys_ctxt *snd_sys = &the_snd_sys;
 	int rc = 0;
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
 	fm_enable = 0;
 #endif
 	mutex_init(&snd->lock);

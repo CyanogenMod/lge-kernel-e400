@@ -158,6 +158,7 @@ struct aat28xx_driver_data {
 /********************************************
  * Global variable
  ********************************************/
+static struct aat28xx_driver_data *aat28xx_ref;
 static unsigned int debug = 0;
 module_param(debug, uint, 0644);
 
@@ -380,16 +381,23 @@ static int aat28xx_ldo_set_vout(struct i2c_client *i2c_dev, unsigned num, unsign
  *******************************************************/
 int aat28xx_ldo_enable(struct device *dev, unsigned num, unsigned enable)
 {
-	struct i2c_adapter *adap;
+	//struct i2c_adapter *adap;
 	struct i2c_client *client;
 	struct aat28xx_driver_data *drvdata;
 	int err = 0;
 
+	if(aat28xx_ref == NULL)
+		return -ENODEV;
+	
+	drvdata = aat28xx_ref;
+	client = aat28xx_ref->client;
+	
 	dprintk("ldo_no[%d], on/off[%d]\n",num, enable);
 
 	if (num > 0 && num <= AAT28XX_LDO_NUM) {
-		if ((adap=dev_get_drvdata(dev)) && (client=i2c_get_adapdata(adap))) {
-			drvdata = i2c_get_clientdata(client);
+		//if ((adap=dev_get_drvdata(dev)) && (client=i2c_get_adapdata(adap))) {
+		//	drvdata = i2c_get_clientdata(client);
+		if(client) {
 			if (enable) {
 				if (drvdata->ldo_ref[num-1]++ == 0) {
 					dprintk("ref count = 0, call aat28xx_set_ldos\n");
@@ -418,13 +426,19 @@ EXPORT_SYMBOL(aat28xx_ldo_enable);
  *******************************************************/
 int aat28xx_ldo_set_level(struct device *dev, unsigned num, unsigned vol)
 {
-	struct i2c_adapter *adap;
+//	struct i2c_adapter *adap;
 	struct i2c_client *client;
 	unsigned char val;
 
+	if(aat28xx_ref == NULL)
+		return -ENODEV;
+	client = aat28xx_ref->client;
+	
 	dprintk("ldo_no[%d], level[%d]\n", num, vol);
+
 	if (num > 0 && num <= AAT28XX_LDO_NUM) {
-		if ((adap=dev_get_drvdata(dev)) && (client=i2c_get_adapdata(adap))) {
+		//if ((adap=dev_get_drvdata(dev)) && (client=i2c_get_adapdata(adap))) {
+		if(client) {
 			val = aat28xx_ldo_get_vout_val(vol);
 			dprintk("vout register value 0x%x for level %d\n", val, vol);
 			return aat28xx_ldo_set_vout(client, num, val);
@@ -965,6 +979,8 @@ static int aat28xx_probe(struct i2c_client *i2c_dev, const struct i2c_device_id 
 	drvdata->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 40;
 	register_early_suspend(&drvdata->early_suspend);
 #endif
+
+	aat28xx_ref = drvdata;
 
 	eprintk("done\n");
 	return 0;

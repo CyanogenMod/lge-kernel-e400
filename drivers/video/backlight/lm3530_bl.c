@@ -421,6 +421,11 @@ static void lm3530_sleep(struct lm3530_driver_data *drvdata)
 			eprintk("Invalid Mode\n");
 			break;
 	}
+	
+	// daewon.seo@lge.com 20111024 set lcd_bl_en low for sleep current
+	//#define LCD_BL_EN 124
+	gpio_tlmm_config(GPIO_CFG(124, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+    	gpio_set_value(124, 0);    
 }
 
 static void lm3530_wakeup(struct lm3530_driver_data *drvdata)
@@ -429,6 +434,11 @@ static void lm3530_wakeup(struct lm3530_driver_data *drvdata)
 
 	if (!drvdata || drvdata->state == NORMAL_STATE)
 		return;
+
+	// daewon.seo@lge.com 20111024 set lcd_bl_en & sub_pm_en high when wake up
+	//#define LCD_BL_EN 124
+    	gpio_tlmm_config(GPIO_CFG(124, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+    	gpio_set_value(124, 1); 
 
 	dprintk("operation mode is %s\n", (drvdata->mode == NORMAL_MODE) ? "normal_mode" : "alc_mode");
 
