@@ -336,7 +336,7 @@ static int set_powered(struct sock *sk, u16 index, unsigned char *data, u16 len)
 	}
 
 	// *s QCT_BT_PATCH_SR00564343_2 suhui.kim@lge.com, modify the time delay when BT is being turned on
-	/* QCT1090 CS Original
+	/* QCT109804 Original
 	if (cp->val)
 		queue_work(hdev->workqueue, &hdev->power_on);
 	else

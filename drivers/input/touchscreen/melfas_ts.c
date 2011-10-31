@@ -46,11 +46,11 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x1e //0x1b
+#define TS_LATEST_FW_VERSION_B	0x1f //0x1b
 #define TS_READ_REGS_LEN 		66
 #define MELFAS_MAX_TOUCH		5
 
-#define DEBUG_PRINT 			0
+#define DEBUG_PRINT 			1
 
 #define SET_DOWNLOAD_BY_GPIO	1
 

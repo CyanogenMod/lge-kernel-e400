@@ -1984,6 +1984,33 @@ void* LGF_TestModeFactoryReset(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
 
 }
 
+// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-31
+void lgeusb_switch_factory_mode(int need_reset);
+void lgeusb_switch_android_mode(int need_reset);
+
+void* LGF_TestModeChangeUsbDriver(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
+{
+    pRsp->ret_stat_code = TEST_OK_S;
+
+	switch (pReq->change_usb_driver)
+	{
+		case CHANGE_MODEM:
+			lgeusb_switch_factory_mode(1);
+			break;
+
+		case CHANGE_MASS:
+			lgeusb_switch_android_mode(1);
+			break;
+
+		default:
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+			break;
+	}
+
+	return pRsp;
+}
+// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-31
+
 void* LGF_TestScriptItemSet(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
 // [111004 kkh8318@lge.com M3_ALL]Added Factory Reset Test [START]
@@ -2332,7 +2359,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     /* sub_command                          fun_ptr                           which procesor*/
     /* 0 ~ 10 */
     {TEST_MODE_VERSION,                     NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_LCD,                         LGF_TestLCD,   					 ARM11_PROCESSOR},
+    {TEST_MODE_LCD,                         LGF_TestLCD,                      ARM11_PROCESSOR},
     {TEST_MODE_MOTOR,                       LGF_TestMotor,                    ARM11_PROCESSOR},
     {TEST_MODE_ACOUSTIC,                    LGF_TestAcoustic,                 ARM11_PROCESSOR},
     {TEST_MODE_CAM,                         LGF_TestCam,                      ARM11_PROCESSOR},
@@ -2349,7 +2376,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_BATT_LEVEL_TEST,             LGF_TestModeBattLevel,            ARM11_PROCESSOR},
     {TEST_MODE_MP3_TEST,                    LGF_TestModeMP3,                  ARM11_PROCESSOR},
     /* 31 ~ 40 */
-    {TEST_MODE_ACCEL_SENSOR_TEST,   linux_app_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_ACCEL_SENSOR_TEST,           linux_app_handler,                ARM11_PROCESSOR},
     {TEST_MODE_WIFI_TEST,                   LGF_TestModeWLAN,                 ARM11_PROCESSOR},
     {TEST_MODE_MANUAL_TEST_MODE,            NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_FORMAT_MEMORY_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
@@ -2361,7 +2388,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_VIRTUAL_SIM_TEST,            LGF_TestModeVirtualSimTest,       ARM11_PROCESSOR},
     {TEST_MODE_PHOTO_SENSER_TEST,           not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_MRD_USB_TEST,                NULL,                             ARM9_PROCESSOR},
-    {TEST_MODE_PROXIMITY_SENSOR_TEST,       linux_app_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_PROXIMITY_SENSOR_TEST,       linux_app_handler,                ARM11_PROCESSOR},
     {TEST_MODE_TEST_SCRIPT_MODE,            LGF_TestScriptItemSet,            ARM11_PROCESSOR},
     {TEST_MODE_FACTORY_RESET_CHECK_TEST,    LGF_TestModeFactoryReset,         ARM11_PROCESSOR},
     /* 51 ~60 */
@@ -2373,7 +2400,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_SELECT_MIMO_ANT,             NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_LTE_MODE_SELECTION,          not_supported_command_handler,    ARM11_PROCESSOR},
     {TEST_MODE_LTE_CALL,                    not_supported_command_handler,    ARM11_PROCESSOR},
-    {TEST_MODE_CHANGE_USB_DRIVER,           not_supported_command_handler,    ARM11_PROCESSOR},
+    {TEST_MODE_CHANGE_USB_DRIVER,           LGF_TestModeChangeUsbDriver,      ARM11_PROCESSOR},
     {TEST_MODE_GET_HKADC_VALUE,             NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_LED_TEST,                    linux_app_handler,                ARM11_PROCESSOR},
     {TEST_MODE_PID_TEST,                    NULL,                             ARM9_PROCESSOR},
@@ -2398,9 +2425,8 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_RESET_PRODUCTION,            NULL,                             ARM9_PROCESSOR},
 
 // LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
-    {TEST_MODE_FOTA_ID_CHECK,               LGF_TestModeFotaIDCheck,      ARM11_PROCESSOR},
+    {TEST_MODE_FOTA_ID_CHECK,               LGF_TestModeFotaIDCheck,          ARM11_PROCESSOR},
 // LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
 		
-
     {TEST_MODE_XO_CAL_DATA_COPY,            NULL,                             ARM9_PROCESSOR}
 };

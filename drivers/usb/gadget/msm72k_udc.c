@@ -1474,18 +1474,13 @@ static void usb_reset(struct usb_info *ui)
 	printk(KERN_INFO " *** lge_get_cable_info : %x\n", tmp);
 	is_manual_testmode = (tmp & LGE_CABLE_TYPE_NV_MANUAL_TESTMODE) > 0;
 	udc_cable = tmp & LGE_CABLE_TYPE_MASK;
-	if (udc_cable != LGE_CABLE_TYPE_56K  &&
-		udc_cable != LGE_CABLE_TYPE_130K &&
-		udc_cable != LGE_CABLE_TYPE_910K )
+	if (udc_cable < LGE_CABLE_TYPE_56K)
 		udc_cable = 0;
 
-	if(is_manual_testmode && udc_cable == 0)
-	{
-		//USB_DBG("lg_manual_test_mode factory usb\n");
+	if (is_manual_testmode && udc_cable == 0)
 		udc_cable = LGE_CABLE_TYPE_56K;
-	}
 
-	if(udc_cable == LGE_CABLE_TYPE_56K)
+	if (udc_cable == LGE_CABLE_TYPE_56K)
 	{
 		//USB_DBG( "factory cable 56kohm, usb full-speed\n");
 		tmp = ulpi_read(ui, 0x04);
@@ -1494,7 +1489,7 @@ static void usb_reset(struct usb_info *ui)
 		writel(readl(USB_PORTSC) | (1<<24), USB_PORTSC);
 	}
 
-	if(udc_cable == LGE_CABLE_TYPE_56K || udc_cable == LGE_CABLE_TYPE_130K || udc_cable == LGE_CABLE_TYPE_910K)
+	if (udc_cable == LGE_CABLE_TYPE_56K || udc_cable == LGE_CABLE_TYPE_130K || udc_cable == LGE_CABLE_TYPE_910K)
 	{
 		// 4.7V defence code
 		ulpi_write(ui, 0x0A, 0x0F);
@@ -1507,10 +1502,19 @@ static void usb_reset(struct usb_info *ui)
 			call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 
 			spin_lock_irqsave(&ui->lock, flags);
-            lgeusb_switch_factory_mode(0);
+			lgeusb_switch_factory_mode(0);
 			spin_unlock_irqrestore(&ui->lock, flags);
 		}
 	}
+// go back to 0x61fa
+#if 0
+	else if (udc_cable == 0 && lgeusb_get_pid() == LGE_FACTORY_PID)
+	{
+		spin_lock_irqsave(&ui->lock, flags);
+		lgeusb_switch_android_mode(1);
+		spin_unlock_irqrestore(&ui->lock, flags);
+	}
+#endif
 #endif
 // LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 

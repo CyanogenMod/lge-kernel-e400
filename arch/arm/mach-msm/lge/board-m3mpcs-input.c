@@ -387,7 +387,7 @@ static void __init m3_init_i2c_touch(int bus_num)
 #endif /* CONFIG_TOUCH_mxt_140 */
 
 /** accelerometer **/
-static int accel_power(unsigned char onoff)
+int accel_power(unsigned char onoff)
 {
 	int ret = 0;
 	struct vreg *usim2_vreg = vreg_get(0, "usim2");
@@ -408,6 +408,7 @@ static int accel_power(unsigned char onoff)
 
 	return ret;
 }
+EXPORT_SYMBOL(accel_power);
 
 struct acceleration_platform_data bma222 = {
 	.power = accel_power,
