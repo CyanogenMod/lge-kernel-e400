@@ -507,6 +507,19 @@ typedef enum {
 	SPK,
 } amp_gain_type;
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+struct msm_snd_set_voccal_param {
+	voc_codec_type voc_codec;	/* voc_codec */
+	int voccal_param_type;		/* voccal_param_type */
+	int param_val;				/* param_val */
+	uint32_t get_flag;				/* get_flag = 0 for set, get_flag = 1 for get */
+	uint32_t get_param;
+};
+#else
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 struct msm_snd_set_voccal_param {
 	voc_codec_type voc_codec;	/* voc_codec */
 	int voccal_param_type;		/* voccal_param_type */
@@ -514,6 +527,11 @@ struct msm_snd_set_voccal_param {
 	int get_flag;				/* get_flag = 0 for set, get_flag = 1 for get */
 	uint32_t get_param;
 };
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 
 struct msm_snd_set_voccal_iir_param {
 	voc_codec_type voc_codec;
@@ -571,6 +589,19 @@ struct msm_snd_set_loopback_mode_param {
 	int get_param;
 };
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+struct msm_snd_set_micamp_gain_param {
+	voc_codec_type voc_codec;
+	int mic_channel;
+	int32_t value;
+	int get_flag;	/* get_flag = 0 for set, get_flag = 1 for get */
+	int get_param;
+};
+#else
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 struct msm_snd_set_micamp_gain_param {
 	voc_codec_type voc_codec;
 	int channel;
@@ -578,6 +609,11 @@ struct msm_snd_set_micamp_gain_param {
 	int get_flag;	/* get_flag = 0 for set, get_flag = 1 for get */
 	int get_param;
 };
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 
 struct msm_snd_set_voice_clarity_param {
 	int32_t mode;
