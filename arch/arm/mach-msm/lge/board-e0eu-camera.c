@@ -11,9 +11,17 @@
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
 #include <mach/board_lge.h>
+#include <mach/camera.h>
+#include <linux/mutex.h>
 
 #include "devices-msm7x2xa.h"
 #include "board-e0eu.h"
+//LGE_CHANGE E0_CAMERA_PORTING hong.junki@lge.com 2011-10-23
+DEFINE_MUTEX(camera_power_mutex);
+
+#define HI351_I2C_ADDR 	(0x40>>2)
+
+#define HI351_MASTER_CLK_RATE 24000000
 
 extern int aat28xx_ldo_enable(struct device *dev, unsigned num, unsigned enable);
 extern int aat28xx_ldo_set_level(struct device *dev, unsigned num, unsigned vol);
@@ -21,52 +29,78 @@ extern int aat28xx_ldo_set_level(struct device *dev, unsigned num, unsigned vol)
 #ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
 	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(42, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 };
 
 static uint32_t camera_on_gpio_table[] = {
 	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(42, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
 };
 
-#ifdef CONFIG_MT9P017
+#ifdef CONFIG_HI351
 static void msm_camera_vreg_config(int vreg_en)
 {
-	static int gpio_initialzed = 0;
+	int rc;
 
-	if (!gpio_initialzed) {
-		gpio_request(GPIO_CAM_RESET, "cam_reset");
-		gpio_direction_output(GPIO_CAM_RESET, 0);
-		gpio_initialzed = 1;
+	if (vreg_en) {
+		pr_err("%s: msm_camera_vreg_config power on vreg_en enable\n", __func__);
+
+		//IOVDD: 1.8V START
+		rc = aat28xx_ldo_set_level(NULL, 4, 1800);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_set_level(ldo4) failed\n", __func__);
+		}
+		rc = aat28xx_ldo_enable(NULL, 4, vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo4) failed\n", __func__);
+		}
+		//IOVDD: 1.8V END
+
+		//AVDD: 2.8V START
+		rc = aat28xx_ldo_set_level(NULL, 2, 2800);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_set_level(ldo2) failed\n", __func__);
+		}
+		rc = aat28xx_ldo_enable(NULL, 2, vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo2) failed\n", __func__);
+		}
+		//AVDD: 2.8V END
+
+		//DVDD: 1.2V START
+		rc = aat28xx_ldo_set_level(NULL, 3, 1200); //DVDD: 1.2V E0
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_set_level(ldo3) failed\n", __func__);
+		}
+		rc = aat28xx_ldo_enable(NULL, 3, vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo3) failed\n", __func__);
+		}
+		//DVDD: 1.2V END
+
+	} 
+	else {
+	 	pr_err("%s: msm_camera_vreg_config power on vreg_en disable start\n", __func__);
+
+		rc = aat28xx_ldo_enable(NULL, 3, 0);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo3) OFF failed\n", __func__);
+		}
+
+		rc = aat28xx_ldo_enable(NULL, 2, 0);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo2) OFF failed\n", __func__);
+		}
+
+		rc = aat28xx_ldo_enable(NULL, 4, 0);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo4) OFF failed\n", __func__);
+		}
+		pr_err("%s: msm_camera_vreg_config power on vreg_en disable end\n", __func__);
+
 	}
 
-	if(vreg_en) {
-		aat28xx_ldo_set_level(NULL,2,2800);
-		aat28xx_ldo_set_level(NULL,3,2800);
-		aat28xx_ldo_set_level(NULL,4,1800);
-	}
-	aat28xx_ldo_enable(NULL,2,vreg_en);
-	aat28xx_ldo_enable(NULL,3,vreg_en);
-	aat28xx_ldo_enable(NULL,4,vreg_en);
-}
-#endif//CONFIG_MT9P017
-
-#ifdef CONFIG_HI542
-static void msm_camera_vreg_config(int vreg_en)
-{
-	static int gpio_initialzed = 0;
-
-	if (!gpio_initialzed) {
-		gpio_request(GPIO_CAM_RESET, "cam_reset");
-		gpio_direction_output(GPIO_CAM_RESET, 0);
-		gpio_initialzed = 1;
-	}
-	if(vreg_en) {
-		aat28xx_ldo_set_level(NULL,2,2800);
-		aat28xx_ldo_set_level(NULL,3,2800);
-		aat28xx_ldo_set_level(NULL,4,1800);
-	}
-	aat28xx_ldo_enable(NULL,2,vreg_en);
-	aat28xx_ldo_enable(NULL,3,vreg_en);
-	aat28xx_ldo_enable(NULL,4,vreg_en);
+	return;
 }
 #endif
 
@@ -91,8 +125,6 @@ static int config_camera_on_gpios_rear(void)
 {
 	int rc = 0;
 
-	msm_camera_vreg_config(1);
-
 	rc = config_gpio_table(camera_on_gpio_table,
 			ARRAY_SIZE(camera_on_gpio_table));
 	if (rc < 0) {
@@ -106,39 +138,77 @@ static int config_camera_on_gpios_rear(void)
 
 static void config_camera_off_gpios_rear(void)
 {
-	msm_camera_vreg_config(0);
 
 	config_gpio_table(camera_off_gpio_table,
 			ARRAY_SIZE(camera_off_gpio_table));
 }
 
-#ifdef CONFIG_MT9P017
+#ifdef CONFIG_HI351
 static int camera_power_on_rear(void)
 {
-	/* mt9p017 power on sequence: cam reset after enabling MCLK */
-	gpio_set_value(GPIO_CAM_RESET, 0);
-	mdelay(2);
-	gpio_set_value(GPIO_CAM_RESET, 1);
-	mdelay(2);
-	return 0;
-}
-#endif//CONFIG_MT9P017
+	int rc = 0;
+	mutex_lock(&camera_power_mutex);
 
-#ifdef CONFIG_HI542
-static int camera_power_on_rear(void)
-{
-	/* hi542 power on sequence: cam reset after enabling MCLK */
-	gpio_set_value(GPIO_CAM_RESET, 0);
-	mdelay(10);
-	gpio_set_value(GPIO_CAM_RESET, 1);
+	rc = gpio_request(GPIO_CAM_PWDN, "hi351_pwdn");
+	if (rc < 0) {
+		pr_err("%s: gpio_request(GPIO_CAM_PWDN) failed\n", __func__);
+	}
+	
+	rc = gpio_request(GPIO_CAM_RESET, "hi351_reset");
+	if (rc < 0) {
+		pr_err("%s: gpio_request(GPIO_CAM_RESET) failed\n", __func__);
+	}
+	
+	rc = gpio_direction_output(GPIO_CAM_PWDN, 0);
+	if (rc < 0) {
+		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 0) failed(1)\n", __func__);
+	}
+	mdelay(1);		//hong.junki test
+	rc = gpio_direction_output(GPIO_CAM_PWDN, 1);
+	if (rc < 0) {
+		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 1) failed(2)\n", __func__);
+	}
 	mdelay(1);
-	return 0;
+	
+	msm_camera_vreg_config(1);
+
+	mdelay(2);
+
+	rc = gpio_direction_output(GPIO_CAM_RESET, 0);
+	if (rc < 0) {
+		pr_err("%s: gpio_direction_output(GPIO_CAM_RESET, 0) failed(2)\n", __func__);
+	}
+	mdelay(1);		
+
+	msm_camio_clk_rate_set(HI351_MASTER_CLK_RATE);
+	pr_err("%s: msm_camio_clk_rate_set\n", __func__);
+
+	mdelay(10);
+
+	gpio_set_value(GPIO_CAM_RESET, 1);
+	pr_err("%s: gpio_set_value(GPIO_CAM_RESET, 1) final\n", __func__);
+
+	mdelay(10);
+
+	mutex_unlock(&camera_power_mutex);
+
+
+	return rc;
 }
 #endif
 
 static int camera_power_off_rear(void)
 {
-	/* TODO: dummy function */
+
+	gpio_direction_output(GPIO_CAM_RESET, 0);
+
+	mdelay(10);
+
+	gpio_direction_output(GPIO_CAM_PWDN, 0);
+
+	mdelay(1);
+	
+	msm_camera_vreg_config(0);
 	return 0;
 }
 
@@ -153,149 +223,58 @@ struct msm_camera_device_platform_data msm_camera_device_data_rear = {
 	.ioext.appphy = MSM_CLK_CTL_PHYS,
 	.ioext.appsz  = MSM_CLK_CTL_SIZE,
 	.camera_power_on   = camera_power_on_rear,
-	.camera_power_off  = camera_power_off_rear,
+	.camera_power_off  = camera_power_off_rear,	
 };
 
-#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
-static struct msm_camera_sensor_flash_src led_flash_src = {
-	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
-};
-
-static struct msm_camera_sensor_flash_data led_flash_data = {
-	.flash_type = MSM_CAMERA_FLASH_LED,
-	.flash_src  = &led_flash_src,
-};
-#else
 static struct msm_camera_sensor_flash_data led_flash_data = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
 	.flash_src  = NULL,
 };
-#endif
 
-#ifdef CONFIG_MT9P017
-static struct msm_camera_sensor_platform_info mt9p017_sensor_info = {
-	.mount_angle = 0
+#ifdef CONFIG_HI351
+static struct msm_camera_sensor_platform_info hi351_sensor_info = {
+	.mount_angle = 90
 };
 
-static struct msm_camera_sensor_info msm_camera_sensor_mt9p017_data = {
-	.sensor_name    = "mt9p017",
+static struct msm_camera_sensor_info msm_camera_sensor_hi351_data = {
+	.sensor_name    = "hi351",
 	.sensor_reset_enable = 1,
 	.sensor_reset   = GPIO_CAM_RESET,
-	.sensor_pwd     = 0,
+	.sensor_pwd     = GPIO_CAM_PWDN,
 	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
 	.pdata          = &msm_camera_device_data_rear,
 	.flash_data     = &led_flash_data,
 	.csi_if         = 1,
-	.sensor_platform_info = &mt9p017_sensor_info,
+	.sensor_platform_info = &hi351_sensor_info,
 };
 
-static struct platform_device msm_camera_sensor_mt9p017 = {
-        .name      = "msm_camera_mt9p017",
+static struct platform_device msm_camera_sensor_hi351 = {
+        .name      = "msm_camera_hi351",
         .dev       = {
-                .platform_data = &msm_camera_sensor_mt9p017_data,
+                .platform_data = &msm_camera_sensor_hi351_data,
         },
 };
-#endif//CONFIG_MT9P017
-
-#ifdef CONFIG_HI542
-static struct msm_camera_sensor_platform_info hi542_sensor_info = {
-	.mount_angle = 0
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_hi542_data = {
-	.sensor_name    = "hi542",
-	.sensor_reset_enable = 1,
-	.sensor_reset   = GPIO_CAM_RESET,
-	.sensor_pwd     = 0,
-	.vcm_pwd        = 0,
-	.vcm_enable     = 0,
-	.pdata          = &msm_camera_device_data_rear,
-	.flash_data     = &led_flash_data,
-	.csi_if         = 1,
-	.sensor_platform_info = &hi542_sensor_info,
-};
-
-static struct platform_device msm_camera_sensor_hi542 = {
-        .name      = "msm_camera_hi542",
-        .dev       = {
-                .platform_data = &msm_camera_sensor_hi542_data,
-        },
-};
-#endif//CONFIG_HI542
+#endif//CONFIG_HI351
 
 static struct i2c_board_info i2c_camera_devices[] = {
-#ifdef CONFIG_MT9P017
+
+#ifdef CONFIG_HI351
 	{
-		I2C_BOARD_INFO("mt9p017", 0x1B),
-	},
-#endif
-#ifdef CONFIG_HI542
-	{
-		I2C_BOARD_INFO("hi542", 0x10),
+		I2C_BOARD_INFO("hi351", HI351_I2C_ADDR),
 	},
 #endif
 
 };
-
-#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
-/* LM3559 flash led driver */
-static struct gpio_i2c_pin flash_i2c_pin[] = {
-	{
-		.sda_pin	= GPIO_FLASH_I2C_SDA,
-		.scl_pin	= GPIO_FLASH_I2C_SCL,
-		.reset_pin	= 0,
-		.irq_pin	= 0,
-	},
-};
-
-static struct i2c_gpio_platform_data flash_i2c_pdata = {
-	.sda_is_open_drain	= 0,
-	.scl_is_open_drain	= 0,
-	.udelay			    = 2,
-};
-
-static struct platform_device flash_i2c_device = {
-	.name	= "i2c-gpio",
-	.dev.platform_data = &flash_i2c_pdata,
-};
-
-static struct led_flash_platform_data lm3559_flash_pdata = {
-	.gpio_flen = GPIO_FLASH_EN,
-};
-
-static struct i2c_board_info i2c_camera_flash_devices[] = {
-	{
-		I2C_BOARD_INFO("lm3559", FLASH_I2C_ADDRESS),
-		.platform_data = &lm3559_flash_pdata,
-	},
-};
-#endif
 
 #endif /* CONFIG_MSM_CAMERA */
 
 static struct platform_device *e0eu_camera_devices[] __initdata = {
-#ifdef CONFIG_MT9P017
-    &msm_camera_sensor_mt9p017,
-#endif
-#ifdef CONFIG_HI542
-    &msm_camera_sensor_hi542,
+#ifdef CONFIG_HI351
+    &msm_camera_sensor_hi351,
 #endif
 
 };
-
-#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
-static void __init e0eu_init_i2c_camera(int bus_num)
-{
-	flash_i2c_device.id = bus_num;
-
-	lge_init_gpio_i2c_pin(&flash_i2c_pdata, flash_i2c_pin[0],
-		&i2c_camera_flash_devices[0]);
-	i2c_register_board_info(bus_num, i2c_camera_flash_devices,
-		ARRAY_SIZE(i2c_camera_flash_devices));
-	platform_device_register(&flash_i2c_device);
-}
-#endif
 
 void __init lge_add_camera_devices(void)
 {
@@ -305,7 +284,5 @@ void __init lge_add_camera_devices(void)
 		ARRAY_SIZE(i2c_camera_devices));
 #endif
 	platform_add_devices(e0eu_camera_devices, ARRAY_SIZE(e0eu_camera_devices));
-#ifdef CONFIG_MSM_CAMERA_FLASH_LM3559
-	lge_add_gpio_i2c_device(e0eu_init_i2c_camera);
-#endif
+
 }

@@ -105,11 +105,10 @@ enum {
 #define BT_GPIO_I2C_SDA  	132
 
 /* camera gpio */
+//LGE_CHANGE_S E0_CAMERA [2011-10-23] hong.junki@lge.com
 #define GPIO_CAM_RESET      34
-#define GPIO_FLASH_EN       82
-#define GPIO_FLASH_I2C_SCL  26
-#define GPIO_FLASH_I2C_SDA  27
-#define FLASH_I2C_ADDRESS   0x53
+#define GPIO_CAM_PWDN		42
+//LGE_CHANGE_E
 
 /* hollic gpio */
 #ifdef CONFIG_HOLLIC
