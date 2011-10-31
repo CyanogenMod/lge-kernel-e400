@@ -50,7 +50,7 @@
 #define TS_READ_REGS_LEN 		66
 #define MELFAS_MAX_TOUCH		5
 
-#define DEBUG_PRINT 			0
+#define DEBUG_PRINT 			1
 
 #define SET_DOWNLOAD_BY_GPIO	1
 
