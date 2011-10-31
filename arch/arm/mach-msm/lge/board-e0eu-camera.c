@@ -23,8 +23,16 @@ DEFINE_MUTEX(camera_power_mutex);
 
 #define HI351_MASTER_CLK_RATE 24000000
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
+#if defined(CONFIG_BACKLIGHT_AAT2870)
 extern int aat28xx_ldo_enable(struct device *dev, unsigned num, unsigned enable);
 extern int aat28xx_ldo_set_level(struct device *dev, unsigned num, unsigned vol);
+#elif defined(CONFIG_BACKLIGHT_BU61800)
+extern int bu61800_ldo_enable(struct device *dev, unsigned num, unsigned enable);
+#else
+//default
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
 
 #ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
@@ -41,7 +49,7 @@ static uint32_t camera_on_gpio_table[] = {
 static void msm_camera_vreg_config(int vreg_en)
 {
 	int rc;
-
+#if defined(CONFIG_BACKLIGHT_AAT2870)
 	if (vreg_en) {
 		pr_err("%s: msm_camera_vreg_config power on vreg_en enable\n", __func__);
 
@@ -99,7 +107,58 @@ static void msm_camera_vreg_config(int vreg_en)
 		pr_err("%s: msm_camera_vreg_config power on vreg_en disable end\n", __func__);
 
 	}
+#elif defined(CONFIG_BACKLIGHT_BU61800)
+	if (vreg_en) {
+		pr_err("%s: msm_camera_vreg_config power on vreg_en enable\n", __func__);
 
+		//IOVDD: 1.8V START
+
+		rc = bu61800_ldo_enable(NULL,4,vreg_en); 
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo4) failed\n", __func__);
+		}
+		//IOVDD: 1.8V END
+
+		//AVDD: 2.8V START
+
+		rc = bu61800_ldo_enable(NULL,2,vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo2) failed\n", __func__);
+		}
+		//AVDD: 2.8V END
+
+		//DVDD: 1.2V START
+
+		rc = bu61800_ldo_enable(NULL,3,vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo3) failed\n", __func__);
+		}
+		//DVDD: 1.2V END
+
+	} 
+	else {
+	 	pr_err("%s: msm_camera_vreg_config power on vreg_en disable start\n", __func__);
+
+		rc = bu61800_ldo_enable(NULL,3,vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo3) OFF failed\n", __func__);
+		}
+
+		rc = bu61800_ldo_enable(NULL,2,vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo2) OFF failed\n", __func__);
+		}
+
+		rc = bu61800_ldo_enable(NULL,4,vreg_en);
+		if (rc < 0) {
+			pr_err("%s: aat28xx_ldo_enable(ldo4) OFF failed\n", __func__);
+		}
+		pr_err("%s: msm_camera_vreg_config power on vreg_en disable end\n", __func__);
+
+	}
+#else
+	//default
+#endif
 	return;
 }
 #endif
