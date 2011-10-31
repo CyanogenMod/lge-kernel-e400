@@ -92,6 +92,8 @@ static int hscd_i2c_writem(char *txData, int length)
 #ifdef ALPS_DEBUG
 	int i;
 #endif
+/* for debugging */
+#if 0
 
 	struct i2c_msg msg[] = {
 		{
@@ -101,6 +103,19 @@ static int hscd_i2c_writem(char *txData, int length)
 		 .buf = txData,
 		 },
 	};
+#else
+	struct i2c_msg msg;
+	if(client_hscd != NULL){
+			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x ", client_hscd->addr,length,txData[0],txData[1]);
+	}else{
+			printk("[HSCD] i2c_writem client_hscd is NULL");
+	}
+
+	msg.addr = client_hscd->addr,
+	msg.flags = 0,
+	msg.len = length,
+	msg.buf = txData,
+#endif
 
 #ifdef ALPS_DEBUG
 	printk("[HSCD] i2c_writem : ");
@@ -311,7 +326,7 @@ int hscd_get_magnetic_field_data(int *xyz)
 void hscd_activate(int flgatm, int flg, int dtime)
 {
 	u8 buf[2];
-
+	int ret ;
 	if (flg != 0)
 		flg = 1;
 
@@ -330,13 +345,23 @@ void hscd_activate(int flgatm, int flg, int dtime)
 	buf[0]  = HSCD_CTRL1;
 	buf[1] |= (flg<<7);
 	buf[1] |= 0x60;	/* RS1:1(Reverse Input Substraction drive), RS2:1(13bit) */
-	hscd_i2c_writem(buf, 2);
+	printk("hscd_activate (flg : %d, flgatm : %d)\n",flg,flgatm);
+	ret = hscd_i2c_writem(buf, 2);
+	if(ret != 0)
+	{
+		printk("hscd_activate  fail 1(%d, %d   / %d)\n",flg,dtime,flgatm);
+	}
 	mdelay(1);
 
 	if (flg) {
 		buf[0] = HSCD_CTRL3;
 		buf[1] = 0x02;
-		hscd_i2c_writem(buf, 2);
+		ret = hscd_i2c_writem(buf, 2);
+		if(ret != 0)
+		{
+			printk("hscd_activate  fail 2  (%d, %d   / %d)\n",flg,dtime,flgatm);
+
+		}
 	}
 
 	if (flgatm) {
