@@ -268,7 +268,9 @@ static void __init msm7x2x_init(void)
 	lge_add_sound_devices();
 	lge_add_lcd_devices();
 	lge_add_camera_devices();
+#ifndef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
 	lge_add_pm_devices();
+#endif
 	lge_add_usb_devices();
 	lge_add_connectivity_devices(); /* suhui.kim@lge.com, for Bluetooth/FM */
 

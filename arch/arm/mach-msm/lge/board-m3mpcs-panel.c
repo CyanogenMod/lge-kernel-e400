@@ -12,6 +12,56 @@
 #include <mach/board_lge.h>
 #include <mach/vreg.h>
 
+#ifdef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
+#include <linux/regulator/rt8053.h>
+#include <linux/regulator/consumer.h>
+
+/* Sub-PMIC */
+static struct regulator_consumer_supply rt8053_vreg_supply[] = {
+	REGULATOR_SUPPLY("RT8053_LDO1", NULL),
+	REGULATOR_SUPPLY("RT8053_LDO2", NULL),
+	REGULATOR_SUPPLY("RT8053_LDO3", NULL),
+	REGULATOR_SUPPLY("RT8053_LDO4", NULL),
+	REGULATOR_SUPPLY("RT8053_LDO5", NULL),
+	REGULATOR_SUPPLY("RT8053_DCDC1", NULL),
+};
+
+#define RT8053_VREG_INIT(_id, _min_uV, _max_uV) \
+	{ \
+		.id = RT8053_##_id, \
+		.initdata = { \
+			.constraints = { \
+				.valid_modes_mask = REGULATOR_MODE_NORMAL, \
+				.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS, \
+				.min_uV = _min_uV, \
+				.max_uV = _max_uV, \
+			}, \
+			.num_consumer_supplies = 1, \
+			.consumer_supplies = \
+				&rt8053_vreg_supply[RT8053_##_id], \
+		}, \
+	}
+
+static struct rt8053_regulator_subdev rt8053_regulators[] = {
+	RT8053_VREG_INIT(LDO1, 1200000, 3300000),
+	RT8053_VREG_INIT(LDO2, 1200000, 3300000),
+	RT8053_VREG_INIT(LDO3, 1200000, 3300000),
+	RT8053_VREG_INIT(LDO4,  800000, 2850000),
+	RT8053_VREG_INIT(LDO5, 1200000, 3300000),
+	RT8053_VREG_INIT(DCDC1, 800000, 2300000),
+};
+
+static struct rt8053_platform_data rt8053_data = {
+	.num_regulators = 6,
+	.enable_gpio = 76,
+	.regulators = rt8053_regulators,
+};
+
+/* REV_A workaround for camera flash driver */
+static struct led_flash_platform_data lm3559_flash_pdata = {
+	.gpio_flen = 13,
+};
+#endif /* CONFIG_MACH_MSM7X27A_M3MPCS_REV_A */
 
 /* backlight device */
 static struct gpio_i2c_pin bl_i2c_pin = {
@@ -46,7 +96,18 @@ static struct i2c_board_info bl_i2c_bdinfo[] = {
 		I2C_BOARD_INFO("lm3530bl", 0x38),
 		.type = "lm3530bl",
 		.platform_data = &lm3530bl_data,
-	}
+	},
+#ifdef CONFIG_MACH_MSM7X27A_M3MPCS_REV_A
+	[1] = {
+		I2C_BOARD_INFO("rt8053", 0x7D),
+		.type = "rt8053",
+		.platform_data = &rt8053_data,
+	},
+	[2] = {
+		I2C_BOARD_INFO("lm3559", FLASH_I2C_ADDRESS),
+		.platform_data = &lm3559_flash_pdata,
+	},
+#endif /* CONFIG_MACH_MSM7X27A_M3MPCS_REV_A */
 };
 
 static struct platform_device mipi_dsi_r61529_panel_device = {
