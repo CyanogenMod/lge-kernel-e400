@@ -110,8 +110,9 @@ typedef enum{
 typedef enum
 {
     SLEEP_MODE_ON,
-    AIR_PLAIN_MODE_ON,
-    FTM_BOOT_ON
+    FLIGHT_MODE_ON,
+    FLIGHT_KERNEL_MODE_ON,
+    FLIGHT_MODE_OFF,
 } test_mode_sleep_mode_type;
 
 typedef enum

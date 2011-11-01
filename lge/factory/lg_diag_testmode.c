@@ -133,7 +133,7 @@ static const match_table_t param_tokens = {
 
 void CheckHWRev(byte *pStr)
 {
-    char *rev_str[] = {"evb1", "evb2", "A", "B", "C", "D",
+    char *rev_str[] = {"evb", "A", "B", "C", "D",
         "E", "F", "G", "1.0", "1.1", "1.2",
         "revserved"};
 
@@ -190,7 +190,7 @@ PACK (void *)LGF_TestMode (
             break;
 
 /* 2011.07.22 woochang.chun@lge.com, to ignore key, touch event on sleep mode (250-42-0) */
-#ifdef CONFIG_LGE_DIAG_DISABLE_INPUT_DEVICES_ON_SLEEP_MODE
+#if 1 //def CONFIG_LGE_DIAG_DISABLE_INPUT_DEVICES_ON_SLEEP_MODE
         case TEST_MODE_SLEEP_MODE_TEST:
             rsp_len = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type) + sizeof(test_mode_sleep_mode_type);
             break;
@@ -551,8 +551,71 @@ int LGF_TestModeGetDisableInputDevices(void)
 EXPORT_SYMBOL(LGF_TestModeGetDisableInputDevices);
 #endif
 
+extern void LGF_SendKey(word keycode);
+extern void set_operation_mode(boolean info);
+extern int lm3530_get_state(void);
+
+
 void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
+#if 1
+	DIAG_TEST_MODE_F_req_type req_ptr;
+
+  	req_ptr.sub_cmd_code = TEST_MODE_SLEEP_MODE_TEST;
+
+	pRsp->ret_stat_code = TEST_OK_S;
+	req_ptr.test_mode_req.sleep_mode = (pReq->sleep_mode & 0x00FF); 	// 2011.06.21 biglake for power test after cal
+
+	switch(req_ptr.test_mode_req.sleep_mode){	
+		case SLEEP_MODE_ON:
+            if(lm3530_get_state() == 1 /* NORMAL_STATE */)
+			    LGF_SendKey(KEY_POWER);
+            
+            //send_to_arm9((void*)&req_ptr, (void*)pRsp);
+			break;            
+		case FLIGHT_MODE_ON:
+	  	case FLIGHT_KERNEL_MODE_ON:                        
+            if(lm3530_get_state() == 1 /* NORMAL_STATE */)
+			    LGF_SendKey(KEY_POWER);
+            
+            set_operation_mode(FALSE);
+            //send_to_arm9((void*)&req_ptr, (void*)pRsp);
+			break;
+
+		case FLIGHT_MODE_OFF:            
+            if(lm3530_get_state() == 2 /* SLEEP_STATE */)
+			    LGF_SendKey(KEY_POWER);
+            
+            set_operation_mode(TRUE);
+            //send_to_arm9((void*)&req_ptr, (void*)pRsp);           
+			break;
+		default:
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+            break;
+	}
+    #if 0
+	switch(pReq->sleep_mode){	
+		case SLEEP_MODE_ON:
+			LGF_SendKey(KEY_POWER);
+			break;		
+		case FLIGHT_MODE_ON:
+			LGF_SendKey(KEY_POWER);
+			//if_condition_is_on_air_plain_mode = 1;
+			set_operation_mode(FALSE);
+			break;
+	  	case FLIGHT_KERNEL_MODE_ON:
+			break;
+		case FLIGHT_MODE_OFF:
+			set_operation_mode(TRUE);
+			break;
+		default:
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+            break;
+	}
+    #endif
+
+	return pRsp;
+#else
     pRsp->ret_stat_code = TEST_FAIL_S;
 
 #ifdef CONFIG_LGE_DIAG_DISABLE_INPUT_DEVICES_ON_SLEEP_MODE 
@@ -565,8 +628,11 @@ void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
             pRsp->ret_stat_code = TEST_OK_S;
             break;
 
-        case AIR_PLAIN_MODE_ON:
-        case FTM_BOOT_ON:
+        case FLIGHT_MODE_ON:
+            break;            
+        case FLIGHT_KERNEL_MODE_ON:
+            break;
+        case FLIGHT_MODE_OFF:
             break;
 
         default:
@@ -575,6 +641,7 @@ void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
 #endif
 
     return pRsp;
+#endif
 }
 
 void* LGF_TestModeVirtualSimTest(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
