@@ -92,8 +92,6 @@ static int hscd_i2c_writem(char *txData, int length)
 #ifdef ALPS_DEBUG
 	int i;
 #endif
-/* for debugging */
-#if 0
 
 	struct i2c_msg msg[] = {
 		{
@@ -103,19 +101,13 @@ static int hscd_i2c_writem(char *txData, int length)
 		 .buf = txData,
 		 },
 	};
-#else
-	struct i2c_msg msg;
+/* for debugging */
 	if(client_hscd != NULL){
 			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x ", client_hscd->addr,length,txData[0],txData[1]);
 	}else{
 			printk("[HSCD] i2c_writem client_hscd is NULL");
 	}
 
-	msg.addr = client_hscd->addr,
-	msg.flags = 0,
-	msg.len = length,
-	msg.buf = txData,
-#endif
 
 #ifdef ALPS_DEBUG
 	printk("[HSCD] i2c_writem : ");
