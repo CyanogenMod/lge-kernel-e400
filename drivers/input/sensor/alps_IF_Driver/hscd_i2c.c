@@ -463,6 +463,7 @@ static int hscd_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	dev_info(&client->adapter->dev, "detected HSCD magnetic field sensor\n");
 
 	hscd_activate(0, 1, atomic_read(&delay));
+	mdelay(5);
 	hscd_get_magnetic_field_data(d);
 	printk("[HSCD] x:%d y:%d z:%d\n",d[0],d[1],d[2]);
 	hscd_activate(0, 0, atomic_read(&delay));
