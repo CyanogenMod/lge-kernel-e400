@@ -76,8 +76,28 @@ static struct snd_ctxt the_snd;
 
 #if defined (CONFIG_MACH_LGE)
 #define SND_SET_LOOPBACK_MODE_PROC 61
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#define SND_SET_VOCCAL_PARAM_PROC 62
+#define SND_SET_VOCCAL_IIR_PARAM_PROC 63
+#define SND_SET_NEXT_EC_PARAM_PROC 64
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 #define SND_SET_RX_VOLUME_PROC 65
 #define SND_SET_DTMF_VOLUME_PROC 66
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#define SND_SET_PAD_VALUE_PROC 67
+#define SND_WRITE_EFS_PROC 68
+#define SND_SET_MICAMP_GAIN_PROC 69
+#define SND_SET_AMP_GAIN_PROC 70
+#define SND_WRITE_MEM_PROC 71
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 #endif
 
 struct rpc_snd_set_device_args {
@@ -147,10 +167,100 @@ struct snd_set_loopback_mode_msg {
 	struct rpc_snd_set_loopback_mode_args args;
 };
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+int wefs;
+struct snd_set_voccal_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_voccal;
+}crep;
+struct snd_set_voccal_iir_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_voccal_iir;
+}cirep;
+struct snd_set_nextec_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_nextec;
+}nrep;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 struct snd_set_rxvol_param_rep {
 	struct rpc_reply_hdr hdr;
 	uint32_t get_rxvol;
 } rrep;
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+struct snd_set_dtmfvol_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_dtmfvol;
+}frep;
+struct snd_set_padvalue_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_padvalue;
+}prep;
+struct snd_set_amp_gain_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_gainvalue;
+}arep;
+struct snd_write_efs_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t result;
+}wrep;
+struct snd_set_micamp_item_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_gainvalue;
+}mrep;
+
+struct rpc_snd_set_voccal_param_args {
+	voc_codec_type voc_codec;
+	int voccal_param_type; //voccal_property_enum_type voccal_param_type;
+	uint32_t get_flag;  //get_flag = 0 for set, get_flag = 1 for get
+    	uint32_t param_val;
+
+	uint32_t cb_func;
+	uint32_t client_data;
+};
+
+struct snd_set_voccal_param_msg {
+	struct rpc_request_hdr hdr;
+	struct rpc_snd_set_voccal_param_args args;
+};
+
+struct rpc_snd_set_voccal_iir_param_args {
+     voc_codec_type voc_codec;
+     voccal_iir_filter_type voccal_iir_param_type;
+	 int get_flag;  //get_flag = 0 for set, get_flag = 1 for get
+     int32_t param_val;
+ 
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+ 
+struct snd_set_voccal_iir_param_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_voccal_iir_param_args args;
+};
+
+struct rpc_snd_set_next_ec_param_args {
+     voc_ec_type ec_mode;
+     nextgen_ec_param_enum_type ec_param_type;
+	 int get_flag;  //get_flag = 0 for set, get_flag = 1 for get
+     int32_t param_val;
+ 
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+ 
+struct snd_set_next_ec_param_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_next_ec_param_args args;
+};
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 
 struct rpc_snd_set_rx_volume_param_args {
 	uint32_t device;
@@ -168,11 +278,16 @@ struct snd_set_rx_volume_param_msg {
     struct rpc_snd_set_rx_volume_param_args args;
 };
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 struct snd_set_dtmfvol_param_rep {
 	struct rpc_reply_hdr hdr;
 	uint32_t get_dtmfvol;
 } frep;
-
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 struct rpc_snd_set_dtmf_volume_param_args {
 	uint32_t device;
 	uint32_t method;
@@ -188,6 +303,77 @@ struct snd_set_dtmf_volume_param_msg {
     struct rpc_request_hdr hdr;
     struct rpc_snd_set_dtmf_volume_param_args args;
 };
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+struct rpc_snd_set_pad_value_param_args {
+     uint32_t device;
+     uint32_t method;
+     uint32_t idx;
+	 int get_flag;  //get_flag = 0 for set, get_flag = 1 for get
+     int32_t param_val;
+ 
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+ 
+struct snd_set_pad_value_param_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_pad_value_param_args args;
+};
+
+struct rpc_snd_set_amp_gain_param_args {
+     voc_codec_type voc_codec;
+     amp_gain_type gain_type;
+     int get_flag;  //get_flag = 0 for set, get_flag = 1 for get
+	 int get_param;
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+
+struct snd_set_set_amp_gain_param_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_amp_gain_param_args args;
+};
+
+struct rpc_snd_write_efs_args {
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+ 
+struct snd_write_efs_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_write_efs_args args;
+};
+struct rpc_snd_set_micamp_gain_param_args {
+     int32_t voc_codec;
+     int32_t mic_channel;
+	 int get_flag;  //get_flag = 0 for set, get_flag = 1 for get
+     int32_t get_param;
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+
+struct snd_set_micamp_gain_param_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_micamp_gain_param_args args;
+};
+
+union snd_set_union_param_msg{
+	struct snd_set_loopback_mode_msg lbmsg;
+	struct snd_set_voccal_param_msg cmsg;
+	struct snd_set_voccal_iir_param_msg cimsg;
+	struct snd_set_next_ec_param_msg nmsg;
+	struct snd_set_rx_volume_param_msg rmsg;
+	struct snd_set_dtmf_volume_param_msg fmsg;
+	struct snd_set_pad_value_param_msg pmsg;
+	struct snd_set_set_amp_gain_param_msg amsg;
+	struct snd_write_efs_msg wmsg;
+	struct snd_set_micamp_gain_param_msg mamsg;
+};
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 #endif
 
 struct snd_endpoint *get_snd_endpoints(int *size);
@@ -240,11 +426,27 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 #if defined (CONFIG_MACH_LGE)
 	struct msm_snd_set_loopback_mode_param loopback;
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 	struct snd_set_loopback_mode_msg lbmsg;
 	struct msm_snd_set_rx_volume_param rxvol;
 	struct snd_set_rx_volume_param_msg rmsg;
 	struct msm_snd_set_dtmf_volume_param dtmfvol;
 	struct snd_set_dtmf_volume_param_msg fmsg;
+#else
+	struct msm_snd_set_voccal_param voccal;
+	struct msm_snd_set_voccal_iir_param voccaliir;
+	struct msm_snd_set_next_ec_param nextec;
+	struct msm_snd_set_rx_volume_param rxvol;
+	struct msm_snd_set_dtmf_volume_param dtmfvol;
+	struct msm_snd_set_pad_value_param padvalue;
+	struct msm_snd_set_amp_gain_param ampgain;
+	struct msm_snd_set_micamp_gain_param micampgain;
+	union snd_set_union_param_msg umsg;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 #endif
 
 	int rc = 0;
@@ -381,16 +583,33 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 		lbmsg.args.mode = cpu_to_be32(loopback.mode);
 		lbmsg.args.cb_func = -1;
 		lbmsg.args.client_data = 0;
-
+#else
+		umsg.lbmsg.args.mode = cpu_to_be32(loopback.mode);
+		umsg.lbmsg.args.cb_func = -1;
+		umsg.lbmsg.args.client_data = 0;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 
 		pr_info("set_loopback_mode %d \n", loopback.mode);
 
 		rc = msm_rpc_call(snd->ept,
 			SND_SET_LOOPBACK_MODE_PROC,
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 			&lbmsg, sizeof(lbmsg), 5 * HZ);
+#else
+			&umsg.lbmsg, sizeof(umsg.lbmsg), 5 * HZ);
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 
 		if (rc < 0) {
 			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
@@ -404,12 +623,119 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 	break;
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+	case SND_SET_VOCCAL_PARAM:
+		if (copy_from_user(&voccal, (void __user *) arg, sizeof(voccal))) {
+			pr_err("snd_ioctl set voccal_param: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		umsg.cmsg.args.voc_codec = cpu_to_be32(voccal.voc_codec);
+		umsg.cmsg.args.voccal_param_type = cpu_to_be32(voccal.voccal_param_type);
+		umsg.cmsg.args.get_flag = cpu_to_be32(voccal.get_flag);
+		umsg.cmsg.args.param_val = cpu_to_be32(voccal.param_val);
+		umsg.cmsg.args.cb_func = -1;
+		umsg.cmsg.args.client_data = 0;
+		pr_info("snd_set_voccal_param %d %d %d %d\n", voccal.voc_codec,
+						 voccal.voccal_param_type, voccal.get_flag,  voccal.param_val);
+		pr_info("snd_set_voccal_param %d %d %d %d\n", umsg.cmsg.args.voc_codec,
+						 umsg.cmsg.args.voccal_param_type, umsg.cmsg.args.get_flag ,  umsg.cmsg.args.param_val );
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_VOCCAL_PARAM_PROC,
+			&umsg.cmsg, sizeof(umsg.cmsg),&crep, sizeof(crep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			voccal.get_param = be32_to_cpu(crep.get_voccal);
+			printk(KERN_INFO "%s:voccal ->%d\n", __func__, voccal.get_param);
+			if (copy_to_user((void __user *)arg, &voccal, sizeof(voccal))) {
+				pr_err("snd_ioctl get voccal: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+
+	case SND_SET_VOCCAL_IIR_PARAM:
+		if (copy_from_user(&voccaliir, (void __user *) arg, sizeof(voccaliir))) {
+			pr_err("snd_ioctl set_voccal_iir_param: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		umsg.cimsg.args.voc_codec = cpu_to_be32(voccaliir.voc_codec);
+		umsg.cimsg.args.voccal_iir_param_type = cpu_to_be32(voccaliir.voccal_iir_param_type);
+		umsg.cimsg.args.get_flag = cpu_to_be32(voccaliir.get_flag);
+		umsg.cimsg.args.param_val = cpu_to_be32(voccaliir.param_val);
+		umsg.cimsg.args.cb_func = -1;
+		umsg.cimsg.args.client_data = 0;
+		pr_info("set_voccal_iir_param %d %d %d\n", voccaliir.voc_codec,
+						 voccaliir.voccal_iir_param_type, voccaliir.param_val);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_VOCCAL_IIR_PARAM_PROC,
+			&umsg.cimsg, sizeof(umsg.cimsg),&cirep, sizeof(cirep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			voccaliir.get_param = be32_to_cpu(cirep.get_voccal_iir);
+			printk(KERN_INFO "%s:voccal_iir ->%d\n", __func__, voccaliir.get_param);
+			if (copy_to_user((void __user *)arg, &voccaliir, sizeof(voccaliir))) {
+				pr_err("snd_ioctl get voccal iir: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+
+	case SND_SET_NEXT_EC_PARAM:
+		if (copy_from_user(&nextec, (void __user *) arg, sizeof(nextec))) {
+			pr_err("snd_ioctl set_next_ec_param: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		umsg.nmsg.args.ec_mode = cpu_to_be32(nextec.ec_mode);
+		umsg.nmsg.args.ec_param_type = cpu_to_be32(nextec.ec_param_type);
+		umsg.nmsg.args.get_flag = cpu_to_be32(nextec.get_flag);
+		umsg.nmsg.args.param_val = cpu_to_be32(nextec.param_val);
+		umsg.nmsg.args.cb_func = -1;
+		umsg.nmsg.args.client_data = 0;
+		pr_info("set_next_ec_param %d %d %d\n", nextec.ec_mode,
+						 nextec.ec_param_type, nextec.param_val);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_NEXT_EC_PARAM_PROC,
+			&umsg.nmsg, sizeof(umsg.nmsg),&nrep, sizeof(nrep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			nextec.get_param = be32_to_cpu(nrep.get_nextec);
+			printk(KERN_INFO "%s:nextec ->%d\n", __func__, nextec.get_param);
+			if (copy_to_user((void __user *)arg, &nextec, sizeof(nextec))) {
+				pr_err("snd_ioctl get next ec: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 	case SND_SET_RX_VOLUME:
 		if (copy_from_user(&rxvol, (void __user *) arg, sizeof(rxvol))) {
 			pr_err("snd_ioctl set_rx_volume: invalid pointer.\n");
 			rc = -EFAULT;
 			break;
 		}
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 		rmsg.args.device = cpu_to_be32(rxvol.device);
 		rmsg.args.method = cpu_to_be32(rxvol.method);
 		rmsg.args.idx = cpu_to_be32(rxvol.idx);
@@ -417,12 +743,30 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		rmsg.args.param_val = cpu_to_be32(rxvol.param_val);
 		rmsg.args.cb_func = -1;
 		rmsg.args.client_data = 0;
+#else
+		umsg.rmsg.args.device = cpu_to_be32(rxvol.device);
+		umsg.rmsg.args.method = cpu_to_be32(rxvol.method);
+		umsg.rmsg.args.idx = cpu_to_be32(rxvol.idx);
+		umsg.rmsg.args.get_flag = cpu_to_be32(rxvol.get_flag);
+		umsg.rmsg.args.param_val = cpu_to_be32(rxvol.param_val);
+		umsg.rmsg.args.cb_func = -1;
+		umsg.rmsg.args.client_data = 0;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 		pr_info("set_rx_volume %d %d %d %d\n", rxvol.device,
 						 rxvol.method, rxvol.idx, rxvol.param_val);
 
 		rc = msm_rpc_call_reply(snd->ept,
 			SND_SET_RX_VOLUME_PROC,
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 			&rmsg, sizeof(rmsg), &rrep, sizeof(rrep), 5 * HZ);
+#else
+			&umsg.rmsg, sizeof(umsg.rmsg), &rrep, sizeof(rrep), 5 * HZ);
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 		if (rc < 0)
 			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
 		else {
@@ -441,6 +785,10 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			rc = -EFAULT;
 			break;
 		}
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 		fmsg.args.device = cpu_to_be32(dtmfvol.device);
 		fmsg.args.method = cpu_to_be32(dtmfvol.method);
 		fmsg.args.idx = cpu_to_be32(dtmfvol.idx);
@@ -448,12 +796,30 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		fmsg.args.param_val = cpu_to_be32(dtmfvol.param_val);
 		fmsg.args.cb_func = -1;
 		fmsg.args.client_data = 0;
+#else
+		umsg.fmsg.args.device = cpu_to_be32(dtmfvol.device);
+		umsg.fmsg.args.method = cpu_to_be32(dtmfvol.method);
+		umsg.fmsg.args.idx = cpu_to_be32(dtmfvol.idx);
+		umsg.fmsg.args.get_flag = cpu_to_be32(dtmfvol.get_flag);
+		umsg.fmsg.args.param_val = cpu_to_be32(dtmfvol.param_val);
+		umsg.fmsg.args.cb_func = -1;
+		umsg.fmsg.args.client_data = 0;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 		pr_info("set_dtmf_volume %d %d %d %d\n", dtmfvol.device,
 				dtmfvol.method, dtmfvol.idx, dtmfvol.param_val);
 
 		rc = msm_rpc_call_reply(snd->ept,
 			SND_SET_DTMF_VOLUME_PROC,
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 			&fmsg, sizeof(fmsg), &frep, sizeof(frep), 5 * HZ);
+#else
+			&umsg.fmsg, sizeof(umsg.fmsg), &frep, sizeof(frep), 5 * HZ);
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 		if (rc < 0)
 			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
 		else {
@@ -465,6 +831,154 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		}
 		break;
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+	case SND_SET_PAD_VALUE:
+		if (copy_from_user(&padvalue, (void __user *) arg, sizeof(padvalue))) {
+			pr_err("snd_ioctl set_pad_value: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		umsg.pmsg.args.device = cpu_to_be32(padvalue.device);
+		umsg.pmsg.args.method = cpu_to_be32(padvalue.method);
+		umsg.pmsg.args.idx = cpu_to_be32(padvalue.idx);
+		umsg.pmsg.args.get_flag = cpu_to_be32(padvalue.get_flag);
+		umsg.pmsg.args.param_val = cpu_to_be32(padvalue.param_val);
+		umsg.pmsg.args.cb_func = -1;
+		umsg.pmsg.args.client_data = 0;
+		pr_info("set_pad_value %d %d %d %d\n", padvalue.device,
+						 padvalue.method, padvalue.idx, padvalue.param_val);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_PAD_VALUE_PROC,
+			&umsg.pmsg, sizeof(umsg.pmsg),&prep, sizeof(prep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			padvalue.get_param = be32_to_cpu(prep.get_padvalue);
+			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, padvalue.get_param);
+			if (copy_to_user((void __user *)arg, &padvalue, sizeof(padvalue))) {
+				pr_err("snd_ioctl get pad value: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+
+	case SND_WRITE_MEM:	
+		umsg.wmsg.args.cb_func = -1;
+		umsg.wmsg.args.client_data = 0;
+		pr_info("set_write_efs \n");
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_WRITE_MEM_PROC,
+			&umsg.wmsg, sizeof(umsg.wmsg),&wrep, sizeof(wrep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		} 
+		else
+		{
+			wefs = be32_to_cpu(wrep.result);
+			printk(KERN_INFO "%s:loopback mode ->%d\n", __func__, wefs);
+			if (copy_to_user((void __user *)arg, &wefs, sizeof(wefs))) {
+				pr_err("snd_ioctl write efs: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+
+	case SND_SET_AMP_GAIN:
+		if (copy_from_user(&ampgain, (void __user *) arg, sizeof(ampgain))) {
+			pr_err("snd_ioctl set amp_gain: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		umsg.amsg.args.voc_codec = cpu_to_be32(ampgain.voc_codec);
+		umsg.amsg.args.gain_type = cpu_to_be32(ampgain.gain_type);
+		umsg.amsg.args.get_flag = cpu_to_be32(ampgain.get_flag);
+		umsg.amsg.args.get_param = cpu_to_be32(ampgain.value);
+		umsg.amsg.args.cb_func = -1;
+		umsg.amsg.args.client_data = 0;
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_AMP_GAIN_PROC,
+			&umsg.amsg, sizeof(umsg.amsg),&arep, sizeof(arep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			ampgain.get_param = be32_to_cpu(arep.get_gainvalue);
+			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, ampgain.get_param);
+			if (copy_to_user((void __user *)arg, &ampgain, sizeof(ampgain))) {
+				pr_err("snd_ioctl get pad value: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+			
+		if (copy_to_user((void __user *)arg, &ampgain, sizeof(ampgain))) {
+			pr_err("snd_ioctl get amp gain: invalid write pointer.\n");
+			rc = -EFAULT;
+		}
+		break;
+
+	case SND_WRITE_EFS:
+		umsg.wmsg.args.cb_func = -1;
+		umsg.wmsg.args.client_data = 0;
+		pr_info("set_write_efs \n");
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_WRITE_EFS_PROC,
+			&umsg.wmsg, sizeof(umsg.wmsg),&wrep, sizeof(wrep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		} 
+		else
+		{
+			wefs = be32_to_cpu(wrep.result);
+			printk(KERN_INFO "%s:loopback mode ->%d\n", __func__, wefs);
+			if (copy_to_user((void __user *)arg, &wefs, sizeof(wefs))) {
+				pr_err("snd_ioctl write efs: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+
+	case SND_SET_MICAMP_GAIN:
+		if (copy_from_user(&micampgain, (void __user *) arg, sizeof(micampgain))) {
+			pr_err("snd_ioctl set_pad_value: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		umsg.mamsg.args.voc_codec = cpu_to_be32(micampgain.voc_codec);
+		umsg.mamsg.args.mic_channel = cpu_to_be32(micampgain.mic_channel);
+		umsg.mamsg.args.get_flag = cpu_to_be32(micampgain.get_flag);
+		umsg.mamsg.args.get_param = cpu_to_be32(micampgain.value);
+		umsg.mamsg.args.cb_func = -1;
+		umsg.mamsg.args.client_data = 0;
+		pr_info("SND_SET_MICAMP_GAIN %d %d %d %d\n", micampgain.voc_codec,
+						 micampgain.mic_channel, micampgain.get_flag, micampgain.get_param);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_SET_MICAMP_GAIN_PROC,
+			&umsg.mamsg, sizeof(umsg.mamsg),&mrep, sizeof(mrep), 5 * HZ);
+		if (rc < 0){
+			printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+		}
+		else
+		{
+			micampgain.get_param = be32_to_cpu(mrep.get_gainvalue);
+			printk(KERN_INFO "%s:rx vol ->%d\n", __func__, micampgain.get_param);
+			if (copy_to_user((void __user *)arg, &micampgain, sizeof(micampgain))) {
+				pr_err("snd_ioctl get pad value: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 #endif
 
 	default:
@@ -593,8 +1107,14 @@ static long snd_agc_enable(unsigned long arg)
 		return -EINVAL;
 
 	agc_msg.args.agc_ctl = cpu_to_be32(arg);
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 	agc_msg.args.cb_func = -1;
 	agc_msg.args.client_data = 0;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 
 	MM_DBG("snd_agc_ctl %ld,%d\n", arg, agc_msg.args.agc_ctl);
 
@@ -615,8 +1135,14 @@ static long snd_avc_enable(unsigned long arg)
 
 	avc_msg.args.avc_ctl = cpu_to_be32(arg);
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
+	Reson : For HiddenMenu Audio Calibration Tool
+*/
+#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
 	avc_msg.args.cb_func = -1;
 	avc_msg.args.client_data = 0;
+#endif
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
 
 	MM_DBG("snd_avc_ctl %ld,%d\n", arg, avc_msg.args.avc_ctl);
 
