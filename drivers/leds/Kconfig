@@ -342,6 +342,14 @@ config LEDS_MSM_PMIC
           (Power Management IC) chip on Qualcomm reference boards,
           for example SURF and FFAs.
 
+config LEDS_MSM_PMIC_E0
+        tristate "LED Support for Qualcomm PMIC connected LEDs (Model E0)"
+        default y
+        depends on ARCH_MSM
+        help
+          This option enables support for LEDs connected over PMIC
+          (Power Management IC) chip on LGE E0 (E400),
+
 config LEDS_PMIC8058
 	tristate "LED Support for Qualcomm PMIC8058"
 	default n

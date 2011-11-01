@@ -54,7 +54,14 @@ static struct platform_device msm_batt_device = {
 
 /* LED platform data */
 static struct platform_device gpio_device_leds = {
+	/* LGE_CHANGE_S : E0 dajin.kim@lge.com
+	      Changed for E0 Rev.B Touch-Key Backlight */
+	#if 0
 	.name = "keypad_led",
+	#else
+	.name = "pmic-leds",
+	#endif
+	/* LGE_CHAGNE_E : E0 dajin.kim@lge.com */
 	.id = -1,
 };
 
