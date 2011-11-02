@@ -1301,8 +1301,11 @@ void snd_fm_vol_mute()
 		mutex_unlock(&snd_sys->lock);
 		return;
 	}
-
-	snd_vol_enable("31 0 0");
+	/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-11-02]
+		Reson : Modem crash while FM Radio Proccessing after Device added. 31->32
+	*/
+	snd_vol_enable("32 0 0");
+	/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-11-02] */
 	mutex_unlock(&snd_sys->lock);
 
 	snd_sys_release();
