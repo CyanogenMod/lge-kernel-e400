@@ -627,6 +627,11 @@ struct msm_snapshot_pp_status {
 #define CFG_GET_CALIB_DATA		31
 #define CFG_MAX			32
 
+//LGE_CHANGE_S E0_Camera_Porting : hong.junki@lge.com [2011-10-28]
+#define CFG_SET_ISO			201
+#define CFG_SET_SCENE		202
+//LGE_CHANGE_E
+
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1

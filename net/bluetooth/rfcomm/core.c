@@ -86,7 +86,7 @@ static struct rfcomm_session *rfcomm_session_create(bdaddr_t *src,
 							bdaddr_t *dst,
 							u8 sec_level,
 							// *s QCT_BT_PATCH_SR00634173 suhui.kim@lge.com 111005, fix that HFP isn't connected
-							/* QCT1095 Original
+							/* QCT109804 Original
 							int *err);
 							*/
 							int *err,
@@ -417,7 +417,7 @@ static int __rfcomm_dlc_open(struct rfcomm_dlc *d, bdaddr_t *src, bdaddr_t *dst,
 	s = rfcomm_session_get(src, dst);
 	if (!s) {
 		// *s QCT_BT_PATCH_SR00634173 suhui.kim@lge.com 111005, fix that HFP isn't connected
-		/* QCT1095 Original
+		/* QCT109804 Original
 		s = rfcomm_session_create(src, dst, d->sec_level, &err);
 		*/
 		s = rfcomm_session_create(src, dst,
@@ -709,7 +709,7 @@ static struct rfcomm_session *rfcomm_session_create(bdaddr_t *src,
 							bdaddr_t *dst,
 							u8 sec_level,
 							// *s QCT_BT_PATCH_SR00634173 suhui.kim@lge.com 111005, fix that HFP isn't connected
-							/* QCT1095 Original
+							/* QCT109804 Original
 							int *err)
 							*/
 							int *err,
@@ -787,7 +787,7 @@ static struct rfcomm_session *rfcomm_session_create(bdaddr_t *src,
 		return s;
 
 	// *s QCT_BT_PATCH_SR00634173 suhui.kim@lge.com 111005, fix that HFP isn't connected
-	/* QCT1095 Original
+	/* QCT109804 Original
 	rfcomm_session_del(s);
 	*/
 	BT_ERR("error ret is %d, going to delete session", *err);

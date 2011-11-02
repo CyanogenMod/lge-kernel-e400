@@ -247,6 +247,7 @@ void lgeusb_switch_factory_mode(int need_reset)
 
 	do_switch_mode(LGE_FACTORY_PID, need_reset);
 }
+EXPORT_SYMBOL(lgeusb_switch_factory_mode); // LGE_CHANGE, [myunghwan.kim@lge.com], 2011-10-31
 
 /* LGE_CHANGE
  * If a normal cable is connected,
@@ -261,6 +262,7 @@ void lgeusb_switch_android_mode(int need_reset)
 	info->current_mode = LGEUSB_ANDROID_MODE;
 	do_switch_mode(restore_pid, need_reset);
 }
+EXPORT_SYMBOL(lgeusb_switch_android_mode); // LGE_CHANGE, [myunghwan.kim@lge.com], 2011-10-31
 
 /* LGE_CHANGE
  * Get current mode(factory or android).

@@ -260,7 +260,7 @@ static struct platform_device ts_i2c_device = {
 	.dev.platform_data = &ts_i2c_pdata,
 };
 
-static int ts_set_vreg(unsigned char onoff)
+/*static*/ int ts_set_vreg(unsigned char onoff) //for touch download
 {
 
 	int rc = 0;

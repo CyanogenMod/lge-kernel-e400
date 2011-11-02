@@ -32,7 +32,7 @@
 
 //#include "MTH_M3_R10_V11_C01_bin.c"
 #include "MTH_M3_R10_V24(0x18)_C01_MIP_bin.c"
-#include "MTH_M3_R12_V30(0x1E)_C03_MIP_bin.c"
+#include "MTH_M3_R12_V32(0x20)_C03_MIP_bin.c"
 #include "MTH_M3C_R00_V03_bin.c"
 #if 0
 #include "Master_bin_test.c"

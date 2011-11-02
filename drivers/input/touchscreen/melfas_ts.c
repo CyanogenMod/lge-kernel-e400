@@ -46,11 +46,11 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x1e //0x1b
+#define TS_LATEST_FW_VERSION_B	0x20 //0x1b
 #define TS_READ_REGS_LEN 		66
 #define MELFAS_MAX_TOUCH		5
 
-#define DEBUG_PRINT 			0
+#define DEBUG_PRINT 			1
 
 #define SET_DOWNLOAD_BY_GPIO	1
 
@@ -185,7 +185,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	ret = i2c_master_send(ts->client, buf, 1);
 	if(ret < 0){
 #if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+		printk(KERN_ERR "melfas_ts_work_func: i2c failed(1)\n");
 		enable_irq(ts->client->irq);
 		return ;	
 #endif 
@@ -194,7 +194,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	ret = i2c_master_recv(ts->client, buf, 1);
 	if(ret < 0){
 #if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+		printk(KERN_ERR "melfas_ts_work_func: i2c failed(2)\n");
 		enable_irq(ts->client->irq);
 		return ;	
 #endif 
@@ -208,7 +208,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 		ret = i2c_master_send(ts->client, buf, 1);
 		if(ret < 0){
 #if DEBUG_PRINT
-			printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+			printk(KERN_ERR "melfas_ts_work_func: i2c failed(3)\n");
 			enable_irq(ts->client->irq);
 			return ;	
 #endif 
@@ -216,7 +216,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 		ret = i2c_master_recv(ts->client, buf, read_num);
 		if(ret < 0){
 #if DEBUG_PRINT
-			printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+			printk(KERN_ERR "melfas_ts_work_func: i2c failed(4)\n");
 			enable_irq(ts->client->irq);
 			return ;	
 #endif 
@@ -239,12 +239,13 @@ static void melfas_ts_work_func(struct work_struct *work)
 	}
 
 	if (ret < 0){
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+		printk(KERN_ERR "melfas_ts_work_func: i2c failed(5)\n");
 		enable_irq(ts->client->irq);
 		return ;	
 	}
 	else{
 		if( buf[0] == 0x0f ){
+			printk(KERN_ERR "ESD ERROR occured\n");
 			release_all_finger(ts);
 			ts->power(0);
 			msleep(100);
