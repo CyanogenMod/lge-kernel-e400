@@ -92,7 +92,7 @@ static int hscd_i2c_writem(char *txData, int length)
 #ifdef ALPS_DEBUG
 	int i;
 #endif
-#if 0
+
 	struct i2c_msg msg[] = {
 		{
 		 .addr = client_hscd->addr,
@@ -101,27 +101,9 @@ static int hscd_i2c_writem(char *txData, int length)
 		 .buf = txData,
 		 },
 	};
-#else
-/* for debugging */
-	struct i2c_msg msg[1];
-	if(client_hscd != NULL){
-		if(txData!=NULL){
-			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x ", client_hscd->addr,length,txData[0],txData[1]);
-			return -EIO;
-		}else{
-			printk("[HSCD] i2c_writem txData is NULL");
-		}
-	}else{
-		printk("[HSCD] i2c_writem client_hscd is NULL");
-		return -EIO;
-	}
-	msg[0].addr = client_hscd->addr;
-	msg[0].flags = 0;
-	msg[0].len = length;
-	msg[0].buf = txData;
-#endif
+
 #ifdef ALPS_DEBUG
-	printk("[HSCD] i2c_writem(0x%x): ",client_hscd->addr);
+	printk("[HSCD] i2c_writem : ");
 
 	for (i = 0; i < length; i++)
 		printk("0X%02X, ", txData[i]);
@@ -328,13 +310,11 @@ int hscd_get_magnetic_field_data(int *xyz)
 
 void hscd_activate(int flgatm, int flg, int dtime)
 {
-	static u8 buf[2];
-	int ret ;
+	u8 buf[2];
+
 	if (flg != 0)
 		flg = 1;
 
-	memset(buf,0,sizeof(buf));
-	
 	if (dtime <= 10)
 		buf[1] = (0x60 | 3<<2);		/* 100Hz- 10msec */
 
@@ -350,23 +330,13 @@ void hscd_activate(int flgatm, int flg, int dtime)
 	buf[0]  = HSCD_CTRL1;
 	buf[1] |= (flg<<7);
 	buf[1] |= 0x60;	/* RS1:1(Reverse Input Substraction drive), RS2:1(13bit) */
-	printk("hscd_activate (flg : %d, flgatm : %d)\n",flg,flgatm);
-	ret = hscd_i2c_writem(buf, 2);
-	if(ret != 0)
-	{
-		printk("hscd_activate  fail 1(%d, %d   / %d)\n",flg,dtime,flgatm);
-	}
+	hscd_i2c_writem(buf, 2);
 	mdelay(1);
 
 	if (flg) {
 		buf[0] = HSCD_CTRL3;
 		buf[1] = 0x02;
-		ret = hscd_i2c_writem(buf, 2);
-		if(ret != 0)
-		{
-			printk("hscd_activate  fail 2  (%d, %d   / %d)\n",flg,dtime,flgatm);
-
-		}
+		hscd_i2c_writem(buf, 2);
 	}
 
 	if (flgatm) {
@@ -476,7 +446,6 @@ static int hscd_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	dev_info(&client->adapter->dev, "detected HSCD magnetic field sensor\n");
 
 	hscd_activate(0, 1, atomic_read(&delay));
-	mdelay(5);
 	hscd_get_magnetic_field_data(d);
 	printk("[HSCD] x:%d y:%d z:%d\n",d[0],d[1],d[2]);
 	hscd_activate(0, 0, atomic_read(&delay));
