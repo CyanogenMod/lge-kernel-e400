@@ -259,7 +259,7 @@ struct device_attribute *attr, const char *buf, size_t count)
     return 0;
 }
 static DEVICE_ATTR(position, 0444, alps_position_show, NULL);
-static DEVICE_ATTR(calibration, S_IRUGO | S_IWUGO, alps_calibration_show, alps_calibration_store);
+static DEVICE_ATTR(calibration,  S_IRUSR|S_IRGRP|S_IWUSR|S_IWGRP, alps_calibration_show, alps_calibration_store);
 
 static struct attribute *alps_attributes[] = {
 	&dev_attr_position.attr,
