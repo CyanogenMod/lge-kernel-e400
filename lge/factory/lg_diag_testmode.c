@@ -2440,7 +2440,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
 	*/
 	{TEST_MODE_BLUETOOTH_TEST,				LGF_TestModeBlueTooth,	          ARM11_PROCESSOR},
 	// *e LG_BTUI_DIAGCMD_DUTMODE
-    {TEST_MODE_BATT_LEVEL_TEST,             LGF_TestModeBattLevel,            ARM11_PROCESSOR},
+    {TEST_MODE_BATT_LEVEL_TEST,             NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_MP3_TEST,                    LGF_TestModeMP3,                  ARM11_PROCESSOR},
     /* 31 ~ 40 */
     {TEST_MODE_ACCEL_SENSOR_TEST,           linux_app_handler,                ARM11_PROCESSOR},
