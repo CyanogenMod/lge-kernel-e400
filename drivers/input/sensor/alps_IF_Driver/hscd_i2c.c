@@ -107,9 +107,9 @@ static int hscd_i2c_writem(char *txData, int length)
 	if(client_hscd != NULL){
 		if(txData!=NULL){
 			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x ", client_hscd->addr,length,txData[0],txData[1]);
-			return -EIO;
 		}else{
 			printk("[HSCD] i2c_writem txData is NULL");
+			return -EIO;
 		}
 	}else{
 		printk("[HSCD] i2c_writem client_hscd is NULL");
