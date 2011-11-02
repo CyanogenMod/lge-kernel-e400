@@ -27,18 +27,23 @@ static struct platform_device hs_pdev = {
 	},
 };
  /* GPIO key map for M3EU EVB */
+ /* LGE_CHANGE_S: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
 static unsigned int keypad_row_gpios[] = {
-	36, 37
+		36, 37, 38
 };
+	static unsigned int keypad_col_gpios[] = {32, 33};
+/* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
 
-static unsigned int keypad_col_gpios[] = {33};
 
 #define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
 
+/* LGE_CHANGE_S: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
 static const unsigned short keypad_keymap_e0eu[] = {
-	[KEYMAP_INDEX(0, 0)] = KEY_VOLUMEUP,
-	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEDOWN,
+		[KEYMAP_INDEX(1, 1)] = KEY_VOLUMEUP,
+		[KEYMAP_INDEX(1, 0)] = KEY_VOLUMEDOWN,
+		[KEYMAP_INDEX(0, 2)] = KEY_HOME,
 };
+/* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
 
 int e0eu_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,
 							 struct gpio_event_info *info, void **data, int func)
@@ -51,7 +56,13 @@ int e0eu_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,
 		gpio_tlmm_config(
 			GPIO_CFG(keypad_row_gpios[1], 0,
 						GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+
+		/* LGE_CHANGE_S: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
+				gpio_tlmm_config(
+					GPIO_CFG(keypad_row_gpios[2], 0,
+							GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 		}
+		/* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
 
 		ret = gpio_event_matrix_func(input_dev,info, data,func);
         return ret ;
@@ -501,17 +512,39 @@ static void __init e0_init_i2c_sensor(int bus_num)
 }
 
 /* proximity */
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
+#if defined(CONFIG_BACKLIGHT_AAT2870)
 extern int aat28xx_ldo_enable(struct device *dev, unsigned num, unsigned enable);
 extern int aat28xx_ldo_set_level(struct device *dev, unsigned num, unsigned vol);
+#elif defined(CONFIG_BACKLIGHT_BU61800)
+extern int bu61800_ldo_enable(struct device *dev, unsigned num, unsigned enable);
+#else
+//default
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
 
 static int prox_power_set(unsigned char onoff)
 {
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
+#if defined(CONFIG_BACKLIGHT_AAT2870)
 	if(onoff == 1) {
 		aat28xx_ldo_set_level(NULL,1,1800);
 		aat28xx_ldo_enable(NULL,1,1);
 	} else {
 		aat28xx_ldo_enable(NULL,1,0);
 	}
+#elif defined(CONFIG_BACKLIGHT_BU61800)
+   if(onoff == 1) {
+		bu61800_ldo_enable(NULL,1,1);
+	} else {
+		bu61800_ldo_enable(NULL,1,0);
+	}
+#else
+	//default
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
 
 	printk("[Proximity] %s() : Power %s\n",__FUNCTION__, onoff ? "On" : "Off");
 

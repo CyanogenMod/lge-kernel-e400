@@ -46,6 +46,8 @@ static struct platform_device bl_i2c_device = {
 	.dev.platform_data = &bl_i2c_pdata,
 };
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
+#ifdef CONFIG_BACKLIGHT_AAT2870
 static struct lge_backlight_platform_data aat2870bl_data = {
 	.gpio = 124,
 	.version = 2862,
@@ -57,6 +59,22 @@ static struct i2c_board_info bl_i2c_bdinfo[] = {
 		.type = "aat2870bl",
 	},
 };
+#endif
+
+#ifdef CONFIG_BACKLIGHT_BU61800
+static struct lge_backlight_platform_data bu61800bl_data = {
+	.gpio = 124,
+	.version = 61800,
+};
+
+static struct i2c_board_info bl_i2c_bdinfo[] = {
+	[0] = {
+		I2C_BOARD_INFO("bu61800bl", 0x76),
+		.type = "bu61800bl",
+	},
+};
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
 
 /*
 static struct platform_device mipi_dsi_r61529_panel_device = {
@@ -142,6 +160,8 @@ static void __init msm_fb_add_devices(void)
 	msm_fb_register_device("ebi2", 0);
 }
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
+#ifdef CONFIG_BACKLIGHT_AAT2870
 void __init msm7x27a_e0eu_init_i2c_backlight(int bus_num)
 {
 	bl_i2c_device.id = bus_num;
@@ -152,6 +172,21 @@ void __init msm7x27a_e0eu_init_i2c_backlight(int bus_num)
 	i2c_register_board_info(bus_num, &bl_i2c_bdinfo[0], 1);
 	platform_device_register(&bl_i2c_device);
 }
+#endif
+#ifdef CONFIG_BACKLIGHT_BU61800
+void __init msm7x27a_e0eu_init_i2c_backlight(int bus_num)
+{
+	bl_i2c_device.id = bus_num;
+	bl_i2c_bdinfo[0].platform_data = &bu61800bl_data;
+
+	/* workaround for HDK rev_a no pullup */
+	lge_init_gpio_i2c_pin_pullup(&bl_i2c_pdata, bl_i2c_pin, &bl_i2c_bdinfo[0]);
+	i2c_register_board_info(bus_num, &bl_i2c_bdinfo[0], 1);
+	platform_device_register(&bl_i2c_device);
+}
+#endif
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-10-17] : for new bl */
+
 
 void __init lge_add_lcd_devices(void)
 {
