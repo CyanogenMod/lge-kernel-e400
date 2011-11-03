@@ -721,8 +721,6 @@ static void mcs8000_work(struct work_struct *work)
 			if (keyID == 0x1)
 				input_report_key(ts->input_dev, KEY_MENU, touchState ? PRESS_KEY : RELEASE_KEY);
 			if (keyID == 0x2)
-				input_report_key(ts->input_dev, KEY_HOME, touchState ? PRESS_KEY : RELEASE_KEY);
-			if (keyID == 0x4)
 				input_report_key(ts->input_dev, KEY_BACK, touchState ? PRESS_KEY : RELEASE_KEY);
 		}
 		input_sync(ts->input_dev);
