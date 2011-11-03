@@ -292,8 +292,11 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_800[] = {
 static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_800[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 2400, 3, 0, 24576 },
 	{ 0, 65536, ACPU_PLL_1, 1, 3,  8192, 3, 1,  49152 },
+// 20111110 daewon.seo@lge.com acpu speed change for slow performance
 	{ 0, 98304, ACPU_PLL_1, 1, 1,  12288, 3, 2,  49152 },
 	{ 0, 196608, ACPU_PLL_1, 1, 0, 24576, 3, 3,  98304 },
+	//{ 1, 98304, ACPU_PLL_1, 1, 1,  12288, 3, 2,  49152 },
+	//{ 1, 196608, ACPU_PLL_1, 1, 0, 24576, 3, 3,  98304 },
 	{ 0, 300000, ACPU_PLL_2, 2, 3, 37500, 3, 4, 120000 },
 	{ 1, 320000, ACPU_PLL_0, 4, 2, 40000, 3, 4, 120000 },
 	{ 0, 400000, ACPU_PLL_4, 6, 1, 50000, 3, 4, 120000 },
