@@ -292,7 +292,7 @@ static struct msm_camera_sensor_flash_data led_flash_data = {
 
 #ifdef CONFIG_HI351
 static struct msm_camera_sensor_platform_info hi351_sensor_info = {
-	.mount_angle = 90
+	.mount_angle = 180
 };
 
 static struct msm_camera_sensor_info msm_camera_sensor_hi351_data = {

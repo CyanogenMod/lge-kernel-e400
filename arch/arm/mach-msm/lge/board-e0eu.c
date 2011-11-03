@@ -71,13 +71,14 @@ static void gsbi_qup_i2c_gpio_config(int adap_id, int config_type)
 	if (rc < 0)
 		pr_err("QUP GPIO request/enable failed: %d\n", rc);
 }
-
+//LGE_CHANGE_S E0_CAMERA I2C speed up hong.junki@lge.com 2011-11-04
 static struct msm_i2c_platform_data msm_gsbi0_qup_i2c_pdata = {
-	.clk_freq		= 100000,
+	.clk_freq		= 400000,
 	.clk			= "gsbi_qup_clk",
 	.pclk			= "gsbi_qup_pclk",
 	.msm_i2c_config_gpio	= gsbi_qup_i2c_gpio_config,
 };
+//LGE_CHANGE_E
 
 static struct msm_i2c_platform_data msm_gsbi1_qup_i2c_pdata = {
 	.clk_freq		= 100000,
