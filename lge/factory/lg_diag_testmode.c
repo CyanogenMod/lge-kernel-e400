@@ -553,7 +553,21 @@ EXPORT_SYMBOL(LGF_TestModeGetDisableInputDevices);
 
 extern void LGF_SendKey(word keycode);
 extern void set_operation_mode(boolean info);
+#ifdef CONFIG_MACH_MSM7X25A_E0EU
+/* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
+  *  Check Sleep State
+  */
+ /* from fbearlysuspend.c */
+enum {
+	FB_STATE_STOPPED_DRAWING,
+	FB_STATE_REQUEST_STOP_DRAWING,
+	FB_STATE_DRAWING_OK,
+};
+extern int get_fb_state(void);
+/* LGE_CHANGE_E : E0 dajin.kim@lge.com [2011-11-04] */
+#else
 extern int lm3530_get_state(void);
+#endif
 
 
 void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
@@ -568,26 +582,50 @@ void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
 
 	switch(req_ptr.test_mode_req.sleep_mode){	
 		case SLEEP_MODE_ON:
-            if(lm3530_get_state() == 1 /* NORMAL_STATE */)
+			#ifdef CONFIG_MACH_MSM7X25A_E0EU
+			/* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
+			  *  Check Sleep State
+			  */
+			if(get_fb_state() == FB_STATE_DRAWING_OK) /* NORMAL_STATE */
+			/* LGE_CHANGE_E : E0 dajin.kim@lge.com [2011-11-04] */
+			#else
+			if(lm3530_get_state() == 1 /* NORMAL_STATE */)
+			#endif
 			    LGF_SendKey(KEY_POWER);
             
-            //send_to_arm9((void*)&req_ptr, (void*)pRsp);
+			//send_to_arm9((void*)&req_ptr, (void*)pRsp);
 			break;            
 		case FLIGHT_MODE_ON:
-	  	case FLIGHT_KERNEL_MODE_ON:                        
-            if(lm3530_get_state() == 1 /* NORMAL_STATE */)
+	  	case FLIGHT_KERNEL_MODE_ON:
+			#ifdef CONFIG_MACH_MSM7X25A_E0EU
+			/* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
+			  *  Check Sleep State
+			  */
+			if(get_fb_state() == FB_STATE_DRAWING_OK) /* NORMAL_STATE */
+			/* LGE_CHANGE_E : E0 dajin.kim@lge.com [2011-11-04] */
+			#else
+			if(lm3530_get_state() == 1 /* NORMAL_STATE */)
+			#endif
 			    LGF_SendKey(KEY_POWER);
             
-            set_operation_mode(FALSE);
-            //send_to_arm9((void*)&req_ptr, (void*)pRsp);
+			set_operation_mode(FALSE);
+			//send_to_arm9((void*)&req_ptr, (void*)pRsp);
 			break;
 
-		case FLIGHT_MODE_OFF:            
-            if(lm3530_get_state() == 2 /* SLEEP_STATE */)
+		case FLIGHT_MODE_OFF:
+			#ifdef CONFIG_MACH_MSM7X25A_E0EU
+			/* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
+			  *  Check Sleep State
+			  */
+			if(get_fb_state() != FB_STATE_DRAWING_OK) /* SLEEP_STATE */
+			/* LGE_CHANGE_E : E0 dajin.kim@lge.com [2011-11-04]	 */
+			#else
+			if(lm3530_get_state() == 2 /* SLEEP_STATE */)
+			#endif
 			    LGF_SendKey(KEY_POWER);
             
-            set_operation_mode(TRUE);
-            //send_to_arm9((void*)&req_ptr, (void*)pRsp);           
+			set_operation_mode(TRUE);
+			//send_to_arm9((void*)&req_ptr, (void*)pRsp);           
 			break;
 		default:
 			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
