@@ -1402,7 +1402,12 @@ int hci_register_dev(struct hci_dev *hdev)
 	hdev->link_mode = (HCI_LM_ACCEPT);
 	hdev->io_capability = 0x03; /* No Input No Output */
 
+  // *s [M3] QCT_BT_PATCH_SR655297 sunmee.choi@lge.com 111105 fix that Link mode can't change to sniff mode with pc dongle
+  /* Google Original
 	hdev->idle_timeout = 0;
+	*/
+	hdev->idle_timeout = 7000;/*7sec*/
+	//*e [M3] QCT_BT_PATCH_SR655297
 	hdev->sniff_max_interval = 800;
 	hdev->sniff_min_interval = 80;
 
