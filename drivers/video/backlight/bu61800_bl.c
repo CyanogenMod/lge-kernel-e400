@@ -403,24 +403,32 @@ static int bu61800_send_intensity(struct bu61800_driver_data *drvdata, int level
         if( level>3 && level < 22)
         	{
 			  current_value = 0x63*level/LCD_LED_MAX;
-			  dprintk("Setting level= %d,lcurrent_value is 0x%x\n",level, current_value);
+			  dprintk("Setting level= %d,current_value is 0x%x\n",level, current_value);
         	}
 		else
 			{
               current_value = 0x63;			
-			  dprintk("Invalid setting leve : level = %d\n", level);
+			  dprintk("Invalid setting level = %d\n", level);
 			}
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-05] : bl dimming error */
 		if ((drvdata->intensity != level)&& (level != 0))
 	    {
+			dprintk("BACK LIGHT SETTING....\n");
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, LCD_BL_ON);
 		}
-		else
+		else if(level == 0)
 		{
+			dprintk("BACK LIGHT OFF\n");		
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, LCD_BL_OFF);
 		}
+		else
+		{
+		   //Do nothing
+		}
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-05] : bl dimming error */
 		
 		drvdata->intensity = level;
 	    return 0;
