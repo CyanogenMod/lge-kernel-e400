@@ -53,6 +53,11 @@
 #define VOLANS_REV_1_0_CARD_ID    0x0
 #define VOLANS_REV_2_0_CARD_ID    0x2881
 
+/*LGE_CHANGE_S, real-wifi@lge.com, 111031, [reduce Wi-Fi Power up time*/
+#define GET_INODE_FROM_FILEP(filp) \
+    ((filp)->f_path.dentry->d_inode)
+/*LGE_CHANGE_E, real-wifi@lge.com, 111031, [reduce Wi-Fi Power up time*/
+
 typedef int (suspend_handler_t)(struct sdio_func *);
 typedef void (resume_handler_t)(struct sdio_func *);
 
@@ -94,5 +99,8 @@ void libra_sdio_release_irq(struct sdio_func *func);
 int libra_enable_sdio_irq(struct sdio_func *func, u8 enable);
 void libra_sdio_disable_func(struct sdio_func *func);
 int libra_disable_sdio_irq_capability(struct sdio_func *func, u8 disable);
+/*LGE_CHANGE_S, real-wifi@lge.com, 111031, [reduce Wi-Fi Power up time*/
+void enable_mmchost_detect_change(const char *mmc_msm_dev, int enable);
+/*LGE_CHANGE_S, real-wifi@lge.com, 111031, [reduce Wi-Fi Power up time*/
 
 #endif /* __LIBRA_SDIOIF_H__ */

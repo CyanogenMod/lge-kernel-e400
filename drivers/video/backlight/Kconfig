@@ -321,6 +321,14 @@ config BACKLIGHT_AAT2870
 	help
 	  If you have a ANALOGIC TECH AAT2870, say y to enable the backlight driver
 
+config BACKLIGHT_BU61800
+	tristate "BU61800 Backlight Driver "
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+	help
+	  If you have a Rohm BU61800, say y to enable the backlight driver	  
+	  
+
 config SUBPMIC_LP8720
 	tristate "LP8720 LDO Driver "
 	depends on BACKLIGHT_CLASS_DEVICE

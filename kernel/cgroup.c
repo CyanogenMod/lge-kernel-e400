@@ -554,7 +554,7 @@ static void free_cg_links(struct list_head *tmp)
 	struct cg_cgroup_link *saved_link;
 
 	list_for_each_entry_safe(link, saved_link, tmp, cgrp_link_list) {
-		list_del(&link->cgrp_link_list);
+		list_del_init(&link->cgrp_link_list);
 		kfree(link);
 	}
 }

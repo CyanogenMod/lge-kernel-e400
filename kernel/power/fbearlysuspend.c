@@ -27,6 +27,18 @@ static enum {
 	FB_STATE_DRAWING_OK,
 } fb_state;
 
+#ifdef CONFIG_MACH_MSM7X25A_E0EU
+/* LGE_CHANGE_S : E0 dajin.kim@lge.com
+ *  Check Sleep State
+ */
+int get_fb_state(void)
+{
+	return fb_state;
+}
+EXPORT_SYMBOL(get_fb_state);
+/* LGE_CHANGE_E : E0 dajin.kim@lge.com */
+#endif
+
 /* tell userspace to stop drawing, wait for it to stop */
 static void stop_drawing_early_suspend(struct early_suspend *h)
 {

@@ -751,7 +751,7 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	/* turn on power supply for GP2AP00200F */
 	pdata->power(1);
-	udelay(60);
+	udelay(120);
 
 	/* set up registers according to VOUT output mode */
 	ret = gp2ap_device_initialise();
@@ -914,7 +914,7 @@ gp2ap_resume(struct i2c_client *i2c_dev)
 
 	pdev->last_vout = -1;
 
-	udelay(60);
+	udelay(120);
 
 	/* disable shutdown value */
 	if (pdev->methods) 	/* Interrnupt mode */
