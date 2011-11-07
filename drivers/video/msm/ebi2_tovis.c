@@ -59,6 +59,11 @@ struct pm_qos_request_list *tovis_pm_qos_req;
 */
 static boolean display_on = FALSE;
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-07] :SE 85591 remove white screen during power on */
+#define LCD_RESET_SKIP 1
+int IsFirstDisplayOn = LCD_RESET_SKIP; 
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-07] :SE 85591 remove white screen during power on */
+
 #define DISP_SET_RECT(csp, cep, psp, pep) \
 	{ \
 		EBI2_WRITE16C(DISP_CMD_PORT, 0x2a);			\
@@ -563,6 +568,9 @@ static int ilitek_qvga_disp_on(struct platform_device *pdev)
 	} else {
 		msm_fb_ebi2_power_save(1);
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-07] :SE 85591 remove white screen during power on */
+if(IsFirstDisplayOn==0)
+{
 		if(pdata->gpio) {
 			mdelay(10);
 			gpio_set_value(pdata->gpio, 1);
@@ -572,6 +580,11 @@ static int ilitek_qvga_disp_on(struct platform_device *pdev)
 			gpio_set_value(pdata->gpio, 1);
 			mdelay(120);
 		}
+}
+		if(IsFirstDisplayOn > 0) 
+		 IsFirstDisplayOn-- ;
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-07] :SE 85591 remove white screen during power on */
+		
 		if(pdata->maker_id == PANEL_ID_LGDISPLAY)
 			do_lgd_init(pdev);
 		else
