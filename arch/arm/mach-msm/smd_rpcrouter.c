@@ -2125,17 +2125,38 @@ int msm_rpc_get_curr_pkt_size(struct msm_rpc_endpoint *ept)
 
 int msm_rpcrouter_close(void)
 {
-	struct rpcrouter_xprt_info *xprt_info, *tmp_xprt_info;
+	//youngbae.choi@lge.com [START] QCT case 312078 --> [PATCH] msm: rpc: While powering down flush all the rpcrouter workqueues
+	//struct rpcrouter_xprt_info *xprt_info, *tmp_xprt_info;
+	struct rpcrouter_xprt_info *xprt_info;
+	//youngbae.choi@lge.com [END] QCT case 312078 --> [PATCH] msm: rpc: While powering down flush all the rpcrouter workqueues
+	
 	union rr_control_msg ctl;
 
 	ctl.cmd = RPCROUTER_CTRL_CMD_BYE;
 	mutex_lock(&xprt_info_list_lock);
-	list_for_each_entry_safe(xprt_info, tmp_xprt_info,
-				 &xprt_info_list, list) {
+	//youngbae.choi@lge.com [START] QCT case 312078 --> [PATCH] msm: rpc: While powering down flush all the rpcrouter workqueues
+	//list_for_each_entry_safe(xprt_info, tmp_xprt_info,
+	//			 &xprt_info_list, list) {
+	while (!list_empty(&xprt_info_list)) {
+		xprt_info = list_first_entry(&xprt_info_list,
+					struct rpcrouter_xprt_info, list);
+		xprt_info->abort_data_read = 1;
+		wake_up(&xprt_info->read_wait);
+	//youngbae.choi@lge.com [START] QCT case 312078 --> [PATCH] msm: rpc: While powering down flush all the rpcrouter workqueues
 		rpcrouter_send_control_msg(xprt_info, &ctl);
 		xprt_info->xprt->close();
 		list_del(&xprt_info->list);
+		mutex_unlock(&xprt_info_list_lock);
+
+		flush_workqueue(xprt_info->workqueue);
+		destroy_workqueue(xprt_info->workqueue);
+		wake_lock_destroy(&xprt_info->wakelock);
+	//youngbae.choi@lge.com [END] QCT case 312078 --> [PATCH] msm: rpc: While powering down flush all the rpcrouter workqueues
 		kfree(xprt_info);
+	
+	//youngbae.choi@lge.com [START] QCT case 312078 --> [PATCH] msm: rpc: While powering down flush all the rpcrouter workqueues	
+		mutex_lock(&xprt_info_list_lock);
+	//youngbae.choi@lge.com [END] QCT case 312078 --> [PATCH] msm: rpc: While powering down flush all the rpcrouter workqueues
 	}
 	mutex_unlock(&xprt_info_list_lock);
 	return 0;

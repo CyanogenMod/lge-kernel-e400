@@ -90,6 +90,13 @@ config LGE_HANDLE_PANIC
 	help
 	 LGE crash handler
 
+config LGE_SILENCE_RESET
+	tristate "Support LGE Kernel Silence Reset"
+	default n 
+	depends on MACH_LGE
+	depends on ANDROID_RAM_CONSOLE
+	help
+	 LGE crash handler
 config LGE_GRAM_REFRESH_PATCH
 	bool "LGE gram refresh patch"
 	default n

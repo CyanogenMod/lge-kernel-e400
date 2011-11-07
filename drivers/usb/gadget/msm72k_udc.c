@@ -1471,6 +1471,14 @@ static void usb_reset(struct usb_info *ui)
 // LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 	tmp = lge_get_cable_info(); 
+
+	// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-11-02
+	if (tmp < 0) {
+		printk(KERN_INFO " *** lge_get_cable_info : %x (unknown cable)\n", tmp);
+		tmp = 0;
+	}
+	// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-11-02
+
 	printk(KERN_INFO " *** lge_get_cable_info : %x\n", tmp);
 	is_manual_testmode = (tmp & LGE_CABLE_TYPE_NV_MANUAL_TESTMODE) > 0;
 	udc_cable = tmp & LGE_CABLE_TYPE_MASK;
