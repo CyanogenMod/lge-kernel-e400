@@ -48,6 +48,7 @@ static struct i2c_client *client_hscd = NULL;
 
 static atomic_t flgEna;
 static atomic_t delay;
+static atomic_t barrier[10];
 
 static int hscd_i2c_readm(char *rxData, int length)
 {
@@ -513,6 +514,7 @@ static void __exit hscd_exit(void)
 	printk("[HSCD] exit\n");
 #endif
 	i2c_del_driver(&hscd_driver);
+	atomic_set(&barrier[0],0);
 }
 
 module_init(hscd_init);
