@@ -34,6 +34,123 @@
 
 #include "board-e0eu.h"
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-08] : Add E0 hidden reset from M3 */
+#ifdef CONFIG_LGE_SILENCE_RESET
+/*2011-11-03, sohyun.nam@lge.com add silence reset*/
+#include <linux/proc_fs.h>
+#include <linux/slab.h>
+#include "smd_private.h"
+
+
+static uint32_t  *smem_sreset =  NULL;
+static char *smem_sreset_log;
+static size_t smem_sreset_log_size;
+
+#if 0
+static ssize_t smem_sreset_read(struct file *file, char __user *buf,
+				    size_t len, loff_t *offset)
+{
+	loff_t pos = *offset;
+	ssize_t count;
+
+	if (pos >= smem_sreset_log_size)
+		return 0;
+
+	count = min(len, (size_t)(smem_sreset_log_size - pos));
+	if (copy_to_user(buf, smem_sreset_log + pos, count))
+		return -EFAULT;
+
+	*offset += count;
+	return count;
+}
+
+
+static const struct file_operations smem_sreset_file_ops = {
+	.owner = THIS_MODULE,
+	.read = smem_sreset_read,
+}
+
+#endif
+
+int check_smem_ers_status(void)
+{
+	struct proc_dir_entry *entry;
+
+	smem_sreset = (uint32_t *)smem_alloc(SMEM_ID_VENDOR0, sizeof(uint64_t)*4);
+	
+	if((smem_sreset != NULL) && ((*smem_sreset ) != 0))
+	{
+		printk(KERN_INFO "smem_sreset => addr : 0x%X, value : 0x%X\n", (int)smem_sreset, *smem_sreset);
+		smem_sreset_log = kzalloc(100, GFP_KERNEL);
+		if (smem_sreset_log == NULL) {
+			printk(KERN_ERR "smem_sreset_log allocation failed \n");
+			smem_sreset_log_size = 0;
+			return 0;
+		}
+
+	if(*smem_sreset == 0xDDDEADDD)
+			{
+				//1 create a file to notify kernel crash
+				printk(KERN_INFO "Kernel Crash \n");
+	
+				entry = create_proc_entry("last_kmsg_kernel_crash", S_IFREG | S_IRUGO, NULL);
+				if (!entry) {
+					printk(KERN_ERR "%s: failed to create proc entry\n", "last_kmsg_kernel_crash");
+					if(smem_sreset_log)
+						kfree(smem_sreset_log);
+					smem_sreset_log = NULL;
+					smem_sreset_log_size = 0;
+					return 0;
+				}
+		
+				if(smem_sreset_log)
+				{
+					sprintf(smem_sreset_log, "%s value : 0x%X\n", "kernel crash!!", *smem_sreset);
+					smem_sreset_log_size = strlen(smem_sreset_log);
+				}
+	
+				*smem_sreset = 0;
+				//entry->proc_fops = &smem_sreset_file_ops;
+				//entry->size = smem_sreset_log_size;
+		return 1;
+		}
+	else if(*smem_sreset == 0xDDEAEADD)
+		{
+				//1 create a file to notify modem crash
+				printk(KERN_INFO "Kernel Crash \n");
+	
+				entry = create_proc_entry("last_kmsg_modem_crash", S_IFREG | S_IRUGO, NULL);
+				if (!entry) 
+				{
+					printk(KERN_ERR "%s: failed to create proc entry\n", "last_kmsg_modem_crash");
+					if(smem_sreset_log)
+						kfree(smem_sreset_log);
+					smem_sreset_log = NULL;
+					smem_sreset_log_size = 0;
+					return 0;
+				}
+		
+				if(smem_sreset_log)
+				{
+					sprintf(smem_sreset_log, "%s value : 0x%X\n", "modem crash!!", *smem_sreset);
+					smem_sreset_log_size = strlen(smem_sreset_log);
+				}
+	
+				*smem_sreset = 0;
+				//entry->proc_fops = &smem_sreset_file_ops;
+				//entry->size = smem_sreset_log_size;
+		return 1;
+		}
+	}
+			
+	return 0;
+}
+			
+#endif /*CONFIG_LGE_SILENCE_RESET*/
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-08] : Add E0 hidden reset from M3 */
+
+
+
 static struct msm_gpio qup_i2c_gpios_io[] = {
 	{ GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 		"qup_scl" },
@@ -247,6 +364,12 @@ static void __init msm7x2x_init(void)
 #ifdef CONFIG_LGE_POWER_ON_STATUS_PATCH
 	lge_board_pwr_on_status();
 #endif
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-08] : Add E0 hidden reset from M3 */
+#ifdef CONFIG_LGE_SILENCE_RESET
+	check_smem_ers_status();
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-08] : Add E0 hidden reset from M3 */
 
 }
 
