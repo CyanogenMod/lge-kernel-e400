@@ -615,6 +615,7 @@ void bdi_unregister(struct backing_dev_info *bdi)
 		trace_writeback_bdi_unregister(bdi);
 		bdi_prune_sb(bdi);
 #ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH_LOG		 
 		/* FIXME : for getting debugging information
 		 * this should be removed after debugging.
 		 * 2011-08-01, cleaneye.kim@lge.com
@@ -624,12 +625,14 @@ void bdi_unregister(struct backing_dev_info *bdi)
 		printk(KERN_INFO"%s: current jiffies %lu\n", __func__, jiffies);
 		printk(KERN_INFO"%s: prev %p\n",__func__, bdi->wb.wakeup_timer.entry.prev);
 		printk(KERN_INFO"%s: next %p\n",__func__, bdi->wb.wakeup_timer.entry.next);
-
+#endif
 
 		if (bdi->wb.wakeup_timer.entry.prev == NULL &&
 			bdi->wb.wakeup_timer.entry.next != NULL) {
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH_LOG
 			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev %p\n",__func__, bdi->wb.wakeup_timer.entry.next->prev);
 			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev->next %p\n",__func__, bdi->wb.wakeup_timer.entry.next->prev->next);
+#endif
             bdi->wb.wakeup_timer.entry.next = NULL;
 		}
 #endif

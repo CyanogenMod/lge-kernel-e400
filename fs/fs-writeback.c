@@ -853,7 +853,7 @@ long wb_do_writeback(struct bdi_writeback *wb, int force_wait)
 	return wrote;
 }
 
-#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH_LOG
 /*
  * dump a block of kernel memory from around the given address
  */
@@ -924,6 +924,7 @@ int bdi_writeback_thread(void *data)
 
 	while (!kthread_should_stop()) {
 #ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH_LOG
 		/* FIXME : for getting debugging information
 		 * this should be removed after debugging.
 		 * 2011-08-01, cleaneye.kim@lge.com
@@ -940,7 +941,7 @@ int bdi_writeback_thread(void *data)
 				show_data((unsigned long)wb, sizeof(struct bdi_writeback), "wb data");
 			}
 		}
-
+#endif
 		/*
 		 * This patch is added for preventing from kernel panic which is
 		 * generated during executing bdi_writeback_thread(). Root cause of
@@ -961,9 +962,11 @@ int bdi_writeback_thread(void *data)
 		 */
 		if (wb->wakeup_timer.entry.prev == NULL &&
 			wb->wakeup_timer.entry.next != NULL) {
+#ifdef CONFIG_LGE_BDI_TIMER_BUG_PATCH_LOG
 			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev %p\n",__func__, wb->wakeup_timer.entry.next->prev);
 			printk(KERN_INFO"%s: wakeup_timer.entry.next->prev->next %p\n",__func__, wb->wakeup_timer.entry.next->prev->next);
 			printk(KERN_INFO"%s: \n",__func__);
+#endif			
 			wb->wakeup_timer.entry.next = NULL;
 		}
 #endif
