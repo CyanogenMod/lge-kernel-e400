@@ -13,6 +13,9 @@
 
 #include "hi351.h"
 
+#define ISO_TEST	0
+#define SCENE_TEST	0
+
 struct hi351_i2c_reg_conf hi351_mipi_settings[] = {
 
 };
@@ -7008,7 +7011,7 @@ struct hi351_i2c_reg_conf hi351_snap_settings[] = {
 // Scene MODE
 
 struct hi351_i2c_reg_conf hi351_scene_normal_settings[] = {
-
+#if SCENE_TEST
 	//DISP_NAME = "default_Scene_OFF"
 	//DISP_WIDTH = 640 
 	//DISP_HEIGHT = 480
@@ -7169,9 +7172,13 @@ struct hi351_i2c_reg_conf hi351_scene_normal_settings[] = {
 	{0x03, 0xc5},
 	{0x10, 0xb1},
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_scene_portrait_settings[] = {
+
+#if SCENE_TEST
 
 	//DISP_NAME = "Portrait2"
 	//DISP_WIDTH = 640
@@ -7338,9 +7345,13 @@ struct hi351_i2c_reg_conf hi351_scene_portrait_settings[] = {
 	{0x03, 0xc5},
 	{0x10, 0xb1},
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_scene_landscape_settings[] = {
+
+#if SCENE_TEST
 
 	//DISP_NAME = "Land2"
 	//DISP_WIDTH = 640 
@@ -7506,9 +7517,13 @@ struct hi351_i2c_reg_conf hi351_scene_landscape_settings[] = {
 	{0x03, 0xc5},
 	{0x10, 0xb1},
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_scene_sport_settings[] = {
+
+#if SCENE_TEST
 
 	//DISP_NAME = "Sports2"
 	//DISP_WIDTH = 640 
@@ -7670,9 +7685,13 @@ struct hi351_i2c_reg_conf hi351_scene_sport_settings[] = {
 	{0x03, 0xc5},
 	{0x10, 0xb1},
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_scene_sunset_settings[] = {
+
+#if SCENE_TEST
 
 	//DISP_NAME = "Sunset2"
 	//DISP_WIDTH = 640 
@@ -7836,9 +7855,13 @@ struct hi351_i2c_reg_conf hi351_scene_sunset_settings[] = {
 	{0x03, 0xc5},
 	{0x10, 0xb1},
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_scene_night_settings[] = {
+
+#if SCENE_TEST
 
 	{0x03,0x20},
 	{0x24,0x00}, //EXP Max 5.00 fps 
@@ -7853,12 +7876,14 @@ struct hi351_i2c_reg_conf hi351_scene_night_settings[] = {
 	{0x13,0xbd},
 	{0x14,0x5c},
 
+#endif
+
 };
 
 // Framerate MODE
 
 struct hi351_i2c_reg_conf hi351_auto_framerate_settings[] = {
-
+#if 0
 	//DISP_NAME = "Variable"
 	//DISP_WIDTH = 640
 	//DISP_HEIGHT = 480
@@ -7916,9 +7941,13 @@ struct hi351_i2c_reg_conf hi351_auto_framerate_settings[] = {
 	{0x03, 0x30},
 	{0x36, 0x28}, //preview function 
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_fixed_framerate_settings[] = {
+
+#if 0
 
 	//DISP_NAME = "Fixed"
 	//DISP_WIDTH = 640
@@ -7975,6 +8004,8 @@ struct hi351_i2c_reg_conf hi351_fixed_framerate_settings[] = {
 	
 	{0x03, 0x30},
 	{0x36, 0x28}, //preview function 
+
+#endif
 
 };
 
@@ -8146,6 +8177,8 @@ struct hi351_i2c_reg_conf hi351_wb_cloudy_settings[] = {
 
 struct hi351_i2c_reg_conf hi351_iso_auto_settings[] = {
 
+#if ISO_TEST
+
 	//DISP_NAME = "ISO_auto"
 	//DISP_WIDTH = 640
 	//DISP_HEIGHT = 480
@@ -8186,10 +8219,13 @@ struct hi351_i2c_reg_conf hi351_iso_auto_settings[] = {
 	{0x14,0xe0}, // ISO 1600
 	{0x15,0xf0}, // ISO 3200
 
+#endif
 	
 };
 
 struct hi351_i2c_reg_conf hi351_iso_100_settings[] = {
+
+#if ISO_TEST
 
 	//DISP_NAME = "ISO100"
 	//DISP_WIDTH = 640
@@ -8230,9 +8266,13 @@ struct hi351_i2c_reg_conf hi351_iso_100_settings[] = {
 	{0x14,0xe0}, // ISO 1600
 	{0x15,0xf0}, // ISO 3200
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_iso_200_settings[] = {
+
+#if ISO_TEST
 
 	//DISP_NAME = "ISO200"
 	//DISP_WIDTH = 640
@@ -8273,10 +8313,12 @@ struct hi351_i2c_reg_conf hi351_iso_200_settings[] = {
 	{0x14,0xe0}, // ISO 1600
 	{0x15,0xf0}, // ISO 3200
 
+#endif
+
 };
 
 struct hi351_i2c_reg_conf hi351_iso_400_settings[] = {
-
+#if ISO_TEST
 	//DISP_NAME = "ISO400"
 	//DISP_WIDTH = 640
 	//DISP_HEIGHT = 480
@@ -8316,6 +8358,7 @@ struct hi351_i2c_reg_conf hi351_iso_400_settings[] = {
 	{0x14,0xe0}, // ISO 1600
 	{0x15,0xf0}, // ISO 3200  
 
+#endif
 
 };
 
@@ -8324,25 +8367,25 @@ struct hi351_i2c_reg_conf hi351_iso_400_settings[] = {
 struct hi351_i2c_reg_conf hi351_brightness_settings[] = {
 	{0x03,0x10},
 	{0x13,0x0a}, 
-	{0x4A,0x38},	// 1. Brightness -9		//-5
+	{0x4A,0x38},	// 1. Brightness -9		//-6
 //	{0x4A,0x40}, 	// 2. Brightness -8 
-	{0x4A,0x48}, 	// 3. Brightness -7 	//-4
+	{0x4A,0x48}, 	// 3. Brightness -7 	//-5
 //	{0x4A,0x50}, 	// 4. Brightness -6
-	{0x4A,0x58}, 	// 5. Brightness -5 	//-3
+	{0x4A,0x58}, 	// 5. Brightness -5 	//-4
 //	{0x4A,0x60}, 	// 6. Brightness -4
-	{0x4A,0x68}, 	// 7. Brightness -3		//-2
-//	{0x4A,0x70}, 	// 8. Brightness -2
+	{0x4A,0x68}, 	// 7. Brightness -3		//-3
+	{0x4A,0x70}, 	// 8. Brightness -2		//-2
 	{0x4A,0x78}, 	// 9. Brightness -1		//-1
 	{0x4A,0x80},  	// 10. Brightness 0 	//Normal=default bright
 	{0x4A,0x88}, 	// 11. Brightness +1	//+1
-//	{0x4A,0x90},  	// 12. Brightness +2
-	{0x4A,0x98}, 	// 13. Brightness +3	//+2
+	{0x4A,0x90},  	// 12. Brightness +2	//+2
+	{0x4A,0x98}, 	// 13. Brightness +3	//+3
 //	{0x4A,0xa0}, 	// 14. Brightness +4	
-	{0x4A,0xa8},  	// 15. Brightness +5	//+3
+	{0x4A,0xa8},  	// 15. Brightness +5	//+4
 //	{0x4A,0xb0}, 	// 16. Brightness +6
-	{0x4A,0xb8}, 	// 17. Brightness +7	//+4
+	{0x4A,0xb8}, 	// 17. Brightness +7	//+5
 //	{0x4A,0xc0}, 	// 18. Brightness +8
-	{0x4A,0xc8}, 	// 19. Brightness +9	//+5
+	{0x4A,0xc8}, 	// 19. Brightness +9	//+6
 
 
 	
