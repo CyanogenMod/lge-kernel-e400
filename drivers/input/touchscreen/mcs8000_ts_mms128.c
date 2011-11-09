@@ -181,6 +181,7 @@ static struct mcs8000_ts_device mcs8000_ts_dev;
 static int is_downloading = 0;
 static int is_touch_suspend = 0;
 int fw_rev = 0;
+int Is_Release_Error[MELFAS_MAX_TOUCH]={0}; /* for touch stable */
 
 #define READ_NUM 8 /* now, just using two finger data */
 
@@ -619,6 +620,7 @@ static void mcs8000_work(struct work_struct *work)
 	int ret 		= 0, i;
 	uint8_t buf[TS_READ_REGS_LEN];
   int keyID 	= 0;
+	int iTouchedCnt;
 
 #if DEBUG_PRINT
 	printk(KERN_ERR "melfas_ts_work_func\n");
@@ -626,6 +628,18 @@ static void mcs8000_work(struct work_struct *work)
 	if (ts == NULL)
 			printk(KERN_ERR "melfas_ts_work_func : TS NULL\n");
 #endif
+
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
+TD1416085584 :  After sleep on and off while sensing a touchscreen,
+Touchscreen doesn't work*/
+	if(is_touch_suspend == 1) 
+		{
+				
+		return;
+		}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
+
 
 	buf[0] = TS_READ_START_ADDR;
 
@@ -647,7 +661,20 @@ static void mcs8000_work(struct work_struct *work)
 	}
 
 	read_num = buf[0];
-	
+			
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-10-17] : 
+TD1416085584 :  After sleeping on and off while sensing a touchscreen,
+Touchscreen doesn't work*/
+
+	iTouchedCnt = 6*6;
+
+	if(read_num > iTouchedCnt)
+	{	
+		enable_irq(ts->client->irq);
+		return ;
+	}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
+
 	if(read_num>0)
 	{
 		buf[0] = TS_READ_START_ADDR2;
@@ -702,7 +729,22 @@ static void mcs8000_work(struct work_struct *work)
 			for(i=0; i<MELFAS_MAX_TOUCH; i++) {
 				if(g_Mtouch_info[i].strength== -1)
 					continue;
-				
+					
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
+TD1416085584 :  After sleeping on and off while sensing a touchscreen,
+Touchscreen doesn't work*/
+				if(Is_Release_Error[i]==1) {			
+					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[i].posX);
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[i].posY);
+					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0/*g_Mtouch_info[i].strength*/ );
+					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width); 				   
+					input_mt_sync(ts->input_dev);		  
+					input_sync(ts->input_dev);
+					Is_Release_Error[i]=0;
+				}		
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
+
 				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
 				input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[i].posX);
 				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[i].posY);
@@ -727,6 +769,25 @@ static void mcs8000_work(struct work_struct *work)
 	}			
 	enable_irq(ts->client->irq);
 }
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
+TD1416085584 :  After sleeping on and off while sensing a touchscreen,
+Touchscreen doesn't work*/
+static void mcs8000_Data_Clear(void) /* for touch stable */
+{
+	int i;
+
+	for(i=0; i<MELFAS_MAX_TOUCH; i++)
+	 {
+	   if(g_Mtouch_info[i].strength != -1)
+	   	{
+	   	  Is_Release_Error[i]=1;
+	  		g_Mtouch_info[i].strength = -1;
+	   	}
+
+	}
+}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
 
 static irqreturn_t mcs8000_ts_irq_handler(int irq, void *handle)
 {
@@ -1144,6 +1205,12 @@ static void mcs8000_early_suspend(struct early_suspend *h)
 	struct mcs8000_ts_device *dev = &mcs8000_ts_dev;
 
 	if (is_downloading == 0) {
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
+TD1416085584 :  After sleeping on and off while sensing a touchscreen,
+Touchscreen doesn't work*/
+		mcs8000_Data_Clear(); 
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
+
 		DMSG(KERN_INFO"%s: start! \n", __FUNCTION__);
 		disable_irq(dev->num_irq);
 		DMSG("%s: irq disable\n", __FUNCTION__);
