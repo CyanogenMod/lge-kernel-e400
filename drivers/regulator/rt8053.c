@@ -240,11 +240,12 @@ static int rt8053_ldo_enable(struct regulator_dev *dev)
 	int ldo = rdev_get_id(dev) - RT8053_LDO1;
 	u16 mask = RT8053_LDO_OUTPUT_ENABLE_MASK(ldo);
 
-	if (rt8053->refcnt == 0)
+	//if (rt8053->refcnt == 0)
 		gpio_set_value(rt8053->enable_gpio, 1);
 
 	rt8053->refcnt++;
-
+	printk("RT8053 LDO ENABLED\n");
+	printk("RT8053 LDO ENABLED refcnt=%d\n",rt8053->refcnt);
 	return rt8053_set_bits(rt8053, RT8053_LDO_OUTPUT_ENABLE_REG(ldo),
 				mask, mask);
 }
@@ -256,9 +257,10 @@ static int rt8053_ldo_disable(struct regulator_dev *dev)
 	u16 mask = RT8053_LDO_OUTPUT_ENABLE_MASK(ldo);
 
 	rt8053->refcnt--;
-
-	if (rt8053->refcnt == 0)
-		gpio_set_value(rt8053->enable_gpio, 0);
+	printk("RT8053 LDO DISABLED\n");
+	printk("RT8053 LDO DISABLED refcnt=%d\n",rt8053->refcnt);
+	//if (rt8053->refcnt == 0)
+		//gpio_set_value(rt8053->enable_gpio, 0);
 
 	return rt8053_set_bits(rt8053, RT8053_LDO_OUTPUT_ENABLE_REG(ldo),
 				mask, 0);
@@ -345,7 +347,7 @@ static int rt8053_dcdc_enable(struct regulator_dev *dev)
 	val = rt8053_set_bits(rt8053, RT8053_BUCK_VOL_ENABLE_REG(buck),
 				mask, mask);
 
-	if (rt8053->refcnt == 0)
+	//if (rt8053->refcnt == 0)
 		gpio_set_value(rt8053->enable_gpio, 1);
 
 	rt8053->refcnt++;
@@ -364,8 +366,8 @@ static int rt8053_dcdc_disable(struct regulator_dev *dev)
 
 	rt8053->refcnt--;
 
-	if (rt8053->refcnt == 0)
-		gpio_set_value(rt8053->enable_gpio, 0);
+	//if (rt8053->refcnt == 0)
+		//gpio_set_value(rt8053->enable_gpio, 0);
 
 	return val;
 }
