@@ -266,12 +266,16 @@ long has_wake_lock(int type)
 
 static void suspend_sys_sync(struct work_struct *work)
 {
+#if 0
 	if (debug_mask & DEBUG_SUSPEND)
+#endif
 		pr_info("PM: Syncing filesystems...\n");
 
 	sys_sync();
 
+#if 0
 	if (debug_mask & DEBUG_SUSPEND)
+#endif
 		pr_info("sync done.\n");
 
 	spin_lock(&suspend_sys_sync_lock);
