@@ -68,6 +68,21 @@ static struct msm_gpio sdc1_cfg_data[] = {
 								"sdc1_clk"},
 };
 
+static struct msm_gpio sdc1_sleep_cfg_data[] = {
+	{GPIO_CFG(51, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc1_dat_3"},
+	{GPIO_CFG(52, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc1_dat_2"},
+	{GPIO_CFG(53, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc1_dat_1"},
+	{GPIO_CFG(54, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc1_dat_0"},
+	{GPIO_CFG(55, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc1_cmd"},
+	{GPIO_CFG(56, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc1_clk"},
+};
+
 static struct msm_gpio sdc2_cfg_data[] = {
 	{GPIO_CFG(62, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 								"sdc2_clk"},
@@ -123,6 +138,31 @@ static struct msm_gpio sdc3_cfg_data[] = {
 #endif
 };
 
+static struct msm_gpio sdc3_sleep_cfg_data[] = {
+	{GPIO_CFG(88, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_clk"},
+	{GPIO_CFG(89, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_cmd"},
+	{GPIO_CFG(90, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_3"},
+	{GPIO_CFG(91, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_2"},
+	{GPIO_CFG(92, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_1"},
+	{GPIO_CFG(93, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_0"},
+#ifdef CONFIG_MMC_MSM_SDC3_8_BIT_SUPPORT
+	{GPIO_CFG(19, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_7"},
+	{GPIO_CFG(20, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_6"},
+	{GPIO_CFG(21, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_5"},
+	{GPIO_CFG(108, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+								"sdc3_dat_4"},
+#endif
+};
+
 static struct msm_gpio sdc4_cfg_data[] = {
 	{GPIO_CFG(19, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
 								"sdc4_dat_3"},
@@ -142,6 +182,7 @@ static struct sdcc_gpio sdcc_cfg_data[] = {
 	{
 		.cfg_data = sdc1_cfg_data,
 		.size = ARRAY_SIZE(sdc1_cfg_data),
+		.sleep_cfg_data = sdc1_sleep_cfg_data,
 	},
 	{
 		.cfg_data = sdc2_cfg_data,
@@ -151,6 +192,7 @@ static struct sdcc_gpio sdcc_cfg_data[] = {
 	{
 		.cfg_data = sdc3_cfg_data,
 		.size = ARRAY_SIZE(sdc3_cfg_data),
+		.sleep_cfg_data = sdc3_sleep_cfg_data,
 	},
 	{
 		.cfg_data = sdc4_cfg_data,
