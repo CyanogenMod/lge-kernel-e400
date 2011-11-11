@@ -373,6 +373,7 @@ static int hi351_set_wb(int mode)
 
 	
 	prev_balance_mode = mode;
+	msleep(10);
 	return rc;
 }
 
@@ -424,6 +425,7 @@ static int hi351_set_iso(int mode)
 	}
 	
 	prev_iso_mode = mode;
+	msleep(10);	
 	return rc;
 }
 
@@ -491,7 +493,7 @@ static long hi351_set_scene_mode(int8_t mode)
 		return rc;
 
 	prev_scene_mode = mode;
-
+	msleep(10);
 	return rc;
 }
 
@@ -553,7 +555,7 @@ static int32_t hi351_set_csi(void) {
 		hi351_csi_params.data_format = CSI_8BIT;
 		hi351_csi_params.lane_assign = 0xe4;
 		hi351_csi_params.dpcm_scheme = 0;
-		hi351_csi_params.settle_cnt = 0x14;
+		hi351_csi_params.settle_cnt = 0x13;
 
 	    printk(KERN_ERR "%s: config mipi enter \n", __func__);
 		rc = msm_camio_csi_config(&hi351_csi_params);
@@ -589,6 +591,8 @@ static long hi351_set_sensor_mode(int mode)
 				else
 					break;
 			}
+			msleep(10);
+			hi351_start_stream();
 		}
 		break;
 	case SENSOR_SNAPSHOT_MODE:
@@ -601,6 +605,10 @@ static long hi351_set_sensor_mode(int mode)
 			else
 				break;
 		}
+		msleep(10);
+		hi351_start_stream();
+		msleep(50);
+		
 		break;		
 	default:
 		rc = -EINVAL;
