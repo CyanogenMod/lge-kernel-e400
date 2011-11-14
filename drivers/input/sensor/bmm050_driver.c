@@ -1,6 +1,6 @@
 /*
- * Last modified: Aug 8, 2011
- * Revision: V1.6
+ * Last modified: Nov 9, 2011
+ * Revision: V1.7
  * This software program is licensed subject to the GNU General Public License
  * (GPL).Version 2,June 1991, available at http://www.fsf.org/copyleft/gpl.html
 
@@ -1103,6 +1103,7 @@ static int bmm_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
+	client_data->early_suspend_handler.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	client_data->early_suspend_handler.suspend = bmm_early_suspend;
 	client_data->early_suspend_handler.resume = bmm_late_resume;
 	register_early_suspend(&client_data->early_suspend_handler);
@@ -1253,6 +1254,10 @@ static int bmm_remove(struct i2c_client *client)
 		(struct bmm_client_data *)i2c_get_clientdata(client);
 
 	if (NULL != client_data) {
+#ifdef CONFIG_HAS_EARLYSUSPEND
+		unregister_early_suspend(&client_data->early_suspend_handler);
+#endif
+
 		mutex_lock(&client_data->mutex_op_mode);
 		if (BMM_VAL_NAME(NORMAL_MODE) == client_data->op_mode) {
 			cancel_delayed_work_sync(&client_data->work);
