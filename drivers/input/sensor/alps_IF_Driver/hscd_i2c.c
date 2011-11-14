@@ -107,14 +107,12 @@ static int hscd_i2c_writem(char *txData, int length)
 	struct i2c_msg msg[1];
 	if(client_hscd != NULL){
 		if(txData!=NULL){
-			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x ", client_hscd->addr,length,txData[0],txData[1]);
+			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x) \n ", client_hscd->addr,length,txData[0],txData[1]);
 		}else{
-			printk("[HSCD] i2c_writem txData is NULL");
-			return -EIO;
+			printk("[HSCD] i2c_writem txData is NULL\n");
 		}
 	}else{
-		printk("[HSCD] i2c_writem client_hscd is NULL");
-		return -EIO;
+		printk("[HSCD] i2c_writem client_hscd is NULL\n");
 	}
 	msg[0].addr = client_hscd->addr;
 	msg[0].flags = 0;
@@ -329,7 +327,7 @@ int hscd_get_magnetic_field_data(int *xyz)
 
 void hscd_activate(int flgatm, int flg, int dtime)
 {
-	static u8 buf[2];
+	u8 buf[2];
 	int ret ;
 	if (flg != 0)
 		flg = 1;
