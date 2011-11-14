@@ -51,8 +51,15 @@ struct vreg {
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For the manual touchscreen downloading*/
+extern void GetManual(void* wParam, void* lParam);
+extern void SetManual(void);
+extern void ResetManual(void);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For the manual touchscreen downloading*/ 
 
 extern int mms100_ISP_download_binary_data(int dl_mode);
+extern void mms100_download(void);
+
 static struct early_suspend ts_early_suspend;
 static void mcs8000_early_suspend(struct early_suspend *h);
 static void mcs8000_late_resume(struct early_suspend *h);
@@ -461,10 +468,20 @@ static long mcs8000_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 					break;
 
 			  case MCS8000_TS_IOCTL_KERNEL_DOWN:
-				 	printk(KERN_INFO "mms100_ISC_download_binary_data() starts");
-					err = mms100_ISC_download_binary_data();
-				 	printk(KERN_INFO "mms100_ISC_download_binary_data() ends");
-	        break;					
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
+				//printk(KERN_INFO "mms100_ISC_download_binary_data() starts");
+			 	mms100_download();
+				break;					
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
+			  case MCS8000_TS_IOCTL_KERNEL_DOWN_MANUAL:
+				SetManual();
+				//printk(KERN_INFO "MCS8000_TS_IOCTL_KERNEL_DOWN_MANUAL STARTS");
+				mms100_download();
+				ResetManual();
+	        	break;
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */				
 			}
 			break;
 		case MCS8000_TS_DOWN_IOCTL_DELAY :
@@ -472,7 +489,7 @@ static long mcs8000_ioctl(struct file *file, unsigned int cmd, unsigned long arg
              break;
 			
 		default:
-			printk(KERN_ERR "mcs8000_ts_ioctl: unknow ioctl\n");
+			printk(KERN_ERR "mcs8000_ts_ioctl: unknown ioctl\n");
 			err = -EINVAL;
 			break;
 	}
@@ -634,10 +651,9 @@ static void mcs8000_work(struct work_struct *work)
 TD1416085584 :  After sleep on and off while sensing a touchscreen,
 Touchscreen doesn't work*/
 	if(is_touch_suspend == 1) 
-		{
-				
+	{				
 		return;
-		}
+	}
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
 
 
@@ -1113,7 +1129,9 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	mcs8000_ts_off();
 	mdelay(10);
 	mcs8000_ts_on();
-	enable_irq(dev->num_irq);
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
+	mms100_download();
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
 
 	/*20110607 seven.kim@lge.com for touch frimware download [START] */
 	err = misc_register(&mcs8000_ts_misc_dev);
@@ -1215,7 +1233,9 @@ Touchscreen doesn't work*/
 		disable_irq(dev->num_irq);
 		DMSG("%s: irq disable\n", __FUNCTION__);
 		/* touch disable */
-    gpio_set_value(28, 0);
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
+//gpio_set_value(28, 0);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
 
 		dev->power(OFF);
 	}
@@ -1230,7 +1250,9 @@ static void mcs8000_late_resume(struct early_suspend *h)
 		DMSG(KERN_INFO"%s: start! \n", __FUNCTION__);
 		mcs8000_ts_on();
 		/* touch enable */
-    gpio_set_value(28, 1);
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
+//gpio_set_value(28, 0);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
 		
 		enable_irq(dev->num_irq);
 		DMSG("%s: irq enable\n", __FUNCTION__);

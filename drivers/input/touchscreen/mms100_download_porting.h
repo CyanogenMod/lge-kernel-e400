@@ -7,8 +7,8 @@
 //
 //--------------------------------------------------------
 
-#ifndef __MELFAS_DOWNLOAD_PORTING_H_INCLUDED__
-#define __MELFAS_DOWNLOAD_PORTING_H_INCLUDED__
+#ifndef __MMS100_DOWNLOAD_PORTING_H__
+#define __MMS100_DOWNLOAD_PORTING_H__
 
 //============================================================
 //
@@ -234,6 +234,10 @@ extern int ts_set_vreg(unsigned char onoff);
 #define MELFAS_ROLLBACK_BASEBAND_ISR()							//enable_irq(GPIO_TOUCH_INT)
 #define MELFAS_ROLLBACK_WATCHDOG_TIMER_RESET()		// Nothing
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
+#define MELFAS_DISABLE_TS_ISR()											disable_irq(GPIO_TOUCH_INT)
+#define MELFAS_ENABLE_TS_ISR()							  enable_irq(GPIO_TOUCH_INT)
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
 #endif
 
 

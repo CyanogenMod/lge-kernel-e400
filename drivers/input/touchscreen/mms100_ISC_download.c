@@ -9,7 +9,10 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/irq.h>
-
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue*/
+#include <linux/time.h>
+#include <linux/timer.h>
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue*/
 #include <asm/gpio.h>
 #include <asm/io.h>
 
@@ -26,17 +29,26 @@
 //
 //============================================================
 
-extern const UINT16 MELFAS_binary_nLength;
-extern const  UINT8 MELFAS_binary[];
-extern const UINT16 MELFAS_binary_nLength_2;
-extern const  UINT8 MELFAS_binary_2[];
 
 UINT8  ucSlave_addr = ISC_MODE_SLAVE_ADDRESS;
 UINT8 ucInitial_Download = FALSE;
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/
+static int iManual = 0;
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/ 
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in ISP mode*/
+static struct timer_list sReadTimer;
+static int iExpiredFlag;
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in ISP mode*/
+
 //---------------------------------
 //	Downloading functions
 //---------------------------------
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/
+void GetManual(void* wParam, void* lParam);
+void setManual(void);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/
 
 static int mms100_ISC_download(const UINT8 *pBianry, const UINT16 unLength, const UINT8 nMode);
 
@@ -83,7 +95,23 @@ void melfas_send_download_enable_command(void)
 }
 
 #endif
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/
+void GetManual(void* wParam, void* lParam)
+{
+	int* piData;
 
+	piData = (int*)wParam;
+	*piData = iManual;
+}
+void SetManual(void)
+{
+	iManual = MANUAL_DOWNLOAD_ENABLE;
+}
+void ResetManual(void)
+{
+	iManual = MANUAL_DOWNLOAD_DISABLE;
+}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/ 
 void mms100_download(void)
 {
 	int ret =0;
@@ -115,25 +143,33 @@ void mms100_download(void)
 		for(i=0; i<3 ; i++)
 		{
 			if(ret)	
-				//-----------------------------------------------------
-				//@@@ [WONJINHAN : kevinzone.han@lge.com - 2011.10.23]
-				//ret = mms100_ISP_download_binary_data(MELFAS_ISP_DOWNLOAD); 	//ISP mode download ( CORE + PRIVATE )
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For abnormal condition of touchscreen downloading*/
+				ret = mms100_ISP_download_binary_data(MELFAS_ISP_DOWNLOAD); 	//ISP mode download ( CORE + PRIVATE )
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For abnormal condition of touchscreen downloading*/
 
 			if(!ret)
-            {
-                ucInitial_Download = TRUE;
+      {
+	      ucInitial_Download = TRUE;
 				ret = mms100_ISC_download_binary_data();    //retry ISC mode download
-             }
+      }
+
 			if (ret)
+			{
 				printk("<MELFAS> SET Download ISC & ISP Fail\n");
+			}
 			else
+			{
 				break;
+			}
 		}
 	}
 #endif
 
-	gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_SDA, 1, GPIO_CFG_OUTPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_8MA), GPIO_CFG_ENABLE);
-	gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_SCL, 1, GPIO_CFG_OUTPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For abnormal condition of touchscreen downloading*/
+	//gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_SDA, 1, GPIO_CFG_OUTPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+	//gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_SCL, 1, GPIO_CFG_OUTPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For abnormal condition of touchscreen downloading*/
 
 	gpio_free(GPIO_TOUCH_SDA);
 	gpio_free(GPIO_TOUCH_SCL);
@@ -158,6 +194,7 @@ int mms100_ISC_download_binary_data(void)
 	int i, nRet;
   INT8 dl_enable_bit = 0x00;
   INT8 version_info = 0;
+	int iValue;
 
 #if MELFAS_USE_PROTOCOL_COMMAND_FOR_DOWNLOAD
 	melfas_send_download_enable_command();
@@ -167,7 +204,7 @@ int mms100_ISC_download_binary_data(void)
 	MELFAS_DISABLE_BASEBAND_ISR();					// Disable Baseband touch interrupt ISR.
 	MELFAS_DISABLE_WATCHDOG_TIMER_RESET();			// Disable Baseband watchdog timer
 
-	mms100_ISC_set_ready();
+
 
     //---------------------------------
     // set download enable mode
@@ -177,29 +214,19 @@ int mms100_ISC_download_binary_data(void)
 
     if(MELFAS_CORE_FIRWMARE_UPDATE_ENABLE || ucInitial_Download) 
     {
-		  version_info = mms100_ISC_read_data(MELFAS_FIRMWARE_VER_REG_CORE);
-		  printk("<MELFAS> CORE_VERSION : 0x%2X\n",version_info);
-			if(version_info< MELFAS_DOWNLAOD_CORE_VERSION || version_info==0xFF)
-		  	dl_enable_bit |= 0x01;
-    }
-    if(MELFAS_PRIVATE_CONFIGURATION_UPDATE_ENABLE)
-    {
-	    version_info = mms100_ISC_read_data(MELFAS_FIRMWARE_VER_REG_PRIVATE_CUSTOM);
-	    printk("<MELFAS> PRIVATE_CUSTOM_VERSION : 0x%2X\n",version_info);
-	  	if(version_info < MELFAS_DOWNLAOD_PRIVATE_VERSION || version_info==0xFF)
-	    	dl_enable_bit |= 0x02;
-    }
+	/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/
+			GetManual(&iValue, 0);
+			if (iValue != MANUAL_DOWNLOAD_ENABLE) {
+			  version_info = mms100_ISC_read_data(MELFAS_FIRMWARE_VER_REG_CORE);
+			  printk("<MELFAS> CORE_VERSION : 0x%2X\n",version_info);
 
-#if 0
-    if(MELFAS_PUBLIC_CONFIGURATION_UPDATE_ENABLE)
-    {
-	    version_info = mms100_ISC_read_data(MELFAS_FIRMWARE_VER_REG_PUBLIC_CUSTOM);
-	    printk("<MELFAS> PUBLIC_CUSTOM_VERSION : 0x%2X\n",version_info);
-			if(version_info < MELFAS_DOWNLAOD_PUBLIC_VERSION || version_info==0xFF)
-	    	dl_enable_bit |= 0x04;
+				if(version_info < MELFAS_DOWNLAOD_CORE_VERSION || version_info==0xFF)
+			  	dl_enable_bit |= 0x01;
+			} else {
+				dl_enable_bit |= 0x01;
+			}
+	/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/
     }
-#endif
-
 
 	//------------------------
 	// Run Download
@@ -212,19 +239,22 @@ int mms100_ISC_download_binary_data(void)
         
           if(i<2) // 0: core, 1: private custom
           {
-              nRet = mms100_ISC_download( (const UINT8*) MELFAS_binary, (const UINT16)MELFAS_binary_nLength, (const INT8)i);
-              ucSlave_addr = ISC_MODE_SLAVE_ADDRESS;
+              nRet = mms100_ISC_download( (const UINT8*) MELFAS_TS_binary, (const UINT16)MELFAS_TS_binary_nLength, (const INT8)i);
+
+              printk("mms100_ISC_download return value is %d",nRet);
+
+							ucSlave_addr = ISC_MODE_SLAVE_ADDRESS;
               ucInitial_Download = FALSE;
           }
           else 	// 2: public custom
-		//nRet = mms100_ISC_download( (const UINT8*) MELFAS_binary, (const UINT16)MELFAS_binary_nLength, (const INT8)i);
+					{
+						nRet = mms100_ISC_download( (const UINT8*) MELFAS_TS_binary, (const UINT16)MELFAS_TS_binary_nLength, (const INT8)i);
+					}
+
           if (nRet)
+					{
             goto fw_error;
-#if MELFAS_2CHIP_DOWNLOAD_ENABLE
-          	nRet = mms100_ISC_Slave_download((const INT8) i); // Slave Binary data download
-          if (nRet)
-            goto fw_error;
-#endif
+					}
         }
     }
 
@@ -436,7 +466,7 @@ static int mms100_ISC_download(const UINT8 *pBianry, const UINT16 unLength, cons
 	printk("<MELFAS> Ready\n");
 #endif
 
-//	mms100_ISC_set_ready();
+	mms100_ISC_set_ready();
 
 	#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
     if(nMode==0) printk("<MELFAS> Core_firmware_download_via_ISC start!!!\n");
@@ -866,17 +896,12 @@ static void mcsdl_i2c_start(void)
 
 static void mcsdl_i2c_stop(void)
 {
-    //MCSDL_GPIO_SCL_SET_LOW();
-    MCSDL_GPIO_SCL_SET_OUTPUT();
     MCSDL_GPIO_SCL_SET_LOW();
-		mcsdl_delay(MCSDL_DELAY_1US);
-    //MCSDL_GPIO_SDA_SET_LOW(); 
-    MCSDL_GPIO_SDA_SET_OUTPUT();
+    MCSDL_GPIO_SCL_SET_OUTPUT();mcsdl_delay(MCSDL_DELAY_1US);
     MCSDL_GPIO_SDA_SET_LOW();
-    mcsdl_delay(MCSDL_DELAY_1US);
+    MCSDL_GPIO_SDA_SET_OUTPUT();mcsdl_delay(MCSDL_DELAY_1US);
 
-    MCSDL_GPIO_SCL_SET_HIGH();
-		mcsdl_delay(MCSDL_DELAY_1US);
+    MCSDL_GPIO_SCL_SET_HIGH();mcsdl_delay(MCSDL_DELAY_1US);
     MCSDL_GPIO_SDA_SET_HIGH();
 
 }
@@ -953,16 +978,53 @@ static void mcsdl_ISC_read_32bits( UINT8 *pData )
 
 }
 */
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in */
+//static timer_list sReadTimer;
+static void ReadISR(unsigned long ulParam)
+{
+	iExpiredFlag = 1;
+}
+
+static void InitializeReadtimer(void)
+{
+	unsigned long ulData = 0;
+
+	init_timer(&sReadTimer);
+  sReadTimer.expires 	= get_jiffies_64() + HZ;
+	sReadTimer.data    	= ulData;
+	sReadTimer.function  = ReadISR;
+
+	iExpiredFlag = 0;
+
+	add_timer(&sReadTimer);
+}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in */
 
 static UINT8 mcsdl_read_byte(void)
 {
 	int i;
   UINT8 pData = 0x00;
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in */
+	InitializeReadtimer();
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in */
+
 	MCSDL_GPIO_SDA_SET_LOW();
 	MCSDL_GPIO_SDA_SET_INPUT();
 
 	MCSDL_GPIO_SCL_SET_INPUT();
-	while(!MCSDL_GPIO_SCL_IS_HIGH());
+	
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in */
+	while(!MCSDL_GPIO_SCL_IS_HIGH())
+	{
+		if(iExpiredFlag == 1)
+		{
+			iExpiredFlag = 0;
+			del_timer(&sReadTimer);
+			break;
+		}
+	}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For unlimited waiting issue in */
+
     MCSDL_GPIO_SCL_SET_HIGH();
 	MCSDL_GPIO_SCL_SET_OUTPUT();
 	
@@ -980,10 +1042,8 @@ static void mcsdl_ISC_write_bits(UINT32 wordData, int nBits)
 {
 	int i;
 
-	//printk("<LG> In mcsdl_ISC_write_bits function "); 
-
-	MCSDL_GPIO_SDA_SET_OUTPUT();
 	MCSDL_GPIO_SDA_SET_LOW();
+	MCSDL_GPIO_SDA_SET_OUTPUT();
 
 
 	for (i=0; i<nBits; i++){
@@ -1029,9 +1089,9 @@ static void mcsdl_ISC_write_bits(UINT32 wordData, int nBits)
 	  if((i%8) == 7) {
 			mcsdl_read_ack(); //read Ack
 
-			MCSDL_GPIO_SDA_SET_OUTPUT();
 			MCSDL_GPIO_SDA_SET_LOW();
-		}		
+			MCSDL_GPIO_SDA_SET_OUTPUT();
+    	}
 	}
 }
 //============================================================
