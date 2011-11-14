@@ -43,6 +43,7 @@ struct hi351_work {
 static struct  hi351_work *hi351_sensorw;
 static struct  i2c_client *hi351_client;
 static bool CONFIG_CSI;
+static bool FIRST_INIT;
 
 struct hi351_ctrl_t {
 	const struct msm_camera_sensor_info *sensordata;
@@ -67,7 +68,7 @@ static int hi351_probe_init_done(const struct msm_camera_sensor_info *data)
 {
 	CDBG("%s : hi351 sensor_reset 0\n", __func__);
 	gpio_direction_output(data->sensor_reset, 0);
-	mdelay(20);
+	msleep(20);
 	gpio_direction_output(data->sensor_pwd, 0);
 	gpio_free(data->sensor_reset);
 	gpio_free(data->sensor_pwd);
@@ -83,10 +84,10 @@ static int hi351_reset(const struct msm_camera_sensor_info *dev)
 
 	rc = gpio_direction_output(dev->sensor_reset, 0);
 	CDBG("%s: reset 0 = %d, rc = %d/n",__func__, dev->sensor_reset, rc);
-	mdelay(10);
+	msleep(10);
 	rc = gpio_direction_output(dev->sensor_reset, 1);
 	CDBG("%s: reset 1 = %d, rc = %d/n",__func__, dev->sensor_reset, rc);
-	mdelay(5);		//16mclk need before SD/SC start 
+	msleep(5);		//16mclk need before SD/SC start 
 	
 	if (rc < 0){
 		pr_err(" hi351_reset fails\n");
@@ -265,7 +266,7 @@ static int hi351_set_effect(int effect)
 		return rc;
 	}
 
-       CDBG("###  ; [CHECK]%s: effect -> %d\n", __func__, effect);
+       printk(KERN_ERR "### %s: mode -> %d\n", __func__, effect);
 
 	   switch (effect) {
 	   case CAMERA_EFFECT_OFF:
@@ -318,10 +319,10 @@ static int hi351_set_wb(int mode)
 
 	if(prev_balance_mode == mode)
 	{
-		printk(KERN_ERR "###  [CHECK]%s: skip this function, wb_mode -> %d\n", __func__, mode);
+		printk(KERN_ERR "### %s: skip this function, wb_mode -> %d\n", __func__, mode);
 		return rc;
 	}
-       printk(KERN_ERR "###  [CHECK]%s: mode -> %d\n", __func__, mode);
+       printk(KERN_ERR "### %s: mode -> %d\n", __func__, mode);
 
 	switch (mode) {
 	case CAMERA_WB_AUTO:
@@ -372,6 +373,7 @@ static int hi351_set_wb(int mode)
 
 	
 	prev_balance_mode = mode;
+	msleep(10);
 	return rc;
 }
 
@@ -384,7 +386,7 @@ static int hi351_set_iso(int mode)
 		printk(KERN_ERR "###  [CHECK]%s: skip this function, iso_mode -> %d\n", __func__, mode);
 		return rc;
 	}
-       printk(KERN_ERR "###  [CHECK]%s: mode -> %d\n", __func__, mode);
+       printk(KERN_ERR "### %s: mode -> %d\n", __func__, mode);
 
 	switch (mode) {
 	case CAMERA_ISO_AUTO:
@@ -423,6 +425,7 @@ static int hi351_set_iso(int mode)
 	}
 	
 	prev_iso_mode = mode;
+	msleep(10);	
 	return rc;
 }
 
@@ -435,7 +438,8 @@ static long hi351_set_scene_mode(int8_t mode)
 		printk(KERN_ERR "###  [CHECK]%s: skip this function, scene_mode -> %d\n", __func__, mode);
 		return rc;
 	}
-       printk(KERN_ERR "###  [CHECK]%s: mode -> %d\n", __func__, mode);
+       
+	   printk(KERN_ERR "### %s: mode -> %d\n", __func__, mode);
 	
 	switch (mode) {
 	case CAMERA_SCENE_AUTO:
@@ -489,7 +493,7 @@ static long hi351_set_scene_mode(int8_t mode)
 		return rc;
 
 	prev_scene_mode = mode;
-
+	msleep(10);
 	return rc;
 }
 
@@ -497,6 +501,10 @@ static long hi351_set_scene_mode(int8_t mode)
 static int32_t hi351_set_brightness(int8_t brightness)
 {
 	int rc = 0;
+
+	printk(KERN_ERR "### %s: mode -> %d\n", __func__, brightness);
+
+	brightness = brightness + 6;		//Brightness value come from -6 to 6
 
   	rc = hi351_i2c_write_b_sensor(hi351_regs.brightness_reg_settings[0].baddr,
 				 			  hi351_regs.brightness_reg_settings[0].bdata);
@@ -517,6 +525,7 @@ static void hi351_start_stream(void)
 	//int rc = 0;
 	pr_err("%s: %d  Enter \n",__func__, __LINE__);
 
+	hi351_i2c_write_b_sensor(0x03, 0x00);
 	hi351_i2c_write_b_sensor(0x01, 0xf0);/* streaming on */
 	pr_err("%s: %d  Exit \n",__func__, __LINE__);
 }
@@ -526,7 +535,7 @@ static void hi351_stop_stream(void)
 	//int rc = 0;
 	pr_err("%s: %d  Enter \n",__func__, __LINE__);
 
-	hi351_i2c_write_b_sensor(0x01, 0xf0);
+	hi351_i2c_write_b_sensor(0x03, 0x00);
 	hi351_i2c_write_b_sensor(0x01, 0xf1);
 
 	pr_err("%s: %d  Exit \n",__func__, __LINE__);
@@ -546,7 +555,7 @@ static int32_t hi351_set_csi(void) {
 		hi351_csi_params.data_format = CSI_8BIT;
 		hi351_csi_params.lane_assign = 0xe4;
 		hi351_csi_params.dpcm_scheme = 0;
-		hi351_csi_params.settle_cnt = 0x14;
+		hi351_csi_params.settle_cnt = 0x13;
 
 	    printk(KERN_ERR "%s: config mipi enter \n", __func__);
 		rc = msm_camio_csi_config(&hi351_csi_params);
@@ -567,25 +576,39 @@ static long hi351_set_sensor_mode(int mode)
 	switch (mode) {
 	case SENSOR_PREVIEW_MODE:
 				
-		for (retry = 0; retry < 3; ++retry) {
-			printk(KERN_ERR "[ERROR]%s:Sensor Preview Mode In\n", __func__);
-			rc = hi351_reg_preview();
-			if (rc < 0)
-				printk(KERN_ERR "[ERROR]%s:Sensor Preview Mode Fail\n", __func__);
-			else
-				break;
+		pr_err("%s: %d CAMERA_Preview_MODE Enter \n",__func__, __LINE__);
+
+		if (FIRST_INIT == 0) {
+			printk(KERN_ERR "%s:Sensor Preview Mode In But Init First Done. Skip\n", __func__);
+			FIRST_INIT = 1;			
+		}
+		else {	
+			for (retry = 0; retry < 3; ++retry) {
+					printk(KERN_ERR "%s:Sensor Preview Mode In\n", __func__);
+				rc = hi351_reg_preview();
+				if (rc < 0)
+					printk(KERN_ERR "[ERROR]%s:Sensor Preview Mode Fail\n", __func__);
+				else
+					break;
+			}
+			msleep(10);
+			hi351_start_stream();
 		}
 		break;
 	case SENSOR_SNAPSHOT_MODE:
 	case SENSOR_RAW_SNAPSHOT_MODE:
 		for (retry = 0; retry < 3; ++retry) {
-			printk(KERN_ERR "[ERROR]%s:Sensor Snapshot Mode In\n", __func__);
+			printk(KERN_ERR "%s:Sensor Snapshot Mode In\n", __func__);
 			rc = hi351_reg_snapshot();
 			if (rc < 0)
 				printk(KERN_ERR "[ERROR]%s:Sensor Snapshot Mode Fail\n", __func__);
 			else
 				break;
 		}
+		msleep(10);
+		hi351_start_stream();
+		msleep(50);
+		
 		break;		
 	default:
 		rc = -EINVAL;
@@ -651,6 +674,7 @@ int hi351_sensor_config(void __user *argp)
 		return -EFAULT;
 
 	mutex_lock(&hi351_mut);
+	printk(KERN_ERR "### %s: cfgtype = %d, mode -> %d\n", __func__, cfg_data.cfgtype, cfg_data.mode);
 
 	CDBG("hi351_ioctl, cfgtype = %d, mode = %d\n",
 		cfg_data.cfgtype, cfg_data.mode);
@@ -658,41 +682,44 @@ int hi351_sensor_config(void __user *argp)
 		switch (cfg_data.cfgtype) {
 		case CFG_SET_MODE:
 			CDBG("CFG_SET_MODE\n");
+			printk(KERN_ERR "### %s: CFG_SET_MODE: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_sensor_mode(cfg_data.mode);
 			break;
 
 		case CFG_SET_EFFECT:
 
-			CDBG("CFG_SET_EFFECT\n");
+			printk(KERN_ERR "### %s: CFG_SET_EFFECT: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_effect(cfg_data.mode);
 			break;
 
 		case CFG_SET_WB:
 
-			CDBG("CFG_SET_WB\n");
+			printk(KERN_ERR "### %s: CFG_SET_WB: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_wb(cfg_data.mode);
 			break;
 
 		case CFG_SET_ISO:
 
-			CDBG("CFG_SET_ISO\n");
+			printk(KERN_ERR "### %s: CFG_SET_ISO: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_iso(cfg_data.mode);
 			break;
 
 		case CFG_SET_SCENE:
 
-			CDBG("CFG_SET_SCENE\n");
+			printk(KERN_ERR "### %s: CFG_SET_SCENE: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_scene_mode(cfg_data.mode);
 			break;
 			
 		case CFG_SET_BRIGHTNESS:
-			CDBG("CFG_SET_BRIGHTNESS\n");
+
+			printk(KERN_ERR "### %s: CFG_SET_BRIGHTNESS: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_brightness(cfg_data.mode);
 			break;			
 	
 		case CFG_SET_PICT_FPS:
 		case CFG_SET_FPS:
-			CDBG("CFG_SET_PICT_FPS&CFG_SET_FPS mode = %d\n", cfg_data.mode);
+
+			printk(KERN_ERR "### %s: CFG_SET_FPS OR PICT_FPS: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_Fps(cfg_data.mode);
 			break;
 		
@@ -777,6 +804,7 @@ int hi351_sensor_init(const struct msm_camera_sensor_info *data)
 	}
 
 	CONFIG_CSI = 0;
+	FIRST_INIT = 0;
 	
 	if (data)
 		hi351_ctrl->sensordata = data;
@@ -819,6 +847,10 @@ int hi351_sensor_release(void)
 	int rc = 0;
 
 	mutex_lock(&hi351_mut);
+
+	hi351_stop_stream();
+
+	msleep(2);
 
 	hi351_ctrl->sensordata->pdata->camera_power_off();	
 	

@@ -27,7 +27,7 @@ enum {
 	DEBUG_USER_STATE = 1U << 0,
 	DEBUG_SUSPEND = 1U << 2,
 };
-static int debug_mask = DEBUG_USER_STATE;
+static int debug_mask = DEBUG_USER_STATE | DEBUG_SUSPEND;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static DEFINE_MUTEX(early_suspend_lock);
@@ -160,9 +160,11 @@ void request_suspend_state(suspend_state_t new_state)
 {
 	unsigned long irqflags;
 	int old_sleep;
+	int ret;
 
 	spin_lock_irqsave(&state_lock, irqflags);
 	old_sleep = state & SUSPEND_REQUESTED;
+	printk(KERN_INFO"%s: state [%d]\n",__func__, state);
 	if (debug_mask & DEBUG_USER_STATE) {
 		struct timespec ts;
 		struct rtc_time tm;
@@ -178,11 +180,15 @@ void request_suspend_state(suspend_state_t new_state)
 	}
 	if (!old_sleep && new_state != PM_SUSPEND_ON) {
 		state |= SUSPEND_REQUESTED;
-		queue_work(suspend_work_queue, &early_suspend_work);
+		ret = queue_work(suspend_work_queue, &early_suspend_work);
+		if (!ret)
+			printk(KERN_INFO"%s: early_suspend_work is queued already.\n", __func__);
 	} else if (old_sleep && new_state == PM_SUSPEND_ON) {
 		state &= ~SUSPEND_REQUESTED;
 		wake_lock(&main_wake_lock);
-		queue_work(suspend_work_queue, &late_resume_work);
+		ret = queue_work(suspend_work_queue, &late_resume_work);
+		if (!ret)
+			printk(KERN_INFO"%s: late_resume_work is queued already.\n", __func__);
 	}
 	requested_suspend_state = new_state;
 	spin_unlock_irqrestore(&state_lock, irqflags);
