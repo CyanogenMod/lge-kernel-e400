@@ -333,15 +333,9 @@ static void __init msm7x2x_init(void)
 	/*7x25a kgsl initializations*/
 	msm7x25a_kgsl_3d0_init();
 
-	// START : wooyul.kim@lge.com 2011-09-14 m3dviv for REV A
-//	if (lge_get_uart_mode()) {
-//		if (lge_bd_rev >= LGE_REV_B)
-//			platform_device_register(&msm_device_uart1);
-//		else
-	         // platform_device_register(&msm_device_uart3);
-				platform_device_register(&msm_device_uart1);
-//	}
-	// END : wooyul.kim@lge.com 2011-09-14
+	if (lge_get_uart_mode()) {
+		platform_device_register(&msm_device_uart1);
+	}
 
 	lge_add_input_devices();
 	lge_add_misc_devices();
