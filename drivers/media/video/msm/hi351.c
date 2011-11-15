@@ -555,7 +555,7 @@ static int32_t hi351_set_csi(void) {
 		hi351_csi_params.data_format = CSI_8BIT;
 		hi351_csi_params.lane_assign = 0xe4;
 		hi351_csi_params.dpcm_scheme = 0;
-		hi351_csi_params.settle_cnt = 0x13;
+		hi351_csi_params.settle_cnt = 0x19;
 
 	    printk(KERN_ERR "%s: config mipi enter \n", __func__);
 		rc = msm_camio_csi_config(&hi351_csi_params);
