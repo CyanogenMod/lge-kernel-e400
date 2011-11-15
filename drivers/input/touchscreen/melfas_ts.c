@@ -289,6 +289,10 @@ static void melfas_ts_work_func(struct work_struct *work)
 	}		
 		input_sync(ts->input_dev);
 	}
+	if (gpio_get_value(ts->intr_gpio) == 0) {
+		gpio_set_value(ts->intr_gpio, 1);
+		mdelay(10);
+	}
 			
 	enable_irq(ts->client->irq);
 }
