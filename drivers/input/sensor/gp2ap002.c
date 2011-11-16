@@ -362,6 +362,15 @@ static irqreturn_t gp2ap_irq_handler(int irq, void *dev_id)
 		pdev->vout_level = gpio_get_value(pdev->vout_gpio);
 
 	delay = msecs_to_jiffies(pdev->debounce);
+	if (!proximity_wq) {
+		PROXE("failed proximity_wq is null\n");
+		return -ENOMEM;
+	}		
+	if (&pdev->dwork==NULL) {
+		PROXE("failed pdev->dwork's address is null\n");
+		return -ENOMEM;
+	}
+
 	queue_delayed_work(proximity_wq, &pdev->dwork, delay);
 
 	spin_unlock(&pdev->lock);
