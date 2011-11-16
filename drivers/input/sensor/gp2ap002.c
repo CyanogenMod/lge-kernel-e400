@@ -364,11 +364,13 @@ static irqreturn_t gp2ap_irq_handler(int irq, void *dev_id)
 	delay = msecs_to_jiffies(pdev->debounce);
 	if (!proximity_wq) {
 		PROXE("failed proximity_wq is null\n");
-		return -ENOMEM;
+		spin_unlock(&pdev->lock);
+		return IRQ_HANDLED;
 	}		
 	if (&pdev->dwork==NULL) {
 		PROXE("failed pdev->dwork's address is null\n");
-		return -ENOMEM;
+		spin_unlock(&pdev->lock);
+		return  IRQ_HANDLED;
 	}
 
 	queue_delayed_work(proximity_wq, &pdev->dwork, delay);
