@@ -39,6 +39,10 @@
 
 #include <mach/board_lge.h>
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
+
 #define PROXIMITY_DEBUG_PRINT	(0)
 #define PROXIMITY_ERROR_PRINT	(1)
 
@@ -141,6 +145,17 @@ struct proximity_gp2ap_device {
 	int op_mode;	/* operation mode - 0:A, 1:B1, 2:B2 */
 	u8	reg_backup[7];	/* for on/off */
 };
+#ifdef CONFIG_HAS_EARLYSUSPEND
+struct proximity_gp2ap_data {
+	int irq_num;
+	int (*power)(unsigned char onoff);
+	int methods;
+	int operation_mode;
+	int debounce;
+	u8 cycle;
+	struct early_suspend early_suspend;
+};
+#endif
 
 struct detection_cycle {
 	u8 val;
@@ -390,7 +405,11 @@ static void
 gp2ap_work_func(struct work_struct *work)
 {
 	struct proximity_gp2ap_device *dev = container_of(work, struct proximity_gp2ap_device, dwork.work);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct proximity_gp2ap_data *proxi_pdata = dev->client->dev.platform_data;
+#else
 	struct proximity_platform_data *proxi_pdata = dev->client->dev.platform_data;
+#endif
 
 	int vo_data;
 
@@ -446,7 +465,10 @@ work_func_end:
 
 static int gp2ap_suspend(struct i2c_client *i2c_dev, pm_message_t state);
 static int gp2ap_resume(struct i2c_client *i2c_dev);
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void gp2ap_early_suspend(struct early_suspend * h);
+static void gp2ap_late_resume(struct early_suspend * h);
+#endif
 /*  ------------------------------------------------------------------------ */
 /*  --------------------    SYSFS DEVICE FIEL    --------------------------- */
 /*  ------------------------------------------------------------------------ */
@@ -676,7 +698,11 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int ret = 0;
 	int i;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct proximity_gp2ap_data	*pdata;
+#else
 	struct proximity_platform_data	*pdata;
+#endif
 	pm_message_t dummy_state;
 
 	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
@@ -798,7 +824,11 @@ gp2ap_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
 		PROXD("exit\n");
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	pdata->early_suspend.suspend = gp2ap_early_suspend;
+	pdata->early_suspend.resume = gp2ap_late_resume;
+	register_early_suspend(&pdata->early_suspend);
+#endif
 	return 0;
 
 err_device_create_file:
@@ -960,6 +990,115 @@ gp2ap_resume(struct i2c_client *i2c_dev)
 	return 0;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void gp2ap_early_suspend(struct early_suspend * h)
+{
+	struct proximity_gp2ap_device *pdev = i2c_get_clientdata(gp2ap_pdev->client);
+	struct proximity_gp2ap_data *pdata = pdev->client->dev.platform_data;
+	int ret;
+
+	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
+		PROXD("entry\n");
+
+	/* if device is not operating, return */
+	if (!pdev->sw_mode)
+		return;
+
+	disable_irq(pdev->irq);
+
+	/* shutdown & analog shutdown */
+	if (pdev->methods) 	/* Interrnupt mode */
+		ret	= prox_i2c_write(GP2AP_REG_OPMOD, (GP2AP_ASD_SHIFT(1) | 0x02), GP2AP_NO_INTCLEAR);
+	else				/* Normal mode */
+		ret	= prox_i2c_write(GP2AP_REG_OPMOD, (GP2AP_ASD_SHIFT(1) | 0x00), GP2AP_NO_INTCLEAR);
+
+	if (GP2AP_DEBUG_ERR_CHECK & gp2ap_debug_mask) {
+		if (ret < 0) {
+			PROXE("failed to write\n");
+		}
+	}
+
+	pdev->sw_mode = PROX_STAT_SHUTDOWN;
+
+	cancel_delayed_work_sync(&pdev->dwork);
+	flush_workqueue(proximity_wq);
+
+	/* turn off power supply */
+	pdata->power(0);
+
+	set_irq_wake(pdev->irq, 0);
+
+	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
+		PROXD("exit\n");
+
+	return;
+}
+
+static void gp2ap_late_resume(struct early_suspend * h)
+{
+	struct proximity_gp2ap_device *pdev = i2c_get_clientdata(gp2ap_pdev->client);
+	struct proximity_gp2ap_data *pdata = pdev->client->dev.platform_data;
+	int ret;
+	int addr;
+
+	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
+		PROXD("entry\n");
+
+	if (pdev->sw_mode)
+		return;
+
+	/* turn on power supply */
+	pdata->power(1);
+
+	pdev->last_vout = -1;
+
+	udelay(120);
+
+	/* disable shutdown value */
+	if (pdev->methods) 	/* Interrnupt mode */
+		pdev->reg_backup[GP2AP_REG_OPMOD] = 0x03;
+	else				/* Normal mode */
+		pdev->reg_backup[GP2AP_REG_OPMOD] = 0x01;
+
+	for (addr = 0; addr < 6; addr++) {
+		if (pdev->reg_backup[addr] != 0) {
+			ret = prox_i2c_write(addr, pdev->reg_backup[addr], GP2AP_NO_INTCLEAR);
+
+			if (ret < 0) {
+				PROXE("%s failed to write - addr:%d\n", __func__, addr);
+				pdata->power(0);
+				return;
+			}
+		} else
+			continue;
+	}
+
+	/* garbage data for first call */
+	gp2ap_report_event(PROX_SENSOR_DETECT_N);
+	pdev->last_vout = -1;
+
+	enable_irq(pdev->irq);
+
+	/* safity code for H/W timming */
+	if (pdev->methods)
+		prox_i2c_write(GP2AP_REG_CON, 0x00, GP2AP_INTCLEAR);
+
+	/* report proxi state because v_out is high after turn on */
+	gp2ap_report_init_staus(pdev);
+
+	pdev->sw_mode = PROX_STAT_OPERATING;
+
+	ret = set_irq_wake(pdev->irq, 1);
+	if (ret)
+		set_irq_wake(pdev->irq, 0);
+
+	if (GP2AP_DEBUG_FUNC_TRACE & gp2ap_debug_mask)
+		PROXD("exit\n");
+
+	return;
+}
+#endif
+
 static const struct i2c_device_id gp2ap_i2c_ids[] = {
 		{"proximity_gp2ap", 0 },
 		{ },
@@ -971,6 +1110,10 @@ static struct i2c_driver gp2ap_i2c_driver = {
 	.probe		= gp2ap_i2c_probe,
 	.remove		= gp2ap_i2c_remove,
 	.id_table	= gp2ap_i2c_ids,
+#ifndef CONFIG_HAS_EARLYSUSPEND	
+	.resume = gp2ap_resume,
+	.suspend = gp2ap_suspend,
+#endif
 	.driver = {
 		.name	= "proximity_gp2ap",
 		.owner	= THIS_MODULE,
