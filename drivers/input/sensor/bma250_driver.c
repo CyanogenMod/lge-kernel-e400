@@ -1,5 +1,5 @@
-/*  Date: 2011/8/8 11:00:00
- *  Revision: 1.6
+/*  Date: 2011/11/9 11:00:00
+ *  Revision: 1.8
  */
 
 /*
@@ -11,11 +11,6 @@
  */
 
 
-/* file BMA250.c
-   brief This file contains all function implementations for the BMA250 in linux
-
-*/
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
@@ -24,13 +19,12 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
-#include <linux/earlysuspend.h>
 #include <linux/kernel.h>
 #include <linux/delay.h>
 
-/* 20110907 seven.kim@lge.com to control sensor power [START] */	
-#include <mach/board_lge.h>
-/* 20110907 seven.kim@lge.com to control sensor power [END] */	
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
 
 #define SENSOR_NAME 			"bma250"
 #define GRAVITY_EARTH                   9806550
@@ -169,6 +163,22 @@
 #define BMA250_EN_SUSPEND__MSK            0x80
 #define BMA250_EN_SUSPEND__REG            BMA250_MODE_CTRL_REG
 
+
+#define BMA250_UNLOCK_EE_WRITE_SETTING__POS     0
+#define BMA250_UNLOCK_EE_WRITE_SETTING__LEN     1
+#define BMA250_UNLOCK_EE_WRITE_SETTING__MSK     0x01
+#define BMA250_UNLOCK_EE_WRITE_SETTING__REG     BMA250_EEPROM_CTRL_REG
+
+#define BMA250_START_EE_WRITE_SETTING__POS      1
+#define BMA250_START_EE_WRITE_SETTING__LEN      1
+#define BMA250_START_EE_WRITE_SETTING__MSK      0x02
+#define BMA250_START_EE_WRITE_SETTING__REG      BMA250_EEPROM_CTRL_REG
+
+#define BMA250_EE_WRITE_SETTING_S__POS          2
+#define BMA250_EE_WRITE_SETTING_S__LEN          1
+#define BMA250_EE_WRITE_SETTING_S__MSK          0x04
+#define BMA250_EE_WRITE_SETTING_S__REG          BMA250_EEPROM_CTRL_REG
+
 #define BMA250_GET_BITSLICE(regvar, bitname)\
 	((regvar & bitname##__MSK) >> bitname##__POS)
 
@@ -270,18 +280,22 @@ struct bma250_data {
 	unsigned char mode;
 	struct input_dev *input;
 	struct bma250acc value;
-	struct mutex value_mutex;
 	struct mutex enable_mutex;
 	struct mutex mode_mutex;
 	struct delayed_work work;
 	struct work_struct irq_work;
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
+#endif
 
 	atomic_t selftest_result;
 };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void bma250_early_suspend(struct early_suspend *h);
 static void bma250_late_resume(struct early_suspend *h);
+#endif
 
 static int bma250_smbus_read_byte(struct i2c_client *client,
 		unsigned char reg_addr, unsigned char *data)
@@ -343,7 +357,7 @@ static int bma250_set_mode(struct i2c_client *client, unsigned char Mode)
 				data1  = BMA250_SET_BITSLICE(data1,
 						BMA250_EN_LOW_POWER, 0);
 				data1  = BMA250_SET_BITSLICE(data1,
-						BMA250_EN_SUSPEND, 1);			
+						BMA250_EN_SUSPEND, 1);
 				break;
 			default:
 				break;
@@ -512,6 +526,51 @@ static int bma250_read_accel_xyz(struct i2c_client *client,
 	return comres;
 }
 
+static int bma250_set_ee_w(struct i2c_client *client, unsigned char eew)
+{
+	int comres = 0;
+	unsigned char data;
+
+	comres = bma250_smbus_read_byte(client,
+			BMA250_UNLOCK_EE_WRITE_SETTING__REG, &data);
+	data = BMA250_SET_BITSLICE(data, BMA250_UNLOCK_EE_WRITE_SETTING, eew);
+	comres = bma250_smbus_write_byte(client,
+			BMA250_UNLOCK_EE_WRITE_SETTING__REG, &data);
+	return comres;
+}
+
+
+static int bma250_set_ee_prog_trig(struct i2c_client *client)
+{
+	int comres = 0;
+	unsigned char data;
+	unsigned char eeprog;
+	eeprog = 0x01;
+
+	comres = bma250_smbus_read_byte(client,
+			BMA250_START_EE_WRITE_SETTING__REG, &data);
+	data = BMA250_SET_BITSLICE(data,
+				BMA250_START_EE_WRITE_SETTING, eeprog);
+	comres = bma250_smbus_write_byte(client,
+			BMA250_START_EE_WRITE_SETTING__REG, &data);
+	return comres;
+}
+
+static int bma250_get_eeprom_writing_status(struct i2c_client *client,
+							unsigned char *eewrite)
+{
+	int comres = 0;
+	unsigned char data;
+
+	comres = bma250_smbus_read_byte(client,
+				BMA250_EEPROM_CTRL_REG, &data);
+	data = BMA250_GET_BITSLICE(data, BMA250_EE_WRITE_SETTING_S);
+	*eewrite = data;
+
+	return comres;
+}
+
+
 static void bma250_work_func(struct work_struct *work)
 {
 	struct bma250_data *bma250 = container_of((struct delayed_work *)work,
@@ -524,9 +583,7 @@ static void bma250_work_func(struct work_struct *work)
 	input_report_abs(bma250->input, ABS_Y, acc.y);
 	input_report_abs(bma250->input, ABS_Z, acc.z);
 	input_sync(bma250->input);
-	mutex_lock(&bma250->value_mutex);
 	bma250->value = acc;
-	mutex_unlock(&bma250->value_mutex);
 	schedule_delayed_work(&bma250->work, delay);
 }
 
@@ -634,10 +691,8 @@ static ssize_t bma250_value_show(struct device *dev,
 	struct bma250_data *bma250 = input_get_drvdata(input);
 	int err;
 
-	mutex_lock(&bma250->value_mutex);
 	err = sprintf(buf, "%d %d %d\n", bma250->value.x, bma250->value.y,
 			bma250->value.z);
-	mutex_unlock(&bma250->value_mutex);
 
 	return err;
 }
@@ -735,9 +790,7 @@ static ssize_t bma250_update_store(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-	mutex_lock(&bma250->value_mutex);
 	bma250_read_accel_xyz(bma250->bma250_client, &bma250->value);
-	mutex_unlock(&bma250->value_mutex);
 	return count;
 }
 
@@ -1057,7 +1110,7 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 {
 	unsigned long data;
 	signed char tmp;
-	unsigned char timeout = 0;
+	unsigned int timeout = 0;
 	int error;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
@@ -1080,7 +1133,7 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
 				tmp);
 		timeout++;
-		if (timeout == 50) {
+		if (timeout == 1000) {
 			printk(KERN_INFO "get fast calibration ready error\n");
 			return -EINVAL;
 		};
@@ -1113,7 +1166,7 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 {
 	unsigned long data;
 	signed char tmp;
-	unsigned char timeout = 0;
+	unsigned int timeout = 0;
 	int error;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
@@ -1136,7 +1189,7 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
 				tmp);
 		timeout++;
-		if (timeout == 50) {
+		if (timeout == 1000) {
 			printk(KERN_INFO "get fast calibration ready error\n");
 			return -EINVAL;
 		};
@@ -1169,7 +1222,7 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 {
 	unsigned long data;
 	signed char tmp;
-	unsigned char timeout = 0;
+	unsigned int timeout = 0;
 	int error;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
@@ -1192,7 +1245,7 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
 				tmp);
 		timeout++;
-		if (timeout == 50) {
+		if (timeout == 1000) {
 			printk(KERN_INFO "get fast calibration ready error\n");
 			return -EINVAL;
 		}
@@ -1203,6 +1256,58 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 	return count;
 }
 
+static ssize_t bma250_eeprom_writing_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned long data;
+	signed char tmp;
+	int timeout = 0;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	error = strict_strtoul(buf, 10, &data);
+	if (error)
+		return error;
+
+
+
+	if (data != 1)
+		return -EINVAL;
+
+	/* unlock eeprom */
+	if (bma250_set_ee_w(bma250->bma250_client, 1) < 0)
+		return -EINVAL;
+
+	printk(KERN_INFO "unlock eeprom successful\n");
+
+	if (bma250_set_ee_prog_trig(bma250->bma250_client) < 0)
+		return -EINVAL;
+	printk(KERN_INFO "start update eeprom\n");
+
+	do {
+		mdelay(2);
+		bma250_get_eeprom_writing_status(bma250->bma250_client, &tmp);
+
+		printk(KERN_INFO "wait 2ms eeprom write status is %d\n", tmp);
+		timeout++;
+		if (timeout == 1000) {
+			printk(KERN_INFO "get eeprom writing status error\n");
+			return -EINVAL;
+		};
+
+	} while (tmp == 0);
+
+	printk(KERN_INFO "eeprom writing is finished\n");
+
+	/* unlock eeprom */
+	if (bma250_set_ee_w(bma250->bma250_client, 0) < 0)
+		return -EINVAL;
+
+	printk(KERN_INFO "lock eeprom successful\n");
+	return count;
+}
 
 
 static DEVICE_ATTR(range, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
@@ -1231,6 +1336,9 @@ static DEVICE_ATTR(fast_calibration_z, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		bma250_fast_calibration_z_show,
 		bma250_fast_calibration_z_store);
 
+static DEVICE_ATTR(eeprom_writing, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+		NULL, bma250_eeprom_writing_store);
+
 static struct attribute *bma250_attributes[] = {
 	&dev_attr_range.attr,
 	&dev_attr_bandwidth.attr,
@@ -1243,6 +1351,7 @@ static struct attribute *bma250_attributes[] = {
 	&dev_attr_fast_calibration_x.attr,
 	&dev_attr_fast_calibration_y.attr,
 	&dev_attr_fast_calibration_z.attr,
+	&dev_attr_eeprom_writing.attr,
 	NULL
 };
 
@@ -1296,7 +1405,6 @@ static int bma250_probe(struct i2c_client *client,
 		printk(KERN_INFO "i2c_check_functionality error\n");
 		goto exit;
 	}
-			
 	data = kzalloc(sizeof(struct bma250_data), GFP_KERNEL);
 	if (!data) {
 		err = -ENOMEM;
@@ -1317,12 +1425,11 @@ static int bma250_probe(struct i2c_client *client,
 	}
 	i2c_set_clientdata(client, data);
 	data->bma250_client = client;
-	mutex_init(&data->value_mutex);
 	mutex_init(&data->mode_mutex);
 	mutex_init(&data->enable_mutex);
 	bma250_set_bandwidth(client, BMA250_BW_SET);
 	bma250_set_range(client, BMA250_RANGE_SET);
-	
+
 	INIT_DELAYED_WORK(&data->work, bma250_work_func);
 	atomic_set(&data->delay, BMA250_DEFAULT_DELAY);
 	atomic_set(&data->enable, 0);
@@ -1335,10 +1442,12 @@ static int bma250_probe(struct i2c_client *client,
 	if (err < 0)
 		goto error_sysfs;
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	data->early_suspend.suspend = bma250_early_suspend;
 	data->early_suspend.resume = bma250_late_resume;
 	register_early_suspend(&data->early_suspend);
+#endif
 
 	return 0;
 
@@ -1352,6 +1461,7 @@ exit:
 }
 
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void bma250_early_suspend(struct early_suspend *h)
 {
 	struct bma250_data *data =
@@ -1379,13 +1489,16 @@ static void bma250_late_resume(struct early_suspend *h)
 	}
 	mutex_unlock(&data->enable_mutex);
 }
+#endif
 
 static int bma250_remove(struct i2c_client *client)
 {
 	struct bma250_data *data = i2c_get_clientdata(client);
 
 	bma250_set_enable(&client->dev, 0);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&data->early_suspend);
+#endif
 	sysfs_remove_group(&data->input->dev.kobj, &bma250_attribute_group);
 	bma250_input_delete(data);
 	kfree(data);

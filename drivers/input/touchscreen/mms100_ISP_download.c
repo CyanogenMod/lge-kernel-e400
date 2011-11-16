@@ -1,8 +1,9 @@
 //--------------------------------------------------------
 //
 //
-//	Melfas MCS8000 Series Download base v1.0 2010.04.05
+//	Melfas MMS100 Series Download base v1.7 2011.09.23
 //
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -13,13 +14,8 @@
 #include <asm/gpio.h>
 #include <asm/io.h>
 
-/*Disable it*/
-//#include <mach/gpio-sec.h>
-
-#include "mcs8000_download.h"
-
-/* To enable i2c communication by matthew.kim@lge.com 20110808 */
-#include <linux/i2c.h>
+#include "mms100_ISC_download.h"
+#include "mms100_ISC_Initial_FW_Binary.h"
 //============================================================
 //
 //	Include MELFAS Binary code File ( ex> MELFAS_FIRM_bin.c)
@@ -30,17 +26,11 @@
 //
 //============================================================
 
-//#include "MTH_M3_R10_V11_C01_bin.c"
-#include "MTH_M3_R10_V24(0x18)_C01_MIP_bin.c"
-#include "MTH_M3_R12_V35(0x23)_C03_MIP.c"
-#include "MTH_M3C_R00_V03_bin.c"
-#if 0
-#include "Master_bin_test.c"
-#include "Slave_bin_test.c"
-#endif
+
+//#include "core_bin_V01.c"
+//#include "public_bin_V01.c"
 
 UINT8  ucVerifyBuffer[MELFAS_TRANSFER_LENGTH];		//	You may melloc *ucVerifyBuffer instead of this
-
 
 //---------------------------------
 //	Downloading functions
@@ -64,7 +54,9 @@ static void mcsdl_unselect_isp_mode(void);
 
 static void mcsdl_read_32bits( UINT8 *pData );
 static void mcsdl_write_bits(UINT32 wordData, int nBits);
-void mcsdl_scl_toggle_twice(void);
+//static void mcsdl_scl_toggle_twice(void);
+
+
 
 //---------------------------------
 //	For debugging display
@@ -87,6 +79,7 @@ void melfas_send_download_enable_command(void)
 
 #endif
 
+
 //============================================================
 //
 //	Main Download furnction
@@ -98,78 +91,15 @@ void melfas_send_download_enable_command(void)
 //
 //============================================================
 
-int mcsdl_download_binary_data(UINT8 master_dl_retry, int val,unsigned char fw_ver, unsigned char comp_ver)
+int mms100_ISP_download_binary_data(int dl_mode)
 {
-	int nRet;
-#ifdef FW_FROM_FILE
-	struct file *filp;
-	spinlock_t           lock;
-	loff_t  pos;
-	int     ret = 0;
-	long fw1_size = 0;
-	long fw2_size = 0;
-	mm_segment_t oldfs;
-	unsigned char *fw_data1;
-	unsigned char *fw_data2;
+	int nRet = 0;
 
-	oldfs = get_fs();
-	set_fs(get_ds());
+	//-----------------------------------------------------
+	//@@@ [WONJINHAN : kevinzone.han@lge.com - 2011.11.08]
+	int retry_cnt = 0;
 
-	filp = filp_open(MELFAS_FW1, O_RDONLY, 0);
-	if (IS_ERR(filp)) {
-		pr_err("file open error:%d\n", (s32)filp);
-		return -1;
-	}
-
-	fw1_size = filp->f_path.dentry->d_inode->i_size;
-	pr_info("Size of the file : %ld(bytes)\n", fw1_size);
-
-	fw_data1 = kmalloc(fw1_size, GFP_KERNEL);
-	memset(fw_data1, 0, fw1_size);
-
-	pos = 0;
-	memset(fw_data1, 0, fw1_size);
-	ret = vfs_read(filp, (char __user *)fw_data1, fw1_size, &pos);
-
-	if(ret != fw1_size) {
-		pr_err("Failed to read file %s (ret = %d)\n", MELFAS_FW1, ret);
-		kfree(fw_data1);
-		filp_close(filp, current->files);
-		return -1;
-	}
-
-	filp_close(filp, current->files);
-
-	filp = filp_open(MELFAS_FW2, O_RDONLY, 0);
-	if (IS_ERR(filp)) {
-		pr_err("file open error:%d\n", (s32)filp);
-		return -1;
-	}
-
-	fw2_size = filp->f_path.dentry->d_inode->i_size;
-	pr_info("Size of the file : %ld(bytes)\n", fw2_size);
-
-	fw_data2 = kmalloc(fw2_size, GFP_KERNEL);
-	memset(fw_data2, 0, fw2_size);
-
-	pos = 0;
-	memset(fw_data2, 0, fw2_size);
-	ret = vfs_read(filp, (char __user *)fw_data2, fw2_size, &pos);
-
-	if(ret != fw2_size) {
-		pr_err("Failed to read file %s (ret = %d)\n", MELFAS_FW2, ret);
-		kfree(fw_data2);
-		filp_close(filp, current->files);
-		return -1;
-	}
-
-	filp_close(filp, current->files);
-
-	set_fs(oldfs);
-	spin_lock_init(&lock);
-	spin_lock(&lock);
-#endif
-
+#if 0
 	#if MELFAS_USE_PROTOCOL_COMMAND_FOR_DOWNLOAD
 	melfas_send_download_enable_command();
 	mcsdl_delay(MCSDL_DELAY_100US);
@@ -178,59 +108,42 @@ int mcsdl_download_binary_data(UINT8 master_dl_retry, int val,unsigned char fw_v
 	MELFAS_DISABLE_BASEBAND_ISR();					// Disable Baseband touch interrupt ISR.
 	MELFAS_DISABLE_WATCHDOG_TIMER_RESET();			// Disable Baseband watchdog timer
 
+#endif
+
+
+	MELFAS_DISABLE_TS_ISR();					// Disable Baseband touch interrupt ISR.
+
 	//------------------------
 	// Run Download
 	//------------------------
-#ifdef FW_FROM_FILE
-    if(MELFAS_ISP_DOWNLOAD || master_dl_retry)
-	{
-	nRet = mcsdl_download( (const UINT8*) fw_data1, (const UINT16)fw1_size, 0);
-	if (nRet)
-		goto fw_error;
-#if MELFAS_2CHIP_DOWNLOAD_ENABLE
-    nRet = mcsdl_download( (const UINT8*) fw_data1, (const UINT16)fw1_size, 1);
-	if (nRet)
-		goto fw_error;
-	spin_unlock(&lock);
-#endif
-	}
-#else
-	/* For F/W Download by using ISC Mode */
-	/* We need to implement some conditions */
 
-    if (MELFAS_ISP_DOWNLOAD || master_dl_retry) {
-	if (val == 1) {
-		if(comp_ver==0x01){
-			nRet = mcsdl_download( (const UINT8*) MELFAS_binary1, (const UINT16)MELFAS_binary_nLength1, 0);
-		}
-		else if(comp_ver==0x03)
-			nRet = mcsdl_download( (const UINT8*) MELFAS_binary2, (const UINT16)MELFAS_binary_nLength2, 0);
-		else
-			nRet = mcsdl_download( (const UINT8*) MELFAS_binary3, (const UINT16)MELFAS_binary_nLength3, 0);
-		if (nRet)
-			goto fw_error;
+	//-----------------------------------------------------
+	//@@@ [WONJINHAN : kevinzone.han@lge.com - 2011.11.08]
+	for (retry_cnt = 0; retry_cnt < 5; retry_cnt++) {
+        if(dl_mode == 0x01) //MELFAS_ISP_DOWNLOAD
+    		nRet = mcsdl_download( (const UINT8*) MELFAS_TS_binary, (const UINT16)MELFAS_TS_binary_nLength , 0);
+        else //MELFAS_ISC_DOWNLOAD
+        {
+        	nRet = mcsdl_download( (const UINT8*) MELFAS_MMS100_Initial_binary, (const UINT16)MELFAS_MMS100_Initial_nLength , 0);
+        }
+
+	if (!nRet)
+			break;
 	}
-    	#if MELFAS_2CHIP_DOWNLOAD_ENABLE
-    		//nRet = mcsdl_download( (const UINT8*) MELFAS_binary, (const UINT16)MELFAS_binary_nLength, 1); // Slave Binary data download
-		//if (nRet)
-		//	goto fw_error;
-    	#endif
-	}
-    
-#endif
-	MELFAS_ROLLBACK_BASEBAND_ISR();					// Roll-back Baseband touch interrupt ISR.
-	MELFAS_ROLLBACK_WATCHDOG_TIMER_RESET();			// Roll-back Baseband watchdog timer
-	return 0;
+
+	MELFAS_ENABLE_TS_ISR();
+
+/*
 fw_error:
-	mcsdl_erase_flash(0);
-	mcsdl_erase_flash(1);
-#ifdef FW_FROM_FILE
-	spin_unlock(&lock);
-#endif
+	if (nRet) {
+		mcsdl_erase_flash(0);
+		mcsdl_erase_flash(1);
+	}*/
 	return nRet;
 }
 
-int mcsdl_download_binary_file(void)
+/*  Block function due to no using, so this will be eliminate ar the end.
+int mms100_ISP_download_binary_file(void)
 {
 	int nRet;
     int i;
@@ -241,13 +154,13 @@ int mcsdl_download_binary_file(void)
 	//==================================================
 	//
 	//	1. Read '.bin file'
-	//   2. *pBinary[0]       : Binary data(Master)
-	//       *pBinary[1]       : Binary data(Slave)
-	//	   nBinary_length[0] : Firmware size(Master)
-	//	   nBinary_length[1] : Firmware size(Slave)
+	//   2. *pBinary[0]       : Binary data(Core + Private Custom)
+	//       *pBinary[1]       : Binary data(Public Custom)
+	//	   nBinary_length[0] : Firmware size(Core + Private Custom)
+	//	   nBinary_length[1] : Firmware size(Public Custom)
 	//	3. Run mcsdl_download( pBinary[IdxNum], nBinary_length[IdxNum], IdxNum);
-        //       IdxNum : 0 (Master Chip Download)
-        //       IdxNum : 1 (2Chip Download)
+    //       IdxNum : 0 (Master Chip Download)
+    //       IdxNum : 1 (2Chip Download)
 	//
 	//==================================================
 
@@ -325,12 +238,12 @@ int mcsdl_download_binary_file(void)
 
     for (i = 0;i <= IdxNum;i++)
     {
-        if (pBinary[i] != NULL && nBinary_length[i] > 0 && nBinary_length[i] < 32*1024)
+        if (pBinary[0] != NULL && nBinary_length[0] > 0 && nBinary_length[0] < MELFAS_FIRMWARE_MAX_SIZE)
         {
             //------------------------
             // Run Download
             //------------------------
-            nRet = mcsdl_download((const UINT8 *)pBinary[i], (const UINT16)nBinary_length[i], i);
+            nRet = mcsdl_download((const UINT8 *)pBinary[0], (const UINT16)nBinary_length[0], i);
         }
         else
         {
@@ -347,7 +260,7 @@ int mcsdl_download_binary_file(void)
 
 	return ( nRet == MCSDL_RET_SUCCESS );
 
-}
+}*/
 
 //------------------------------------------------------------------
 //
@@ -362,7 +275,7 @@ static int mcsdl_download(const UINT8 *pBianry, const UINT16 unLength, INT8 IdxN
 	//---------------------------------
 	// Check Binary Size
 	//---------------------------------
-	if( unLength >= MELFAS_FIRMWARE_MAX_SIZE ){
+	if( unLength > MELFAS_FIRMWARE_MAX_SIZE ){
 
 		nRet = MCSDL_RET_PROGRAM_SIZE_IS_WRONG;
 		goto MCSDL_DOWNLOAD_FINISH;
@@ -380,29 +293,34 @@ static int mcsdl_download(const UINT8 *pBianry, const UINT16 unLength, INT8 IdxN
 	#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
 	printk(" > Ready\n");
 	#endif
-	
+
 	mcsdl_set_ready();
 
-//	mcsdl_delay(MCSDL_DELAY_1MS);
 
 	//---------------------------------
 	// Erase Flash
 	//---------------------------------
 	#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-	printk(" > Erase\n");
+	printk("\n > Erase\n");
 	#endif
 
 	nRet = mcsdl_erase_flash(IdxNum);
+	//printk(" ------ mcsdl_erase_flash is ...%d ------\n ", nRet);
+
+	//-----------------------------------------------------
+	//@@@ [WONJINHAN : kevinzone.han@lge.com - 2011.11.08]
+	//return nRet;
+	//-----------------------------------------------------
+
 
 	if( nRet != MCSDL_RET_SUCCESS )
 		goto MCSDL_DOWNLOAD_FINISH;
 
-//	mcsdl_delay(MCSDL_DELAY_1MS);
 	//---------------------------------
 	// Program Flash
 	//---------------------------------
 	#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-	printk(" > Program\n ");
+	printk("\n > Program   ");
 	#endif
 
 //	if(IdxNum > 0)
@@ -412,19 +330,17 @@ static int mcsdl_download(const UINT8 *pBianry, const UINT16 unLength, INT8 IdxN
 	if( nRet != MCSDL_RET_SUCCESS )
 		goto MCSDL_DOWNLOAD_FINISH;
 
-//	mcsdl_delay(MCSDL_DELAY_1MS);
     //---------------------------------
     // Verify flash
     //---------------------------------
 #if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-    printk(" > Verify    ");
+    printk("\n > Verify    ");
 #endif
     nRet = mcsdl_verify_flash((UINT8*)pBianry, (UINT16)unLength, IdxNum);
     if (nRet != MCSDL_RET_SUCCESS)
         goto MCSDL_DOWNLOAD_FINISH;
 
 
-//	mcsdl_delay(MCSDL_DELAY_1MS);
 	nRet = MCSDL_RET_SUCCESS;
 
 
@@ -457,7 +373,6 @@ static int mcsdl_erase_flash(INT8 IdxNum)
 	int	  i;
 	UINT8 readBuffer[32];
 	int eraseCompareValue = 0xFF;
-
 	//----------------------------------------
 	//	Do erase
 	//----------------------------------------
@@ -492,6 +407,8 @@ static int mcsdl_erase_flash(INT8 IdxNum)
 }
 
 
+
+
 static int mcsdl_program_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxNum )
 {
 	int		i;
@@ -511,23 +428,24 @@ static int mcsdl_program_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxN
 
     while ((addr*4) < (int)unLength)
     {
-        if ((unLength - (addr*4)) < MELFAS_TRANSFER_LENGTH)
-        {
-            ucLength  = (UINT8)(unLength - (addr * 4));
-        }
+			if ((unLength - (addr*4)) < MELFAS_TRANSFER_LENGTH)
+			{
+			    ucLength  = (UINT8)(unLength - (addr * 4));
+			}
 
-    	//--------------------------------------
-    	//	Select ISP Mode
-    	//--------------------------------------
+			//--------------------------------------
+			//	Select ISP Mode
+			//--------------------------------------
+			// start ADD DELAY
 
-		// start ADD DELAY
-        mcsdl_delay(MCSDL_DELAY_40US);
-		//end ADD DELAY
-        if(IdxNum > 0)  {
-		mcsdl_select_isp_mode(ISP_MODE_NEXT_CHIP_BYPASS);
-		mcsdl_delay(MCSDL_DELAY_3US);
+			/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] :	*/
+			mcsdl_delay(MCSDL_DELAY_40US);
 
-        }
+			//end ADD DELAY
+		  if(IdxNum > 0)  {
+				mcsdl_select_isp_mode(ISP_MODE_NEXT_CHIP_BYPASS);
+				mcsdl_delay(MCSDL_DELAY_3US);
+      }
     	mcsdl_select_isp_mode( ISP_MODE_SERIAL_WRITE );
 
     	//---------------------------------------------
@@ -535,22 +453,25 @@ static int mcsdl_program_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxN
     	//	Address[13ibts] <<1
     	//---------------------------------------------
     	header = ((addr&0x1FFF) << 1) | 0x0 ;
- 		header = header << 14;
+ 			header = header << 14;
 
-    	 //Write 18bits
+    	//Write 18bits
     	mcsdl_write_bits( header, 18 );
-		//start ADD DELAY
-        //mcsdl_delay(MCSDL_DELAY_5MS);
-		//end ADD DELAY
+			//start ADD DELAY
+
+
+			//end ADD DELAY
 
     	//---------------------------------
     	//	Writing
     	//---------------------------------
-    //		addr += (UINT16)ucLength;
+    	//		addr += (UINT16)ucLength;
             addr +=1;
 
-		#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-		//printk("#");		//kim.
+		//-----------------------------------------------------
+		//@@@ [WONJINHAN : kevinzone.han@lge.com - 2011.11.07]
+		#if 0 // MELFAS_ENABLE_DBG_PROGRESS_PRINT
+		printk("#");
 		#endif
 
 
@@ -583,7 +504,10 @@ static int mcsdl_program_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxN
 
     	mcsdl_unselect_isp_mode();
 //start ADD DELAY
-        mcsdl_delay(MCSDL_DELAY_300US);
+//-----------------------------------------------------
+//@@@ [WONJINHAN : kevinzone.han@lge.com - 2011.11.07]
+mcsdl_delay(MCSDL_DELAY_300US);
+
 //end ADD DELAY
 
 
@@ -594,6 +518,7 @@ static int mcsdl_program_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxN
 
 static void mcsdl_program_flash_part( UINT8 *pData)
 {
+	//int     i;
 	UINT32	data;
 
 
@@ -659,8 +584,8 @@ static int mcsdl_verify_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxNu
 
         addr+=1;
 
-    		#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-    		//printk("\n#");
+    		#if 0 //MELFAS_ENABLE_DBG_PROGRESS_PRINT
+    		printk("# \n");
     		#endif
 
 
@@ -670,12 +595,11 @@ static int mcsdl_verify_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxNu
     		//--------------------
     		mcsdl_read_flash( ucVerifyBuffer);
 
-//kang
 
+       // MCSDL_GPIO_SDA_SET_LOW(); //bomi
+        MCSDL_GPIO_SDA_SET_OUTPUT();
         MCSDL_GPIO_SDA_SET_LOW();
-        MCSDL_GPIO_SDA_SET_OUTPUT(0);
-//            mcsdl_delay(MCSDL_DELAY_1MS);
-//kang
+
     		//--------------------
     		// Comparing
     		//--------------------
@@ -685,13 +609,13 @@ static int mcsdl_verify_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxNu
         {
             for (j = 0; j < (int)ucLength; j++)
             {
-#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-                //printk(" %02X", ucVerifyBuffer[j]);	
+#if 0 // MELFAS_ENABLE_DBG_PROGRESS_PRINT
+                printk(" %02X", ucVerifyBuffer[j]);
 #endif
                 if (ucVerifyBuffer[j] != pData[j])
                 {
-#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-	    				pr_err("\n [Error] Address : 0x%04X : 0x%02X - 0x%02X\n", addr, pData[j], ucVerifyBuffer[j] );
+#if 0 // MELFAS_ENABLE_DBG_PROGRESS_PRINT
+	    				printk("\n [Error] Address : 0x%04X : 0x%02X - 0x%02X\n", addr, pData[j], ucVerifyBuffer[j] );
 	                    #endif
 
 
@@ -705,13 +629,13 @@ static int mcsdl_verify_flash( UINT8 *pDataOriginal, UINT16 unLength, INT8 IdxNu
         {
             for (j = 0; j < (int)ucLength; j++)
             {
-#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-                //printk(" %02X", ucVerifyBuffer[j]);
+#if 0 // MELFAS_ENABLE_DBG_PROGRESS_PRINT
+                printk(" %02X", ucVerifyBuffer[j]);
 #endif
                 if ((0xff - ucVerifyBuffer[j]) != pData[j])
                 {
-#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
-                    pr_err("\n [Error] Address : 0x%04X : 0x%02X - 0x%02X\n", addr, pData[j], ucVerifyBuffer[j]);
+#if 0 //MELFAS_ENABLE_DBG_PROGRESS_PRINT
+                    printk("\n [Error] Address : 0x%04X : 0x%02X - 0x%02X\n", addr, pData[j], ucVerifyBuffer[j]);
 	                    #endif
 
 
@@ -807,7 +731,7 @@ static int mcsdl_read_flash_from( UINT8 *pBuffer, UINT16 unStart_addr, UINT16 un
 		mcsdl_read_flash( &pBuffer[addr]);
 
 
-#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
+		#if MELFAS_ENABLE_DBG_PROGRESS_PRINT
         for (j = 0; j < (int)ucLength; j++)
         {
             printk("%02X ", pBuffer[j]);
@@ -836,23 +760,30 @@ static void mcsdl_set_ready(void)
 	MCSDL_VDD_SET_LOW(); // power
 
 	//MCSDL_CE_SET_LOW();
-	//MCSDL_CE_SET_OUTPUT();
+	MCSDL_CE_SET_OUTPUT();
 
-	//MCSDL_SET_GPIO_I2C();
+	MCSDL_SET_GPIO_I2C();
 
+	//MCSDL_GPIO_SDA_SET_LOW(); //bomi
+	MCSDL_GPIO_SDA_SET_OUTPUT();
 	MCSDL_GPIO_SDA_SET_LOW();
-	MCSDL_GPIO_SDA_SET_OUTPUT(0);
 
+	//MCSDL_GPIO_SCL_SET_LOW();  //bomi
+	MCSDL_GPIO_SCL_SET_OUTPUT();
 	MCSDL_GPIO_SCL_SET_LOW();
-	MCSDL_GPIO_SCL_SET_OUTPUT(0);
 
+	//MCSDL_RESETB_SET_LOW();  //bomi
+	MCSDL_RESETB_SET_OUTPUT();
 	MCSDL_RESETB_SET_LOW();
-	MCSDL_RESETB_SET_OUTPUT(0);
 
+	/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
+	TD1416085584 :	After sleeping on and off while sensing a touchscreen,
+	Touchscreen doesn't work*/
+	mcsdl_delay(MCSDL_DELAY_25MS);						// Delay for Stable VDD
 	mcsdl_delay(MCSDL_DELAY_25MS);						// Delay for Stable VDD
 
 	MCSDL_VDD_SET_HIGH();
-	//MCSDL_CE_SET_HIGH();
+	MCSDL_CE_SET_HIGH();
 
     MCSDL_GPIO_SCL_SET_LOW();
 	MCSDL_GPIO_SDA_SET_HIGH();
@@ -870,19 +801,20 @@ static void mcsdl_reboot_mcs(void)
 
 	MCSDL_VDD_SET_LOW();
 
-	//MCSDL_CE_SET_LOW();
-	//MCSDL_CE_SET_OUTPUT();
+	MCSDL_CE_SET_LOW();
+    MCSDL_CE_SET_OUTPUT();
 
 	MCSDL_GPIO_SDA_SET_HIGH();
-	MCSDL_GPIO_SDA_SET_OUTPUT(1);
+	MCSDL_GPIO_SDA_SET_OUTPUT();
 
 	MCSDL_GPIO_SCL_SET_HIGH();
-	MCSDL_GPIO_SCL_SET_OUTPUT(1);
+	MCSDL_GPIO_SCL_SET_OUTPUT();
 
 	//MCSDL_SET_HW_I2C();
 
-	MCSDL_RESETB_SET_LOW();
-	MCSDL_RESETB_SET_OUTPUT(1);
+	//MCSDL_RESETB_SET_LOW(); //bomi
+	MCSDL_RESETB_SET_OUTPUT();
+	//MCSDL_RESETB_SET_LOW();
 
 	mcsdl_delay(MCSDL_DELAY_25MS);						// Delay for Stable VDD
 
@@ -906,28 +838,34 @@ static void mcsdl_reboot_mcs(void)
 static void mcsdl_select_isp_mode(UINT8 ucMode)
 {
 	int    i;
-	
+
 	UINT8 enteringCodeMassErase[16]   = { 0,1,0,1,1,0,0,1,1,1,1,1,0,0,1,1 };
 	UINT8 enteringCodeSerialWrite[16] = { 0,1,1,0,0,0,1,0,1,1,0,0,1,1,0,1 };
 	UINT8 enteringCodeSerialRead[16]  = { 0,1,1,0,1,0,1,0,1,1,0,0,1,0,0,1 };
 	UINT8 enteringCodeNextChipBypass[16]  = { 1,1,0,1,1,0,0,1,0,0,1,0,1,1,0,1 };
 
-	//----------------------------------------
-	UINT8 *pCode="";	
+	UINT8 *pCode = 0;
+
 
 	//------------------------------------
 	// Entering ISP mode : Part 1
 	//------------------------------------
-	
+
     if (ucMode == ISP_MODE_ERASE_FLASH) pCode = enteringCodeMassErase;
     else if (ucMode == ISP_MODE_SERIAL_WRITE) pCode = enteringCodeSerialWrite;
     else if (ucMode == ISP_MODE_SERIAL_READ) pCode = enteringCodeSerialRead;
     else if (ucMode == ISP_MODE_NEXT_CHIP_BYPASS) pCode = enteringCodeNextChipBypass;
 
+
+//-----------------------------------------------------
+//@@@ [WONJINHAN : kevinzone.han@lge.com - 2011.11.08]
+		//printk("%d \n", ucMode);
+
+
+
     MCSDL_RESETB_SET_LOW();
     MCSDL_GPIO_SCL_SET_LOW();
     MCSDL_GPIO_SDA_SET_HIGH();
-
     for (i = 0; i < 16; i++)
     {
         if (pCode[i] == 1)
@@ -936,16 +874,11 @@ static void mcsdl_select_isp_mode(UINT8 ucMode)
             MCSDL_RESETB_SET_LOW();
 
 //start add delay for INT
- //       mcsdl_delay(MCSDL_DELAY_3US);
+        mcsdl_delay(MCSDL_DELAY_3US);
 //end delay for INT
 
-		MCSDL_GPIO_SCL_SET_HIGH();	
-		mcsdl_delay(MCSDL_DELAY_3US);
-
-		MCSDL_GPIO_SCL_SET_HIGH();	
-		mcsdl_delay(MCSDL_DELAY_3US);
-		MCSDL_GPIO_SCL_SET_LOW();	
-		mcsdl_delay(MCSDL_DELAY_3US);
+		MCSDL_GPIO_SCL_SET_HIGH();	mcsdl_delay(MCSDL_DELAY_3US);
+		MCSDL_GPIO_SCL_SET_LOW();	mcsdl_delay(MCSDL_DELAY_3US);
 
 
    }
@@ -1020,8 +953,9 @@ static void mcsdl_read_32bits( UINT8 *pData )
         }
     }
 
+    	//MCSDL_GPIO_SDA_SET_LOW(); //bomi
+	MCSDL_GPIO_SDA_SET_OUTPUT();
     MCSDL_GPIO_SDA_SET_LOW();
-    MCSDL_GPIO_SDA_SET_OUTPUT(0);
 }
 
 
@@ -1035,25 +969,31 @@ static void mcsdl_write_bits(UINT32 wordData, int nBits)
 
     for (i = 0; i < nBits; i++)
     {
-        if (wordData & 0x80000000) {MCSDL_GPIO_SDA_SET_HIGH();}
-        else                       {MCSDL_GPIO_SDA_SET_LOW();}
+        if (wordData & 0x80000000) {
+					MCSDL_GPIO_SDA_SET_HIGH();
+				}
+        else	{
+					MCSDL_GPIO_SDA_SET_LOW();
+				}
 
+				/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] */
+				
         mcsdl_delay(MCSDL_DELAY_3US);
-
-		MCSDL_GPIO_SCL_SET_HIGH();		mcsdl_delay(MCSDL_DELAY_3US);
-		MCSDL_GPIO_SCL_SET_LOW();		mcsdl_delay(MCSDL_DELAY_3US);
-
-		wordData <<= 1;
+				MCSDL_GPIO_SCL_SET_HIGH();		
+				mcsdl_delay(MCSDL_DELAY_3US);
+				MCSDL_GPIO_SCL_SET_LOW();		
+				mcsdl_delay(MCSDL_DELAY_3US);
+				
+				wordData <<= 1;
 	}
 }
 
-
-// Change it from static void to void by matthew.kim
-void mcsdl_scl_toggle_twice(void)
+/*
+static void mcsdl_scl_toggle_twice(void)
 {
 
 	MCSDL_GPIO_SDA_SET_HIGH();
-	MCSDL_GPIO_SDA_SET_OUTPUT(1);
+	MCSDL_GPIO_SDA_SET_OUTPUT();
 
 	MCSDL_GPIO_SCL_SET_HIGH();	mcsdl_delay(MCSDL_DELAY_20US);
 	MCSDL_GPIO_SCL_SET_LOW();	mcsdl_delay(MCSDL_DELAY_20US);
@@ -1061,103 +1001,7 @@ void mcsdl_scl_toggle_twice(void)
 	MCSDL_GPIO_SCL_SET_HIGH();	mcsdl_delay(MCSDL_DELAY_20US);
 	MCSDL_GPIO_SCL_SET_LOW();	mcsdl_delay(MCSDL_DELAY_20US);
 }
-
-
-//============================================================
-//
-//	Delay Function
-//
-//============================================================
- void mcsdl_delay(UINT32 nCount)
-{
-
-		switch(nCount)
-	{
-		case MCSDL_DELAY_1US :
-			udelay(1);
-			break;
-		case MCSDL_DELAY_2US :
-			udelay(2);
-			break;
-		case MCSDL_DELAY_3US :
-			udelay(3);
-			break;
-		case MCSDL_DELAY_5US :
-			udelay(5);
-			break;
-		case MCSDL_DELAY_7US :
-			udelay(7);
-			break;
-		case MCSDL_DELAY_10US :
-			udelay(10);
-			break;
-		case MCSDL_DELAY_15US :
-			udelay(15);
-			break;
-		case MCSDL_DELAY_20US :
-			udelay(20);
-			break;
-		case MCSDL_DELAY_100US :
-			udelay(100);
-			break;
-		case MCSDL_DELAY_150US :
-			udelay(150);
-			break;
-		case MCSDL_DELAY_500US :
-			udelay(500);
-			break;
-		case MCSDL_DELAY_800US :
-			udelay(800);
-			break;
-		case MCSDL_DELAY_1MS :
-			msleep(1);
-			break;
-		case MCSDL_DELAY_5MS :
-			msleep(5);
-			break;
-		case MCSDL_DELAY_10MS :
-			msleep(10);
-			break;
-		case MCSDL_DELAY_25MS :
-			msleep(25);
-			break;
-		case MCSDL_DELAY_30MS :
-			msleep(30);
-			break;
-		case MCSDL_DELAY_40MS :
-			msleep(40);
-			break;
-		case MCSDL_DELAY_45MS :
-			msleep(45);
-			break;
-//start ADD DELAY
-        case MCSDL_DELAY_100MS :
-      		mdelay(100);
-            break;
-        case MCSDL_DELAY_300US :
-      		udelay(300);
-            break;
-        case MCSDL_DELAY_60MS :
-            msleep(60);
-            break;
-        case MCSDL_DELAY_40US :
-            udelay(40);
-            break;
-        case MCSDL_DELAY_50MS :
-            mdelay(50);
-            break;
-		case MCSDL_DELAY_70US :
-			udelay(70);
-			break;
-//end del
-		default :
-			break;
-	}// Please, Use your delay function
-
-
-}
-
-
+*/
 
 //============================================================
 //
@@ -1175,24 +1019,24 @@ static void mcsdl_print_result(int nRet)
     }
     else
     {
-        pr_err(" > MELFAS Firmware downloading FAILED  :  ");
+        printk(" > MELFAS Firmware downloading FAILED  :  ");
         switch (nRet)
         {
-			case MCSDL_RET_SUCCESS                  		:   pr_err("MCSDL_RET_SUCCESS\n" );                 		break;
-			case MCSDL_RET_ERASE_FLASH_VERIFY_FAILED		:   pr_err("MCSDL_RET_ERASE_FLASH_VERIFY_FAILED\n" );		break;
-			case MCSDL_RET_PROGRAM_VERIFY_FAILED			:   pr_err("MCSDL_RET_PROGRAM_VERIFY_FAILED\n" );      	break;
+			case MCSDL_RET_SUCCESS                  		:   printk("MCSDL_RET_SUCCESS\n" );                 		break;
+			case MCSDL_RET_ERASE_FLASH_VERIFY_FAILED		:   printk("MCSDL_RET_ERASE_FLASH_VERIFY_FAILED\n" );		break;
+			case MCSDL_RET_PROGRAM_VERIFY_FAILED			:   printk("MCSDL_RET_PROGRAM_VERIFY_FAILED\n" );      	break;
 
-			case MCSDL_RET_PROGRAM_SIZE_IS_WRONG			:   pr_err("MCSDL_RET_PROGRAM_SIZE_IS_WRONG\n" );    		break;
-			case MCSDL_RET_VERIFY_SIZE_IS_WRONG				:   pr_err("MCSDL_RET_VERIFY_SIZE_IS_WRONG\n" );      		break;
-			case MCSDL_RET_WRONG_BINARY						:   pr_err("MCSDL_RET_WRONG_BINARY\n" );      				break;
+			case MCSDL_RET_PROGRAM_SIZE_IS_WRONG			:   printk("MCSDL_RET_PROGRAM_SIZE_IS_WRONG\n" );    		break;
+			case MCSDL_RET_VERIFY_SIZE_IS_WRONG				:   printk("MCSDL_RET_VERIFY_SIZE_IS_WRONG\n" );      		break;
+			case MCSDL_RET_WRONG_BINARY						:   printk("MCSDL_RET_WRONG_BINARY\n" );      				break;
 
-			case MCSDL_RET_READING_HEXFILE_FAILED       	:   pr_err("MCSDL_RET_READING_HEXFILE_FAILED\n" );			break;
-			case MCSDL_RET_FILE_ACCESS_FAILED       		:   pr_err("MCSDL_RET_FILE_ACCESS_FAILED\n" );				break;
-			case MCSDL_RET_MELLOC_FAILED     		  		:   pr_err("MCSDL_RET_MELLOC_FAILED\n" );      			break;
+			case MCSDL_RET_READING_HEXFILE_FAILED       	:   printk("MCSDL_RET_READING_HEXFILE_FAILED\n" );			break;
+			case MCSDL_RET_FILE_ACCESS_FAILED       		:   printk("MCSDL_RET_FILE_ACCESS_FAILED\n" );				break;
+			case MCSDL_RET_MELLOC_FAILED     		  		:   printk("MCSDL_RET_MELLOC_FAILED\n" );      			break;
 
-			case MCSDL_RET_WRONG_MODULE_REVISION     		:   pr_err("MCSDL_RET_WRONG_MODULE_REVISION\n" );      	break;
+			case MCSDL_RET_WRONG_MODULE_REVISION     		:   printk("MCSDL_RET_WRONG_MODULE_REVISION\n" );      	break;
 
-			default                             			:	pr_err("UNKNOWN ERROR. [0x%02X].\n", nRet );      		break;
+			default                             			:	printk("UNKNOWN ERROR. [0x%02X].\n", nRet );      		break;
 		}
 
 	}
@@ -1223,10 +1067,10 @@ void mcsdl_delay_test(INT32 nCount)
 	//	Repeating 'nCount' times
 	//--------------------------------
 
-    //MCSDL_SET_GPIO_I2C();
-	MCSDL_GPIO_SCL_SET_OUTPUT(0);
-	MCSDL_GPIO_SDA_SET_OUTPUT(0);
-	MCSDL_RESETB_SET_OUTPUT(0);
+    MCSDL_SET_GPIO_I2C();
+	MCSDL_GPIO_SCL_SET_OUTPUT();
+	MCSDL_GPIO_SDA_SET_OUTPUT();
+	MCSDL_RESETB_SET_OUTPUT();
 
 	MCSDL_GPIO_SCL_SET_HIGH();
 

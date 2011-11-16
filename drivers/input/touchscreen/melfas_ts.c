@@ -46,7 +46,7 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x20 //0x1b
+#define TS_LATEST_FW_VERSION_B	0x23 //0x1b
 #define TS_READ_REGS_LEN 		66
 #define MELFAS_MAX_TOUCH		5
 
@@ -288,6 +288,10 @@ static void melfas_ts_work_func(struct work_struct *work)
 				input_report_key(ts->input_dev, KEY_SEARCH, touchState ? 1 : 0);
 	}		
 		input_sync(ts->input_dev);
+	}
+	if (gpio_get_value(ts->intr_gpio) == 0) {
+		gpio_set_value(ts->intr_gpio, 1);
+		mdelay(10);
 	}
 			
 	enable_irq(ts->client->irq);

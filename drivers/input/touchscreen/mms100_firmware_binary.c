@@ -1,8 +1,8 @@
 // MELFAS HEX to C converter v1.6 [2008.05.25]
 
-unsigned short MELFAS_binary_nLength = 0x79F0;			// 30.5 KBytes ( 31216 Bytes ) 
+unsigned short MELFAS_TS_binary_nLength = 0x79F0;			// 30.5 KBytes ( 31216 Bytes ) 
 
-unsigned char MELFAS_binary[] = {
+unsigned char MELFAS_TS_binary[] = {
 
 	// Model name       : =K
 	// Module revision  : =K
