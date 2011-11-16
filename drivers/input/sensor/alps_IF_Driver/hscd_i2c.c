@@ -59,9 +59,7 @@ static int hscd_i2c_readm(char *rxData, int length)
 /* for debugging */
 	struct i2c_msg msgs[2];
 	if(client_hscd != NULL){
-		if(rxData!=NULL){
-			printk("[HSCD] hscd_i2c_readm param check(addr %x, length %d, rxData %x)\n ", client_hscd->addr,length,rxData[0]);
-		}else{
+		if(rxData==NULL){
 			printk("[HSCD] hscd_i2c_readm rxData is NULL\n");
 			return -EIO;
 		}
@@ -128,9 +126,7 @@ static int hscd_i2c_writem(char *txData, int length)
 /* for debugging */
 	struct i2c_msg msg[1];
 	if(client_hscd != NULL){
-		if(txData!=NULL){
-			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x) \n ", client_hscd->addr,length,txData[0],txData[1]);
-		}else{
+		if(txData==NULL){
 			printk("[HSCD] i2c_writem txData is NULL\n");
 			return -EIO;
 		}
