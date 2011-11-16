@@ -56,7 +56,29 @@ static int hscd_i2c_readm(char *rxData, int length)
 {
 	int err;
 	int tries = 0;
-
+/* for debugging */
+	struct i2c_msg msgs[2];
+	if(client_hscd != NULL){
+		if(rxData!=NULL){
+			printk("[HSCD] hscd_i2c_readm param check(addr %x, length %d, rxData %x)\n ", client_hscd->addr,length,rxData[0]);
+		}else{
+			printk("[HSCD] hscd_i2c_readm rxData is NULL\n");
+			return -EIO;
+		}
+	}else{
+		printk("[HSCD] hscd_i2c_readm client_hscd is NULL\n");
+		return -EIO;
+	}
+	msgs[0].addr = client_hscd->addr;
+	msgs[0].flags = 0;
+	msgs[0].len = 1;
+	msgs[0].buf = rxData;
+	
+	msgs[1].addr = client_hscd->addr;
+	msgs[1].flags = I2C_M_RD;
+	msgs[1].len = length;
+	msgs[1].buf = rxData;	
+#if 0
 	struct i2c_msg msgs[] = {
 		{
 		 .addr = client_hscd->addr,
@@ -71,7 +93,7 @@ static int hscd_i2c_readm(char *rxData, int length)
 		 .buf = rxData,
 		 },
 	};
-
+#endif
 	do {
 		err = i2c_transfer(client_hscd->adapter, msgs, 2);
 	} while ((err != 2) && (++tries < I2C_RETRIES));
@@ -110,9 +132,11 @@ static int hscd_i2c_writem(char *txData, int length)
 			printk("[HSCD] i2c_writem param check(addr %x, length %d, txData %x %x) \n ", client_hscd->addr,length,txData[0],txData[1]);
 		}else{
 			printk("[HSCD] i2c_writem txData is NULL\n");
+			return -EIO;
 		}
 	}else{
 		printk("[HSCD] i2c_writem client_hscd is NULL\n");
+		return -EIO;
 	}
 	msg[0].addr = client_hscd->addr;
 	msg[0].flags = 0;
