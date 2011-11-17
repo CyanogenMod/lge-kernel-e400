@@ -289,25 +289,12 @@ int enter_state(suspend_state_t state)
 
 	pr_debug("PM: Entering %s sleep\n", pm_states[state]);
 	error = suspend_devices_and_enter(state);
-#if 0 //youngbae.choi@lge.com START : [M3] Resume chain no calling error prevent.
-	suspend_finish();
-	mutex_unlock(&pm_mutex);
-
-	return error;
-#endif //youngbae.choi@lge.com END : [M3] Resume chain no calling error prevent.
 
  Finish:
 	pr_debug("PM: Finishing wakeup.\n");
 	suspend_finish();
-#if 0 //youngbae.choi@lge.com START : [M3] Resume chain no calling error prevent.
-	mutex_unlock(&pm_mutex);
-	return error;
-#endif //youngbae.choi@lge.com END : [M3] Resume chain no calling error prevent.
+
  Unlock:
-#if 0 //youngbae.choi@lge.com START : [M3] Resume chain no calling error prevent.
- 	suspend_finish();
- 	error = suspend_devices_and_enter(state);
-#endif //youngbae.choi@lge.com END : [M3] Resume chain no calling error prevent.
 	mutex_unlock(&pm_mutex);
 	return error;
 }
