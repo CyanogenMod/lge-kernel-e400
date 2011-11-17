@@ -123,12 +123,12 @@ static void late_resume(struct work_struct *work)
 	int abort = 0;
 
 	mutex_lock(&early_suspend_lock);
-	spin_lock_irq(&state_lock, irqflags);
+	spin_lock_irq(&state_lock);
 	if (state == SUSPENDED)
 		state &= ~SUSPENDED;
 	else
 		abort = 1;
-	spin_unlock_irq(&state_lock, irqflags);
+	spin_unlock_irq(&state_lock);
 
 	if (abort) {
 		if (debug_mask & DEBUG_SUSPEND)
