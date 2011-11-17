@@ -166,7 +166,7 @@ PACK (void *)LGF_TestMode (
         //REMOVE UNNECESSARY RESPONSE PACKET FOR EXTERNEL SOCKET ERASE
         case TEST_MODE_EXT_SOCKET_TEST:
             if((req_ptr->test_mode_req.esm == EXTERNAL_SOCKET_ERASE) || (req_ptr->test_mode_req.esm == EXTERNAL_SOCKET_ERASE_SDCARD_ONLY) \
-                    || (req_ptr->test_mode_req.esm == EXTERNAL_SOCKET_ERASE_FAT_ONLY))
+                    || (req_ptr->test_mode_req.esm == EXTERNAL_SOCKET_ERASE_FAT_ONLY) || (req_ptr->test_mode_req.esm == INTERNAL_SD_MEMORY_ERASE))
                 rsp_len = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type);
             else
                 rsp_len = sizeof(DIAG_TEST_MODE_F_rsp_type);
@@ -310,6 +310,25 @@ file_fail:
 
 extern int external_memory_test_diag;
 
+bool LGF_IsInternalSDRequest(test_mode_req_type * pReq)
+{
+	switch( pReq->esm){
+		case INTERNAL_SD_MEMORY_ERASE:
+			return true;
+		case EXTERNAL_SOCKET_MEMORY_CHECK:
+		case EXTERNAL_FLASH_MEMORY_SIZE:
+		case EXTERNAL_SOCKET_ERASE:
+		case EXTERNAL_FLASH_MEMORY_USED_SIZE:
+		case EXTERNAL_FLASH_MEMORY_CONTENTS_CHECK:
+		case EXTERNAL_FLASH_MEMORY_ERASE:
+		case EXTERNAL_SOCKET_ERASE_SDCARD_ONLY:
+		case EXTERNAL_SOCKET_ERASE_FAT_ONLY:
+		default:
+			return false;
+	}
+	return false;
+}
+
 void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
 {
     struct statfs_local sf;
@@ -320,16 +339,18 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
 // m3 use Internal SD, so we dont use this
 #else
 //    if(gpio_get_value(PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC3_DET - 1)))
-    if(gpio_get_value(SYS_GPIO_SD_DET)) //dy.lee
-    {
-        if (pReq->esm == EXTERNAL_SOCKET_MEMORY_CHECK)
-        {
-            pRsp->test_mode_rsp.memory_check = TEST_FAIL_S;
-            pRsp->ret_stat_code = TEST_OK_S;
-        }
-        
-        printk(KERN_ERR "[Testmode Memory Test] Can not detect SD card\n");
-        return pRsp;
+	if(!LGF_IsInternalSDRequest(pReq)){
+	    if(gpio_get_value(SYS_GPIO_SD_DET)) //dy.lee
+	    {
+	        if (pReq->esm == EXTERNAL_SOCKET_MEMORY_CHECK)
+	        {
+	            pRsp->test_mode_rsp.memory_check = TEST_FAIL_S;
+	            pRsp->ret_stat_code = TEST_OK_S;
+	        }
+	        
+	        printk(KERN_ERR "[Testmode Memory Test] Can not detect SD card\n");
+	        return pRsp;
+	    }
     }
 #endif
 
@@ -430,6 +451,24 @@ void* LGF_ExternalSocketMemory(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_t
             }
             
             break;
+		case INTERNAL_SD_MEMORY_ERASE:
+			if (diagpdev == NULL){
+				  diagpdev = diagcmd_get_dev();
+				  printk("\n[%s] diagpdev is Null", __func__ );
+			}
+			
+			if (diagpdev != NULL)
+			{
+				update_diagcmd_state(diagpdev, "MMCFORMAT", 2);
+				msleep(5000);
+				pRsp->ret_stat_code = TEST_OK_S;
+			}
+			else
+			{
+				printk("\n[%s] error FACTORY_RESET", __func__ );
+				pRsp->ret_stat_code = TEST_FAIL_S;
+			}
+			break;
 
         case EXTERNAL_SOCKET_ERASE_SDCARD_ONLY: /*0xE*/
             if (diagpdev != NULL)

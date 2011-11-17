@@ -1571,6 +1571,12 @@ int tty_release(struct inode *inode, struct file *filp)
 	int	idx;
 	char	buf[64];
 
+// [LGE_UPDATE] kh.tak kernel panic due to inode is null [START]
+	if (inode == NULL){
+		printk(KERN_WARNING "tty_release_dev inode is null\n");
+		return 0;
+	}
+// [LGE_UPDATE] kh.tak kernel panic due to inode is null [END]	
 	if (tty_paranoia_check(tty, inode, "tty_release_dev"))
 		return 0;
 

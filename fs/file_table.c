@@ -246,8 +246,20 @@ static void __fput(struct file *file)
 		file->f_op->release(inode, file);
 	security_file_free(file);
 	ima_file_free(file);
+	
+// [LGE_UPDATE] kh.tak kernel panic due to inode is null [START]
+#ifdef QCT_ORG
 	if (unlikely(S_ISCHR(inode->i_mode) && inode->i_cdev != NULL))
-		cdev_put(inode->i_cdev);
+			cdev_put(inode->i_cdev);
+#else
+	if (inode != NULL){	
+		if (unlikely(S_ISCHR(inode->i_mode) && inode->i_cdev != NULL))
+			cdev_put(inode->i_cdev);
+	}else{
+		printk(KERN_WARNING "__fput inode is null\n");	
+	}
+#endif	
+	// [LGE_UPDATE] kh.tak kernel panic due to inode is null [END]
 	fops_put(file->f_op);
 	put_pid(file->f_owner.pid);
 	file_sb_list_del(file);
