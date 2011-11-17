@@ -525,11 +525,15 @@ static int melfas_ts_remove(struct i2c_client *client)
 
 static int melfas_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-    
+	int ret;
 	struct melfas_ts_data *ts = i2c_get_clientdata(client);
 
     	release_all_finger(ts);
 	disable_irq(client->irq);
+	ret=cancel_work_sync(&ts->work);
+	if (ret) /* if work was pending disable-count is now 2 */
+		enable_irq(client->irq);
+	
 	ts->power(0);
 	msleep(10);
 	return 0;

@@ -286,5 +286,23 @@ unsigned lge_get_cable_info(void)
 EXPORT_SYMBOL(lge_get_cable_info);
 //LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-10-27
 
+//LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-11-17
+unsigned lge_disable_diag_log(void)
+{
+    int err;
+    unsigned ret = 0;
+    unsigned cmd = 0x14;
+
+    err = msm_proc_comm(PCOM_CUSTOMER_CMD2, &ret, &cmd);
+    if (err < 0) {
+        pr_err("%s: msm_proc_comm(PCOM_CUSTOMER_CMD2) failed. cmd(%d)\n",
+               __func__, cmd);
+        return err;
+    }
+
+    return ret;
+}
+EXPORT_SYMBOL(lge_disable_diag_log);
+//LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-11-17
 
 #endif

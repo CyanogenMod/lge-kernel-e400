@@ -936,6 +936,10 @@ void diag_process_hdlc(void *data, unsigned len)
 #define N_LEGACY_WRITE	(driver->poolsize + 5) /* 2+1 for modem ; 2 for q6 */
 #define N_LEGACY_READ	1
 
+// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-11-17
+unsigned lge_disable_diag_log(void);
+// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-11-17
+
 int diagfwd_connect(void)
 {
 	int err;
@@ -973,6 +977,9 @@ int diagfwd_connect(void)
 int diagfwd_disconnect(void)
 {
 	printk(KERN_DEBUG "diag: USB disconnected\n");
+	// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-11-17
+	lge_disable_diag_log();
+	// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-11-17
 	driver->usb_connected = 0;
 	driver->in_busy_1 = 1;
 	driver->in_busy_2 = 1;
