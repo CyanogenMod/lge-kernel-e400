@@ -50,7 +50,9 @@
 	cpufreq_debug_printk(CPUFREQ_DEBUG_DRIVER, "cpufreq-msm", msg)
 
 /* Max CPU frequency allowed by hardware while in standby waiting for an irq. */
-#define MAX_WAIT_FOR_IRQ_KHZ 128000
+// 2011-11-17 sohyun.nam@lge.com prevent from holding irq function in low power mode because the min frequency is 320000
+//#define MAX_WAIT_FOR_IRQ_KHZ 128000
+#define MAX_WAIT_FOR_IRQ_KHZ 350000
 
 enum {
 	ACPU_PLL_TCXO	= -1,
