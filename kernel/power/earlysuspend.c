@@ -119,7 +119,7 @@ abort:
 static void late_resume(struct work_struct *work)
 {
 	struct early_suspend *pos;
-	unsigned long irqflags;
+	//unsigned long irqflags;
 	int abort = 0;
 
 	mutex_lock(&early_suspend_lock);
