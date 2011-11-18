@@ -104,8 +104,9 @@ enum hi351_iso_value {
 
 // change the framerate mode between capture(preview)(auto) and video(fixed)
 enum hi351_fps_mode {
- 	FRAME_RATE_AUTO = 0,
-	FRAME_RATE_FIXED
+ 	FRAME_RATE_AUTO = 5,
+	FRAME_RATE_ATTACHED = 15,
+	FRAME_RATE_FIXED = 30
 };
 
 enum hi351_antibanding_type {
@@ -164,6 +165,9 @@ struct hi351_reg {
 	
 	const struct hi351_i2c_reg_conf *fixed_framerate_reg_settings;
 	const unsigned short fixed_framerate_reg_settings_size;
+		
+	const struct hi351_i2c_reg_conf *attached_framerate_reg_settings;
+	const unsigned short attached_framerate_reg_settings_size;
 
 	// effect mode 
 	const struct hi351_i2c_reg_conf *effect_off_reg_settings;
