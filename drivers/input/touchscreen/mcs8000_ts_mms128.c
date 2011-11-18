@@ -858,69 +858,35 @@ err_power_failed:
 
 void mcs8000_firmware_info(unsigned char *fw_ver, unsigned char *hw_ver, unsigned char *comp_ver)
 {
-	unsigned char data;
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-17] : Amended the method of getting the FW version */
+	unsigned char ucTXBuf[1] = {0};
+	unsigned char ucRXBuf[1] = {0};
+	int iRet = 0;
 	struct mcs8000_ts_device *dev = NULL;
-	int try_cnt = 0;
 	dev = &mcs8000_ts_dev;
-#if 0
-	msleep(200);
-	/* mcs8000 need STOP signal after writing addres by bongkyu.kim */
-	i2c_smbus_write_byte(dev->client, MCS7000_TS_FW_VERSION);
-	data = i2c_smbus_read_byte(dev->client);
-	printk(KERN_INFO "MCS7000 F/W Version [0x%x]\n", data);
-	dev->input_dev->id.version = data;
 
-	i2c_smbus_write_byte(dev->client, MCS7000_TS_HW_REVISION);
-	data = i2c_smbus_read_byte(dev->client);
-	printk(KERN_INFO "MCS7000 H/W Revision [0x%x]\n", data);
-	dev->input_dev->id.product = data ;
-#else
-	msleep(200); /* mcs8000 need STOP signal after writing addres by bongkyu.kim */
+	ucTXBuf[0] = TS_READ_VERSION_ADDR;
 
-	/* for avoiding the read fail form mcs8000 IC*/
-	do {
-		i2c_smbus_write_byte(dev->client, TS_READ_VERSION_ADDR);
-		data = i2c_smbus_read_byte(dev->client);
-
-		msleep(10);
-		try_cnt++;
-	} while (data > MCS8000_TS_MAX_FW_VERSION && try_cnt < 10);
-
-	printk(KERN_INFO "MCS8000 F/W Version [0x%x]\n", data);
-	*fw_ver = data;
-
-	try_cnt = 0;
-	do {
-		i2c_smbus_write_byte(dev->client, TS_READ_HW_VERSION_ADDR);
-		data = i2c_smbus_read_byte(dev->client);
-
-		msleep(10);
-		try_cnt++;
-	} while (data > MCS8000_TS_MAX_HW_VERSION && try_cnt < 10);
-
-	printk(KERN_INFO "MCS8000 H/W Revision [0x%x]\n", data);
-	*hw_ver = data;
-	try_cnt = 0;
-	do {
-		i2c_smbus_write_byte(dev->client, TS_READ_HW_COMPATIBILITY_ADDR);
-		data = i2c_smbus_read_byte(dev->client);
-
-		msleep(10);
-		try_cnt++;
-	} while (data > MCS8000_TS_MAX_HW_VERSION && try_cnt < 10);
-
-	printk(KERN_INFO "MCS8000 H/W Compatibility [0x%x]\n", data);
-	*comp_ver = data;
-#if 0
-	/* just touch i2c debug by younchan.kim */
-	for (try_cnt = 0x10 ; try_cnt < 0x15; try_cnt++) {
-		i2c_smbus_write_byte(dev->client, try_cnt);
-		data = i2c_smbus_read_byte(dev->client);
-		msleep(100);
-		printk(KERN_INFO "MCS7000 register data add[0x%x],[0x%x]\n", try_cnt, data);
+	iRet = i2c_master_send(dev->client, ucTXBuf, 1);
+	if(iRet < 0)
+	{
+#if DEBUG_PRINT
+		printk(KERN_ERR "mcs8000_firmware_info: i2c failed\n");
+		return ;	
+#endif 
 	}
-#endif
-#endif
+
+	iRet = i2c_master_recv(dev->client, ucRXBuf, 1);
+	if(iRet < 0)
+	{
+#if DEBUG_PRINT
+		printk(KERN_ERR "mcs8000_firmware_info: i2c failed\n");
+		return ;	
+#endif 
+	}
+	*fw_ver = ucRXBuf[0];
+
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-17] : Amended the method of getting the FW version */
 }
 /*
 static struct miscdevice mcs8000_ts_misc_dev = {

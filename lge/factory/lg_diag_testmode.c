@@ -2493,6 +2493,97 @@ PACK (void *)LGE_Dload_SRD (PACK (void *)req_pkt_ptr, uint16 pkg_len)
 EXPORT_SYMBOL(LGE_Dload_SRD);
 #endif 
 
+// LGE_UPDATE_S  KimWooYul 2011-11-18
+void* LGF_TestModeMLTEnableSet(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type * pRsp)
+{
+    char *src = (void *)0;
+    char *dest = (void *)0;
+    off_t fd_offset;
+    int fd;
+
+    mm_segment_t old_fs=get_fs();
+    set_fs(get_ds());
+
+    pRsp->ret_stat_code = TEST_FAIL_S;
+
+    if (diagpdev != NULL)
+    {
+        if ( (fd = sys_open((const char __user *) "/mpt/enable", O_CREAT | O_RDWR, 0) ) < 0 )
+        {
+            printk(KERN_ERR "[Testmode MPT] Can not access MPT\n");
+            goto file_fail;
+        }
+#if 0
+		if(pReq->mlt_enable == 2)
+		{
+			if ( (dest = kmalloc(5, GFP_KERNEL)) )
+			{
+				if ((sys_read(fd, (char __user *) dest, 2)) < 0)
+				{
+					printk(KERN_ERR "[Testmode MPT] Can not read MPT \n");
+					goto file_fail;
+				}
+
+				if ((memcmp("1", dest, 2)) == 0)
+				{
+					pRsp->test_mode_rsp.mlt_enable = 1;
+					pRsp->ret_stat_code = TEST_OK_S;
+				}
+				else if ((memcmp("0", dest, 2)) == 0)
+				{
+					pRsp->test_mode_rsp.mlt_enable = 0;
+					pRsp->ret_stat_code = TEST_OK_S;
+				}
+				else
+				{
+					//pRsp->test_mode_rsp = 1;
+					pRsp->ret_stat_code = TEST_FAIL_S;
+				}
+			}
+		}
+		else
+#endif
+		{
+			if ( (src = kmalloc(5, GFP_KERNEL)) )
+			{
+				sprintf(src, "%d", pReq->mlt_enable);
+				if ((sys_write(fd, (const char __user *) src, 2)) < 0)
+				{
+					printk(KERN_ERR "[Testmode MPT] Can not write MPT \n");
+					goto file_fail;
+				}
+
+				fd_offset = sys_lseek(fd, 0, 0);
+			}
+
+			if ( (dest = kmalloc(5, GFP_KERNEL)) )
+			{
+				if ((sys_read(fd, (char __user *) dest, 2)) < 0)
+				{
+					printk(KERN_ERR "[Testmode MPT] Can not read MPT \n");
+					goto file_fail;
+				}
+
+				if ((memcmp(src, dest, 2)) == 0)
+					pRsp->ret_stat_code = TEST_OK_S;
+				else
+					pRsp->ret_stat_code = TEST_FAIL_S;
+			}
+		}
+			
+        file_fail:
+          kfree(src);
+          kfree(dest);
+          sys_close(fd);
+          set_fs(old_fs);
+//          sys_unlink((const char __user *)"/mpt/enable");
+    }
+
+    return pRsp;
+}
+
+// LGE_UPDATE_E  KimWooYul 2011-11-18
+
 /*  USAGE
  *  1. If you want to handle at ARM9 side, you have to insert fun_ptr as NULL and mark ARM9_PROCESSOR
  *  2. If you want to handle at ARM11 side , you have to insert fun_ptr as you want and mark AMR11_PROCESSOR.
@@ -2571,6 +2662,8 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
 // LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
     {TEST_MODE_FOTA_ID_CHECK,               LGF_TestModeFotaIDCheck,          ARM11_PROCESSOR},
 // LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
-		
+// LGE_UPDATE_S  KimWooYul 2011-11-18
+    {TEST_MODE_MLT_ENABLE,                  LGF_TestModeMLTEnableSet,         ARM11_PROCESSOR},
+// LGE_UPDATE_E  KimWooYul 2011-11-18
     {TEST_MODE_XO_CAL_DATA_COPY,            NULL,                             ARM9_PROCESSOR}
 };

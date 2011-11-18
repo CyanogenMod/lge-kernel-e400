@@ -431,6 +431,14 @@ typedef enum
 }test_mode_req_volume_level_type;
 /* LGE_CHANGE_E [myunghwan.kim@lge.com] 2011-09-27 support test mode */
 
+// LGE_UPDATE_S  KimWooYul 2011-11-18
+typedef enum
+{
+    MLT_DISABLE,
+    MLT_ENABLE,
+}test_mode_req_mlt_enable_type;
+// LGE_UPDATE_E  KimWooYul 2011-11-18
+
 #define MAX_NTCODE_SIZE (512-3)
 
 typedef union
@@ -488,7 +496,9 @@ typedef union
     test_mode_req_speaker_phone_type speaker_phone;
     test_mode_req_volume_level_type volume_level;
     /* LGE_CHANGE_E [myunghwan.kim@lge.com] 2011-09-27 support test mode */
-
+// LGE_UPDATE_S  KimWooYul 2011-11-18
+    test_mode_req_mlt_enable_type mlt_enable;
+// LGE_UPDATE_E  KimWooYul 2011-11-18
 	byte NTCode[MAX_NTCODE_SIZE];
 } test_mode_req_type;
 
@@ -571,7 +581,9 @@ typedef union
     test_mode_req_speaker_phone_type speaker_phone;
     test_mode_req_volume_level_type volume_level;
     /* LGE_CHANGE_E [myunghwan.kim@lge.com] 2011-09-27 support test mode */
-
+// LGE_UPDATE_S  KimWooYul 2011-11-18
+    byte mlt_enable;
+// LGE_UPDATE_E  KimWooYul 2011-11-18
 } PACKED test_mode_rsp_type;
 /* END: 0014654 jihoon.lee@lge.com 2011024 */
 
@@ -670,6 +682,9 @@ typedef enum
 
   TEST_MODE_ACCEL_SENSOR_TEST=100,		//on,off, sensor data
   TEST_MODE_COMPASS_SENSOR_TEST=102,     //on,off, sensor data 2
+// LGE_UPDATE_S  KimWooYul 2011-11-18
+   TEST_MODE_MLT_ENABLE=106,
+// LGE_UPDATE_E  KimWooYul 2011-11-18
     TEST_MODE_XO_CAL_DATA_COPY=250,
 
     MAX_TEST_MODE_SUBCMD = 0xFFFF
