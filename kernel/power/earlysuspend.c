@@ -119,16 +119,16 @@ abort:
 static void late_resume(struct work_struct *work)
 {
 	struct early_suspend *pos;
-	//unsigned long irqflags;
+	unsigned long irqflags;
 	int abort = 0;
 
 	mutex_lock(&early_suspend_lock);
-	spin_lock_irq(&state_lock);
+	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPENDED)
 		state &= ~SUSPENDED;
 	else
 		abort = 1;
-	spin_unlock_irq(&state_lock);
+	spin_unlock_irqrestore(&state_lock, irqflags);
 
 	if (abort) {
 		if (debug_mask & DEBUG_SUSPEND)
