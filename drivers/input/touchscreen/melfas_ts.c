@@ -46,18 +46,20 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x23 //0x1b
-#define TS_READ_REGS_LEN 		66
+#define TS_LATEST_FW_VERSION_B	0x25 //0x1b
+#define TS_READ_REGS_LEN 		100
 #define MELFAS_MAX_TOUCH		5
 
 #define DEBUG_PRINT 			0
 
 #define SET_DOWNLOAD_BY_GPIO	1
-
+#define MIP_INPUT_EVENT_PACKET_SIZE	0x0F
+#define MIP_INPUT_EVENT_INFORMATION	0x10
 
 #if SET_DOWNLOAD_BY_GPIO
 #include <mcs8000_download.h>
 #endif // SET_DOWNLOAD_BY_GPIO
+static int irq_flag;
 
 enum {
 	None = 0,
@@ -138,159 +140,201 @@ static int melfas_init_panel(struct melfas_ts_data *ts)
 static void release_all_finger(struct melfas_ts_data *ts)
 {
 	int i;
-		
-	
-	for (i = 0; i < MELFAS_MAX_TOUCH; i++) {
-		if (g_Mtouch_info[i].strength == -1){
+	for(i=0; i<MELFAS_MAX_TOUCH; i++) {
+		if(-1 == g_Mtouch_info[i].strength) {
 			g_Mtouch_info[i].posX = 0;
 			g_Mtouch_info[i].posY = 0;
 			continue;
 		}
-		g_Mtouch_info[i].width = 0;
+
 		g_Mtouch_info[i].strength = 0;
 
 		input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
 		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[i].posX);
 		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[i].posY);
-		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[i].strength);
+		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[i].strength );
 		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width);
 		input_mt_sync(ts->input_dev);
-		
-		if (g_Mtouch_info[i].strength == 0)
+
+		g_Mtouch_info[i].posX = 0;
+		g_Mtouch_info[i].posY = 0;
+
+		if(0 == g_Mtouch_info[i].strength)
 			g_Mtouch_info[i].strength = -1;
-			g_Mtouch_info[i].posX = 0;
-			g_Mtouch_info[i].posY = 0;	
 	}
-	input_sync(ts->input_dev);	 	
+	input_sync(ts->input_dev);
 }
 
 static void melfas_ts_work_func(struct work_struct *work)
 {
 	struct melfas_ts_data *ts = container_of(work, struct melfas_ts_data, work);
-	int ret = 0, i;
-	int touchType = 0, keyID = 0, touchState=0;
+	int ret = 0, i;//,count=0;
 	uint8_t buf[TS_READ_REGS_LEN];
-	int read_num, FingerID;
-
+	int touchType=0, touchState =0, touchID=0, posX=0, posY=0, width = 0, strength=10, keyID = 0, reportID = 0;
+	uint8_t read_num = 0;
+	bool fTouchedScreen = false;
 
 #if DEBUG_PRINT
 	printk(KERN_ERR "melfas_ts_work_func\n");
 
 	if(ts ==NULL)
 			printk(KERN_ERR "melfas_ts_work_func : TS NULL\n");
-#endif 
+#endif
 
-	buf[0] = TS_READ_START_ADDR;
 
+	
+
+
+	buf[0] = MIP_INPUT_EVENT_PACKET_SIZE;
 	ret = i2c_master_send(ts->client, buf, 1);
-	if(ret < 0){
-#if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed(1)\n");
-		enable_irq(ts->client->irq);
-		return ;	
-#endif 
-	}
-	
-	ret = i2c_master_recv(ts->client, buf, 1);
-	if(ret < 0){
-#if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed(2)\n");
-		enable_irq(ts->client->irq);
-		return ;	
-#endif 
+	ret = i2c_master_recv(ts->client, &read_num, 1);
+
+	if( read_num == 0 ) {
+		printk("read number 0 error!!!! \n");
+		if (irq_flag == 0) {
+			irq_flag++;
+			enable_irq(ts->client->irq);
+		}
+		return;
 	}
 
-	read_num = buf[0];
-//	printk("mcs800 read_num=%d\n",read_num);
-	if(read_num>0){
-		buf[0] = TS_READ_START_ADDR2;
-
-		ret = i2c_master_send(ts->client, buf, 1);
-		if(ret < 0){
-#if DEBUG_PRINT
-			printk(KERN_ERR "melfas_ts_work_func: i2c failed(3)\n");
-			enable_irq(ts->client->irq);
-			return ;	
-#endif 
+	buf[0] = MIP_INPUT_EVENT_INFORMATION;
+	ret = i2c_master_send(ts->client, buf, 1);
+	ret = i2c_master_recv(ts->client, &buf[0], read_num);
+//	printk("***************read_num=%d\n", read_num);
+	for (i = 0; i < read_num; i = i + 6) // extract touch information
+	{
+		if (ret < 0)
+		{
+			printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+			if (irq_flag == 0) {
+				irq_flag++;
+				enable_irq(ts->client->irq);
+			}
+			return ;
 		}
-		ret = i2c_master_recv(ts->client, buf, read_num);
-		if(ret < 0){
-#if DEBUG_PRINT
-			printk(KERN_ERR "melfas_ts_work_func: i2c failed(4)\n");
-			enable_irq(ts->client->irq);
-			return ;	
-#endif 
-		}
-	
-		for(i=0; i<read_num; i=i+6){
-			FingerID = (buf[i] & 0x0F)-1;
-
-			g_Mtouch_info[FingerID].posX= (uint16_t)(buf[i+1] & 0x0F) << 8 | buf[i+2];
-			g_Mtouch_info[FingerID].posY= (uint16_t)(buf[i+1] & 0xF0) << 4 | buf[i+3];	
+		else
+		{
+			if( buf[0] == 0x0f ){
+				printk(KERN_ERR "ESD ERROR occured\n");
+				release_all_finger(ts);
+				ts->power(0);
+				msleep(100);
+				ts->power(1);
+					if (irq_flag == 0) {
+						irq_flag++;	
+						enable_irq(ts->client->irq);
+					}
 			
-			if((buf[i] & 0x80)==0)
-				g_Mtouch_info[FingerID].strength = 0;
-			else
-				g_Mtouch_info[FingerID].strength = buf[i+4];
-			
-			g_Mtouch_info[FingerID].width= buf[i+5];					
-		}
-	
-	}
-
-	if (ret < 0){
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed(5)\n");
-		enable_irq(ts->client->irq);
-		return ;	
-	}
-	else{
-		if( buf[0] == 0x0f ){
-			printk(KERN_ERR "ESD ERROR occured\n");
-			release_all_finger(ts);
-			ts->power(0);
-			msleep(100);
-			ts->power(1);
-			enable_irq(ts->client->irq);
 			return;
-		}	
-	touchType  = (buf[0]>>5)&0x03;
-	touchState = buf[0]&0x80;
-	  if(touchType == TOUCH_SCREEN) {
-		for(i=0; i<MELFAS_MAX_TOUCH; i++){
+			}
+//			printk("##############buf[0]=%d\n",buf[0]);
+			if( (buf[0] & 0x10) == 0x10){
+				printk("Ghost fingers-free code\n");
+				release_all_finger(ts);
+			}
+			
+			touchType  =  ((buf[i] & 0x60) >> 5);
+			touchState =((buf[i] & 0x80) == 0x80);
+			reportID = (buf[i] & 0x0F);
+			posX = (uint16_t) (buf[i + 1] & 0x0F) << 8 | buf[i + 2];
+			posY = (uint16_t) (buf[i + 1] & 0xF0) << 4 | buf[i + 3];
+			width = buf[i + 4];
+			
+			if(touchType == 2 ) //touch key
+			{
+				keyID = reportID;
+			}
+			else
+			{
+				keyID = reportID;
+			}
+
+			touchID = reportID-1;
+
+			if(touchID > MELFAS_MAX_TOUCH-1)
+			{
+			    if (irq_flag == 0) {
+				irq_flag++;
+				enable_irq(ts->client->irq);
+			    }	
+			    
+			    return ;
+			}
+
+			if(touchType == TOUCH_SCREEN)
+			{
+				fTouchedScreen = true;
+				g_Mtouch_info[touchID].posX= posX;
+				g_Mtouch_info[touchID].posY= posY;
+				g_Mtouch_info[touchID].width= width;
+
+				if(touchState)
+					g_Mtouch_info[touchID].strength= strength;
+				else 
+					g_Mtouch_info[touchID].strength = 0;
+
+			}
+			else if(touchType == TOUCH_KEY)
+			{
+				if (keyID == 0x1)
+					input_report_key(ts->input_dev, KEY_MENU, touchState ? 1 : 0);
+				if (keyID == 0x2)
+					input_report_key(ts->input_dev, KEY_HOME, touchState ? 1 : 0);
+				if (keyID == 0x3)
+					input_report_key(ts->input_dev, KEY_BACK, touchState ? 1 : 0);
+				if (keyID == 0x4)
+					input_report_key(ts->input_dev, KEY_SEARCH, touchState ? 1 : 0);
+#if DEBUG_PRINT
+				printk(KERN_ERR "melfas_ts_work_func: keyID : %d, touchState: %d\n", keyID, touchState);
+#endif
+				break;
+			}
+
+		}
+	}
+
+	if(fTouchedScreen)
+	{
+		for(i=0; i<MELFAS_MAX_TOUCH; i++)
+		{
 			if(g_Mtouch_info[i].strength== -1)
 				continue;
-			
+		
+	/*	if (g_Mtouch_info[i].strength <= 0) {
+				if (count <  MELFAS_MAX_TOUCH-1) {
+					count++;
+					continue;
+				} else {
+					input_mt_sync(ts->input_dev);
+					break;
+				}
+		}*/
 			input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[i].posX);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[i].posY);
 			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[i].strength );
-			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width);      				
-			input_mt_sync(ts->input_dev);          
+			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width);
+			input_mt_sync(ts->input_dev);
 #if DEBUG_PRINT
-			printk(KERN_ERR "melfas_ts_work_func: Touch ID: %d, State : %d, x: %d, y: %d, z: %d w: %d\n", 
-				i, (g_Mtouch_info[i].strength>0), g_Mtouch_info[i].posX, g_Mtouch_info[i].posY, g_Mtouch_info[i].strength, g_Mtouch_info[i].width);
-#endif	
-
+		
+			printk(KERN_ERR "Touch ID: %d, State : %d, x: %d, y: %d, z: %d w: %d\n",
+				i, touchState, g_Mtouch_info[i].posX, g_Mtouch_info[i].posY, g_Mtouch_info[i].strength, g_Mtouch_info[i].width);
+			
+#endif
 			if(g_Mtouch_info[i].strength == 0)
 				g_Mtouch_info[i].strength = -1;
+
 		}
 	}
-	else if (touchType == TOUCH_KEY){
-		
-		keyID = (buf[0]&0x0f);
-			if (keyID == 0x1)
-				input_report_key(ts->input_dev, KEY_MENU, touchState ? 1 : 0);
-			if (keyID == 0x2)
-				input_report_key(ts->input_dev, KEY_HOME, touchState ? 1 : 0);
-			if (keyID == 0x3)
-				input_report_key(ts->input_dev, KEY_BACK, touchState ? 1 : 0);
-			if (keyID == 0x4)
-				input_report_key(ts->input_dev, KEY_SEARCH, touchState ? 1 : 0);
-	}		
-		input_sync(ts->input_dev);
+
+	input_sync(ts->input_dev);
+
+
+	if (irq_flag == 0) {
+		irq_flag++;
+		enable_irq(ts->client->irq);
 	}
-			
-	enable_irq(ts->client->irq);
 }
 
 static irqreturn_t melfas_ts_irq_handler(int irq, void *handle)
@@ -299,8 +343,10 @@ static irqreturn_t melfas_ts_irq_handler(int irq, void *handle)
 #if DEBUG_PRINT
 	printk(KERN_ERR "melfas_ts_irq_handler\n");
 #endif
-		
+	if (irq_flag == 1) {
+		irq_flag--;	
 	disable_irq_nosync(ts->client->irq);
+	}
 	schedule_work(&ts->work);
 	
 	return IRQ_HANDLED;
@@ -347,6 +393,7 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	int ret = 0, i; 
 	unsigned char fw_ver, hw_ver, comp_ver;
 	uint8_t buf[4] = {0,};
+	irq_flag = 1;
 	
 #if DEBUG_PRINT
 	printk(KERN_ERR "kim ms : melfas_ts_probe\n");
@@ -427,7 +474,7 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 #if DEBUG_PRINT
         printk(KERN_ERR "melfas_ts_probe: trying to request irq: %s-%d\n", ts->client->name, ts->num_irq);
 #endif
-        ret = request_irq(ts->num_irq, melfas_ts_irq_handler, IRQF_TRIGGER_FALLING, ts->client->name, ts);
+        ret = request_irq(ts->num_irq, melfas_ts_irq_handler, IRQF_TRIGGER_LOW, ts->client->name, ts);
         if (ret > 0){
             printk(KERN_ERR "melfas_ts_probe: Can't allocate irq %d, ret %d\n", ts->client->irq, ret);
             ret = -EBUSY;
@@ -524,12 +571,21 @@ static int melfas_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	int ret;
 	struct melfas_ts_data *ts = i2c_get_clientdata(client);
 
-    	release_all_finger(ts);
-	disable_irq(client->irq);
-	ret=cancel_work_sync(&ts->work);
-	if (ret) /* if work was pending disable-count is now 2 */
-		enable_irq(client->irq);
+ //   	release_all_finger(ts);
+ 	if (irq_flag == 1) {
+		irq_flag--;
+		disable_irq_nosync(client->irq);
+	}	
 	
+	ret=cancel_work_sync(&ts->work);
+/*	if (ret){
+		printk("*****************cancle work=%d\n",ret); 
+		enable_irq(client->irq);
+	}	*/
+	ret = i2c_smbus_write_byte_data(ts->client, 0x01, 0x00); /* sleep */
+	if (ret < 0)
+		printk(KERN_ERR "melfas_ts_suspend: i2c_smbus_write_byte_data failed\n");
+	release_all_finger(ts);
 	ts->power(0);
 	msleep(10);
 	return 0;
@@ -542,8 +598,10 @@ static int melfas_ts_resume(struct i2c_client *client)
 //	melfas_init_panel(ts);
 	ts->power(1);
 	msleep(10);
-	enable_irq(client->irq); // scl wave
-
+	if (irq_flag == 0) {
+		irq_flag++;
+		enable_irq(client->irq); // scl wave
+	}
 	return 0;
 }
 

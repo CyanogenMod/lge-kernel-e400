@@ -638,7 +638,14 @@ static int hi351_set_Fps(int mode)
 								hi351_regs.auto_framerate_reg_settings_size);
 		
 		break;
+	case FRAME_RATE_ATTACHED:
+		
+		pr_err("%s: %d  Frame_rate_ATTACHED \n",__func__, __LINE__);
 	
+		rc = hi351_i2c_write_b_table(hi351_regs.attached_framerate_reg_settings,
+								hi351_regs.attached_framerate_reg_settings_size);
+
+		break;
 	case FRAME_RATE_FIXED:
 		
 		pr_err("%s: %d  Frame_rate_FIXED \n",__func__, __LINE__);

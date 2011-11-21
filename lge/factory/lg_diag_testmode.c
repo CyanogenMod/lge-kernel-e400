@@ -2611,7 +2611,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_BATT_LEVEL_TEST,             NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_MP3_TEST,                    LGF_TestModeMP3,                  ARM11_PROCESSOR},
     /* 31 ~ 40 */
-    {TEST_MODE_ACCEL_SENSOR_TEST,           linux_app_handler,                ARM11_PROCESSOR},
+    {TEST_MODE_ACCEL_SENSOR,           linux_app_handler,                ARM11_PROCESSOR},
     {TEST_MODE_WIFI_TEST,                   LGF_TestModeWLAN,                 ARM11_PROCESSOR},
     {TEST_MODE_MANUAL_TEST_MODE,            NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_FORMAT_MEMORY_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
@@ -2665,5 +2665,8 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
 // LGE_UPDATE_S  KimWooYul 2011-11-18
     {TEST_MODE_MLT_ENABLE,                  LGF_TestModeMLTEnableSet,         ARM11_PROCESSOR},
 // LGE_UPDATE_E  KimWooYul 2011-11-18
+    {TEST_MODE_SENSOR_CALIBRATION_TEST,           linux_app_handler,                ARM11_PROCESSOR},
+    {TEST_MODE_ACCEL_SENSOR_TEST,           linux_app_handler,                ARM11_PROCESSOR},
+    {TEST_MODE_COMPASS_SENSOR_TEST,               linux_app_handler,          ARM11_PROCESSOR},
     {TEST_MODE_XO_CAL_DATA_COPY,            NULL,                             ARM9_PROCESSOR}
 };
