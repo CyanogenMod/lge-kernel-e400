@@ -64,41 +64,6 @@ static int prev_fps_mode;
 
 /*=============================================================*/
 
-static int hi351_probe_init_done(const struct msm_camera_sensor_info *data)
-{
-	CDBG("%s : hi351 sensor_reset 0\n", __func__);
-	gpio_direction_output(data->sensor_reset, 0);
-	msleep(20);
-	gpio_direction_output(data->sensor_pwd, 0);
-	gpio_free(data->sensor_reset);
-	gpio_free(data->sensor_pwd);
-
-	hi351_ctrl->sensordata->pdata->camera_power_off();	
-		
-	return 0;
-}
-
-static int hi351_reset(const struct msm_camera_sensor_info *dev)
-{
-	int rc = 0;
-
-	rc = gpio_direction_output(dev->sensor_reset, 0);
-	CDBG("%s: reset 0 = %d, rc = %d/n",__func__, dev->sensor_reset, rc);
-	msleep(10);
-	rc = gpio_direction_output(dev->sensor_reset, 1);
-	CDBG("%s: reset 1 = %d, rc = %d/n",__func__, dev->sensor_reset, rc);
-	msleep(5);		//16mclk need before SD/SC start 
-	
-	if (rc < 0){
-		pr_err(" hi351_reset fails\n");
-
-		return -EFAULT;
-	}
-
-	CDBG(" hi351_reset finishes\n");	
-	return rc;
-}
-
 static int hi351_i2c_rxdata(u16 saddr,
 	u8 *rxdata, int length)
 {
@@ -215,6 +180,43 @@ static int32_t hi351_i2c_write_b_table(struct hi351_i2c_reg_conf const *reg_conf
 
 }
 
+static void hi351_start_stream(void)
+{
+	//int rc = 0;
+	pr_err("%s: %d  Enter \n",__func__, __LINE__);
+
+	hi351_i2c_write_b_sensor(0x03, 0x00);
+	hi351_i2c_write_b_sensor(0x01, 0xf0);/* streaming on */
+	pr_err("%s: %d  Exit \n",__func__, __LINE__);
+}
+
+static void hi351_stop_stream(void)
+{	
+	//int rc = 0;
+	pr_err("%s: %d  Enter \n",__func__, __LINE__);
+
+	hi351_i2c_write_b_sensor(0x03, 0x00);
+	hi351_i2c_write_b_sensor(0x01, 0xf1);
+
+	pr_err("%s: %d  Exit \n",__func__, __LINE__);
+}
+
+
+static int hi351_probe_init_done(const struct msm_camera_sensor_info *data)
+{
+	CDBG("%s : hi351 sensor_probe_init_done which sensor initialize failed 0\n", __func__);
+	hi351_stop_stream();
+	msleep(2);
+	gpio_direction_output(data->sensor_reset, 0);
+	msleep(1);
+	gpio_direction_output(data->sensor_pwd, 0);
+	gpio_free(data->sensor_reset);
+	gpio_free(data->sensor_pwd);
+
+	hi351_ctrl->sensordata->pdata->camera_power_off();	
+		
+	return 0;
+}
 static long hi351_reg_init(void)
 {
 	int32_t rc = 0;
@@ -262,7 +264,7 @@ static int hi351_set_effect(int effect)
 
 	if(prev_effect_mode == effect)
 	{
-		CDBG("### ; [CHECK]%s: skip this function, effect_mode -> %d\n", __func__, effect);
+		printk(KERN_ERR "### %s: skip this function, effect_mode -> %d\n", __func__, effect);
 		return rc;
 	}
 
@@ -373,7 +375,7 @@ static int hi351_set_wb(int mode)
 
 	
 	prev_balance_mode = mode;
-	msleep(10);
+	msleep(1);
 	return rc;
 }
 
@@ -425,7 +427,7 @@ static int hi351_set_iso(int mode)
 	}
 	
 	prev_iso_mode = mode;
-	msleep(10);	
+	msleep(1);	
 	return rc;
 }
 
@@ -493,7 +495,7 @@ static long hi351_set_scene_mode(int8_t mode)
 		return rc;
 
 	prev_scene_mode = mode;
-	msleep(10);
+	msleep(1);
 	return rc;
 }
 
@@ -519,28 +521,6 @@ static int32_t hi351_set_brightness(int8_t brightness)
 	}
  	return rc;
 }
-
-static void hi351_start_stream(void)
-{
-	//int rc = 0;
-	pr_err("%s: %d  Enter \n",__func__, __LINE__);
-
-	hi351_i2c_write_b_sensor(0x03, 0x00);
-	hi351_i2c_write_b_sensor(0x01, 0xf0);/* streaming on */
-	pr_err("%s: %d  Exit \n",__func__, __LINE__);
-}
-
-static void hi351_stop_stream(void)
-{	
-	//int rc = 0;
-	pr_err("%s: %d  Enter \n",__func__, __LINE__);
-
-	hi351_i2c_write_b_sensor(0x03, 0x00);
-	hi351_i2c_write_b_sensor(0x01, 0xf1);
-
-	pr_err("%s: %d  Exit \n",__func__, __LINE__);
-}
-
 
 static int32_t hi351_set_csi(void) {
 	int32_t rc = 0;
@@ -591,7 +571,7 @@ static long hi351_set_sensor_mode(int mode)
 				else
 					break;
 			}
-			msleep(10);
+			msleep(1);
 			hi351_start_stream();
 		}
 		break;
@@ -605,9 +585,9 @@ static long hi351_set_sensor_mode(int mode)
 			else
 				break;
 		}
-		msleep(10);
+		msleep(1);
 		hi351_start_stream();
-		msleep(50);
+		msleep(10);
 		
 		break;		
 	default:
@@ -630,6 +610,8 @@ static int hi351_set_Fps(int mode)
 		printk(KERN_ERR "###  [CHECK]%s: skip this function, prev_fps_mode -> %d\n", __func__, mode);
 		return rc;
 	}
+
+	printk(KERN_ERR "### %s: mode -> %d\n", __func__, mode);
 	
 	switch (mode) {
 	case FRAME_RATE_AUTO:
@@ -660,7 +642,7 @@ static int hi351_set_Fps(int mode)
 	   }
 
 	prev_fps_mode = mode;
-	
+	msleep(10);		//add for stablize changing fps_mode
 	return rc;
 }
 
@@ -750,7 +732,6 @@ static int hi351_sensor_init_probe(const struct msm_camera_sensor_info *data)
 
 	data->pdata->camera_power_on();
 
-	rc = hi351_reset(data);
 	if (rc < 0) {
 		CDBG("reset failed!\n");
 		goto init_probe_fail;
