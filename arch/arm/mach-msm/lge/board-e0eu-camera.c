@@ -247,7 +247,7 @@ static int camera_power_on_rear(void)
 	gpio_set_value(GPIO_CAM_RESET, 1);
 	pr_err("%s: gpio_set_value(GPIO_CAM_RESET, 1) final\n", __func__);
 
-	mdelay(10);
+	mdelay(1);
 
 	mutex_unlock(&camera_power_mutex);
 
@@ -261,7 +261,7 @@ static int camera_power_off_rear(void)
 
 	gpio_direction_output(GPIO_CAM_RESET, 0);
 
-	mdelay(10);
+	mdelay(1);
 
 	gpio_direction_output(GPIO_CAM_PWDN, 0);
 
