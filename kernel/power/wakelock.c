@@ -304,20 +304,15 @@ static DEFINE_TIMER(suspend_sys_sync_timer, suspend_sys_sync_handler, 0, 0);
 #define SUSPEND_SYS_SYNC_TIMEOUT (HZ/4)
 static void suspend_sys_sync_handler(unsigned long arg)
 {
-	pr_info("suspend aborted....while waiting for sys_sync_1\n");
 	if (suspend_sys_sync_count == 0) {
 		complete(&suspend_sys_sync_comp);
-		pr_info("suspend aborted....while waiting for sys_sync_2\n");
 	} else if (has_wake_lock(WAKE_LOCK_SUSPEND)) {
 		suspend_sys_sync_abort = true;
 		complete(&suspend_sys_sync_comp);
-		pr_info("suspend aborted....while waiting for sys_sync_3\n");
-	}// else {
+	} else {
 		mod_timer(&suspend_sys_sync_timer, jiffies +
 				SUSPEND_SYS_SYNC_TIMEOUT);
-		pr_info("additional mod_timer ... \n");
-	//}
-	pr_info("suspend aborted....while waiting for sys_sync_4\n");
+	}
 	
 }
 
@@ -325,22 +320,17 @@ int suspend_sys_sync_wait(void)
 {
 	suspend_sys_sync_abort = false;
 
-	pr_info("suspend aborted....while waiting for sys_sync_5\n");
 
 	if (suspend_sys_sync_count != 0) {
 		mod_timer(&suspend_sys_sync_timer, jiffies +
 				SUSPEND_SYS_SYNC_TIMEOUT);
 		wait_for_completion(&suspend_sys_sync_comp);
-		pr_info("suspend aborted....while waiting for sys_sync_6\n");
 	}
 	if (suspend_sys_sync_abort) {
 		pr_info("suspend aborted....while waiting for sys_sync\n");
 		return -EAGAIN;
 	}
 
-	pr_info("suspend aborted....while waiting for sys_sync_7\n");
-		mod_timer(&suspend_sys_sync_timer, jiffies +
-		                                SUSPEND_SYS_SYNC_TIMEOUT);
 	return 0;
 }
 
