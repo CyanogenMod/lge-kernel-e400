@@ -72,7 +72,7 @@ actual tavaura registers */
 struct tavarua_device {
 	struct video_device *videodev;
 	/* driver management */
-	int users;
+	atomic_t users;
 	/* top level driver data */
 	struct marimba *marimba;
 	struct device *dev;
@@ -1695,14 +1695,12 @@ static int tavarua_fops_open(struct file *file)
 	char buffer[] = {0x00, 0x48, 0x8A, 0x8E, 0x97, 0xB7};
 	int bahama_present = -ENODEV;
 
-	mutex_lock(&radio->lock);
-	if (radio->users) {
-		mutex_unlock(&radio->lock);
+	if (!atomic_dec_and_test(&radio->users)) {
+		pr_err("%s: Device already in use."
+			"Try again later", __func__);
+		atomic_inc(&radio->users);
 		return -EBUSY;
-	} else {
-		radio->users++;
 	}
-	mutex_unlock(&radio->lock);
 
 	/* initial gpio pin config & Power up */
 	retval = radio->pdata->fm_setup(radio->pdata);
@@ -1882,7 +1880,7 @@ config_i2s_err:
 	radio->pdata->fm_shutdown(radio->pdata);
 open_err_setup:
 	radio->handle_irq = 1;
-	radio->users = 0;
+	atomic_inc(&radio->users);
 	return retval;
 }
 
@@ -1922,8 +1920,11 @@ static int tavarua_fops_release(struct file *file)
 		{ 0x00, 0x80 }
 	};
 
-	if (!radio)
+	if (!radio) {
+		pr_err("%s: Radio device not available...", __func__);
 		return -ENODEV;
+	}
+
 	FMDBG("In %s", __func__);
 
 	/* disable radio ctrl */
@@ -2026,7 +2027,7 @@ static int tavarua_fops_release(struct file *file)
 	if (radio->pdata->config_i2s_gpio != NULL)
 		radio->pdata->config_i2s_gpio(FM_I2S_OFF);
 	radio->handle_irq = 1;
-	radio->users = 0;
+	atomic_inc(&radio->users);
 	radio->marimba->mod_id = SLAVE_ID_BAHAMA;
 	return 0;
 }
@@ -3521,9 +3522,7 @@ static int tavarua_suspend(struct platform_device *pdev, pm_message_t state)
 	int users = 0;
 	printk(KERN_INFO DRIVER_NAME "%s: radio suspend\n\n", __func__);
 	if (radio) {
-		mutex_lock(&radio->lock);
-		users = radio->users;
-		mutex_unlock(&radio->lock);
+		users = atomic_read(&radio->users);
 		if (users) {
 			retval = tavarua_disable_interrupts(radio);
 			if (retval < 0) {
@@ -3554,9 +3553,7 @@ static int tavarua_resume(struct platform_device *pdev)
 	int users = 0;
 	printk(KERN_INFO DRIVER_NAME "%s: radio resume\n\n", __func__);
 	if (radio) {
-		mutex_lock(&radio->lock);
-		users = radio->users;
-		mutex_unlock(&radio->lock);
+		users = atomic_read(&radio->users);
 
 		if (users) {
 			retval = tavarua_setup_interrupts(radio,
@@ -3705,8 +3702,8 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 			goto err_bufs;
 		}
 	}
-	/* init xfr status */
-	radio->users = 0;
+	/* initializing the device count  */
+	atomic_set(&radio->users, 1);
 	radio->xfr_in_progress = 0;
 	radio->xfr_bytes_left = 0;
 	for (i = 0; i < TAVARUA_XFR_MAX; i++)

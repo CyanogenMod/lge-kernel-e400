@@ -140,7 +140,7 @@ typedef enum
   WEBDLOAD_DEL_IMG_DRV			= 0x15, /* 21 */
   WEBDLOAD_GET_USB_STRM_CMD		= 0x16, /* 22 */
   WEBDLOAD_READ_BL_VER			= 0x17, /* 23 */
-  WEBDLOAD_DL_RESET			= 0x18, /* 24 added by obd...for change dload and reset*/
+  WEBDLOAD_EMMC_WRITE_ALL		= 0x18, /* 24 added by obd...for change dload and reset*/
   /*--------------------*/
 //#ifdef LG_FW_WEB_DOWNLOAD_MEID_INFO
   WEBDLOAD_GET_MEID			= 0x31, /*49*/ // Get MEID
