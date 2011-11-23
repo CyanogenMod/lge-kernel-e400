@@ -22,13 +22,14 @@ webdload_type webdload;
 unsigned char si_page_buffer[BACKUP_BYTE_MAX_SIZE];
 extern unsigned int web_status_bytes_pos_in_emmc;
 unsigned int select_sector = (512 * 32765);			// BLB : 32768 block
+unsigned long web_status_bytes_pos_in_emmc_m3 = 0xE6C00000;//dong.kim@lge.com 20111123 DLOAD partition start address sector is 0x736000(7561216), 512 * 7561216 
 
 boolean diag_Flag_Data_Init(void)
 {
     int mtd_op_result = 0;
 
     /* ==========> eMMC data read   ============ */
-    mtd_op_result = lge_read_block(web_status_bytes_pos_in_emmc + select_sector, si_page_buffer, BACKUP_BYTE_MAX_SIZE);
+    mtd_op_result = lge_read_block(web_status_bytes_pos_in_emmc_m3, si_page_buffer, BACKUP_BYTE_MAX_SIZE);
 
     if( mtd_op_result != BACKUP_BYTE_MAX_SIZE )
     {
@@ -188,7 +189,7 @@ void webdload_common_cmd
 
 	case WEBDLOAD_CLEAR_SIB:
 	    /* ==========> eMMC data erase   ============ */
-	    mtd_op_result = lge_erase_block(web_status_bytes_pos_in_emmc + select_sector, (size_t)BACKUP_BYTE_MAX_SIZE);
+	    mtd_op_result = lge_erase_block(web_status_bytes_pos_in_emmc_m3, (size_t)BACKUP_BYTE_MAX_SIZE);
 
 	    if( mtd_op_result != (BACKUP_BYTE_MAX_SIZE) )
 	    {
@@ -221,7 +222,7 @@ void webdload_common_cmd
 	case WEBDLOAD_SET_AUTH_MARK:			case WEBDLOAD_WRITE_STEP_END:		case WEBDLOAD_WRITE_CNT:
 	case WEBDLOAD_WRITE_BIN_VER:			case WEBDLOAD_WRITE_SUB_REV:		case WEBDLOAD_WRITE_LANGUAGE:
 	case WEBDLOAD_WRITE_RSVD_VAL1:			case WEBDLOAD_WRITE_RSVD_VAL2:		case WEBDLOAD_WRITE_RSVD_ARRAY1:
-	case WEBDLOAD_WRITE_RSVD_ARRAY2:		case WEBDLOAD_DL_RESET:
+	case WEBDLOAD_WRITE_RSVD_ARRAY2:		case WEBDLOAD_EMMC_WRITE_ALL:
 	    {
 		if( sub_cmd == WEBDLOAD_SET_AUTH_MARK )
 		{
@@ -277,12 +278,12 @@ void webdload_common_cmd
 		{
 		    memcpy( (void*)&((status_info_type*)si_page_buffer)->reserved_array2, (void*)req_ptr->req_data.reserved_array2, RSVD_ARRAY_LEN );
 		}
-		else if( sub_cmd == WEBDLOAD_DL_RESET )
+		else if( sub_cmd == WEBDLOAD_EMMC_WRITE_ALL )
 		{
 		    ((status_info_type*)si_page_buffer)->web_dload_entry = WEB_DLOAD_ENTRY; /* webdload status save */
 			
 		    /* ==========> eMMC data write   ============ */
-		    mtd_op_result = lge_write_block(web_status_bytes_pos_in_emmc + select_sector, si_page_buffer, BACKUP_BYTE_MAX_SIZE);
+		    mtd_op_result = lge_write_block(web_status_bytes_pos_in_emmc_m3, si_page_buffer, BACKUP_BYTE_MAX_SIZE);
 
 		    if( mtd_op_result != (BACKUP_BYTE_MAX_SIZE) )
 		    {
@@ -291,7 +292,7 @@ void webdload_common_cmd
 				return;
 		    }/* else noraml */
 
-
+			rsp_ptr->success = TRUE;
 		    /* RPC∑Œ reset ø‰√ª */
 		    //webDload_rpc_srd_cmmand(req_ptr, rsp_ptr); /* send req packet to  server & receive rsp_ptr  packe form server.*/
 
