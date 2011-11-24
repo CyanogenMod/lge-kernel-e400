@@ -266,12 +266,15 @@ long has_wake_lock(int type)
 
 static void suspend_sys_sync(struct work_struct *work)
 {
+	int ret = 0;
 #if 0
 	if (debug_mask & DEBUG_SUSPEND)
 #endif
 		pr_info("PM: Syncing filesystems...\n");
 
-	sys_sync();
+	ret = sys_sync();
+	if(ret == 0)
+		pr_info("suspend_sys_sync completed...\n");
 
 #if 0
 	if (debug_mask & DEBUG_SUSPEND)
@@ -346,7 +349,7 @@ static void suspend(struct work_struct *work)
 	}
 
 	entry_event_num = current_event_num;
-	suspend_sys_sync_queue();
+	//suspend_sys_sync_queue();
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("suspend: enter suspend\n");
 	ret = pm_suspend(requested_suspend_state);
@@ -542,12 +545,15 @@ static void wake_lock_internal(
 void wake_lock(struct wake_lock *lock)
 {
 	wake_lock_internal(lock, 0, 0);
+	printk(KERN_INFO"%s: %s\n", __func__, lock->name);
 }
 EXPORT_SYMBOL(wake_lock);
 
 void wake_lock_timeout(struct wake_lock *lock, long timeout)
 {
 	wake_lock_internal(lock, timeout, 1);
+	printk(KERN_INFO"%s: %s\n", __func__, lock->name);
+	//wake_lock_internal(lock, 0, 0);
 }
 EXPORT_SYMBOL(wake_lock_timeout);
 
@@ -560,6 +566,7 @@ void wake_unlock(struct wake_lock *lock)
 #ifdef CONFIG_WAKELOCK_STAT
 	wake_unlock_stat_locked(lock, 0);
 #endif
+	printk(KERN_INFO"%s: %s\n", __func__, lock->name);
 	if (debug_mask & DEBUG_WAKE_LOCK)
 		pr_info("wake_unlock: %s\n", lock->name);
 	lock->flags &= ~(WAKE_LOCK_ACTIVE | WAKE_LOCK_AUTO_EXPIRE);
