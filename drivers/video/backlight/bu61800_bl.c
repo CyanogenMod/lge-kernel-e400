@@ -395,6 +395,14 @@ static void bu61800_wakeup(struct bu61800_driver_data *drvdata)
 }
 #endif /* CONFIG_PM */
 
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
+extern int display_on; 
+int Is_Backlight_Set = 0;
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 static int bu61800_send_intensity(struct bu61800_driver_data *drvdata, int level)
 {
      int current_value=0;
@@ -415,6 +423,16 @@ static int bu61800_send_intensity(struct bu61800_driver_data *drvdata, int level
               current_value = 0x63;			
 			  dprintk("Invalid setting level = %d\n", level);
 			}
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
+           if((display_on==0) && (level!=0)) 
+           	{
+    		   drvdata->intensity = level;
+	          return 0;
+           	}
+#endif		
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 
 /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-05] : bl dimming error */
 		if ((drvdata->intensity != level)&& (level != 0))
@@ -422,16 +440,21 @@ static int bu61800_send_intensity(struct bu61800_driver_data *drvdata, int level
 			dprintk("BACK LIGHT SETTING....\n");
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, LCD_BL_ON);
+			Is_Backlight_Set = 1; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 		}
 		else if(level == 0)
 		{
 			dprintk("BACK LIGHT OFF\n");		
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
 			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, LCD_BL_OFF);
+			Is_Backlight_Set = 0; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 		}
 		else
 		{
-		   //Do nothing
+		      Is_Backlight_Set = 1; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 		}
 /* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-05] : bl dimming error */
 		
@@ -443,6 +466,44 @@ static int bu61800_get_intensity(struct bu61800_driver_data *drvdata)
 {
 	return drvdata->intensity;
 }
+
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
+int bu61800_force_set(void)
+{
+	struct bu61800_driver_data *drvdata = bu61800_ref;
+	int brightness;
+	int current_value;
+
+	brightness = bu61800_get_intensity(drvdata);
+	current_value = 0x63*brightness/LCD_LED_MAX;
+
+	 dprintk("[bu61800_force_set] brightness= %d,current_value is 0x%x\n",brightness, current_value);
+
+		if (brightness != 0)
+	    {
+			dprintk("BACK LIGHT AFTER SETTING....\n");
+			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
+			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, LCD_BL_ON);
+			Is_Backlight_Set = 1; 
+			
+		}
+		else
+		{
+			dprintk("BACK LIGHT  AFTER OFF\n");		
+			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
+			bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, LCD_BL_OFF);
+			Is_Backlight_Set = 0; 
+		}
+		
+       return 0;
+	
+}
+
+EXPORT_SYMBOL(bu61800_force_set);
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 
 
 #ifdef CONFIG_PM
