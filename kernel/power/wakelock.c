@@ -545,15 +545,12 @@ static void wake_lock_internal(
 void wake_lock(struct wake_lock *lock)
 {
 	wake_lock_internal(lock, 0, 0);
-	printk(KERN_INFO"%s: %s\n", __func__, lock->name);
 }
 EXPORT_SYMBOL(wake_lock);
 
 void wake_lock_timeout(struct wake_lock *lock, long timeout)
 {
 	wake_lock_internal(lock, timeout, 1);
-	printk(KERN_INFO"%s: %s\n", __func__, lock->name);
-	//wake_lock_internal(lock, 0, 0);
 }
 EXPORT_SYMBOL(wake_lock_timeout);
 
@@ -566,7 +563,6 @@ void wake_unlock(struct wake_lock *lock)
 #ifdef CONFIG_WAKELOCK_STAT
 	wake_unlock_stat_locked(lock, 0);
 #endif
-	printk(KERN_INFO"%s: %s\n", __func__, lock->name);
 	if (debug_mask & DEBUG_WAKE_LOCK)
 		pr_info("wake_unlock: %s\n", lock->name);
 	lock->flags &= ~(WAKE_LOCK_ACTIVE | WAKE_LOCK_AUTO_EXPIRE);
