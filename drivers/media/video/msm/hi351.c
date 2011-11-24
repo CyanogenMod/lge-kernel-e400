@@ -574,6 +574,7 @@ static long hi351_set_sensor_mode(int mode)
 			}
 			msleep(1);
 			hi351_start_stream();
+			msleep(10);
 		}
 		break;
 	case SENSOR_SNAPSHOT_MODE:
@@ -586,9 +587,9 @@ static long hi351_set_sensor_mode(int mode)
 			else
 				break;
 		}
-		msleep(1);
+		msleep(5);
 		hi351_start_stream();
-		msleep(10);
+		msleep(50);
 		
 		break;		
 	default:
