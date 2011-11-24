@@ -61,7 +61,10 @@ static atomic_t bma222_report_enabled = ATOMIC_INIT(0);
 static void bma222_early_suspend(struct early_suspend *h);
 static void bma222_late_resume(struct early_suspend *h);
 #endif
-
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+static atomic_t bma222_event_cnt = ATOMIC_INIT(0);
+static atomic_t bma222_diag_test = ATOMIC_INIT(0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 /* LGE_CHANGE_S */
 struct acceleration_platform_data *accel_pdata;
 /*  bandwidth Possible Values :
@@ -294,6 +297,9 @@ static void run_suspend_resume(int mode)
 			accel_pdata->power(1);
 #else
 			accel_power(1);
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+			atomic_set(&bma222_event_cnt,0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 #endif
 			mdelay(2);
 			bma222_set_mode(bma222_MODE_NORMAL);
@@ -320,6 +326,9 @@ static void run_suspend_resume(int mode)
 		accel_pdata->power(0);
 #else
 		accel_power(0);
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+		atomic_set(&bma222_event_cnt,0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 #endif
     }
 	return;
@@ -392,60 +401,74 @@ struct device_attribute *attr, const char *buf, size_t count)
 static ssize_t show_bma222_sensordataX(struct device *dev, struct device_attribute *attr, char *buf)
 {
     char strbuf[BMA222_BUFSIZE];
-    int x = 0, y = 0, z = 0;
 
-    bma222acc_t acc;
-
-    bma222_read_accel_xyz(&acc);
+    int xyz[3];
+    accsns_get_acceleration_data(xyz);
 
     memset(strbuf, 0x00, BMA222_BUFSIZE);
-
-    /* snprintf(strbuf, PAGE_SIZE, "%d %d %d", (int)acc.x, (int)acc.y, (int)acc.z); */
-    x = ((int)acc.x);
-    y = ((int)acc.y);
-    z = ((int)acc.z);
-    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", x, y, z);
-    return snprintf(buf, PAGE_SIZE, "%d\n", x);
+    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", xyz[0], xyz[1], xyz[2]);
+    return snprintf(buf, PAGE_SIZE, "%d\n", xyz[0]);
 }
 
 static ssize_t show_bma222_sensordataY(struct device *dev, \
 struct device_attribute *attr, char *buf)
 {
     char strbuf[BMA222_BUFSIZE];
-    int x = 0, y = 0, z = 0;
 
-    bma222acc_t acc;
-
-    bma222_read_accel_xyz(&acc);
+    int xyz[3];
+    accsns_get_acceleration_data(xyz);
 
     memset(strbuf, 0x00, BMA222_BUFSIZE);
-
-    /* snprintf(strbuf, PAGE_SIZE, "%d %d %d", (int)acc.x, (int)acc.y, (int)acc.z); */
-    x = ((int)acc.x);
-    y = ((int)acc.y);
-    z = ((int)acc.z);
-    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", x, y, z);
-    return snprintf(buf, PAGE_SIZE, "%d\n", y);
+    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", xyz[0], xyz[1], xyz[2]);
+    return snprintf(buf, PAGE_SIZE, "%d\n", xyz[1]);
 }
 
 static ssize_t show_bma222_sensordataZ(struct device *dev, \
 struct device_attribute *attr, char *buf)
 {
     char strbuf[BMA222_BUFSIZE];
-    int x = 0, y = 0, z = 0;
 
-    bma222acc_t acc;
-
-    bma222_read_accel_xyz(&acc);
+    int xyz[3];
+    accsns_get_acceleration_data(xyz);
 
     memset(strbuf, 0x00, BMA222_BUFSIZE);
+    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", xyz[0], xyz[1], xyz[2]);
+    return snprintf(buf, PAGE_SIZE, "%d\n", xyz[2]);
+}
 
-    /* snprintf(strbuf, PAGE_SIZE, "%d %d %d", (int)acc.x, (int)acc.y, (int)acc.z); */
-    x = ((int)acc.x);
-    y = ((int)acc.y);
-    z = ((int)acc.z);
-    snprintf(strbuf, PAGE_SIZE, "%-8d %-8d %-8d", x, y, z);
-    return snprintf(buf, PAGE_SIZE, "%d\n", z);
+static ssize_t show_bma222_cnt(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+    char strbuf[256];
+    snprintf(strbuf, PAGE_SIZE, "%d", atomic_read(&bma222_event_cnt));
+    printk(KERN_INFO "show_bma222_cnt %s\n",strbuf);
+    return snprintf(buf, PAGE_SIZE, "%s\n", strbuf);
+}
+
+static ssize_t store_bma222_cnt(struct device *dev,\
+struct device_attribute *attr, const char *buf, size_t count)
+{
+    int cnt = 0;
+    sscanf(buf, "%d", &cnt );
+    atomic_set(&bma222_event_cnt,cnt);	
+    return 0;
+}
+
+static ssize_t show_bma222_diag(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+    char strbuf[256];
+    snprintf(strbuf, PAGE_SIZE, "%d", atomic_read(&bma222_diag_test));
+    return snprintf(buf, PAGE_SIZE, "%s\n", strbuf);
+}
+
+static ssize_t store_bma222_diag(struct device *dev,\
+struct device_attribute *attr, const char *buf, size_t count)
+{
+    int diag = 0;
+    sscanf(buf, "%d", &diag );
+    atomic_set(&bma222_diag_test ,diag);	
+    return 0;
 }
 
 
@@ -462,6 +485,8 @@ static DEVICE_ATTR(bma222_x, S_IRUGO, show_bma222_sensordataX, NULL);
 static DEVICE_ATTR(bma222_y, S_IRUGO, show_bma222_sensordataY, NULL);
 
 static DEVICE_ATTR(bma222_z, S_IRUGO, show_bma222_sensordataZ, NULL);
+static DEVICE_ATTR(cnt,  S_IRUSR|S_IRGRP|S_IWUSR|S_IWGRP, show_bma222_cnt, store_bma222_cnt);
+static DEVICE_ATTR(diag,  S_IRUSR|S_IRGRP|S_IWUSR|S_IWGRP, show_bma222_diag, store_bma222_diag);
 
 static struct attribute *bma222_attributes[] = {
     &dev_attr_bma222_enable.attr,
@@ -471,6 +496,8 @@ static struct attribute *bma222_attributes[] = {
 	&dev_attr_bma222_x.attr,
 	&dev_attr_bma222_y.attr,
 	&dev_attr_bma222_z.attr,
+	&dev_attr_cnt.attr,
+	&dev_attr_diag.attr,
     NULL,
 };
 
@@ -494,7 +521,16 @@ int accsns_get_acceleration_data(int *xyz)
     xyz[0] = ((int)acc.x) * 4;
     xyz[1] = ((int)acc.y) * 4;
     xyz[2] = ((int)acc.z) * 4;
-
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+    if(atomic_read(&bma222_diag_test) ==1){
+   	  if(atomic_read(&bma222_event_cnt) < (INT_MAX / 2))
+	  {
+		  atomic_inc(&bma222_event_cnt);
+	  }else{
+		  printk("accsns_get_acceleration_data (bma222_event_cnt is MAX)");
+	  }
+   }
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 #ifdef LGE_DEBUG
 	/*** DEBUG OUTPUT - REMOVE ***/
 	printk("Acc_I2C, x:%d, y:%d, z:%d\n", xyz[0], xyz[1], xyz[2]);
@@ -2227,7 +2263,9 @@ static int bma222_probe(struct i2c_client *client,
 	accel_pdata = client->dev.platform_data;
 
     accel_pdata->power(1);
-
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+	atomic_set(&bma222_event_cnt,0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 	mdelay(2);
 
 	atomic_set(&bma222_report_enabled, 1);

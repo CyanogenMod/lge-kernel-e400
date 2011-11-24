@@ -264,7 +264,7 @@ static int hi351_set_effect(int effect)
 
 	if(prev_effect_mode == effect)
 	{
-		printk(KERN_ERR "### %s: skip this function, effect_mode -> %d\n", __func__, effect);
+		printk(KERN_ERR "###  [CHECK]%s: skip this function, effect_mode -> %d\n", __func__, effect);
 		return rc;
 	}
 
@@ -321,7 +321,7 @@ static int hi351_set_wb(int mode)
 
 	if(prev_balance_mode == mode)
 	{
-		printk(KERN_ERR "### %s: skip this function, wb_mode -> %d\n", __func__, mode);
+		printk(KERN_ERR "###  [CHECK]%s: skip this function, wb_mode -> %d\n", __func__, mode);
 		return rc;
 	}
        printk(KERN_ERR "### %s: mode -> %d\n", __func__, mode);
@@ -423,7 +423,7 @@ static int hi351_set_iso(int mode)
 		break;
 
 	default:
-		rc = -EINVAL;
+		return -EINVAL;
 	}
 	
 	prev_iso_mode = mode;
@@ -489,6 +489,7 @@ static long hi351_set_scene_mode(int8_t mode)
 
 	default:
 		CDBG("Camera Scene WRONG\n");
+		return -EINVAL;
 		
 	}
 	if (rc < 0)
@@ -603,15 +604,13 @@ static int hi351_set_Fps(int mode)
 {
 	int32_t rc = 0;
 	
-	printk(KERN_ERR "hi351_set_Fps mode = %d \n ",mode);
-	
 	if(prev_fps_mode == mode)
 	{
 		printk(KERN_ERR "###  [CHECK]%s: skip this function, prev_fps_mode -> %d\n", __func__, mode);
 		return rc;
 	}
 
-	printk(KERN_ERR "### %s: mode -> %d\n", __func__, mode);
+	printk(KERN_ERR "### %s: hi351_set_Fps mode -> %d\n", __func__, mode);
 	
 	switch (mode) {
 	case FRAME_RATE_AUTO:
@@ -642,6 +641,8 @@ static int hi351_set_Fps(int mode)
 	   }
 
 	prev_fps_mode = mode;
+	msleep(1);
+	hi351_start_stream();
 	msleep(10);		//add for stablize changing fps_mode
 	return rc;
 }
