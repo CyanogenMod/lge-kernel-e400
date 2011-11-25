@@ -67,9 +67,9 @@ config VIDEO_MEDIA
 	tristate
 	default (DVB_CORE && (VIDEO_DEV = n)) || (VIDEO_DEV && (DVB_CORE = n)) || (DVB_CORE && VIDEO_DEV)
 
-config ONESEG
-	bool
-	default y
+#config ONESEG
+#	bool
+#	default y
 
 comment "Multimedia drivers"
 

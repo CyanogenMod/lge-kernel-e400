@@ -638,7 +638,13 @@ static void mcs8000_work(struct work_struct *work)
 	uint8_t buf[TS_READ_REGS_LEN];
   int keyID 	= 0;
 	int iTouchedCnt;
-
+	
+	/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
+	: For an abnormal condition of touchscreen after the phone sleeps on and off*/
+	int Is_Touch_Valid = 0;
+	/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-23] 
+	: For an abnormal condition of touchscreen after the phone sleeps on and off*/ 
+	
 #if DEBUG_PRINT
 	printk(KERN_ERR "melfas_ts_work_func\n");
 
@@ -651,7 +657,13 @@ static void mcs8000_work(struct work_struct *work)
 TD1416085584 :  After sleep on and off while sensing a touchscreen,
 Touchscreen doesn't work*/
 	if(is_touch_suspend == 1) 
-	{				
+	{	
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/				
+          msleep(20); //jwseo_test
+	     enable_irq(ts->client->irq);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-23] 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/ 		  
 		return;
 	}
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
@@ -693,6 +705,12 @@ Touchscreen doesn't work*/
 
 	if(read_num>0)
 	{
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/	
+	    Is_Touch_Valid = 1;
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-23] 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/ 
+		
 		buf[0] = TS_READ_START_ADDR2;
 
 		ret = i2c_master_send(ts->client, buf, 1);
@@ -783,6 +801,19 @@ Touchscreen doesn't work*/
 		}
 		input_sync(ts->input_dev);
 	}			
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/
+      if(Is_Touch_Valid)
+       msleep(1);
+       else
+      	{
+         printk("mcs8000_work : Invalid data INT happen !!! Added more delay !!!");
+         msleep(20); 
+       }
+ /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-23] 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/  
+       
 	enable_irq(ts->client->irq);
 }
 
@@ -850,8 +881,13 @@ static int mcs8000_ts_on(void)
 		printk(KERN_ERR "mcs8000_ts_on power on failed\n");
 		goto err_power_failed;
 	}
-	msleep(10);
+	
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/	
+	msleep(30);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-23] 
 
+: For an abnormal condition of touchscreen after the phone sleeps on and off*/ 
 err_power_failed:
 	return ret;
 }

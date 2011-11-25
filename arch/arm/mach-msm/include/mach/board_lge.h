@@ -24,6 +24,27 @@
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 
+/* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-25]
+	gpu instead of MDP because of saving RAM
+*/
+#if CONFIG_MACH_MSM7X25A_E0EU
+#ifdef CONFIG_ARCH_MSM7X27A
+
+//#define MSM_PMEM_MDP_SIZE       0x1600000// 22MB
+//#define MSM_PMEM_MDP_SIZE       0x026000 //no cam preview, no 3gp play 
+#define MSM_PMEM_MDP_SIZE       0x028000 //Preview .Video Playback Ok
+
+//#define MSM_PMEM_ADSP_SIZE      0x96F000
+#define MSM_PMEM_ADSP_SIZE      0x1200000
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+#define MSM_FB_SIZE             0x78000
+#else
+#define MSM_FB_SIZE             0x4B000
+#endif
+#endif
+
+#else
+
 #ifdef CONFIG_ARCH_MSM7X27A
 #define MSM_PMEM_MDP_SIZE       0x1DD1000
 #define MSM_PMEM_ADSP_SIZE      0x1000000
@@ -33,6 +54,8 @@
 #define MSM_FB_SIZE             0x195000
 #endif
 #endif
+#endif
+/* LGE_CHANGE_E : wonsang.yoon@lge.com [2011-12-25] */
 
 /* board revision information */
 enum {
