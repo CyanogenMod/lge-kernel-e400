@@ -35,7 +35,8 @@
 #define MSM_PMEM_MDP_SIZE       0x028000 //Preview .Video Playback Ok
 
 //#define MSM_PMEM_ADSP_SIZE      0x96F000
-#define MSM_PMEM_ADSP_SIZE      0x1200000
+//#define MSM_PMEM_ADSP_SIZE      0x1200000
+#define MSM_PMEM_ADSP_SIZE      0xD00000 //13MB
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_SIZE             0x78000
 #else
