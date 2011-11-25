@@ -57,7 +57,15 @@ struct pm_qos_request_list *tovis_pm_qos_req;
 /* For some reason the contrast set at init time is not good. Need to do
 * it again
 */
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 0 
 static boolean display_on = FALSE;
+#else
+int display_on = FALSE; 
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 
 /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-07] :SE 85591 remove white screen during power on */
 #define LCD_RESET_SKIP 1
@@ -115,7 +123,13 @@ static void msm_fb_ebi2_power_save(int on)
 
 static int ilitek_qvga_disp_off(struct platform_device *pdev)
 {
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
 	struct msm_panel_ilitek_pdata *pdata = tovis_qvga_panel_pdata;
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 
 	printk("%s: display off...", __func__);
 	if (!disp_initialized)
@@ -130,8 +144,12 @@ static int ilitek_qvga_disp_off(struct platform_device *pdev)
 	EBI2_WRITE16C(DISP_CMD_PORT, 0x10); // SPLIN
 	mdelay(120);
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1 
 	if(pdata->gpio)
 		gpio_set_value(pdata->gpio, 0);
+#endif	
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 
 	msm_fb_ebi2_power_save(0);
 	display_on = FALSE;
@@ -151,6 +169,8 @@ static void ilitek_qvga_disp_set_rect(int x, int y, int xres, int yres) // xres 
 static void do_ilitek_init(struct platform_device *pdev)
 {
 #if defined (CONFIG_MACH_MSM7X25A_E0EU)
+             int x,y; 
+
 		 /* EXTC Option*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xcf);
 		EBI2_WRITE16D(DISP_DATA_PORT,0x00);
@@ -284,17 +304,20 @@ static void do_ilitek_init(struct platform_device *pdev)
 
 			mdelay(120);
 
-		/*-- bootlogo is displayed at oemsbl
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
 			EBI2_WRITE16C(DISP_CMD_PORT,0x2c); // Write memory start
 			for(y = 0; y < 320; y++) {
 				int pixel = 0x0;
 				for(x= 0; x < 240; x++) {
-					EBI2_WRITE16D(DISP_DATA_PORT,pixel); // 1
+					EBI2_WRITE16D(DISP_DATA_PORT,pixel); 
 				}
 			}
+			mdelay(30);
+#endif			
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+		   
 
-			mdelay(50);
-		*/
 			EBI2_WRITE16C(DISP_CMD_PORT,0x29); // Display On	
 
 #else
@@ -555,6 +578,13 @@ static void do_lgd_init(struct platform_device *pdev)
 	EBI2_WRITE16C(DISP_CMD_PORT, 0x29);
 }
 
+
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+extern int Is_Backlight_Set ; 
+extern int bu61800_force_set(void);
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
+
 static int ilitek_qvga_disp_on(struct platform_device *pdev)
 {
 	struct msm_panel_ilitek_pdata *pdata = tovis_qvga_panel_pdata;
@@ -568,6 +598,8 @@ static int ilitek_qvga_disp_on(struct platform_device *pdev)
 	} else {
 		msm_fb_ebi2_power_save(1);
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
 /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-07] :SE 85591 remove white screen during power on */
 if(IsFirstDisplayOn==0)
 {
@@ -584,6 +616,9 @@ if(IsFirstDisplayOn==0)
 		if(IsFirstDisplayOn > 0) 
 		 IsFirstDisplayOn-- ;
 /* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-07] :SE 85591 remove white screen during power on */
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 		
 		if(pdata->maker_id == PANEL_ID_LGDISPLAY)
 			do_lgd_init(pdev);
@@ -594,6 +629,17 @@ if(IsFirstDisplayOn==0)
 	pm_qos_update_request(tovis_pm_qos_req, 65000);
 	display_on = TRUE;
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
+      if(!Is_Backlight_Set) 
+      	{
+            mdelay(50);
+	     bu61800_force_set();    //backlight current level force setting here
+     	}
+#endif
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
+	  
 	return 0;
 }
 
