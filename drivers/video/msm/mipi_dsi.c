@@ -123,8 +123,10 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	local_bh_enable();
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
+	{
+		printk("%s :: mipi_dsi_off \n"__func__);
 		mipi_dsi_pdata->dsi_power_save(0);
-
+	}
 	if (mdp_rev >= MDP_REV_41)
 		mutex_unlock(&mfd->dma->ov_mutex);
 	else
@@ -155,8 +157,10 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	pinfo = &mfd->panel_info;
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
+	{
+		printk("%s :: mipi_dsi_on \n"__func__);
 		mipi_dsi_pdata->dsi_power_save(1);
-
+	}
 	clk_rate = mfd->fbi->var.pixclock;
 	clk_rate = min(clk_rate, mfd->panel_info.clk_max);
 
