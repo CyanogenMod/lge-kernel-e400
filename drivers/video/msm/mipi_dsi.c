@@ -124,7 +124,7 @@ static int mipi_dsi_off(struct platform_device *pdev)
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 	{
-		printk("%s :: mipi_dsi_off \n"__func__);
+		printk("%s :: mipi_dsi_off \n",__func__);
 		mipi_dsi_pdata->dsi_power_save(0);
 	}
 	if (mdp_rev >= MDP_REV_41)
@@ -158,7 +158,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 	{
-		printk("%s :: mipi_dsi_on \n"__func__);
+		printk("%s :: mipi_dsi_on \n", __func__);
 		mipi_dsi_pdata->dsi_power_save(1);
 	}
 	clk_rate = mfd->fbi->var.pixclock;
