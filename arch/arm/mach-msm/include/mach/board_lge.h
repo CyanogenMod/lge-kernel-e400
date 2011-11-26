@@ -27,7 +27,7 @@
 /* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-25]
 	gpu instead of MDP because of saving RAM
 */
-#if CONFIG_MACH_MSM7X25A_E0EU
+#if defined (CONFIG_MACH_MSM7X25A_E0EU) || (CONFIG_MACH_MSM7X25A_E1BR)
 #ifdef CONFIG_ARCH_MSM7X27A
 
 //#define MSM_PMEM_MDP_SIZE       0x1600000// 22MB
