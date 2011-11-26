@@ -87,7 +87,7 @@ int IsFirstDisplayOn = LCD_RESET_SKIP;
 	}
 
 
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 static unsigned int mactl = 0x48;
 #else
 static unsigned int mactl = 0x98;
@@ -168,7 +168,7 @@ static void ilitek_qvga_disp_set_rect(int x, int y, int xres, int yres) // xres 
 
 static void do_ilitek_init(struct platform_device *pdev)
 {
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
              int x,y; 
 
 		 /* EXTC Option*/

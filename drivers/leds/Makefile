@@ -49,7 +49,9 @@ obj-$(CONFIG_LEDS_QCIBL)		+= leds-qci-backlight.o
 obj-$(CONFIG_LEDS_MSM_PDM)		+= leds-msm-pdm.o
 obj-$(CONFIG_LEDS_GPIO_M3)		+= leds-gpio-m3.o
 obj-$(CONFIG_LEDS_GPIO_E0)		+= leds-gpio-e0.o
+obj-$(CONFIG_LEDS_GPIO_E1)		+= leds-gpio-e1.o
 obj-$(CONFIG_LEDS_MSM_PMIC_E0)          += leds-msm-pmic-e0.o
+obj-$(CONFIG_LEDS_MSM_PMIC_E1)          += leds-msm-pmic-e1.o
 
 # LED SPI Drivers
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o

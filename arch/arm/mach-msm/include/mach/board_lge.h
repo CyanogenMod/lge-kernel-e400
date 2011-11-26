@@ -275,7 +275,7 @@ struct pp2106_platform_data {
 	unsigned char *keycode;
 	int (*power)(unsigned char onoff);
 };
-#if defined(CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 /* LCD panel */
 enum {
 	PANEL_ID_AUTO = 0,

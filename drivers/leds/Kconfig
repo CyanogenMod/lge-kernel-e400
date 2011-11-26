@@ -350,6 +350,14 @@ config LEDS_MSM_PMIC_E0
           This option enables support for LEDs connected over PMIC
           (Power Management IC) chip on LGE E0 (E400),
 
+config LEDS_MSM_PMIC_E1
+        tristate "LED Support for Qualcomm PMIC connected LEDs (Model E1)"
+        default y
+        depends on ARCH_MSM
+        help
+          This option enables support for LEDs connected over PMIC
+          (Power Management IC) chip on LGE E1 (E405),
+
 config LEDS_PMIC8058
 	tristate "LED Support for Qualcomm PMIC8058"
 	default n
@@ -439,6 +447,12 @@ config LEDS_GPIO_M3
           This option enables support for GPIO LEDs	  
 
 config LEDS_GPIO_E0
+        tristate "LED Support for GPIO LEDs"
+        default y
+        help
+          This option enables support for GPIO LEDs
+
+config LEDS_GPIO_E1
         tristate "LED Support for GPIO LEDs"
         default y
         help
