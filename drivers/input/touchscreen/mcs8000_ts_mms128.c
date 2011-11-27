@@ -111,7 +111,12 @@ static void mcs8000_late_resume(struct early_suspend *h);
 #define TS_READ_START_ADDR2 							0x10
 
 #define TS_READ_HW_VERSION_ADDR						0xF1	/* HW Revision Info Address */
-#define TS_READ_VERSION_ADDR							0xF3	/* FW Version Info Address */
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-25] 
+: Changed the way in reading the public firmware version*/
+#define TS_READ_VERSION_ADDR							0xF5	/* FW Version Info Address */
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-25] 
+: Changed the way in reading the public firmware version*/ 
 
 #define TS_READ_HW_COMPATIBILITY_ADDR		0xF2	/* HW COMPATIBILITY Info Address */
 
@@ -451,7 +456,6 @@ static long mcs8000_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 			switch(cmd) {
 				case MCS8000_TS_IOCTL_FW_VER:
 					{
-						msleep(100);
 						mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
 						/*
 						err = fw_rev = fw_ver;	
@@ -675,7 +679,7 @@ Touchscreen doesn't work*/
 	if(ret < 0)
 	{
 #if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+		printk(KERN_ERR "i2c_master_send: i2c failed\n");
 		return ;	
 #endif 
 	}
@@ -683,7 +687,7 @@ Touchscreen doesn't work*/
 	if(ret < 0)
 	{
 #if DEBUG_PRINT
-		printk(KERN_ERR "melfas_ts_work_func: i2c failed\n");
+		printk(KERN_ERR "i2c_master_recv: i2c failed\n");
 		return ;	
 #endif 
 	}
