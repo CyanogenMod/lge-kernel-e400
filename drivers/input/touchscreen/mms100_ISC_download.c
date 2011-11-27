@@ -217,10 +217,10 @@ int mms100_ISC_download_binary_data(void)
 	/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For manual touchscreen downloading*/
 			GetManual(&iValue, 0);
 			if (iValue != MANUAL_DOWNLOAD_ENABLE) {
-			  version_info = mms100_ISC_read_data(MELFAS_FIRMWARE_VER_REG_CORE);
+			  version_info = mms100_ISC_read_data(MELFAS_FIRMWARE_VER_REG_PUBLIC_CUSTOM);
 			  printk("<MELFAS> CORE_VERSION : 0x%2X\n",version_info);
 
-				if(version_info != MELFAS_DOWNLAOD_CORE_VERSION || version_info==0xFF)
+				if(version_info != MELFAS_DOWNLAOD_PUBLIC_VERSION || version_info==0xFF)
 			  	dl_enable_bit |= 0x01;
 			} else {
 				dl_enable_bit |= 0x01;

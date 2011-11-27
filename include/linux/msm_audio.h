@@ -510,7 +510,7 @@ typedef enum {
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 struct msm_snd_set_voccal_param {
 	voc_codec_type voc_codec;	/* voc_codec */
 	int voccal_param_type;		/* voccal_param_type */
@@ -592,7 +592,7 @@ struct msm_snd_set_loopback_mode_param {
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 struct msm_snd_set_micamp_gain_param {
 	voc_codec_type voc_codec;
 	int mic_channel;

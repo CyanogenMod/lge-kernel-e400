@@ -42,6 +42,12 @@ static int fm_enable;
 static int fm_enable;
 #endif
 
+#if defined (CONFIG_MACH_MSM7X25A_E1BR)
+#include "../lge/board-e1br.h"
+
+static int fm_enable;
+#endif
+
 #if 0 //tamedwolph unnecessary
 //#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X27A_M3MPCS)
 extern int headset_state;
@@ -79,7 +85,7 @@ static struct snd_ctxt the_snd;
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 #define SND_SET_VOCCAL_PARAM_PROC 62
 #define SND_SET_VOCCAL_IIR_PARAM_PROC 63
 #define SND_SET_NEXT_EC_PARAM_PROC 64
@@ -90,7 +96,7 @@ static struct snd_ctxt the_snd;
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 #define SND_SET_PAD_VALUE_PROC 67
 #define SND_WRITE_EFS_PROC 68
 #define SND_SET_MICAMP_GAIN_PROC 69
@@ -170,7 +176,7 @@ struct snd_set_loopback_mode_msg {
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 int wefs;
 struct snd_set_voccal_param_rep {
 	struct rpc_reply_hdr hdr;
@@ -193,7 +199,7 @@ struct snd_set_rxvol_param_rep {
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 struct snd_set_dtmfvol_param_rep {
 	struct rpc_reply_hdr hdr;
 	uint32_t get_dtmfvol;
@@ -281,7 +287,7 @@ struct snd_set_rx_volume_param_msg {
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 struct snd_set_dtmfvol_param_rep {
 	struct rpc_reply_hdr hdr;
 	uint32_t get_dtmfvol;
@@ -306,7 +312,7 @@ struct snd_set_dtmf_volume_param_msg {
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 struct rpc_snd_set_pad_value_param_args {
      uint32_t device;
      uint32_t method;
@@ -429,7 +435,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 	struct snd_set_loopback_mode_msg lbmsg;
 	struct msm_snd_set_rx_volume_param rxvol;
 	struct snd_set_rx_volume_param_msg rmsg;
@@ -485,7 +491,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		MM_INFO("snd_set_device %d %d %d\n", dev.device,
 				dev.ear_mute, dev.mic_mute);
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU) || defined (CONFIG_MACH_MSM7X25A_E1BR)
 		if (dev.device == 10 || dev.device == 11)
 			fm_enable = 1;
 		else
@@ -586,7 +592,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 		lbmsg.args.mode = cpu_to_be32(loopback.mode);
 		lbmsg.args.cb_func = -1;
 		lbmsg.args.client_data = 0;
@@ -604,7 +610,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 			&lbmsg, sizeof(lbmsg), 5 * HZ);
 #else
 			&umsg.lbmsg, sizeof(umsg.lbmsg), 5 * HZ);
@@ -626,7 +632,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 	case SND_SET_VOCCAL_PARAM:
 		if (copy_from_user(&voccal, (void __user *) arg, sizeof(voccal))) {
 			pr_err("snd_ioctl set voccal_param: invalid pointer.\n");
@@ -735,7 +741,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 		rmsg.args.device = cpu_to_be32(rxvol.device);
 		rmsg.args.method = cpu_to_be32(rxvol.method);
 		rmsg.args.idx = cpu_to_be32(rxvol.idx);
@@ -761,7 +767,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 			&rmsg, sizeof(rmsg), &rrep, sizeof(rrep), 5 * HZ);
 #else
 			&umsg.rmsg, sizeof(umsg.rmsg), &rrep, sizeof(rrep), 5 * HZ);
@@ -788,7 +794,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 		fmsg.args.device = cpu_to_be32(dtmfvol.device);
 		fmsg.args.method = cpu_to_be32(dtmfvol.method);
 		fmsg.args.idx = cpu_to_be32(dtmfvol.idx);
@@ -814,7 +820,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 			&fmsg, sizeof(fmsg), &frep, sizeof(frep), 5 * HZ);
 #else
 			&umsg.fmsg, sizeof(umsg.fmsg), &frep, sizeof(frep), 5 * HZ);
@@ -834,7 +840,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 	case SND_SET_PAD_VALUE:
 		if (copy_from_user(&padvalue, (void __user *) arg, sizeof(padvalue))) {
 			pr_err("snd_ioctl set_pad_value: invalid pointer.\n");
@@ -1110,7 +1116,7 @@ static long snd_agc_enable(unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 	agc_msg.args.cb_func = -1;
 	agc_msg.args.client_data = 0;
 #endif
@@ -1138,7 +1144,7 @@ static long snd_avc_enable(unsigned long arg)
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
-#if !defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if !defined(CONFIG_MACH_MSM7X25A_E0EU) && !defined(CONFIG_MACH_MSM7X25A_E1BR)
 	avc_msg.args.cb_func = -1;
 	avc_msg.args.client_data = 0;
 #endif
@@ -1273,7 +1279,7 @@ static long snd_dev_enable(const char *arg)
 	MM_INFO("snd_set_device %d %d %d\n", dev.device, dev.ear_mute,
 			dev.mic_mute);
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU) || defined (CONFIG_MACH_MSM7X25A_E1BR)
 	if (dev.device == 10 || dev.device == 11)
 		fm_enable = 1;
 	else
@@ -1285,7 +1291,7 @@ static long snd_dev_enable(const char *arg)
 	return rc;
 }
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU) || defined (CONFIG_MACH_MSM7X25A_E1BR)
 void snd_fm_vol_mute()
 {
 	struct snd_sys_ctxt *snd_sys = &the_snd_sys;
@@ -1374,7 +1380,7 @@ static int snd_probe(struct platform_device *pdev)
 	struct snd_sys_ctxt *snd_sys = &the_snd_sys;
 	int rc = 0;
 
-#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU)
+#if defined (CONFIG_MACH_MSM7X27A_M3EU) || defined (CONFIG_MACH_MSM7X25A_E0EU) || defined (CONFIG_MACH_MSM7X25A_E1BR)
 	fm_enable = 0;
 #endif
 	mutex_init(&snd->lock);

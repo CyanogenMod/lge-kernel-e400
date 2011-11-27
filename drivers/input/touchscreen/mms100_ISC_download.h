@@ -22,9 +22,9 @@
 #define MELFAS_ISP_DOWNLOAD                         0       // 0: ISC mode   1:ISP mode   
 #define MELFAS_2CHIP_DOWNLOAD_ENABLE                0       // 0 : 1Chip Download, 1: 2Chip Download
 
-#define MELFAS_DOWNLAOD_CORE_VERSION            0x04
+#define MELFAS_DOWNLAOD_CORE_VERSION            0x00
 #define MELFAS_DOWNLAOD_PRIVATE_VERSION         0x01
-#define MELFAS_DOWNLAOD_PUBLIC_VERSION          0x01
+#define MELFAS_DOWNLAOD_PUBLIC_VERSION          0x05
 
 //----------------------------------------------------
 // ISC download pharameters
