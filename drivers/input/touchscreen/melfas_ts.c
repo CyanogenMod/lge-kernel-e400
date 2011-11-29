@@ -46,7 +46,7 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x25 //0x1b
+#define TS_LATEST_FW_VERSION_B	0x26 //0x1b
 #define TS_READ_REGS_LEN 		100
 #define MELFAS_MAX_TOUCH		5
 
@@ -90,6 +90,7 @@ struct melfas_ts_data
 	int (*power)(unsigned char onoff);
 	struct early_suspend early_suspend;
 };
+
 static struct workqueue_struct *melfas_wq;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -99,7 +100,6 @@ static void melfas_ts_late_resume(struct early_suspend *h);
 
 static struct muti_touch_info g_Mtouch_info[MELFAS_MAX_TOUCH];
 unsigned char ex_fw_ver;
-
 
 void Send_Touch(unsigned int x, unsigned int y)
 {
@@ -137,8 +137,6 @@ static int melfas_init_panel(struct melfas_ts_data *ts)
 }
 */
 
-
-
 static void release_all_finger(struct melfas_ts_data *ts)
 {
 	int i;
@@ -164,7 +162,7 @@ static void release_all_finger(struct melfas_ts_data *ts)
 		if(0 == g_Mtouch_info[i].strength)
 			g_Mtouch_info[i].strength = -1;
 	}
-	input_sync(ts->input_dev);
+	input_sync(ts->input_dev);	 	
 }
 
 static void melfas_ts_work_func(struct work_struct *work)
@@ -183,10 +181,6 @@ static void melfas_ts_work_func(struct work_struct *work)
 	if(ts ==NULL)
 			printk(KERN_ERR "melfas_ts_work_func : TS NULL\n");
 #endif
-
-
-	
-
 
 	buf[0] = MIP_INPUT_EVENT_PACKET_SIZE;
 	ret = i2c_master_send(ts->client, buf, 1);
@@ -348,7 +342,7 @@ static irqreturn_t melfas_ts_irq_handler(int irq, void *handle)
 #endif
 	if (irq_flag == 1) {
 		irq_flag--;	
-	disable_irq_nosync(ts->client->irq);
+		disable_irq_nosync(ts->client->irq);
 	}
 //	schedule_work(&ts->work);
 	queue_delayed_work(melfas_wq, &ts->work, 0);
@@ -399,31 +393,30 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	irq_flag = 1;
 	
 #if DEBUG_PRINT
-	printk(KERN_ERR "kim ms : melfas_ts_probe\n");
+	printk(KERN_ERR "melfas_ts_probe\n");
 #endif
 	ts_pdata = client->dev.platform_data;
+	
 	melfas_wq = create_singlethread_workqueue("melfas_wq");
 	if (!melfas_wq) {
-		printk(KERN_ERR "[TOUCH]failed to create singlethread workqueue\n");
+		printk(KERN_ERR "melfas_ts_probe:failed to create singlethread workqueue\n");
 		return -ENOMEM;
 	}
-    if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
-    {
-        printk(KERN_ERR "melfas_ts_probe: need I2C_FUNC_I2C\n");
-        ret = -ENODEV;
-        goto err_check_functionality_failed;
-    }
+	
+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)){
+        	printk(KERN_ERR "melfas_ts_probe: need I2C_FUNC_I2C\n");
+        	ret = -ENODEV;
+		goto err_check_functionality_failed;
+    	}
 
-    ts = kmalloc(sizeof(struct melfas_ts_data), GFP_KERNEL);
-    if (ts == NULL)
-    {
-        printk(KERN_ERR "melfas_ts_probe: failed to create a state of melfas-ts\n");
-        ret = -ENOMEM;
-        goto err_alloc_data_failed;
-    }
+	ts = kmalloc(sizeof(struct melfas_ts_data), GFP_KERNEL);
+	if (ts == NULL){
+        	printk(KERN_ERR "melfas_ts_probe: failed to create a state of melfas-ts\n");
+        	ret = -ENOMEM;
+        	goto err_alloc_data_failed;
+	}
 
 //   	INIT_WORK(&ts->work, melfas_ts_work_func);
-	
 	INIT_DELAYED_WORK(&ts->work, melfas_ts_work_func);
 	ts->power = ts_pdata->power;
 	ts->num_irq = client->irq;
@@ -464,9 +457,9 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 
 	ret = input_register_device(ts->input_dev);
 	if (ret){
-        printk(KERN_ERR "melfas_ts_probe: Failed to register device\n");
-        ret = -ENOMEM;
-        goto err_input_register_device_failed;
+		printk(KERN_ERR "melfas_ts_probe: Failed to register device\n");
+		ret = -ENOMEM;
+		goto err_input_register_device_failed;
 	}
 
 	ret = gpio_request(ts->intr_gpio, "touch_mcs8000");
@@ -581,7 +574,6 @@ static int melfas_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	int ret;
 	struct melfas_ts_data *ts = i2c_get_clientdata(client);
 
- //   	release_all_finger(ts);
  	if (irq_flag == 1) {
 		irq_flag--;
 		disable_irq_nosync(client->irq);
