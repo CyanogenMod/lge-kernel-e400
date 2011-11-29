@@ -209,6 +209,11 @@ void webdload_common_cmd
 
 	case WEBDLOAD_GET_AUTH_MARK:
 	    rsp_ptr->rsp_data.auth_mark = (word)((status_info_type*)si_page_buffer)->auth_mark;
+		/* LGE_CHANGE_S [jongkwang.lee@lge.com] 20111124 : [WEBDOWNLOAD] if E0, Don't response CDMA authmark */
+		#ifdef CONFIG_MACH_MSM7X25A_E0EU
+		rsp_ptr->success = FALSE;
+		#endif
+		/* LGE_CHANGE_E [jongkwang.lee@lge.com] 20111124 */
 	    break;
 
 	case WEBDLOAD_GET_USB_STRM_INFO:

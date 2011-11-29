@@ -27,7 +27,7 @@ static enum {
 	FB_STATE_DRAWING_OK,
 } fb_state;
 
-#ifdef CONFIG_MACH_MSM7X25A_E0EU
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 /* LGE_CHANGE_S : E0 dajin.kim@lge.com
  *  Check Sleep State
  */

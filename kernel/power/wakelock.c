@@ -16,6 +16,9 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+#include <linux/delay.h>
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 #include <linux/suspend.h>
 #include <linux/syscalls.h> /* sys_sync */
 #include <linux/wakelock.h>
@@ -46,7 +49,9 @@ static struct list_head active_wake_locks[WAKE_LOCK_TYPE_COUNT];
 static int current_event_num;
 static int suspend_sys_sync_count;
 static DEFINE_SPINLOCK(suspend_sys_sync_lock);
-static struct workqueue_struct *suspend_sys_sync_work_queue;
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+//static struct workqueue_struct *suspend_sys_sync_work_queue;
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 static DECLARE_COMPLETION(suspend_sys_sync_comp);
 struct workqueue_struct *suspend_work_queue;
 struct wake_lock main_wake_lock;
@@ -57,6 +62,9 @@ static struct wake_lock unknown_wakeup;
 static struct wake_lock deleted_wake_locks;
 static ktime_t last_sleep_time_update;
 static int wait_for_wakeup;
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+static int wait_for_sync_completed = 0;
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 
 int get_expired_time(struct wake_lock *lock, ktime_t *expire_time)
 {
@@ -266,18 +274,24 @@ long has_wake_lock(int type)
 
 static void suspend_sys_sync(struct work_struct *work)
 {
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+	int ret = 0;
+	  
 #if 0
 	if (debug_mask & DEBUG_SUSPEND)
 #endif
 		pr_info("PM: Syncing filesystems...\n");
-
-	sys_sync();
+	
+	ret = sys_sync();
+	if(ret == 0)
+		pr_info("suspend_sys_sync completed...\n");
 
 #if 0
 	if (debug_mask & DEBUG_SUSPEND)
 #endif
 		pr_info("sync done.\n");
-
+    wait_for_sync_completed = 0;
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 	spin_lock(&suspend_sys_sync_lock);
 	suspend_sys_sync_count--;
 	spin_unlock(&suspend_sys_sync_lock);
@@ -288,8 +302,20 @@ void suspend_sys_sync_queue(void)
 {
 	int ret;
 
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+	if(wait_for_sync_completed != 0)
+	 {
+	  	 pr_info("PM: suspend_sys_sync_queue working...\n");
+	  	 msleep(50);
+	  	 return;
+	}
+
+	wait_for_sync_completed = 1;
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 	spin_lock(&suspend_sys_sync_lock);
-	ret = queue_work(suspend_sys_sync_work_queue, &suspend_sys_sync_work);
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+	ret = queue_work(suspend_work_queue, &suspend_sys_sync_work);
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 	if (ret)
 		suspend_sys_sync_count++;
 	spin_unlock(&suspend_sys_sync_lock);
@@ -313,13 +339,15 @@ static void suspend_sys_sync_handler(unsigned long arg)
 		mod_timer(&suspend_sys_sync_timer, jiffies +
 				SUSPEND_SYS_SYNC_TIMEOUT);
 	}
-	
 }
 
 int suspend_sys_sync_wait(void)
 {
-	suspend_sys_sync_abort = false;
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+	return 0;
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 
+	suspend_sys_sync_abort = false;
 
 	if (suspend_sys_sync_count != 0) {
 		mod_timer(&suspend_sys_sync_timer, jiffies +
@@ -344,9 +372,11 @@ static void suspend(struct work_struct *work)
 			pr_info("suspend: abort suspend\n");
 		return;
 	}
-
+	
 	entry_event_num = current_event_num;
-	suspend_sys_sync_queue();
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+	//suspend_sys_sync_queue();
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("suspend: enter suspend\n");
 	ret = pm_suspend(requested_suspend_state);
@@ -358,8 +388,9 @@ static void suspend(struct work_struct *work)
 		pr_info("suspend: exit suspend, ret = %d "
 			"(%d-%02d-%02d %02d:%02d:%02d.%09lu UTC)\n", ret,
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
-	}
+			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);			
+	}	
+	
 	if (current_event_num == entry_event_num) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("suspend: pm_suspend returned with no event\n");
@@ -533,7 +564,7 @@ static void wake_lock_internal(
 					pr_info("wake_lock: %s, stop expire timer\n",
 						lock->name);
 			if (expire_in == 0)
-				queue_work(suspend_work_queue, &suspend_work);
+					queue_work(suspend_work_queue, &suspend_work);
 		}
 	}
 	spin_unlock_irqrestore(&list_lock, irqflags);
@@ -638,6 +669,8 @@ static int __init wakelocks_init(void)
 		goto err_platform_driver_register;
 	}
 
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+#if 0
 	INIT_COMPLETION(suspend_sys_sync_comp);
 	suspend_sys_sync_work_queue =
 		create_singlethread_workqueue("suspend_sys_sync");
@@ -645,8 +678,12 @@ static int __init wakelocks_init(void)
 		ret = -ENOMEM;
 		goto err_suspend_sys_sync_work_queue;
 	}
+#endif
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 
-	suspend_work_queue = create_singlethread_workqueue("suspend");
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+	suspend_work_queue = create_workqueue("suspend");
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 	if (suspend_work_queue == NULL) {
 		ret = -ENOMEM;
 		goto err_suspend_work_queue;
@@ -658,7 +695,9 @@ static int __init wakelocks_init(void)
 
 	return 0;
 
-err_suspend_sys_sync_work_queue:
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+//err_suspend_sys_sync_work_queue:
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 err_suspend_work_queue:
 	platform_driver_unregister(&power_driver);
 err_platform_driver_register:
@@ -678,7 +717,9 @@ static void  __exit wakelocks_exit(void)
 	remove_proc_entry("wakelocks", NULL);
 #endif
 	destroy_workqueue(suspend_work_queue);
-	destroy_workqueue(suspend_sys_sync_work_queue);
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
+	//destroy_workqueue(suspend_sys_sync_work_queue);
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 	platform_driver_unregister(&power_driver);
 	platform_device_unregister(&power_device);
 	wake_lock_destroy(&unknown_wakeup);

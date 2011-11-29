@@ -97,11 +97,21 @@ static int suspend_prepare(void)
 
 	error = pm_notifier_call_chain(PM_SUSPEND_PREPARE);
 	if (error)
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+	{
+		pr_info("PM: pm_notifier_call_chain error!.\n");
 		goto Finish;
+	}
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 
 	error = usermodehelper_disable();
 	if (error)
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+	{
+		pr_info("PM: usermodehelper_disable error!.\n");
 		goto Finish;
+	}
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 
 	error = suspend_freeze_processes();
 	if (!error)
@@ -160,7 +170,12 @@ static int suspend_enter(suspend_state_t state)
 
 	error = disable_nonboot_cpus();
 	if (error || suspend_test(TEST_CPUS))
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+	{
+		pr_info("PM: disable_nonboot_cpus error.\n");
 		goto Enable_cpus;
+	}
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 
 	arch_suspend_disable_irqs();
 	BUG_ON(!irqs_disabled());
@@ -169,11 +184,17 @@ static int suspend_enter(suspend_state_t state)
 	if (!error) {
 		if (!(suspend_test(TEST_CORE) || pm_wakeup_pending())) {
 			error = suspend_ops->enter(state);
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+			pr_info("PM: suspend_ops->enter success %d.\n", error);
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 			events_check_enabled = false;
 		}
 		sysdev_resume();
 	}
 
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+	pr_info("PM: sysdev_suspend result %d.\n", error);
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 	arch_suspend_enable_irqs();
 	BUG_ON(irqs_disabled());
 
@@ -279,7 +300,9 @@ int enter_state(suspend_state_t state)
 
 	suspend_sys_sync_queue();
 
-	pr_debug("PM: Preparing system for %s sleep\n", pm_states[state]);
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+	pr_info("PM: Preparing system for %s sleep\n", pm_states[state]);
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 	error = suspend_prepare();
 	if (error)
 		goto Unlock;
@@ -287,11 +310,15 @@ int enter_state(suspend_state_t state)
 	if (suspend_test(TEST_FREEZER))
 		goto Finish;
 
-	pr_debug("PM: Entering %s sleep\n", pm_states[state]);
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+	pr_info("PM: Entering %s sleep\n", pm_states[state]);
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 	error = suspend_devices_and_enter(state);
 
  Finish:
-	pr_debug("PM: Finishing wakeup.\n");
+//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
+	pr_info("PM: Finishing wakeup.\n");
+//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 	suspend_finish();
 
  Unlock:

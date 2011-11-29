@@ -592,7 +592,7 @@ EXPORT_SYMBOL(LGF_TestModeGetDisableInputDevices);
 
 extern void LGF_SendKey(word keycode);
 extern void set_operation_mode(boolean info);
-#ifdef CONFIG_MACH_MSM7X25A_E0EU
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 /* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
   *  Check Sleep State
   */
@@ -621,7 +621,7 @@ void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
 
 	switch(req_ptr.test_mode_req.sleep_mode){	
 		case SLEEP_MODE_ON:
-			#ifdef CONFIG_MACH_MSM7X25A_E0EU
+			#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 			/* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
 			  *  Check Sleep State
 			  */
@@ -636,7 +636,7 @@ void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
 			break;            
 		case FLIGHT_MODE_ON:
 	  	case FLIGHT_KERNEL_MODE_ON:
-			#ifdef CONFIG_MACH_MSM7X25A_E0EU
+			#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 			/* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
 			  *  Check Sleep State
 			  */
@@ -652,7 +652,7 @@ void* LGF_TestModeSleepMode(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_type
 			break;
 
 		case FLIGHT_MODE_OFF:
-			#ifdef CONFIG_MACH_MSM7X25A_E0EU
+			#if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
 			/* LGE_CHANGE_S : E0 dajin.kim@lge.com [2011-11-04]
 			  *  Check Sleep State
 			  */
@@ -954,7 +954,7 @@ void* LGF_TestModeFotaIDCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_ty
 				printk(KERN_ERR "[##LMH_TEST] fota_id_check is %s \n", fota_id_read);
 
 				{
-					if (sys_read(fd, (char __user *) fota_id_read, fota_id_length) < 0)
+					if (sys_read(fd, (char __user *) fota_id_read, fota_id_length-1) < 0)
 					{
 						printk(KERN_ERR "[FOTA_TEST_MODE] Can not read file.\n");
 						pRsp->ret_stat_code = TEST_FAIL_S;
@@ -967,7 +967,7 @@ void* LGF_TestModeFotaIDCheck(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rsp_ty
 						printk(KERN_ERR "[##LMH_TEST] fota_id_check is %s \n", fota_id_read);
 			       		pRsp->ret_stat_code = TEST_OK_S;
 		
-						for(i=0;i<fota_id_length;i++){
+						for(i=0;i<fota_id_length-1;i++){
 							pRsp->test_mode_rsp.fota_id[i] = fota_id_read[i];
 							printk(KERN_ERR "[##LMH_TEST] fota_id_check is %d \n", fota_id_read[i]);
 						}

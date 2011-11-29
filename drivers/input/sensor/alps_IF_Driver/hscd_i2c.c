@@ -8,6 +8,10 @@
 #include <mach/board_lge.h> /* platform data */
 static struct ecom_platform_data *ecom_pdata;
 static atomic_t hscd_report_enabled = ATOMIC_INIT(0);
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+static atomic_t hscd_event_cnt = ATOMIC_INIT(0);
+static atomic_t hscd_diag_test = ATOMIC_INIT(0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 static void hscd_suspend_resume(int mode);
 /* LGE_CHANGE_E */
 
@@ -335,7 +339,16 @@ int hscd_get_magnetic_field_data(int *xyz)
 	for (i = 0; i < 3; i++) {
 		xyz[i] = (int) ((short)((sx[2*i+1] << 8) | (sx[2*i])));
 	}
-
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+	if(atomic_read(&hscd_diag_test) ==1){
+		if(atomic_read(&hscd_event_cnt) < (INT_MAX / 2))
+		{
+			atomic_inc(&hscd_event_cnt);
+		}else{
+			printk("hscd_get_magnetic_field_data (hscd_event_cnt is MAX)");
+		}
+	}
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 #ifdef ALPS_DEBUG
 	/*** DEBUG OUTPUT - REMOVE ***/
 	printk("Mag_I2C, x:%d, y:%d, z:%d\n",xyz[0], xyz[1], xyz[2]);
@@ -412,6 +425,9 @@ static void hscd_suspend_resume(int mode)
 			mdelay(5);
 			hscd_activate(0, 1, atomic_read(&delay));
 			atomic_set(&hscd_report_enabled, 1);
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+			atomic_set(&hscd_event_cnt,0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 #ifdef LGE_DEBUG
 			printk(KERN_INFO "HSCD ECOM_Power On\n");
 #endif
@@ -420,6 +436,9 @@ static void hscd_suspend_resume(int mode)
 		}
 	} else {
 		atomic_set(&hscd_report_enabled, 0);
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+		atomic_set(&hscd_event_cnt,0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 #ifdef LGE_DEBUG
 		printk(KERN_INFO "HSCD ECOM_Power Off\n");
 #endif
@@ -447,9 +466,49 @@ struct device_attribute *attr, const char *buf, size_t count)
 
     return 0;
 }
+
+static ssize_t show_hscd_cnt(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+    char strbuf[256];
+    snprintf(strbuf, PAGE_SIZE, "%d", atomic_read(&hscd_event_cnt));
+    printk(KERN_INFO "HSCD show_hscd_cnt %s\n",strbuf);
+    return snprintf(buf, PAGE_SIZE, "%s\n", strbuf);
+}
+
+static ssize_t store_hscd_cnt(struct device *dev,\
+struct device_attribute *attr, const char *buf, size_t count)
+{
+    int cnt = 0;
+    sscanf(buf, "%d", &cnt );
+    atomic_set(&hscd_event_cnt,cnt);	
+    return 0;
+}
+
+static ssize_t show_hscd_diag(struct device *dev, \
+struct device_attribute *attr, char *buf)
+{
+    char strbuf[256];
+    snprintf(strbuf, PAGE_SIZE, "%d", atomic_read(&hscd_diag_test));
+    return snprintf(buf, PAGE_SIZE, "%s\n", strbuf);
+}
+
+static ssize_t store_hscd_diag(struct device *dev,\
+struct device_attribute *attr, const char *buf, size_t count)
+{
+    int diag = 0;
+    sscanf(buf, "%d", &diag );
+    atomic_set(&hscd_diag_test ,diag);	
+    return 0;
+}
+
 static DEVICE_ATTR(enable,  S_IRUSR|S_IRGRP|S_IWUSR|S_IWGRP, show_hscd_enable, store_hscd_enable);
+static DEVICE_ATTR(cnt,  S_IRUSR|S_IRGRP|S_IWUSR|S_IWGRP, show_hscd_cnt, store_hscd_cnt);
+static DEVICE_ATTR(diag,  S_IRUSR|S_IRGRP|S_IWUSR|S_IWGRP, show_hscd_diag, store_hscd_diag);
 static struct attribute *hscd_attributes[] = {
     &dev_attr_enable.attr,
+    &dev_attr_cnt.attr,
+    &dev_attr_diag.attr,    
     NULL,
 };
 
@@ -482,6 +541,9 @@ static int hscd_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	mdelay(5);
 	atomic_set(&hscd_report_enabled, 1);
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-11-23 */
+	atomic_set(&hscd_event_cnt,0);
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-11-23 */
 	
 	err = sysfs_create_group(&client->dev.kobj, &hscd_attribute_group);
 	if (err) {

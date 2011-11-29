@@ -5,6 +5,14 @@ menu "LGE Device-Specific Changes"
 
 menu "LGE Board Selection"
 
+config MACH_MSM7X25A_E1BR
+    depends on ARCH_MSM7X27A
+    depends on !MSM_STACKED_MEMORY
+    select MACH_LGE
+    bool "MSM7x25A E1BR"
+    help
+        Support for the LG Electronics MSM7x25A E1BROPEN.
+
 config MACH_MSM7X25A_E0EU
     depends on ARCH_MSM7X27A
     depends on !MSM_STACKED_MEMORY
@@ -12,6 +20,7 @@ config MACH_MSM7X25A_E0EU
     bool "MSM7x25A E0EU"
     help
         Support for the LG Electronics MSM7x25A E0EUOPEN.
+
 config MACH_MSM7X25A_M3DVIV
     depends on ARCH_MSM7X27A
     depends on !MSM_STACKED_MEMORY
