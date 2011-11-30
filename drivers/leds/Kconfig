@@ -344,7 +344,7 @@ config LEDS_MSM_PMIC
 
 config LEDS_MSM_PMIC_E0
         tristate "LED Support for Qualcomm PMIC connected LEDs (Model E0)"
-        default y
+        default n
         depends on ARCH_MSM
         help
           This option enables support for LEDs connected over PMIC
@@ -448,7 +448,7 @@ config LEDS_GPIO_M3
 
 config LEDS_GPIO_E0
         tristate "LED Support for GPIO LEDs"
-        default y
+        default n
         help
           This option enables support for GPIO LEDs
 

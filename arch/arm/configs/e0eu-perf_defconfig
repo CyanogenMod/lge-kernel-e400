@@ -2140,6 +2140,9 @@ CONFIG_LEDS_CLASS=y
 # CONFIG_LEDS_GPIO_M3 is not set
 # CONFIG_LEDS_GPIO_E0 is not set
 CONFIG_LEDS_MSM_PMIC_E0=y
+# CONFIG_LEDS_GPIO_E1 is not set
+# CONFIG_LEDS_MSM_PMIC_E1 is not set
+
 #
 # LED Triggers
 #
