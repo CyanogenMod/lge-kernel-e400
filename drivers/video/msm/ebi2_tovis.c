@@ -723,7 +723,7 @@ static int __init tovis_qvga_init(void)
 		pinfo->yres = QVGA_HEIGHT;
 		pinfo->type = EBI2_PANEL;
 		pinfo->pdest = DISPLAY_1;
-		pinfo->wait_cycle = 0x908000;
+		pinfo->wait_cycle = 0x428000; // 0x908000; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-30] : LCD write timing matching */
 
 		pinfo->bpp = 16;
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
