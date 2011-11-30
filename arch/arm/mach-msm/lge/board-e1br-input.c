@@ -31,6 +31,24 @@ static struct platform_device hs_pdev = {
 		.platform_data = &hs_platform_data,
 	},
 };
+
+
+
+// SIM Change Key
+#if defined (CONFIG_MACH_MSM7X25A_E1BR)
+/* GPIO key map for E1 EVB */
+static unsigned int keypad_row_gpios[] = {36, 37, 38};
+static unsigned int keypad_col_gpios[] = {32, 33};
+
+#define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
+
+static const unsigned short keypad_keymap_e0eu[] = {
+		[KEYMAP_INDEX(1, 1)] = KEY_VOLUMEUP,
+		[KEYMAP_INDEX(1, 0)] = KEY_VOLUMEDOWN,
+		[KEYMAP_INDEX(0, 2)] = KEY_HOME,
+		[KEYMAP_INDEX(0, 0)] = KEY_SIM_SWITCH,		
+};
+#else
  /* GPIO key map for M3EU EVB */
  /* LGE_CHANGE_S: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
 static unsigned int keypad_row_gpios[] = {
@@ -38,7 +56,6 @@ static unsigned int keypad_row_gpios[] = {
 };
 	static unsigned int keypad_col_gpios[] = {32, 33};
 /* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
-
 
 #define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
 
@@ -49,6 +66,8 @@ static const unsigned short keypad_keymap_e0eu[] = {
 		[KEYMAP_INDEX(0, 2)] = KEY_HOME,
 };
 /* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
+#endif
+// END , SIM key switch 
 
 int e0eu_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,
 							 struct gpio_event_info *info, void **data, int func)
