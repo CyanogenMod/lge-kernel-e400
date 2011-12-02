@@ -199,7 +199,7 @@ void lm3559_enable_flash_mode(int state)
 	printk(KERN_INFO "%s: before - LM3559_REG_FLASH_DURATION[0x%x]\n",
 		__func__, data);
 
-	data = ((data & 0x80) | 0x09); /* 1.4A Peak Current & 320ms Duration*/ //111123_Kim_Sangyoon
+	data = ((data & 0x80) | 0x0A); /* 1.4A Peak Current & 320ms Duration*/ //111123_Kim_Sangyoon
 	
 
 	printk(KERN_INFO "%s: LM3559_REG_FLASH_DURATION[0x%x]\n",
