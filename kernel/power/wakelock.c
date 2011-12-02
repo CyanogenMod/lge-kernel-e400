@@ -394,9 +394,7 @@ static void suspend(struct work_struct *work)
 	if (current_event_num == entry_event_num) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("suspend: pm_suspend returned with no event\n");
-//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
-		wake_lock_timeout(&unknown_wakeup, 3 * HZ);
-//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
+		wake_lock_timeout(&unknown_wakeup, HZ / 2);
 	}
 }
 static DECLARE_WORK(suspend_work, suspend);

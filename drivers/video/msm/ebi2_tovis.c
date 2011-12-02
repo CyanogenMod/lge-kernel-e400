@@ -174,7 +174,8 @@ static void do_ilitek_init(struct platform_device *pdev)
 		 /* EXTC Option*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xcf);
 		EBI2_WRITE16D(DISP_DATA_PORT,0x00);
-		EBI2_WRITE16D(DISP_DATA_PORT,0x29);
+		EBI2_WRITE16D(DISP_DATA_PORT,0x21);
+		EBI2_WRITE16D(DISP_DATA_PORT,0x20);
 
 		/* Inversion Control -> 2Dot inversion*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xb4);
@@ -182,12 +183,12 @@ static void do_ilitek_init(struct platform_device *pdev)
 
 		/* Power control 1 */
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xc0);
-		EBI2_WRITE16D(DISP_DATA_PORT,0x16); // 1
-		EBI2_WRITE16D(DISP_DATA_PORT,0x16);
+		EBI2_WRITE16D(DISP_DATA_PORT,0x15); // 1
+		EBI2_WRITE16D(DISP_DATA_PORT,0x15);
 
 		/* Power control 2*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xc1);
-		EBI2_WRITE16D(DISP_DATA_PORT,0x07); // 1
+		EBI2_WRITE16D(DISP_DATA_PORT,0x05); // 1
 
 		/* Power control 3*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xc2);
@@ -210,11 +211,11 @@ static void do_ilitek_init(struct platform_device *pdev)
 		/* Frame Rate control*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xb1);
 		EBI2_WRITE16D(DISP_DATA_PORT,0x00); // 1
-		EBI2_WRITE16D(DISP_DATA_PORT,0x1d); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x1b); // 2
 
 		/* Memory Access control*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0x36);
-		EBI2_WRITE16D(DISP_DATA_PORT,0x48); // 1
+		EBI2_WRITE16D(DISP_DATA_PORT,0x08); // 1
 
 		/* Blanking Porch control*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xb5);
@@ -226,7 +227,7 @@ static void do_ilitek_init(struct platform_device *pdev)
 		/* Display Function control*/
 		EBI2_WRITE16C(DISP_CMD_PORT, 0xb6);
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0a); // 1
-		EBI2_WRITE16D(DISP_DATA_PORT,0xa2); // 1
+		EBI2_WRITE16D(DISP_DATA_PORT,0x82); // 1
 		EBI2_WRITE16D(DISP_DATA_PORT,0x27); // 1
 		EBI2_WRITE16D(DISP_DATA_PORT,0x00); // 1
 
@@ -250,14 +251,14 @@ static void do_ilitek_init(struct platform_device *pdev)
 		EBI2_WRITE16D(DISP_DATA_PORT,0x07); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x03); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0a); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x09); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x39); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x79); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x4e); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x0a); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x36); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x59); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x4b); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0c); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x18); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0f); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x1e); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x1f); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x1f); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0f); // 2
 
@@ -268,16 +269,16 @@ static void do_ilitek_init(struct platform_device *pdev)
 		EBI2_WRITE16D(DISP_DATA_PORT,0x24); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x01); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0f); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x03); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x34); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x32); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x45); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x06); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x01); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x31); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x23); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x40); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x07); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0f); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x0f); // 2
 		EBI2_WRITE16D(DISP_DATA_PORT,0x30); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x35); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x0f); // 2	
+		EBI2_WRITE16D(DISP_DATA_PORT,0x31); // 2
+		EBI2_WRITE16D(DISP_DATA_PORT,0x0e); // 2	
 
 		/* Column address*/
 		EBI2_WRITE16C(DISP_CMD_PORT,0x2a); // Set_column_address
@@ -297,7 +298,7 @@ static void do_ilitek_init(struct platform_device *pdev)
 		EBI2_WRITE16C(DISP_CMD_PORT,0xe8); // Charge Sharing Control
 		EBI2_WRITE16D(DISP_DATA_PORT,0x84); // 1
 		EBI2_WRITE16D(DISP_DATA_PORT,0x1a); // 2
-		EBI2_WRITE16D(DISP_DATA_PORT,0x38); // 3
+		EBI2_WRITE16D(DISP_DATA_PORT,0x68); // 3
 
 		/* Exit Sleep - This command should be only used at Power on sequence*/
 		EBI2_WRITE16C(DISP_CMD_PORT,0x11); // Exit Sleep
@@ -723,7 +724,7 @@ static int __init tovis_qvga_init(void)
 		pinfo->yres = QVGA_HEIGHT;
 		pinfo->type = EBI2_PANEL;
 		pinfo->pdest = DISPLAY_1;
-		pinfo->wait_cycle = 0x908000;
+		pinfo->wait_cycle = 0x428000; // 0x908000; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-30] : LCD write timing matching */
 
 		pinfo->bpp = 16;
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER

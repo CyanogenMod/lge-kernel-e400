@@ -46,7 +46,7 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x25 //0x1b
+#define TS_LATEST_FW_VERSION_B	0x26 //0x1b
 #define TS_READ_REGS_LEN 		100
 #define MELFAS_MAX_TOUCH		5
 
@@ -80,7 +80,8 @@ struct melfas_ts_data
 	uint16_t addr;
 	struct i2c_client *client; 
 	struct input_dev *input_dev;
-	struct work_struct  work;
+//	struct work_struct  work;
+	struct delayed_work  work;
 	uint32_t flags;
 	int num_irq;
 	int intr_gpio;
@@ -90,6 +91,8 @@ struct melfas_ts_data
 	struct early_suspend early_suspend;
 };
 
+static struct workqueue_struct *melfas_wq;
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void melfas_ts_early_suspend(struct early_suspend *h);
 static void melfas_ts_late_resume(struct early_suspend *h);
@@ -97,7 +100,6 @@ static void melfas_ts_late_resume(struct early_suspend *h);
 
 static struct muti_touch_info g_Mtouch_info[MELFAS_MAX_TOUCH];
 unsigned char ex_fw_ver;
-
 
 void Send_Touch(unsigned int x, unsigned int y)
 {
@@ -135,8 +137,6 @@ static int melfas_init_panel(struct melfas_ts_data *ts)
 }
 */
 
-
-
 static void release_all_finger(struct melfas_ts_data *ts)
 {
 	int i;
@@ -162,12 +162,13 @@ static void release_all_finger(struct melfas_ts_data *ts)
 		if(0 == g_Mtouch_info[i].strength)
 			g_Mtouch_info[i].strength = -1;
 	}
-	input_sync(ts->input_dev);
+	input_sync(ts->input_dev);	 	
 }
 
 static void melfas_ts_work_func(struct work_struct *work)
 {
-	struct melfas_ts_data *ts = container_of(work, struct melfas_ts_data, work);
+//	struct melfas_ts_data *ts = container_of(work, struct melfas_ts_data, work);
+	struct melfas_ts_data *ts=container_of(to_delayed_work(work), struct melfas_ts_data, work);
 	int ret = 0, i;//,count=0;
 	uint8_t buf[TS_READ_REGS_LEN];
 	int touchType=0, touchState =0, touchID=0, posX=0, posY=0, width = 0, strength=10, keyID = 0, reportID = 0;
@@ -180,10 +181,6 @@ static void melfas_ts_work_func(struct work_struct *work)
 	if(ts ==NULL)
 			printk(KERN_ERR "melfas_ts_work_func : TS NULL\n");
 #endif
-
-
-	
-
 
 	buf[0] = MIP_INPUT_EVENT_PACKET_SIZE;
 	ret = i2c_master_send(ts->client, buf, 1);
@@ -245,10 +242,10 @@ static void melfas_ts_work_func(struct work_struct *work)
 			{
 				keyID = reportID;
 			}
-			else
+	/*		else
 			{
 				keyID = reportID;
-			}
+			}*/
 
 			touchID = reportID-1;
 
@@ -345,10 +342,10 @@ static irqreturn_t melfas_ts_irq_handler(int irq, void *handle)
 #endif
 	if (irq_flag == 1) {
 		irq_flag--;	
-	disable_irq_nosync(ts->client->irq);
+		disable_irq_nosync(ts->client->irq);
 	}
-	schedule_work(&ts->work);
-	
+//	schedule_work(&ts->work);
+	queue_delayed_work(melfas_wq, &ts->work, 0);
 	return IRQ_HANDLED;
 }
 void melfas_firmware_info(struct melfas_ts_data *ts,unsigned char *fw_ver, unsigned char *hw_ver, unsigned char *comp_ver)
@@ -396,25 +393,31 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	irq_flag = 1;
 	
 #if DEBUG_PRINT
-	printk(KERN_ERR "kim ms : melfas_ts_probe\n");
+	printk(KERN_ERR "melfas_ts_probe\n");
 #endif
 	ts_pdata = client->dev.platform_data;
-    if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
-    {
-        printk(KERN_ERR "melfas_ts_probe: need I2C_FUNC_I2C\n");
-        ret = -ENODEV;
-        goto err_check_functionality_failed;
-    }
+	
+	melfas_wq = create_singlethread_workqueue("melfas_wq");
+	if (!melfas_wq) {
+		printk(KERN_ERR "melfas_ts_probe:failed to create singlethread workqueue\n");
+		return -ENOMEM;
+	}
+	
+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)){
+        	printk(KERN_ERR "melfas_ts_probe: need I2C_FUNC_I2C\n");
+        	ret = -ENODEV;
+		goto err_check_functionality_failed;
+    	}
 
-    ts = kmalloc(sizeof(struct melfas_ts_data), GFP_KERNEL);
-    if (ts == NULL)
-    {
-        printk(KERN_ERR "melfas_ts_probe: failed to create a state of melfas-ts\n");
-        ret = -ENOMEM;
-        goto err_alloc_data_failed;
-    }
+	ts = kmalloc(sizeof(struct melfas_ts_data), GFP_KERNEL);
+	if (ts == NULL){
+        	printk(KERN_ERR "melfas_ts_probe: failed to create a state of melfas-ts\n");
+        	ret = -ENOMEM;
+        	goto err_alloc_data_failed;
+	}
 
-   	INIT_WORK(&ts->work, melfas_ts_work_func);
+//   	INIT_WORK(&ts->work, melfas_ts_work_func);
+	INIT_DELAYED_WORK(&ts->work, melfas_ts_work_func);
 	ts->power = ts_pdata->power;
 	ts->num_irq = client->irq;
 	ts->intr_gpio	= (client->irq) - NR_MSM_IRQS ;
@@ -454,9 +457,9 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 
 	ret = input_register_device(ts->input_dev);
 	if (ret){
-        printk(KERN_ERR "melfas_ts_probe: Failed to register device\n");
-        ret = -ENOMEM;
-        goto err_input_register_device_failed;
+		printk(KERN_ERR "melfas_ts_probe: Failed to register device\n");
+		ret = -ENOMEM;
+		goto err_input_register_device_failed;
 	}
 
 	ret = gpio_request(ts->intr_gpio, "touch_mcs8000");
@@ -503,7 +506,7 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	mcsdl_download_binary_data(1, 1,hw_ver,0x01);
 #elif defined(CONFIG_MACH_MSM7X27A_M3MPCS)
 	if (fw_ver !=TS_LATEST_FW_VERSION_A && fw_ver !=TS_LATEST_FW_VERSION_B) {
-		mcsdl_download_binary_data(1, 1,hw_ver,comp_ver);
+		mcsdl_download_binary_data(1, 1,hw_ver,0x03);
 	} 
 #else 	
 	mcsdl_download_binary_data(1, 1,hw_ver,0x00);
@@ -571,13 +574,13 @@ static int melfas_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	int ret;
 	struct melfas_ts_data *ts = i2c_get_clientdata(client);
 
- //   	release_all_finger(ts);
  	if (irq_flag == 1) {
 		irq_flag--;
 		disable_irq_nosync(client->irq);
 	}	
 	
-	ret=cancel_work_sync(&ts->work);
+//	ret=cancel_work_sync(&ts->work);
+	ret = cancel_delayed_work_sync(&ts->work);  
 /*	if (ret){
 		printk("*****************cancle work=%d\n",ret); 
 		enable_irq(client->irq);
@@ -649,6 +652,8 @@ static int __devinit melfas_ts_init(void)
 static void __exit melfas_ts_exit(void)
 {
 	i2c_del_driver(&melfas_ts_driver);
+	if (melfas_wq)               
+	destroy_workqueue(melfas_wq);
 }
 
 MODULE_DESCRIPTION("Driver for Melfas MTSI Touchscreen Controller");
