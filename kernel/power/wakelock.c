@@ -37,6 +37,8 @@ enum {
 static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
+#define WAKE_LOCK_LOG					 0
+
 #define WAKE_LOCK_TYPE_MASK              (0x0f)
 #define WAKE_LOCK_INITIALIZED            (1U << 8)
 #define WAKE_LOCK_ACTIVE                 (1U << 9)
@@ -49,9 +51,7 @@ static struct list_head active_wake_locks[WAKE_LOCK_TYPE_COUNT];
 static int current_event_num;
 static int suspend_sys_sync_count;
 static DEFINE_SPINLOCK(suspend_sys_sync_lock);
-//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
-//static struct workqueue_struct *suspend_sys_sync_work_queue;
-//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
+static struct workqueue_struct *suspend_sys_sync_work_queue;
 static DECLARE_COMPLETION(suspend_sys_sync_comp);
 struct workqueue_struct *suspend_work_queue;
 struct wake_lock main_wake_lock;
@@ -313,9 +313,7 @@ void suspend_sys_sync_queue(void)
 	wait_for_sync_completed = 1;
 //LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 	spin_lock(&suspend_sys_sync_lock);
-//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
-	ret = queue_work(suspend_work_queue, &suspend_sys_sync_work);
-//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
+	ret = queue_work(suspend_sys_sync_work_queue, &suspend_sys_sync_work);
 	if (ret)
 		suspend_sys_sync_count++;
 	spin_unlock(&suspend_sys_sync_lock);
@@ -343,10 +341,6 @@ static void suspend_sys_sync_handler(unsigned long arg)
 
 int suspend_sys_sync_wait(void)
 {
-//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
-	return 0;
-//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
-
 	suspend_sys_sync_abort = false;
 
 	if (suspend_sys_sync_count != 0) {
@@ -669,8 +663,6 @@ static int __init wakelocks_init(void)
 		goto err_platform_driver_register;
 	}
 
-//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
-#if 0
 	INIT_COMPLETION(suspend_sys_sync_comp);
 	suspend_sys_sync_work_queue =
 		create_singlethread_workqueue("suspend_sys_sync");
@@ -678,8 +670,6 @@ static int __init wakelocks_init(void)
 		ret = -ENOMEM;
 		goto err_suspend_sys_sync_work_queue;
 	}
-#endif
-//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
 
 //LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
 	suspend_work_queue = create_workqueue("suspend");
@@ -695,9 +685,7 @@ static int __init wakelocks_init(void)
 
 	return 0;
 
-//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
-//err_suspend_sys_sync_work_queue:
-//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
+err_suspend_sys_sync_work_queue:
 err_suspend_work_queue:
 	platform_driver_unregister(&power_driver);
 err_platform_driver_register:
@@ -717,9 +705,7 @@ static void  __exit wakelocks_exit(void)
 	remove_proc_entry("wakelocks", NULL);
 #endif
 	destroy_workqueue(suspend_work_queue);
-//LGE_CHANGE_S, [youngbae.choi@lge.com] , 2011-11-27
-	//destroy_workqueue(suspend_sys_sync_work_queue);
-//LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27
+	destroy_workqueue(suspend_sys_sync_work_queue);
 	platform_driver_unregister(&power_driver);
 	platform_device_unregister(&power_device);
 	wake_lock_destroy(&unknown_wakeup);
