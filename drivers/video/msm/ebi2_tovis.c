@@ -666,7 +666,7 @@ ssize_t tovis_qvga_store_onoff(struct device *dev, struct device_attribute *attr
 	return count;
 }
 
-DEVICE_ATTR(lcd_onoff, 0666, tovis_qvga_show_onoff, tovis_qvga_store_onoff);
+DEVICE_ATTR(lcd_onoff, 0664, tovis_qvga_show_onoff, tovis_qvga_store_onoff);
 
 static int __init tovis_qvga_probe(struct platform_device *pdev)
 {
