@@ -131,7 +131,7 @@ static int32_t hi351_i2c_txdata(u16 saddr,
 			.buf = txdata,
 		},
 	};
-
+	udelay(5);		//for i2c stabilize
 #if SENSOR_DEBUG
 	pr_err("hi351_i2c_txdata: addr : 0x%x len : %d buf[0]: 0x%x\n", msg[0].addr, msg[0].len, *(msg[0].buf));
 
@@ -219,6 +219,7 @@ static int hi351_probe_init_done(const struct msm_camera_sensor_info *data)
 }
 static long hi351_reg_init(void)
 {
+#if 0		//NORMAL MODE
 	int32_t rc = 0;
 	rc = hi351_i2c_write_b_table(hi351_regs.reg_settings, hi351_regs.reg_setting_size);
 
@@ -229,6 +230,51 @@ static long hi351_reg_init(void)
 	
 	return rc;
 
+#else			//BURST MODE
+
+	int32_t rc = 0;
+	int i;
+	u8 buf[301];
+	int bufIndex = 0;
+
+	memset(buf, 0, sizeof(buf));
+
+	//for burst mode
+
+	for (i = 0; i < hi351_regs.reg_setting_size; ++i) {
+		if ( hi351_regs.reg_settings[i].registr_type == BURST_TYPE && bufIndex < 301 ) {
+			if(bufIndex == 0) {
+				buf[bufIndex] = hi351_regs.reg_settings[i].baddr;
+				bufIndex++;
+				buf[bufIndex] = hi351_regs.reg_settings[i].bdata;
+				bufIndex++;
+			}
+			else {
+				buf[bufIndex] = hi351_regs.reg_settings[i].bdata;
+				bufIndex++;
+			}
+		}
+		else {
+			if (bufIndex > 0) {
+				rc = hi351_i2c_txdata(hi351_client->addr, buf, bufIndex);
+				pr_err("%s: BurstMODE write bufIndex = %d \n",__func__, bufIndex);
+				bufIndex = 0;
+				memset(buf, 0, sizeof(buf));
+				if (rc < 0) {
+					pr_err("%s: %d  failed Exit \n",__func__, __LINE__);
+ 					return rc;
+				}
+			}
+			rc = hi351_i2c_write_b_sensor(hi351_regs.reg_settings[i].baddr, hi351_regs.reg_settings[i].bdata);
+			if (rc < 0) {
+				pr_err("%s: %d  failed Exit \n",__func__, __LINE__);
+ 				return rc;
+			}
+		}
+	}
+	return rc;
+
+#endif
 }
 
 static int32_t hi351_reg_preview(void)
