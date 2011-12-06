@@ -141,10 +141,8 @@ typedef enum
   WEBDLOAD_GET_USB_STRM_CMD		= 0x16, /* 22 */
   WEBDLOAD_READ_BL_VER			= 0x17, /* 23 */
   WEBDLOAD_EMMC_WRITE_ALL		= 0x18, /* 24 added by obd...for change dload and reset*/
-  /*--------------------*/
-//#ifdef LG_FW_WEB_DOWNLOAD_MEID_INFO
-  WEBDLOAD_GET_MEID			= 0x31, /*49*/ // Get MEID
-//#endif /*LG_FW_WEB_DOWNLOAD_MEID_INFO*/
+  WEBDLOAD_GET_MEID				= 0x31, /*49*/ // Get MEID
+  WEBDLOAD_SET_MEID				= 0x32, /*50*/ // Set MEID
   WEBDLOAD_READ_RSVD_VAL1		= 0x40, /* 64 */
   WEBDLOAD_WRITE_RSVD_VAL1		= 0x41, /* 65 */
   WEBDLOAD_READ_RSVD_VAL2		= 0x42, /* 66 */
@@ -180,6 +178,7 @@ typedef union
   char sub_rev[SUB_REV_LEN/*2*/];
   word language;
   /*--------------------*/
+  qword meid;
   word reserved_val1;
   word reserved_val2;
   char reserved_array1[RSVD_ARRAY_LEN/* 8 */];
@@ -215,9 +214,7 @@ typedef union
   word    language;
   byte    usb_strm_cmd[USB_STRM_CMD_NUM/*4*/];
   /*--------------------*/
-//#ifdef LG_FW_WEB_DOWNLOAD_MEID_INFO-------------------> modem s/w에   나중에 명시할 것 
   qword    meid;
-//#endif /*LG_FW_WEB_DOWNLOAD_MEID_INFO*/
   word    reserved_val1;
   word    reserved_val2;
   char    reserved_array1[RSVD_ARRAY_LEN/* 8 */];
