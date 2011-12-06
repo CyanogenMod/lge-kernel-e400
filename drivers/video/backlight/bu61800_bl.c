@@ -48,8 +48,16 @@
 #define LCD_LED_MAX 21 /* 20.32mA */
 #define LCD_LED_MIN 4  /* 3.60mA */
 
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+#define KEY_BL_ON   0x18 
+#define KEY_BL_OFF  0xE7
+
+#define LCD_BL_ON   1 
+#define LCD_BL_OFF  0xFE
+#else
 #define LCD_BL_ON   1 
 #define LCD_BL_OFF  0
+#endif
 
 /* BU61800 Each LDO Voltage Value */
 #define LDO_1_VOLTAGE 0x0a  /* 2.8v */
@@ -62,6 +70,12 @@
 
 #define BU61800BL_REG_MAINLED     0x02  /* Register address for Main BL brightness */
 #define BU61800BL_REG_CURRENT	  0x03  /* Register address for Main LED Current */
+
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+#define BU61800BL_REG_KEY_BL_CUR_LED6  0x06  /* Register address for KEY BL LED6 Current */
+#define BU61800BL_REG_KEY_BL_CUR_LED7  0x07  /* Register address for KEY BL LED7 Current */
+#endif
+
 #define BU61800BL_REG_LDO12	      0x14	/* Register address for LDO 1,2 voltage setting */
 #define BU61800BL_REG_LDO34  	  0x15	/* Register address for LDO 3,4 voltage setting */
 #define BU61800BL_REG_LDOEN       0x13  /* Register address for LDO Enable */
@@ -104,6 +118,10 @@ struct bu61800_ctrl_tbl {
 struct bu61800_reg_addrs {
 	unsigned char bl_m;
 	unsigned char bl_current;	
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+	unsigned char bl_current_led6;	
+	unsigned char bl_current_led7;	
+#endif
 	unsigned char ldo_12;	
 	unsigned char ldo_34;	
 	unsigned char ldo_en;
@@ -141,11 +159,20 @@ static struct bu61800_driver_data *bu61800_ref;
 static unsigned int debug = 0;
 module_param(debug, uint, 0644);
 
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+	unsigned char led_bl_onoff_state;
+#endif
+
+
 /* Set to initial mode */
 static struct bu61800_ctrl_tbl bu61800bl_inital_tbl[] = {
 	//{ 0x00, 0x01 },  // RESET(All register Initializing)
 	{ 0x01, 0x06 },  // WLED5= MainLED, WLED 6,7,8=off,MainLED is normal mode, WPWMIN=OFF
 	{ 0x03, 0x63 },  // (initial) LED current =20mA at normal mode
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)	
+	{ 0x06, 0x18 },  // (initial) LED6 current =15mA at normal mode
+	{ 0x07, 0x18 },  // (initial) LED7 current =15mA at normal mode
+#endif
 	{ 0x09, 0x00 },  // TLH=THL=minmum setting(0.284ms)	
 	{ 0x14, 0xaa },  // LDO 1CH=2.8V_2CH =2.8V
 	{ 0x15, 0x40 },   // LDO 3CH=1.2V_4CH=1.8V	
@@ -170,6 +197,10 @@ static int bu61800_setup_version(struct bu61800_driver_data *drvdata)
 		drvdata->cmds.sleep = bu61800bl_sleep_tbl;
 		drvdata->reg_addrs.bl_m = BU61800BL_REG_MAINLED;
 		drvdata->reg_addrs.bl_current= BU61800BL_REG_CURRENT;		
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+		drvdata->reg_addrs.bl_current_led6= BU61800BL_REG_KEY_BL_CUR_LED6;	
+		drvdata->reg_addrs.bl_current_led7= BU61800BL_REG_KEY_BL_CUR_LED7;	
+#endif
 		drvdata->reg_addrs.ldo_12 = BU61800BL_REG_LDO12;
 		drvdata->reg_addrs.ldo_34 = BU61800BL_REG_LDO34;		
 		drvdata->reg_addrs.ldo_en = BU61800BL_REG_LDOEN;
@@ -403,6 +434,68 @@ int Is_Backlight_Set = 0;
 #endif
 /* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+
+static int bu61800_send_intensity(struct bu61800_driver_data *drvdata, int level)
+{
+	int current_value=0;
+	unsigned char val=led_bl_onoff_state;
+
+	if (level > drvdata->max_intensity)
+		level = drvdata->max_intensity;
+
+	if (level != 0 && level < LCD_LED_MIN)
+		level = LCD_LED_MIN;
+
+	if( level>3 && level < 22)
+		{
+		  current_value = 0x63*level/LCD_LED_MAX;
+		  dprintk("Setting level= %d,current_value is 0x%x\n",level, current_value);
+		}
+	else
+		{
+	      current_value = 0x63;			
+		  dprintk("Invalid setting level = %d\n", level);
+		}
+	/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+#if 1
+	   if((display_on==0) && (level!=0)) 
+	   	{
+		   drvdata->intensity = level;
+	   led_bl_onoff_state = 0x01;
+	      return 0;
+	   	}
+#endif		
+	/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
+	if ((drvdata->intensity != level)&& (level != 0))
+	{
+		val = val | LCD_BL_ON;
+		dprintk("BACK LIGHT SETTING....\n");
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, val);
+		Is_Backlight_Set = 1; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+	}
+	else if(level == 0)
+	{
+		val = val & LCD_BL_OFF;
+		dprintk("BACK LIGHT OFF\n");		
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, val);
+		Is_Backlight_Set = 0; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+	}
+	else
+	{
+	    Is_Backlight_Set = 1; /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+	}
+
+	led_bl_onoff_state = val;
+	drvdata->intensity = level;
+
+	return 0;
+}
+#else
+
 static int bu61800_send_intensity(struct bu61800_driver_data *drvdata, int level)
 {
      int current_value=0;
@@ -461,6 +554,54 @@ static int bu61800_send_intensity(struct bu61800_driver_data *drvdata, int level
 		drvdata->intensity = level;
 	    return 0;
 }
+#endif
+
+
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+int bu61800_send_intensity_key_backlight(int level)
+{
+	int current_value=0;
+	unsigned char val=led_bl_onoff_state;
+
+	// Min, Max control
+	level = (level > LCD_LED_MAX) ? LCD_LED_MAX : level;
+	level = ((level != 0) && (level < LCD_LED_MIN)) ? LCD_LED_MIN : level;
+
+	// case : level is 4 - 21 
+	if(level)
+	{
+		current_value = 0x63*level/LCD_LED_MAX;
+		printk(KERN_INFO "Setting level= %d,current_value is 0x%x\n",level, current_value);
+	}
+	// case : level is zero
+	else
+	{
+		current_value = 0x4a;			
+		printk(KERN_INFO "Invalid setting level = %d,current_value is 0x%x\n", level, current_value);
+	}
+
+
+	if (level)
+	{
+		val = val | KEY_BL_ON;
+		bu61800_write(bu61800_ref->client, bu61800_ref->reg_addrs.bl_current_led6, current_value);
+		bu61800_write(bu61800_ref->client, bu61800_ref->reg_addrs.bl_current_led7, current_value);		
+		bu61800_write(bu61800_ref->client, bu61800_ref->reg_addrs.bl_m, val);
+	}
+	else
+	{
+		val = val & KEY_BL_OFF;		
+		bu61800_write(bu61800_ref->client, bu61800_ref->reg_addrs.bl_current_led6, current_value);
+		bu61800_write(bu61800_ref->client, bu61800_ref->reg_addrs.bl_current_led7, current_value);		
+		bu61800_write(bu61800_ref->client, bu61800_ref->reg_addrs.bl_m, val);
+	}
+
+    led_bl_onoff_state = val;
+
+	return 0;
+}
+EXPORT_SYMBOL(bu61800_send_intensity_key_backlight);
+#endif
 
 static int bu61800_get_intensity(struct bu61800_driver_data *drvdata)
 {
@@ -468,8 +609,48 @@ static int bu61800_get_intensity(struct bu61800_driver_data *drvdata)
 }
 
 
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+
+int bu61800_force_set(void)
+{
+	struct bu61800_driver_data *drvdata = bu61800_ref;
+	int brightness;
+	int current_value;
+	unsigned char val=led_bl_onoff_state;
+
+	brightness = bu61800_get_intensity(drvdata);
+	current_value = 0x63*brightness/LCD_LED_MAX;
+
+	dprintk("[bu61800_force_set] brightness= %d,current_value is 0x%x\n",brightness, current_value);
+
+	if (brightness != 0)
+	{
+		val = val | LCD_BL_ON;
+		dprintk("BACK LIGHT AFTER SETTING....\n");
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, val);
+		Is_Backlight_Set = 1; 
+		
+	}
+	else
+	{
+		val = val & LCD_BL_OFF;
+		dprintk("BACK LIGHT  AFTER OFF\n");		
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);
+		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_m, val);
+		Is_Backlight_Set = 0; 
+	}
+
+	led_bl_onoff_state = val;
+
+	return 0;
+}
+EXPORT_SYMBOL(bu61800_force_set);
+
+#else
+
 /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
-#if 1
+
 int bu61800_force_set(void)
 {
 	struct bu61800_driver_data *drvdata = bu61800_ref;

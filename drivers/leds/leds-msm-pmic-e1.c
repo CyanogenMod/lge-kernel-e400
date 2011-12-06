@@ -22,9 +22,25 @@
 
 #define MAX_KEYPAD_BL_LEVEL	16
 
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+#define KEY_BL_CURRENT_LEVEL	5 // 5mA
+extern int bu61800_send_intensity_key_backlight(int level);
+#endif
+
 static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 	enum led_brightness value)
 {
+#if defined(CONFIG_MACH_MSM7X25A_E1BR)
+	int ret=-1;
+
+	if(value == LED_OFF)
+		ret = bu61800_send_intensity_key_backlight(0);
+	else
+		ret = bu61800_send_intensity_key_backlight(KEY_BL_CURRENT_LEVEL);
+
+	if (ret)
+		dev_err(led_cdev->dev, "can't set keypad backlight\n");
+#else
 	int on_off;
 	int brightness;
 
@@ -65,6 +81,7 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 		break;
 	}
 	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3, brightness, (enum mpp_i_sink_switch)on_off);
+#endif
 }
 
 static struct led_classdev msm_kp_bl_led = {
