@@ -26,6 +26,7 @@
 #include <linux/earlysuspend.h>
 #endif
 
+
 #define SENSOR_NAME 			"bma250"
 #define GRAVITY_EARTH                   9806550
 #define ABSMIN_2G                       (-GRAVITY_EARTH * 2)
