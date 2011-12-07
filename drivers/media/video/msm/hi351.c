@@ -257,7 +257,7 @@ static long hi351_reg_init(void)
 		else {
 			if (bufIndex > 0) {
 				rc = hi351_i2c_txdata(hi351_client->addr, buf, bufIndex);
-				pr_err("%s: BurstMODE write bufIndex = %d \n",__func__, bufIndex);
+				//pr_err("%s: BurstMODE write bufIndex = %d \n",__func__, bufIndex);
 				bufIndex = 0;
 				memset(buf, 0, sizeof(buf));
 				if (rc < 0) {
