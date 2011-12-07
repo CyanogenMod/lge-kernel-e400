@@ -65,6 +65,17 @@ static void mcs8000_early_suspend(struct early_suspend *h);
 static void mcs8000_late_resume(struct early_suspend *h);
 #endif
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+: For an abnormal condition after getting ESD */
+
+static int mcs8000_ts_off(void);
+static int mcs8000_ts_on(void);
+static void mcs8000_Data_Clear(void);
+static void ResetTS(void);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+: For an abnormal condition after getting ESD */ 
+
+
 #if defined (CONFIG_MACH_LGE)
 #define SUPPORT_TOUCH_KEY 1
 #else
@@ -147,6 +158,12 @@ static void mcs8000_late_resume(struct early_suspend *h);
 #define TS_LATEST_FW_VERSION_HW_10	6
 #define TS_LATEST_FW_VERSION_HW_11	7
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+: For the long delay in the case of booting without touchscreen */
+#define GPIO_TS_ID										121
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+: For the long delay in the case of booting without touchscreen */
+
 enum {
 	None = 0,
 	TOUCH_SCREEN,
@@ -194,6 +211,13 @@ static int is_downloading = 0;
 static int is_touch_suspend = 0;
 int fw_rev = 0;
 int Is_Release_Error[MELFAS_MAX_TOUCH]={0}; /* for touch stable */
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+: For the long delay in the case of booting without touchscreen */
+static unsigned char ucSensedInfo = 0;
+static int iLevel = 0;
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+: For the long delay in the case of booting without touchscreen */
 
 #define READ_NUM 8 /* now, just using two finger data */
 
@@ -439,6 +463,20 @@ int mcs8000_ts_ioctl_delay (unsigned int cmd)
 	return err;
 }
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+: For the long delay in the case of booting without touchscreen */
+int AskTSisConnected(void)
+{
+	gpio_tlmm_config(GPIO_CFG(GPIO_TS_ID, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	iLevel = gpio_get_value(GPIO_TS_ID);
+	if (!iLevel)
+		return TRUE;
+	else
+		return FALSE;
+}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+: For the long delay in the case of booting without touchscreen */
+
 static long mcs8000_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
   long lRet;
@@ -633,6 +671,51 @@ static int melfas_init_panel(struct mcs8000_ts_device *ts)
 	return true;
 }
 */
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+: For an abnormal condition after getting ESD */
+static void ResetTS(void)
+{
+	struct mcs8000_ts_device *dev;
+	dev = &mcs8000_ts_dev;
+
+	mcs8000_Data_Clear();
+
+	//disable_irq(dev->num_irq);
+
+	dev->power(OFF);
+
+	mdelay(20);
+
+	mcs8000_ts_on();	
+
+	printk(KERN_DEBUG "Reset TS For ESD\n");
+
+	//enable_irq(dev->num_irq);
+}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+: For an abnormal condition after getting ESD */ 
+
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+: For an abnormal condition after getting ESD */
+int CheckTSForESD(unsigned char ucData)
+{
+	unsigned char ucStatus;
+	ucStatus = ucData&0x0f;
+
+	if (ucStatus == 0x0f) //Abnormal condition
+	{
+		ResetTS();
+		return TRUE;
+	} else {
+		return FALSE;
+	}
+}
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+: For an abnormal condition after getting ESD */ 
+
+
 static void mcs8000_work(struct work_struct *work)
 {
 	int read_num, FingerID;
@@ -733,6 +816,17 @@ Touchscreen doesn't work*/
 			return ;	
 #endif 
 		}
+
+	/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-28] 
+	: For an abnormal condition after getting ESD */
+		ucSensedInfo  = buf[0];
+		if (CheckTSForESD(ucSensedInfo))
+		{
+			enable_irq(ts->client->irq);
+			return;
+		}
+	/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-28] 
+	: For an abnormal condition after getting ESD */ 
 
 		touchType  = (buf[0]>>5)&0x03;
 #if DEBUG_PRINT
@@ -1136,7 +1230,11 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	mdelay(10);
 	mcs8000_ts_on();
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
-	mms100_download();
+	if (AskTSisConnected())
+	{
+		printk(KERN_INFO "Touchscreen is connected to the board\n");
+		mms100_download();
+	}
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : For touchscreen downloader */
 
 	/*20110607 seven.kim@lge.com for touch frimware download [START] */
