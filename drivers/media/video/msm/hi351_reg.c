@@ -8023,6 +8023,8 @@ struct hi351_reg hi351_regs = {
 	.auto_framerate_reg_settings_size = ARRAY_SIZE(hi351_auto_framerate_settings),
 	.fixed_framerate_reg_settings = &hi351_fixed_framerate_settings[0],
 	.fixed_framerate_reg_settings_size = ARRAY_SIZE(hi351_fixed_framerate_settings),
+	.attached_framerate_reg_settings = &hi351_attached_framerate_settings[0],
+	.attached_framerate_reg_settings_size = ARRAY_SIZE(hi351_attached_framerate_settings),
 
 	.effect_off_reg_settings = &hi351_effect_off_settings[0],
 	.effect_off_reg_settings_size = ARRAY_SIZE(hi351_effect_off_settings),
