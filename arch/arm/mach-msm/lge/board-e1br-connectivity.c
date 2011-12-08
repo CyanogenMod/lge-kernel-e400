@@ -570,16 +570,45 @@ static int bluetooth_switch_regulators(int on)
 					__func__, rc);
 			goto vreg_set_level_fail;
 		}
+
+		// +s QCT_BT_PATCH_QCT109806 suhui.kim@lge.com 111207, updated from QCT1097 version
+		rc = on ? vreg_enable(bt_vregs[i].vregs) : 0;
+
+		if (rc < 0) {
+			pr_err("%s: vreg %s %s failed(%d)\n",
+					__func__, bt_vregs[i].name,
+					on ? "enable" : "disable", rc);
+			goto vreg_fail;
+		}
+		// +e QCT_BT_PATCH_QCT109806
+
 		if (bt_vregs[i].is_pin_controlled == 1) {
+			// *s QCT_BT_PATCH_QCT109806 suhui.kim@lge.com 111207, updated from QCT1097 version
+			/* QCT1095 Original
 			rc = pmapp_vreg_pincntrl_vote(id,
+			*/
+			rc = pmapp_vreg_lpm_pincntrl_vote(id,
+			// *e QCT_BT_PATCH_QCT109806
 					bt_vregs[i].pmapp_id,
 					PMAPP_CLOCK_ID_D1,
 					on ? PMAPP_CLOCK_VOTE_ON :
 					PMAPP_CLOCK_VOTE_OFF);
+		// *s QCT_BT_PATCH_QCT109806 suhui.kim@lge.com 111207, updated from QCT1097 version
+		/* QCT1095 Original
 		} else {
 		rc = on ? vreg_enable(bt_vregs[i].vregs) :
 			  vreg_disable(bt_vregs[i].vregs);
 		}
+		*/
+			if (rc < 0) {
+				pr_err("%s: vreg %s pin ctrl failed(%d)\n",
+						__func__, bt_vregs[i].name,
+						rc);
+				goto pincntrl_fail;
+			}
+		}
+		rc = on ? 0 : vreg_disable(bt_vregs[i].vregs);
+		// *e QCT_BT_PATCH_QCT109806
 
 			if (rc < 0) {
 				pr_err("%s: vreg %s %s failed(%d)\n",
@@ -591,6 +620,11 @@ static int bluetooth_switch_regulators(int on)
 
 	return rc;
 
+// +s QCT_BT_PATCH_QCT109806 suhui.kim@lge.com 111207, updated from QCT1097 version
+pincntrl_fail:
+	if (on)
+		vreg_disable(bt_vregs[i].vregs);
+// +e QCT_BT_PATCH_QCT109806
 vreg_fail:
 	while (i) {
 		if (on)
