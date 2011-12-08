@@ -747,8 +747,8 @@ Touchscreen doesn't work*/
 	{	
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
 : For an abnormal condition of touchscreen after the phone sleeps on and off*/				
-          msleep(20); //jwseo_test
-	     enable_irq(ts->client->irq);
+		msleep(20); 
+		enable_irq(ts->client->irq);
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-23] 
 : For an abnormal condition of touchscreen after the phone sleeps on and off*/ 		  
 		return;
@@ -1030,16 +1030,36 @@ static struct miscdevice mcs8000_ts_misc_dev = {
 };
 */
 
+
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+: To check out the touchscreen version in AT command method */
 static ssize_t read_touch_version(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	int r;
+	int iRet = 0;
 	unsigned char hw_ver, fw_ver, comp_ver;
 
-	mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
-	r = sprintf(buf, "MCS8000 Touch Version HW:%02x FW:%02x CV:%02x\n", hw_ver, fw_ver, comp_ver);
+	if(is_touch_suspend)
+	{
+		mcs8000_ts_on();
+	}
 
-	return r;
+	printk(KERN_DEBUG "TOUCHSCREEN FW VERSION Starts \n");
+
+	mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
+
+	iRet = sprintf(buf, "%02x \n", fw_ver);
+	printk(KERN_DEBUG "TOUCHSCREEN FW VERSION : %d \n", fw_ver);
+
+	if(is_touch_suspend)
+	{
+		mcs8000_ts_off();
+	}
+	return iRet;
 }
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+: To check out the touchscreen version in AT command method */
+
+
 /*
 static ssize_t read_touch_dl_status(struct device *dev, struct device_attribute *attr,
 		char *buf)
@@ -1260,8 +1280,13 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	//mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
 	//printk(KERN_INFO "MCS8000 Touch Version HW:%02x FW:%02x CV:%02x\n", hw_ver, fw_ver, comp_ver);
 
-	//mcs8000_create_file(mcs8000_ts_input);  
-	//DMSG(KERN_INFO "%s: ts driver probed\n", __FUNCTION__);
+
+	/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-07] 
+	: To check out the touchscreen version in AT command method */
+	mcs8000_create_file(mcs8000_ts_input);  
+	/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
+	: To check out the touchscreen version in AT command method */
+
 	
 	/* [LGE_S] FW Upgrade function */
 	//mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
