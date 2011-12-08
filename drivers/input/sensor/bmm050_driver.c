@@ -1,6 +1,6 @@
 /*
- * Last modified: Nov 9, 2011
- * Revision: V1.7
+ * Last modified: Nov 28, 2011
+ * Revision: V1.8
  * This software program is licensed subject to the GNU General Public License
  * (GPL).Version 2,June 1991, available at http://www.fsf.org/copyleft/gpl.html
 
@@ -725,6 +725,7 @@ static ssize_t bmm_store_rept_z(struct device *dev,
 	return count;
 }
 
+
 static ssize_t bmm_show_value(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -741,6 +742,24 @@ static ssize_t bmm_show_value(struct device *dev,
 
 	return count;
 }
+
+
+static ssize_t bmm_show_value_raw(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct bmc050_mdata value;
+	int count;
+
+	BMM_CALL_API(get_raw_xyz)(&value);
+
+	count = sprintf(buf, "%hd %hd %hd\n",
+			value.datax,
+			value.datay,
+			value.dataz);
+
+	return count;
+}
+
 
 static ssize_t bmm_show_enable(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -891,6 +910,8 @@ static DEVICE_ATTR(rept_z, S_IRUGO|S_IWUSR,
 		bmm_show_rept_z, bmm_store_rept_z);
 static DEVICE_ATTR(value, S_IRUGO,
 		bmm_show_value, NULL);
+static DEVICE_ATTR(value_raw, S_IRUGO,
+		bmm_show_value_raw, NULL);
 static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR,
 		bmm_show_enable, bmm_store_enable);
 static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR,
@@ -905,11 +926,13 @@ static struct attribute *bmm_attributes[] = {
 	&dev_attr_rept_xy.attr,
 	&dev_attr_rept_z.attr,
 	&dev_attr_value.attr,
+	&dev_attr_value_raw.attr,
 	&dev_attr_enable.attr,
 	&dev_attr_delay.attr,
 	&dev_attr_test.attr,
 	NULL
 };
+
 
 static struct attribute_group bmm_attribute_group = {
 	.attrs = bmm_attributes
@@ -958,9 +981,16 @@ static int bmm_restore_hw_cfg(struct i2c_client *client)
 	u8 value;
 	struct bmm_client_data *client_data =
 		(struct bmm_client_data *)i2c_get_clientdata(client);
+	int op_mode;
+
 	mutex_lock(&client_data->mutex_op_mode);
 	err = BMM_CALL_API(set_functional_state)(client_data->op_mode);
+
+	op_mode = client_data->op_mode;
 	mutex_unlock(&client_data->mutex_op_mode);
+
+	if (BMM_VAL_NAME(SUSPEND_MODE) == op_mode)
+		return err;
 
 	mutex_lock(&client_data->mutex_odr);
 	BMM_CALL_API(set_datarate)(client_data->odr);
@@ -1090,20 +1120,27 @@ static int bmm_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	client_data->enable = 0;
 	/* now it's power on which is considered as resuming from suspend */
-	client_data->op_mode = BMM_VAL_NAME(SLEEP_MODE);
+	client_data->op_mode = BMM_VAL_NAME(SUSPEND_MODE);
 	client_data->odr = BMM_DEFAULT_ODR;
 	client_data->rept_xy = BMM_DEFAULT_REPETITION_XY;
 	client_data->rept_z = BMM_DEFAULT_REPETITION_Z;
 
+
+#if 0
 	err = bmm_restore_hw_cfg(client);
+#else
+	err = BMM_CALL_API(set_functional_state)(
+			BMM_VAL_NAME(SUSPEND_MODE));
 	if (err) {
 		PERR("fail to init h/w of %s", SENSOR_NAME);
 		err = -EIO;
 		goto exit_err_sysfs;
 	}
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	client_data->early_suspend_handler.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+	client_data->early_suspend_handler.level =
+		EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	client_data->early_suspend_handler.suspend = bmm_early_suspend;
 	client_data->early_suspend_handler.resume = bmm_late_resume;
 	register_early_suspend(&client_data->early_suspend_handler);

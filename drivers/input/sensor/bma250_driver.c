@@ -1,5 +1,5 @@
-/*  Date: 2011/11/9 11:00:00
- *  Revision: 1.8
+/*  Date: 2011/11/28 16:00:00
+ *  Revision: 2.0
  */
 
 /*
@@ -25,7 +25,6 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
-
 
 #define SENSOR_NAME 			"bma250"
 #define GRAVITY_EARTH                   9806550
@@ -1061,6 +1060,87 @@ static int bma250_get_offset_target_z(struct i2c_client *client,
 	return comres;
 }
 
+
+static int bma250_set_offset_filt_x(struct i2c_client *client, unsigned char
+		offsetfilt)
+{
+	int comres = 0;
+	unsigned char data;
+
+	data =  offsetfilt;
+	comres = bma250_smbus_write_byte(client, BMA250_OFFSET_FILT_X_REG,
+						&data);
+
+	return comres;
+}
+
+
+static int bma250_get_offset_filt_x(struct i2c_client *client, unsigned char
+						*offsetfilt)
+{
+	int comres = 0;
+	unsigned char data;
+
+	comres = bma250_smbus_read_byte(client, BMA250_OFFSET_FILT_X_REG,
+						&data);
+	*offsetfilt = data;
+
+	return comres;
+}
+
+static int bma250_set_offset_filt_y(struct i2c_client *client, unsigned char
+						offsetfilt)
+{
+	int comres = 0;
+	unsigned char data;
+
+	data =  offsetfilt;
+	comres = bma250_smbus_write_byte(client, BMA250_OFFSET_FILT_Y_REG,
+						&data);
+
+	return comres;
+}
+
+static int bma250_get_offset_filt_y(struct i2c_client *client, unsigned char
+						*offsetfilt)
+{
+	int comres = 0;
+	unsigned char data;
+
+	comres = bma250_smbus_read_byte(client, BMA250_OFFSET_FILT_Y_REG,
+						&data);
+	*offsetfilt = data;
+
+	return comres;
+}
+
+static int bma250_set_offset_filt_z(struct i2c_client *client, unsigned char
+						offsetfilt)
+{
+	int comres = 0;
+	unsigned char data;
+
+	data =  offsetfilt;
+	comres = bma250_smbus_write_byte(client, BMA250_OFFSET_FILT_Z_REG,
+						&data);
+
+	return comres;
+}
+
+static int bma250_get_offset_filt_z(struct i2c_client *client, unsigned char
+						*offsetfilt)
+{
+	int comres = 0;
+	unsigned char data;
+
+	comres = bma250_smbus_read_byte(client, BMA250_OFFSET_FILT_Z_REG,
+						&data);
+	*offsetfilt = data;
+
+	return comres;
+}
+
+
 static int bma250_get_cal_ready(struct i2c_client *client,
 		unsigned char *calrdy)
 {
@@ -1311,36 +1391,110 @@ static ssize_t bma250_eeprom_writing_store(struct device *dev,
 }
 
 
-#if 1
-static DEVICE_ATTR(range, S_IRUGO|S_IWUSR|S_IWGRP,
-		bma250_range_show, bma250_range_store);
-static DEVICE_ATTR(bandwidth, S_IRUGO|S_IWUSR|S_IWGRP,
-		bma250_bandwidth_show, bma250_bandwidth_store);
-static DEVICE_ATTR(mode, S_IRUGO|S_IWUSR|S_IWGRP,
-		bma250_mode_show, bma250_mode_store);
-static DEVICE_ATTR(value, S_IRUGO,
-		bma250_value_show, NULL);
-static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR|S_IWGRP,
-		bma250_delay_show, bma250_delay_store);
-static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP,
-		bma250_enable_show, bma250_enable_store);
-static DEVICE_ATTR(update, S_IRUGO|S_IWUSR|S_IWGRP,
-		NULL, bma250_update_store);
-static DEVICE_ATTR(selftest, S_IRUGO|S_IWUSR|S_IWGRP,
-		bma250_selftest_show, bma250_selftest_store);
-static DEVICE_ATTR(fast_calibration_x, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
-		bma250_fast_calibration_x_show,
-		bma250_fast_calibration_x_store);
-static DEVICE_ATTR(fast_calibration_y, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
-		bma250_fast_calibration_y_show,
-		bma250_fast_calibration_y_store);
-static DEVICE_ATTR(fast_calibration_z, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
-		bma250_fast_calibration_z_show,
-		bma250_fast_calibration_z_store);
+static ssize_t bma250_offset_filt_x_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned char data;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-static DEVICE_ATTR(eeprom_writing, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
-		NULL, bma250_eeprom_writing_store);
-#else
+	if (bma250_get_offset_filt_x(bma250->bma250_client, &data) < 0)
+		return sprintf(buf, "Read error\n");
+
+	return sprintf(buf, "%d\n", data);
+
+}
+
+static ssize_t bma250_offset_filt_x_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned long data;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	error = strict_strtoul(buf, 10, &data);
+	if (error)
+		return error;
+
+	if (bma250_set_offset_filt_x(bma250->bma250_client, (unsigned
+					char)data) < 0)
+		return -EINVAL;
+
+	return count;
+}
+
+static ssize_t bma250_offset_filt_y_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned char data;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	if (bma250_get_offset_filt_y(bma250->bma250_client, &data) < 0)
+		return sprintf(buf, "Read error\n");
+
+	return sprintf(buf, "%d\n", data);
+
+}
+
+static ssize_t bma250_offset_filt_y_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned long data;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	error = strict_strtoul(buf, 10, &data);
+	if (error)
+		return error;
+
+	if (bma250_set_offset_filt_y(bma250->bma250_client, (unsigned
+					char)data) < 0)
+		return -EINVAL;
+
+	return count;
+}
+
+static ssize_t bma250_offset_filt_z_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned char data;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	if (bma250_get_offset_filt_z(bma250->bma250_client, &data) < 0)
+		return sprintf(buf, "Read error\n");
+
+	return sprintf(buf, "%d\n", data);
+
+}
+
+static ssize_t bma250_offset_filt_z_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned long data;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	error = strict_strtoul(buf, 10, &data);
+	if (error)
+		return error;
+
+	if (bma250_set_offset_filt_z(bma250->bma250_client, (unsigned
+					char)data) < 0)
+		return -EINVAL;
+
+	return count;
+}
+
+
+
 static DEVICE_ATTR(range, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		bma250_range_show, bma250_range_store);
 static DEVICE_ATTR(bandwidth, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
@@ -1369,7 +1523,20 @@ static DEVICE_ATTR(fast_calibration_z, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 
 static DEVICE_ATTR(eeprom_writing, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		NULL, bma250_eeprom_writing_store);
-#endif
+
+static DEVICE_ATTR(offset_filt_x, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+		bma250_offset_filt_x_show,
+		bma250_offset_filt_x_store);
+
+static DEVICE_ATTR(offset_filt_y, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+		bma250_offset_filt_y_show,
+		bma250_offset_filt_y_store);
+
+static DEVICE_ATTR(offset_filt_z, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+		bma250_offset_filt_z_show,
+		bma250_offset_filt_z_store);
+
+
 static struct attribute *bma250_attributes[] = {
 	&dev_attr_range.attr,
 	&dev_attr_bandwidth.attr,
@@ -1383,6 +1550,9 @@ static struct attribute *bma250_attributes[] = {
 	&dev_attr_fast_calibration_y.attr,
 	&dev_attr_fast_calibration_z.attr,
 	&dev_attr_eeprom_writing.attr,
+	&dev_attr_offset_filt_x.attr,
+	&dev_attr_offset_filt_y.attr,
+	&dev_attr_offset_filt_z.attr,
 	NULL
 };
 
@@ -1479,6 +1649,10 @@ static int bma250_probe(struct i2c_client *client,
 	data->early_suspend.resume = bma250_late_resume;
 	register_early_suspend(&data->early_suspend);
 #endif
+	err = bma250_set_mode(client, BMA250_MODE_SUSPEND);
+	if (err) {
+		goto error_sysfs;
+	}
 
 	return 0;
 

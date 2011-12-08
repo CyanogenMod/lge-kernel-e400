@@ -188,6 +188,7 @@ BMC050_RETURN_FUNCTION_TYPE bmc050_get_functional_state(
 	return comres;
 }
 
+
 BMC050_RETURN_FUNCTION_TYPE bmc050_set_functional_state(
 		unsigned char functional_state)
 {
@@ -334,6 +335,42 @@ BMC050_RETURN_FUNCTION_TYPE bmc050_set_repetitions_Z(
 	}
 	return comres;
 }
+
+
+BMC050_RETURN_FUNCTION_TYPE bmc050_get_raw_xyz(struct bmc050_mdata *mdata)
+{
+	BMC050_RETURN_FUNCTION_TYPE comres;
+	unsigned char a_data_u8r[6];
+	if (p_bmc050 == BMC050_NULL) {
+		comres = E_BMC050_NULL_PTR;
+	} else {
+		comres = p_bmc050->BMC050_BUS_READ_FUNC(p_bmc050->dev_addr,
+				BMC050_DATAX_LSB, a_data_u8r, 6);
+
+		a_data_u8r[0] = BMC050_GET_BITSLICE(a_data_u8r[0],
+				BMC050_DATAX_LSB_VALUEX);
+		mdata->datax = (BMC050_S16)((((BMC050_S16)
+						((signed char)a_data_u8r[1]))
+					<< SHIFT_LEFT_5_POSITION)
+				| a_data_u8r[0]);
+
+		a_data_u8r[2] = BMC050_GET_BITSLICE(a_data_u8r[2],
+				BMC050_DATAY_LSB_VALUEY);
+		mdata->datay = (BMC050_S16)((((BMC050_S16)
+						((signed char)a_data_u8r[3]))
+					<< SHIFT_LEFT_5_POSITION)
+				| a_data_u8r[2]);
+
+		a_data_u8r[4] = BMC050_GET_BITSLICE(a_data_u8r[4],
+				BMC050_DATAZ_LSB_VALUEZ);
+		mdata->dataz = (BMC050_S16)((((BMC050_S16)
+						((signed char)a_data_u8r[5]))
+					<< SHIFT_LEFT_7_POSITION)
+				| a_data_u8r[4]);
+	}
+	return comres;
+}
+
 
 BMC050_RETURN_FUNCTION_TYPE bmc050_read_mdataXYZ(struct bmc050_mdata *mdata)
 {
