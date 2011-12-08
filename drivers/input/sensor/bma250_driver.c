@@ -1327,17 +1327,17 @@ static DEVICE_ATTR(update, S_IRUGO|S_IWUSR|S_IWGRP,
 		NULL, bma250_update_store);
 static DEVICE_ATTR(selftest, S_IRUGO|S_IWUSR|S_IWGRP,
 		bma250_selftest_show, bma250_selftest_store);
-static DEVICE_ATTR(fast_calibration_x, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fast_calibration_x, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		bma250_fast_calibration_x_show,
 		bma250_fast_calibration_x_store);
-static DEVICE_ATTR(fast_calibration_y, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fast_calibration_y, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		bma250_fast_calibration_y_show,
 		bma250_fast_calibration_y_store);
-static DEVICE_ATTR(fast_calibration_z, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fast_calibration_z, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		bma250_fast_calibration_z_show,
 		bma250_fast_calibration_z_store);
 
-static DEVICE_ATTR(eeprom_writing, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(eeprom_writing, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		NULL, bma250_eeprom_writing_store);
 #else
 static DEVICE_ATTR(range, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
