@@ -1391,6 +1391,21 @@ static ssize_t bma250_eeprom_writing_store(struct device *dev,
 }
 
 
+static ssize_t bma250_eeprom_writing_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned char data;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	if (bma250_get_eeprom_writing_status(bma250->bma250_client, &data) < 0)
+		return sprintf(buf, "Read error\n");
+
+	return sprintf(buf, "%d\n", data);
+
+}
+
+
 static ssize_t bma250_offset_filt_x_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1522,7 +1537,7 @@ static DEVICE_ATTR(fast_calibration_z, S_IRUGO|S_IWUSR|S_IWGRP,
 		bma250_fast_calibration_z_store);
 
 static DEVICE_ATTR(eeprom_writing, S_IRUGO|S_IWUSR|S_IWGRP,
-		NULL, bma250_eeprom_writing_store);
+		bma250_eeprom_writing_show, bma250_eeprom_writing_store);
 
 static DEVICE_ATTR(offset_filt_x, S_IRUGO|S_IWUSR|S_IWGRP,
 		bma250_offset_filt_x_show,
