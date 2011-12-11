@@ -43,7 +43,7 @@ struct hi351_work {
 static struct  hi351_work *hi351_sensorw;
 static struct  i2c_client *hi351_client;
 static bool CONFIG_CSI;
-static bool FIRST_INIT;
+static bool DELAY_START;
 
 struct hi351_ctrl_t {
 	const struct msm_camera_sensor_info *sensordata;
@@ -137,7 +137,7 @@ static int32_t hi351_i2c_txdata(u16 saddr,
 
 #endif
 	if (i2c_transfer(hi351_client->adapter, msg, 1) < 0) {
-		CDBG("hi351_i2c_txdata failed\n");
+		pr_err("hi351_i2c_txdata failed\n");
 		return -EIO;
 	}
 
@@ -150,15 +150,30 @@ static int32_t hi351_i2c_write_b_sensor(u8 baddr, u8 bdata)
 	u8 buf[2];
 	memset(buf, 0, sizeof(buf));
 
-	buf[0] = baddr;
-	buf[1] = bdata;
-	
-	rc = hi351_i2c_txdata(hi351_client->addr, buf, 2);
+	if (DELAY_START == 1) {
+		if (baddr == 0xFE) {
+			msleep(bdata);
+		}
+		DELAY_START = 0;
+		return 0;
+	}
+	else {
+		if (baddr == 0x03 && bdata == 0xFE) {
+			DELAY_START = 1;
+			return 0;
+		}
+		else {
+
+			buf[0] = baddr;
+			buf[1] = bdata;
+			
+			rc = hi351_i2c_txdata(hi351_client->addr, buf, 2);
 
 
-	if (rc < 0)
-		pr_err("i2c_write_w failed, addr = 0x%x, val = 0x%x!\n", baddr, bdata);
-
+			if (rc < 0)
+				pr_err("i2c_write_w failed, addr = 0x%x, val = 0x%x!\n", baddr, bdata);
+		}
+	}
 	return rc;
 }
 
@@ -175,7 +190,7 @@ static int32_t hi351_i2c_write_b_table(struct hi351_i2c_reg_conf const *reg_conf
 			}
 			reg_conf_tbl++;
 		}
-	pr_err("%s: %d	Exit \n",__func__, __LINE__);
+	CDBG("%s: %d	Exit \n",__func__, __LINE__);
 	return rc;
 
 }
@@ -183,22 +198,22 @@ static int32_t hi351_i2c_write_b_table(struct hi351_i2c_reg_conf const *reg_conf
 static void hi351_start_stream(void)
 {
 	//int rc = 0;
-	pr_err("%s: %d  Enter \n",__func__, __LINE__);
+	CDBG("%s: %d  Enter \n",__func__, __LINE__);
 
 	hi351_i2c_write_b_sensor(0x03, 0x00);
 	hi351_i2c_write_b_sensor(0x01, 0xf0);/* streaming on */
-	pr_err("%s: %d  Exit \n",__func__, __LINE__);
+	CDBG("%s: %d  Exit \n",__func__, __LINE__);
 }
 
 static void hi351_stop_stream(void)
 {	
 	//int rc = 0;
-	pr_err("%s: %d  Enter \n",__func__, __LINE__);
+	CDBG("%s: %d  Enter \n",__func__, __LINE__);
 
 	hi351_i2c_write_b_sensor(0x03, 0x00);
 	hi351_i2c_write_b_sensor(0x01, 0xf1);
 
-	pr_err("%s: %d  Exit \n",__func__, __LINE__);
+	CDBG("%s: %d  Exit \n",__func__, __LINE__);
 }
 
 
@@ -421,7 +436,6 @@ static int hi351_set_wb(int mode)
 
 	
 	prev_balance_mode = mode;
-	msleep(1);
 	return rc;
 }
 
@@ -473,7 +487,6 @@ static int hi351_set_iso(int mode)
 	}
 	
 	prev_iso_mode = mode;
-	msleep(1);	
 	return rc;
 }
 
@@ -542,7 +555,6 @@ static long hi351_set_scene_mode(int8_t mode)
 		return rc;
 
 	prev_scene_mode = mode;
-	msleep(1);
 	return rc;
 }
 
@@ -575,7 +587,7 @@ static int32_t hi351_set_csi(void) {
 	hi351_stop_stream();
 	msleep(20);
 	/* config mipi csi controller */
-	pr_err("### %s: config mipi csi controller\n", __func__);
+	printk(KERN_ERR "### %s: config mipi csi controller\n", __func__);
 	if (CONFIG_CSI == 0) {
 		msm_camio_vfe_clk_rate_set(192000000);
 		hi351_csi_params.lane_cnt = 1;
@@ -589,10 +601,9 @@ static int32_t hi351_set_csi(void) {
 		if (rc < 0)
 			printk(KERN_ERR "config csi controller failed \n");
 		msleep(50);
-		hi351_start_stream();
 		CONFIG_CSI = 1;
 	}
-
+	hi351_start_stream();
 	return rc;
 }
 static long hi351_set_sensor_mode(int mode)
@@ -603,25 +614,17 @@ static long hi351_set_sensor_mode(int mode)
 	switch (mode) {
 	case SENSOR_PREVIEW_MODE:
 				
-		pr_err("%s: %d CAMERA_Preview_MODE Enter \n",__func__, __LINE__);
+		CDBG("%s: %d CAMERA_Preview_MODE Enter \n",__func__, __LINE__);
 
-		if (FIRST_INIT == 0) {
-			printk(KERN_ERR "%s:Sensor Preview Mode In But Init First Done. Skip\n", __func__);
-			FIRST_INIT = 1;			
+		for (retry = 0; retry < 3; ++retry) {
+				printk(KERN_ERR "%s:Sensor Preview Mode In\n", __func__);
+			rc = hi351_reg_preview();
+			if (rc < 0)
+				printk(KERN_ERR "[ERROR]%s:Sensor Preview Mode Fail\n", __func__);
+			else
+				break;
 		}
-		else {	
-			for (retry = 0; retry < 3; ++retry) {
-					printk(KERN_ERR "%s:Sensor Preview Mode In\n", __func__);
-				rc = hi351_reg_preview();
-				if (rc < 0)
-					printk(KERN_ERR "[ERROR]%s:Sensor Preview Mode Fail\n", __func__);
-				else
-					break;
-			}
-			msleep(1);
-			hi351_start_stream();
-			msleep(10);
-		}
+
 		break;
 	case SENSOR_SNAPSHOT_MODE:
 	case SENSOR_RAW_SNAPSHOT_MODE:
@@ -633,9 +636,6 @@ static long hi351_set_sensor_mode(int mode)
 			else
 				break;
 		}
-		msleep(5);
-		hi351_start_stream();
-		msleep(50);
 		
 		break;		
 	default:
@@ -688,9 +688,6 @@ static int hi351_set_Fps(int mode)
 	   }
 
 	prev_fps_mode = mode;
-	msleep(1);
-	hi351_start_stream();
-	msleep(10);		//add for stablize changing fps_mode
 	return rc;
 }
 
@@ -792,16 +789,16 @@ static int hi351_sensor_init_probe(const struct msm_camera_sensor_info *data)
 
 	//checking sensor ID / software reset
 
-	pr_err(" hi351_probe_init_sensor is called: Address - 0x%x\n",hi351_client->addr);
+	CDBG(" hi351_probe_init_sensor is called: Address - 0x%x\n",hi351_client->addr);
 	
 	rc = hi351_i2c_read(hi351_client->addr, HI351_REG_MODEL_ID, &chipid1);
 	if (rc < 0)
 	{
-		pr_err("hi351_probe_init_sensor: 0x%x\n",chipid1);
+		pr_err("hi351_probe_init_sensor: 0x%x failed\n",chipid1);
 		goto init_probe_fail;
 	}
 
-	pr_err("hi351_probe_init_sensor: 0x%x\n",chipid1);
+	CDBG("hi351_probe_init_sensor: 0x%x\n",chipid1);
 
 	if (chipid1 != HI351_MODEL_ID) {
 		rc = -ENODEV;
@@ -840,7 +837,7 @@ int hi351_sensor_init(const struct msm_camera_sensor_info *data)
 	}
 
 	CONFIG_CSI = 0;
-	FIRST_INIT = 0;
+	DELAY_START = 0;
 	
 	if (data)
 		hi351_ctrl->sensordata = data;

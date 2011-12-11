@@ -20,6 +20,7 @@ enum hi351_type {
 	BYTE_LEN,
 	WORD_LEN,
 	BURST_TYPE,
+	DELAY_TYPE,
 };
 
 struct hi351_i2c_reg_conf {
