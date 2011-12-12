@@ -293,7 +293,7 @@ struct android_usb_platform_data android_usb_pdata = {
 	.products = usb_products,
 	.num_functions = ARRAY_SIZE(usb_functions_lge_all),
 	.functions = usb_functions_lge_all,
-	.serial_number = "LG_ANDROID_E0OPEN_GB_",
+	.serial_number = "LG_ANDROID_E1BR_GB_",
 
 };
 #else
