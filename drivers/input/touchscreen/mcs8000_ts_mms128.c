@@ -853,9 +853,12 @@ Touchscreen doesn't work*/
 				if((buf[i] & 0x80)==0)
 					g_Mtouch_info[FingerID].strength = 0;
 				else
-					g_Mtouch_info[FingerID].strength = buf[i+4];
-				
-				g_Mtouch_info[FingerID].width= buf[i+5];					
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
+For the MIP Protocal*/
+					g_Mtouch_info[FingerID].width		= buf[i+4]; 													
+					g_Mtouch_info[FingerID].strength	= buf[i+5];																																					 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
+For the MIP Protocal*/
 			}
 			
 			for(i=0; i<MELFAS_MAX_TOUCH; i++) {
