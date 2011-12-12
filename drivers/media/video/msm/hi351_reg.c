@@ -2362,23 +2362,23 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xa7, 0x64, BURST_TYPE}, //aInTgtAngle_a05_n00
 	{0xa8, 0x6e, BURST_TYPE}, //aInTgtAngle_a06_n00
 	{0xa9, 0x78, BURST_TYPE}, //aInTgtAngle_a07_n00
-	{0xaa, 0x14, BURST_TYPE}, //aInRgTgtOfs_a00_n00
-	{0xab, 0x14, BURST_TYPE}, //aInRgTgtOfs_a01_n00
-	{0xac, 0x0a, BURST_TYPE}, //aInRgTgtOfs_a02_n00
+	{0xaa, 0x06, BURST_TYPE}, //aInRgTgtOfs_a00_n00
+	{0xab, 0x02, BURST_TYPE}, //aInRgTgtOfs_a01_n00
+	{0xac, 0x01, BURST_TYPE}, //aInRgTgtOfs_a02_n00
 	{0xad, 0x00, BURST_TYPE}, //aInRgTgtOfs_a03_n00
 	{0xae, 0x00, BURST_TYPE}, //aInRgTgtOfs_a04_n00
 	{0xaf, 0x00, BURST_TYPE}, //aInRgTgtOfs_a05_n00
 	{0xb0, 0x00, BURST_TYPE}, //aInRgTgtOfs_a06_n00
-	{0xb1, 0x00, BURST_TYPE}, //aInRgTgtOfs_a07_n00
-	{0xb2, 0x94, BURST_TYPE}, //aInBgTgtOfs_a00_n00
-	{0xb3, 0x94, BURST_TYPE}, //aInBgTgtOfs_a01_n00
-	{0xb4, 0x8a, BURST_TYPE}, //aInBgTgtOfs_a02_n00
+	{0xb1, 0x82, BURST_TYPE}, //aInRgTgtOfs_a07_n00
+	{0xb2, 0x86, BURST_TYPE}, //aInBgTgtOfs_a00_n00
+	{0xb3, 0x82, BURST_TYPE}, //aInBgTgtOfs_a01_n00
+	{0xb4, 0x81, BURST_TYPE}, //aInBgTgtOfs_a02_n00
 	{0xb5, 0x00, BURST_TYPE}, //aInBgTgtOfs_a03_n00
 	{0xb6, 0x00, BURST_TYPE}, //aInBgTgtOfs_a04_n00
 	{0xb7, 0x00, BURST_TYPE}, //aInBgTgtOfs_a05_n00
-	           
-	{0xb8, 0x00, BURST_TYPE}, //205degree [ indoor ]b gain 6 code up
-	{0xb9, 0x00, BURST_TYPE},
+
+	{0xb8, 0x00, BURST_TYPE}, //aInBgTgtOfs_a06_n00
+	{0xb9, 0x02, BURST_TYPE}, //aInBgTgtOfs_a07_n00	          
 	{0xba, 0x00, BURST_TYPE},
 	{0xbb, 0x00, BURST_TYPE},
 	{0xbc, 0x00, BURST_TYPE},
@@ -2469,9 +2469,9 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x17, 0xf8, BURST_TYPE},
 	           
 	{0x18, 0x40, BURST_TYPE},
-	{0x19, 0x78, BURST_TYPE}, //bInRgainMax_a00_n00
+	{0x19, 0xf0, BURST_TYPE}, //bInRgainMax_a00_n00
 	{0x1a, 0x40, BURST_TYPE},
-	{0x1b, 0x90, BURST_TYPE}, //bInBgainMax_a00_n00
+	{0x1b, 0xf0, BURST_TYPE}, //bInBgainMax_a00_n00
 	{0x1c, 0x08, BURST_TYPE},
 	{0x1d, 0x00, BURST_TYPE},
 	{0x1e, 0x37, BURST_TYPE}, //aOutWhtRgnBg_a00_n00
@@ -2542,19 +2542,19 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x5d, 0x00, BURST_TYPE},
 	{0x5e, 0x00, BURST_TYPE},
 	{0x5f, 0x00, BURST_TYPE},
-	           
-	{0x60, 0x00, BURST_TYPE},
-	{0x61, 0x00, BURST_TYPE},
-	{0x62, 0x00, BURST_TYPE},
+
+	{0x60, 0x82, BURST_TYPE}, //aOutRgTgtOfs_a03_n00
+	{0x61, 0x84, BURST_TYPE}, //aOutRgTgtOfs_a04_n00
+	{0x62, 0x86, BURST_TYPE}, //aOutRgTgtOfs_a05_n00
 	{0x63, 0x00, BURST_TYPE},
 	{0x64, 0x00, BURST_TYPE},
 	{0x65, 0x00, BURST_TYPE},
 	{0x66, 0x00, BURST_TYPE},
 	{0x67, 0x00, BURST_TYPE},
-	           
-	{0x68, 0x00, BURST_TYPE},
-	{0x69, 0x00, BURST_TYPE},
-	{0x6a, 0x00, BURST_TYPE},
+
+	{0x68, 0x02, BURST_TYPE}, //aOutBgTgtOfs_a03_n00
+	{0x69, 0x04, BURST_TYPE}, //aOutBgTgtOfs_a04_n00
+	{0x6a, 0x06, BURST_TYPE}, //aOutBgTgtOfs_a05_n00
 	{0x6b, 0x00, BURST_TYPE},
 	{0x6c, 0x00, BURST_TYPE},
 	{0x6d, 0x00, BURST_TYPE},
@@ -3213,31 +3213,34 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	///////////////////////////////////////////
 	// D1 Page Adaptive R/B saturation
 	///////////////////////////////////////////
-	{0x2b, 0x78, BURST_TYPE},//SATB_00
-	{0x2c, 0x78, BURST_TYPE},//SATB_01
-	{0x2d, 0x78, BURST_TYPE},//SATB_02
-	{0x2e, 0x90, BURST_TYPE},//SATB_03
-	{0x2f, 0x90, BURST_TYPE},//SATB_04
-	{0x30, 0x90, BURST_TYPE},//SATB_05
-	{0x31, 0x90, BURST_TYPE},//SATB_06
-	{0x32, 0x90, BURST_TYPE},//SATB_07
-	{0x33, 0x90, BURST_TYPE},//SATB_08
-	{0x34, 0x88, BURST_TYPE},//SATB_09
-	{0x35, 0x88, BURST_TYPE},//SATB_10
-	{0x36, 0x88, BURST_TYPE},//SATB_11 
-	//Cr		 BURST_TYPE
-	{0x37, 0x78, BURST_TYPE},//SATR_00
-	{0x38, 0x78, BURST_TYPE},//SATR_01
-	{0x39, 0x78, BURST_TYPE},//SATR_02
-	{0x3a, 0x90, BURST_TYPE},//SATR_03
-	{0x3b, 0x90, BURST_TYPE},//SATR_04
-	{0x3c, 0x90, BURST_TYPE},//SATR_05
-	{0x3d, 0x90, BURST_TYPE},//SATR_06
-	{0x3e, 0x90, BURST_TYPE},//SATR_07
-	{0x3f, 0x90, BURST_TYPE},//SATR_08
-	{0x40, 0x88, BURST_TYPE},//SATR_09
-	{0x41, 0x88, BURST_TYPE},//SATR_10
-	{0x42, 0x88, BURST_TYPE},//SATR_11
+	{0x2b, 0x70, BURST_TYPE},//SATB_00
+	{0x2c, 0x70, BURST_TYPE},//SATB_01
+	{0x2d, 0x70, BURST_TYPE},//SATB_02
+	{0x2e, 0x80, BURST_TYPE},//SATB_03
+	{0x2f, 0x80, BURST_TYPE},//SATB_04
+	{0x30, 0x80, BURST_TYPE},//SATB_05
+	{0x31, 0x88, BURST_TYPE},//SATB_06
+	{0x32, 0x88, BURST_TYPE},//SATB_07
+	{0x33, 0x88, BURST_TYPE},//SATB_08
+	{0x34, 0x80, BURST_TYPE},//SATB_09
+	{0x35, 0x80, BURST_TYPE},//SATB_10
+	{0x36, 0x80, BURST_TYPE},//SATB_11 
+	
+	//Cr		
+
+	{0x37, 0x70, BURST_TYPE},//SATR_00
+	{0x38, 0x70, BURST_TYPE},//SATR_01
+	{0x39, 0x70, BURST_TYPE},//SATR_02
+	{0x3a, 0x80, BURST_TYPE},//SATR_03
+	{0x3b, 0x80, BURST_TYPE},//SATR_04
+	{0x3c, 0x80, BURST_TYPE},//SATR_05
+	{0x3d, 0x88, BURST_TYPE},//SATR_06
+	{0x3e, 0x88, BURST_TYPE},//SATR_07
+	{0x3f, 0x88, BURST_TYPE},//SATR_08
+	{0x40, 0x80, BURST_TYPE},//SATR_09
+	{0x41, 0x80, BURST_TYPE},//SATR_10
+	{0x42, 0x80, BURST_TYPE},//SATR_11
+
 	
 	///////////////////////////////////////////
 	// D1 Page Adaptive CMC
