@@ -256,7 +256,7 @@ static long hi351_reg_init(void)
 
 	//for burst mode
 
-	for (i = 0; i < hi351_regs.reg_setting_size; ++i) {
+	for (i = 0; i < hi351_regs.reg_setting_size; i++) {
 		if ( hi351_regs.reg_settings[i].registr_type == BURST_TYPE && bufIndex < 301 ) {
 			if(bufIndex == 0) {
 				buf[bufIndex] = hi351_regs.reg_settings[i].baddr;
