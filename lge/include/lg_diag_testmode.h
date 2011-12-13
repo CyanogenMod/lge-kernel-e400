@@ -438,7 +438,38 @@ typedef enum
     MLT_ENABLE,
 }test_mode_req_mlt_enable_type;
 // LGE_UPDATE_E  KimWooYul 2011-11-18
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
+typedef enum 
+{
+  ACCEL_SENSOR_OFF= 0,
+  ACCEL_SENSOR_ON,
+  ACCEL_SENSOR_SENSORDATA,
+} test_mode_req_acceleration_sensor_type;
 
+typedef enum 
+{
+  ORIENTATION_SENSOR_PITCH = 0,
+  ORIENTATION_SENSOR_ROLL,
+} test_mode_req_orientation_sensor_type;
+
+typedef enum 
+{
+  COMPS_SENSOR_OFF = 0,
+  COMPS_SENSOR_ON,
+  COMPS_SENSOR_SENSORDATA,
+} test_mode_req_compass_sensor_type;
+
+typedef enum 
+{
+  PROXI_SENSOR_ON = 0,
+  PROXI_SENSOR_OFF,
+} test_mode_req_proximity_sensor_type;
+typedef enum 
+{
+  SENSOR_CALIBRATION_START = 0,
+  SENSOR_CALIBRATION_RESULT,
+}test_mode_req_calibration_sensor_type;
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
 #define MAX_NTCODE_SIZE (512-3)
 
 typedef union
@@ -500,6 +531,13 @@ typedef union
     test_mode_req_mlt_enable_type mlt_enable;
 // LGE_UPDATE_E  KimWooYul 2011-11-18
 	byte NTCode[MAX_NTCODE_SIZE];
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
+    test_mode_req_compass_sensor_type compass;
+    test_mode_req_acceleration_sensor_type accel;
+    test_mode_req_orientation_sensor_type orientation;
+    test_mode_req_calibration_sensor_type sensor_calibration;
+    char sensor_data[256];
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/	
 } test_mode_req_type;
 
 typedef struct diagpkt_header
@@ -537,6 +575,23 @@ typedef struct
 
 /* BEGIN: 0014654 jihoon.lee@lge.com 20110124 */
 /* MOD 0014654: [TESTMODE] SYNC UP TESTMODE PACKET STRUCTURE TO KERNEL */
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
+typedef struct 
+{
+	unsigned int  count;
+	float              x_data;			//xÁÂÇ¥°ª
+	float              y_data;			//yÁÂÇ¥°ª
+	float              z_data;			//zÁÂÇ¥°ª	
+} PACKED test_mode_accel_rsp_type;
+
+typedef struct 
+{
+	unsigned int  count;
+	float              x_data;			//xÁÂÇ¥°ª
+	float              y_data;			//yÁÂÇ¥°ª
+	float              z_data;			//zÁÂÇ¥°ª	
+} PACKED test_mode_compass_rsp_type;
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
 typedef union
 {
     test_mode_req_version_type version;
@@ -584,6 +639,11 @@ typedef union
 // LGE_UPDATE_S  KimWooYul 2011-11-18
     byte mlt_enable;
 // LGE_UPDATE_E  KimWooYul 2011-11-18
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
+    int orientation;
+    test_mode_accel_rsp_type accel;
+    test_mode_compass_rsp_type compass;
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/	
 } PACKED test_mode_rsp_type;
 /* END: 0014654 jihoon.lee@lge.com 2011024 */
 
@@ -616,8 +676,9 @@ typedef enum
     TEST_MODE_MP3_TEST=27,
     TEST_MODE_FM_TRANCEIVER_TEST,
     TEST_MODE_ISP_DOWNLOAD_TEST,
-
-    TEST_MODE_ACCEL_SENSOR=31,
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
+    TEST_MODE_ORIENTATION_SENSOR=31,		//pitch,roll
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
     TEST_MODE_ALCOHOL_SENSOR_TEST=32,
     TEST_MODE_TDMB_TEST=33,
     TEST_MODE_WIFI_TEST=33,
@@ -673,15 +734,18 @@ typedef enum
 
     TEST_MODE_DB_INTEGRITY_CHECK=91,
     TEST_MODE_NVCRC_CHECK = 92,
-      TEST_MODE_SENSOR_CALIBRATION_TEST = 93,
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
+    TEST_MODE_SENSOR_CALIBRATION_TEST = 93,
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
     TEST_MODE_RESET_PRODUCTION = 96,
 
 // LGE_UPDATE_FOTA_S M3 bryan.oh@lge.com 2011/10/18
     TEST_MODE_FOTA_ID_CHECK = 98,
 // LGE_UPDATE_FOTA_E M3 bryan.oh@lge.com 2011/10/18
-
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
   TEST_MODE_ACCEL_SENSOR_TEST=100,		//on,off, sensor data
   TEST_MODE_COMPASS_SENSOR_TEST=102,     //on,off, sensor data 2
+  /* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
 // LGE_UPDATE_S  KimWooYul 2011-11-18
    TEST_MODE_MLT_ENABLE=106,
 // LGE_UPDATE_E  KimWooYul 2011-11-18

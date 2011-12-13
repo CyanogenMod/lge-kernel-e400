@@ -428,7 +428,14 @@ do_send_to_arm9(void*	pReq, void* pRsp, int flag)
         case TEST_MODE_WIFI_MAC_RW:
             arg.output_size = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type) + sizeof(test_mode_req_wifi_addr_type);
             break;
-            
+/* LGE_CHANGE_S [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/			
+        case TEST_MODE_ACCEL_SENSOR_TEST:
+            arg.output_size = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type) + sizeof(test_mode_accel_rsp_type);
+            break;
+        case TEST_MODE_COMPASS_SENSOR_TEST:
+            arg.output_size = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type) + sizeof(test_mode_compass_rsp_type);
+            break;
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/			
 		default:
 			arg.output_size = sizeof(DIAG_TEST_MODE_F_rsp_type);
 			break;

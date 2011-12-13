@@ -196,6 +196,15 @@ PACK (void *)LGF_TestMode (
             break;
 #endif
 
+       case TEST_MODE_ORIENTATION_SENSOR:
+            	rsp_len = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type) + sizeof(int);
+		break;
+	case TEST_MODE_ACCEL_SENSOR_TEST:
+            	rsp_len = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type) + sizeof(test_mode_accel_rsp_type);
+		break;
+	case TEST_MODE_COMPASS_SENSOR_TEST:
+            rsp_len = sizeof(DIAG_TEST_MODE_F_rsp_type) - sizeof(test_mode_rsp_type) + sizeof(test_mode_compass_rsp_type);
+		break;
         default :
             rsp_len = sizeof(DIAG_TEST_MODE_F_rsp_type);
             break;
@@ -1572,7 +1581,210 @@ file_fail:
 	return pRsp;	
 }
 // +e LG_BTUI_DIAGCMD_DUTMODE
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
+void* LGF_TestModeAccel(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	int destfile;
+	const char* src = "/data/misc/sensors/diag_sensor_result";
+	char buf [256];
+	mm_segment_t old_fs;
+	DIAG_TEST_MODE_F_req_type req_ptr;
+	
+	memset(&pRsp->test_mode_rsp.accel, 0x0, sizeof(pRsp->test_mode_rsp.accel));
+	memset(&buf,0x0,sizeof(buf));
+	memset(&req_ptr.test_mode_req.sensor_data,0x0,sizeof(req_ptr.test_mode_req.sensor_data));
 
+	req_ptr.sub_cmd_code = TEST_MODE_ACCEL_SENSOR_TEST;
+	req_ptr.test_mode_req.accel = pReq->accel;
+	pRsp->ret_stat_code = TEST_FAIL_S;
+
+	printk(KERN_ERR "\n[%s]", __func__ );
+
+	old_fs=get_fs();
+	set_fs(get_ds());
+
+	destfile = sys_open((const char __user *)src, O_CREAT | O_RDONLY, 0666) ;
+	if(destfile<0){
+		printk(KERN_ERR "\n [Testmode Accel ] sys_open() failed. cannot create %s\n",src);
+		goto file_fail;
+	}
+
+	if (diagpdev != NULL){
+		printk(KERN_ERR "\n[%s] ACCEL test start:%d", __func__ ,pReq->accel);
+		update_diagcmd_state(diagpdev, "ACCEL_TEST_MODE", pReq->accel);
+		pRsp->ret_stat_code = TEST_OK_S;
+
+	}else{
+		printk(KERN_ERR "\n[%s] error ACCEL", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+		goto file_fail;
+	}
+	switch(pReq->accel){
+		case ACCEL_SENSOR_OFF:
+		case ACCEL_SENSOR_ON:
+			pRsp->ret_stat_code = TEST_OK_S;
+			break;
+		case ACCEL_SENSOR_SENSORDATA:
+			msleep(800);		//result file is read after application write .
+			if ((sys_read(destfile, buf, sizeof(buf)-1)) < 0)
+			{
+				printk(KERN_ERR "[%s] Can not read file.\n", __func__ );
+				pRsp->ret_stat_code = TEST_FAIL_S;
+				goto file_fail;
+			}else{
+				printk(KERN_ERR "[%s] sys_read:%s \n", __func__,buf );
+			}
+			strncpy(req_ptr.test_mode_req.sensor_data,buf,strlen(buf));
+			printk(KERN_ERR "[%s] sensor_data:%s (len:%d)\n", __func__,req_ptr.test_mode_req.sensor_data,strlen(buf) );
+			if(strlen(buf)>0){
+				send_to_arm9((void*)&req_ptr, (void*)pRsp);
+
+				if(pRsp->ret_stat_code != TEST_OK_S)
+					pRsp->ret_stat_code = TEST_FAIL_S;
+				else
+					pRsp->ret_stat_code = TEST_OK_S;
+			}else
+				pRsp->ret_stat_code = TEST_FAIL_S;
+			break;
+		default:
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+			break;
+	}
+		
+file_fail:
+	sys_close(destfile);
+	set_fs(old_fs);
+	sys_unlink((const char __user *)src);
+	return pRsp;
+}
+void* LGF_TestModeOrientatioin(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	int destfile;
+	const char* src = "/data/misc/sensors/diag_sensor_result";
+	char buf [256];
+
+	mm_segment_t old_fs=get_fs();
+	set_fs(get_ds());
+	memset(&buf,0x0,sizeof(buf));
+
+	destfile = sys_open((const char __user *)src, O_CREAT | O_RDWR, 0666) ;
+	if(destfile<0){
+		printk(KERN_ERR "\n [Testmode Accel ] sys_open() failed. cannot create %s",src);
+		goto file_fail;
+	}
+
+	pRsp->test_mode_rsp.orientation = 0;
+	pRsp->ret_stat_code = TEST_FAIL_S;
+	
+	printk(KERN_ERR "\n[%s]", __func__ );
+
+	if (diagpdev != NULL){
+		printk(KERN_ERR "\n[%s] ORIENTATION test start:%d", __func__ ,pReq->orientation);
+		update_diagcmd_state(diagpdev, "ORIENTATION_TEST_MODE", pReq->orientation);
+		pRsp->ret_stat_code = TEST_OK_S;
+
+	}else{
+		printk(KERN_ERR "\n[%s] error ORIENTATION", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+		goto file_fail;
+	}
+	msleep(1500);		//result file is read after application write .
+	if ((sys_read(destfile,buf, sizeof(buf)-1)) < 0)
+	{
+		printk(KERN_ERR "[%s] Can not read file.\n", __func__ );
+		pRsp->ret_stat_code = TEST_FAIL_S;
+		goto file_fail;
+	}
+	printk(KERN_ERR "[%s] sys_read:%s \n", __func__, buf );
+	sscanf(buf,"%d", &pRsp->test_mode_rsp.orientation);
+file_fail:
+	sys_close(destfile);
+	set_fs(old_fs);
+	sys_unlink((const char __user *)src);
+	return pRsp;
+}
+void* LGF_TestModeCompass(
+		test_mode_req_type* pReq ,
+		DIAG_TEST_MODE_F_rsp_type	*pRsp)
+{
+	int destfile;
+	const char* src = "/data/misc/sensors/diag_sensor_result";
+	char buf [256];
+	mm_segment_t old_fs;
+	DIAG_TEST_MODE_F_req_type req_ptr;
+	
+	memset(&pRsp->test_mode_rsp.compass, 0x0, sizeof(pRsp->test_mode_rsp.compass));
+	memset(&buf,0x0,sizeof(buf));
+	memset(&req_ptr.test_mode_req.sensor_data,0x0,sizeof(req_ptr.test_mode_req.sensor_data));
+
+	req_ptr.sub_cmd_code = TEST_MODE_COMPASS_SENSOR_TEST;
+	req_ptr.test_mode_req.compass = pReq->compass;
+	pRsp->ret_stat_code = TEST_FAIL_S;
+
+	printk(KERN_ERR "\n[%s]", __func__ );
+
+	old_fs=get_fs();
+	set_fs(get_ds());
+
+	destfile = sys_open((const char __user *)src, O_CREAT | O_RDONLY, 0666) ;
+	if(destfile<0){
+		printk(KERN_ERR "\n [Testmode Compass ] sys_open() failed. cannot create %s\n",src);
+		goto file_fail;
+	}
+
+	if (diagpdev != NULL){
+		printk(KERN_ERR "\n[%s] Compass test start:%d", __func__ ,pReq->compass);
+		update_diagcmd_state(diagpdev, "COMPASS_TEST_MODE", pReq->compass);
+		pRsp->ret_stat_code = TEST_OK_S;
+
+	}else{
+		printk(KERN_ERR "\n[%s] error COMPASS", __func__ );
+		pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+		goto file_fail;
+	}
+	switch(pReq->compass){
+		case COMPS_SENSOR_OFF:
+		case COMPS_SENSOR_ON:
+			pRsp->ret_stat_code = TEST_OK_S;
+			break;
+		case COMPS_SENSOR_SENSORDATA:
+			msleep(800);		//result file is read after application write .
+			if ((sys_read(destfile, buf, sizeof(buf)-1)) < 0)
+			{
+				printk(KERN_ERR "[%s] Can not read file.\n", __func__ );
+				pRsp->ret_stat_code = TEST_FAIL_S;
+				goto file_fail;
+			}else{
+				printk(KERN_ERR "[%s] sys_read:%s \n", __func__,buf );
+			}
+			strncpy(req_ptr.test_mode_req.sensor_data,buf,strlen(buf));
+			printk(KERN_ERR "[%s] sensor_data:%s (len:%d)\n", __func__,req_ptr.test_mode_req.sensor_data,strlen(buf) );
+			if(strlen(buf)>0){
+				send_to_arm9((void*)&req_ptr, (void*)pRsp);
+				if(pRsp->ret_stat_code != TEST_OK_S)
+					pRsp->ret_stat_code = TEST_FAIL_S;
+				else
+					pRsp->ret_stat_code = TEST_OK_S;
+			}
+			else
+				pRsp->ret_stat_code = TEST_FAIL_S;
+			break;
+		default:
+			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
+			break;
+	}
+		
+file_fail:
+	sys_close(destfile);
+	set_fs(old_fs);
+	sys_unlink((const char __user *)src);
+	return pRsp;
+}
+/* LGE_CHANGE_E [jiyeon.park@lge.com] 2011-12-12 support test mode 8.8*/
 /* LGE_CHANGE_S [myunghwan.kim@lge.com] 2011-09-27 support test mode */
 void* LGF_TestMotor(
 		test_mode_req_type* pReq ,
@@ -2611,7 +2823,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_BATT_LEVEL_TEST,             NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_MP3_TEST,                    LGF_TestModeMP3,                  ARM11_PROCESSOR},
     /* 31 ~ 40 */
-    {TEST_MODE_ACCEL_SENSOR,           linux_app_handler,                ARM11_PROCESSOR},
+    {TEST_MODE_ORIENTATION_SENSOR,           LGF_TestModeOrientatioin,                ARM11_PROCESSOR},
     {TEST_MODE_WIFI_TEST,                   LGF_TestModeWLAN,                 ARM11_PROCESSOR},
     {TEST_MODE_MANUAL_TEST_MODE,            NULL,                             ARM9_PROCESSOR},
     {TEST_MODE_FORMAT_MEMORY_TEST,          not_supported_command_handler,    ARM11_PROCESSOR},
@@ -2666,7 +2878,7 @@ testmode_user_table_entry_type testmode_mstr_tbl[TESTMODE_MSTR_TBL_SIZE] =
     {TEST_MODE_MLT_ENABLE,                  LGF_TestModeMLTEnableSet,         ARM11_PROCESSOR},
 // LGE_UPDATE_E  KimWooYul 2011-11-18
     {TEST_MODE_SENSOR_CALIBRATION_TEST,           linux_app_handler,                ARM11_PROCESSOR},
-    {TEST_MODE_ACCEL_SENSOR_TEST,           linux_app_handler,                ARM11_PROCESSOR},
-    {TEST_MODE_COMPASS_SENSOR_TEST,               linux_app_handler,          ARM11_PROCESSOR},
+    {TEST_MODE_ACCEL_SENSOR_TEST,           LGF_TestModeAccel,                ARM11_PROCESSOR},
+    {TEST_MODE_COMPASS_SENSOR_TEST,               LGF_TestModeCompass,          ARM11_PROCESSOR},
     {TEST_MODE_XO_CAL_DATA_COPY,            NULL,                             ARM9_PROCESSOR}
 };
