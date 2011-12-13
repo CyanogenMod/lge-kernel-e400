@@ -372,7 +372,7 @@ static void __init msm7x2x_init_early(void)
 	msm_msm7x2x_allocate_memory_regions();
 }
 
-MACHINE_START(MSM7X27A_M3EU, "LGE MSM7x27a M3EU")
+MACHINE_START(MSM7X25A_E0EU, "LGE MSM7x25a E0EU")
 	.boot_params	= PHYS_OFFSET + 0x100,
 	.map_io		= msm_common_io_init,
 	.reserve	= msm7x27a_reserve,
