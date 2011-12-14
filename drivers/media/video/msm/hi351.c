@@ -131,7 +131,7 @@ static int32_t hi351_i2c_txdata(u16 saddr,
 			.buf = txdata,
 		},
 	};
-	udelay(5);		//for i2c stabilize
+	udelay(20);		//for i2c stabilize
 #if SENSOR_DEBUG
 	pr_err("hi351_i2c_txdata: addr : 0x%x len : %d buf[0]: 0x%x\n", msg[0].addr, msg[0].len, *(msg[0].buf));
 
