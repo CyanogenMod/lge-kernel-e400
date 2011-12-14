@@ -855,8 +855,8 @@ Touchscreen doesn't work*/
 				else
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
 For the MIP Protocal*/
-					g_Mtouch_info[FingerID].width		= buf[i+4]; 													
-					g_Mtouch_info[FingerID].strength	= buf[i+5];																																					 
+					g_Mtouch_info[FingerID].strength	= buf[i+5];
+				g_Mtouch_info[FingerID].width		= buf[i+4]; 																																					 
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
 For the MIP Protocal*/
 			}
