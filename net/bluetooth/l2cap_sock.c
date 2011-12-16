@@ -569,10 +569,15 @@ static int l2cap_sock_setsockopt_old(struct socket *sock, int optname, char __us
 
 	switch (optname) {
 	case L2CAP_OPTIONS:
+		// -s QCT_BT_PATCH_SR00679315 munho2.lee@lge.com 111215, fix the issue that the OPP file reception is terminated if the connected stereo headset is out of range.
+		// handling the flush timeout option on l2cap socket
+		/* QCT109806 Original
 		if (sk->sk_state == BT_CONNECTED && !le_sock) {
 			err = -EINVAL;
 			break;
 		}
+		*/
+		// -e QCT_BT_PATCH_SR00679315
 
 		opts.imtu     = l2cap_pi(sk)->imtu;
 		opts.omtu     = l2cap_pi(sk)->omtu;
@@ -587,6 +592,14 @@ static int l2cap_sock_setsockopt_old(struct socket *sock, int optname, char __us
 			err = -EFAULT;
 			break;
 		}
+		// +s QCT_BT_PATCH_SR00679315 munho2.lee@lge.com 111215, fix the issue that the OPP file reception is terminated if the connected stereo headset is out of range.
+		// handling the flush timeout option on l2cap socket
+		if (sk->sk_state == BT_CONNECTED && !le_sock &&
+			opts.flush_to == L2CAP_DEFAULT_FLUSH_TO) {
+			err = -EINVAL;
+			break;
+		}
+		// +e QCT_BT_PATCH_SR00679315
 
 		if ((opts.imtu || opts.omtu) && le_sock &&
 				(sk->sk_state == BT_CONNECTED)) {
@@ -599,6 +612,27 @@ static int l2cap_sock_setsockopt_old(struct socket *sock, int optname, char __us
 				err = -EINVAL;
 			break;
 		}
+
+		// +s QCT_BT_PATCH_SR00679315 munho2.lee@lge.com 111215, fix the issue that the OPP file reception is terminated if the connected stereo headset is out of range.
+		// handling the flush timeout option on l2cap socket
+		if ((opts.flush_to != L2CAP_DEFAULT_FLUSH_TO) &&
+				(sk->sk_state == BT_CONNECTED)) {
+			struct hci_cp_write_automatic_flush_timeout flush_to;
+			struct l2cap_conn *conn = l2cap_pi(sk)->conn;
+			if (NULL != conn  && NULL != conn->hcon &&
+				 NULL != conn->hcon->hdev) {
+				flush_to.handle = conn->hcon->handle;
+				flush_to.timeout = opts.flush_to;
+				hci_send_cmd(l2cap_pi(sk)->conn->hcon->hdev,
+					HCI_OP_WRITE_AUTOMATIC_FLUSH_TIMEOUT,
+					4, &(flush_to));
+			} else {
+				err = -EFAULT;
+				break;
+			}
+			break;
+		}
+		// +e QCT_BT_PATCH_SR00679315
 
 		if (opts.txwin_size < 1 ||
 			opts.txwin_size > L2CAP_TX_WIN_MAX_EXTENDED) {
@@ -626,6 +660,10 @@ static int l2cap_sock_setsockopt_old(struct socket *sock, int optname, char __us
 		l2cap_pi(sk)->fcs  = opts.fcs;
 		l2cap_pi(sk)->max_tx = opts.max_tx;
 		l2cap_pi(sk)->tx_win = opts.txwin_size;
+		// +s QCT_BT_PATCH_SR00679315 munho2.lee@lge.com 111215, fix the issue that the OPP file reception is terminated if the connected stereo headset is out of range.
+		// handling the flush timeout option on l2cap socket
+		l2cap_pi(sk)->flush_to = opts.flush_to;
+		// +e QCT_BT_PATCH_SR00679315
 		break;
 
 	case L2CAP_LM:

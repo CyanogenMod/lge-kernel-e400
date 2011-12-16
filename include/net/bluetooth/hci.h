@@ -697,6 +697,15 @@ struct hci_cp_write_voice_setting {
 	__le16   voice_setting;
 } __packed;
 
+// +s QCT_BT_PATCH_SR00679315 munho2.lee@lge.com 111215, fix the issue that the OPP file reception is terminated if the connected stereo headset is out of range.
+// handling the flush timeout option on l2cap socket
+#define HCI_OP_WRITE_AUTOMATIC_FLUSH_TIMEOUT	0x0c28
+struct hci_cp_write_automatic_flush_timeout {
+	__le16   handle;
+	__le16   timeout;
+} __packed;
+// +e QCT_BT_PATCH_SR00679315
+
 #define HCI_OP_HOST_BUFFER_SIZE		0x0c33
 struct hci_cp_host_buffer_size {
 	__le16   acl_mtu;

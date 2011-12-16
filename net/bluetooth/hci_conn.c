@@ -446,6 +446,15 @@ int hci_conn_del(struct hci_conn *conn)
 	if (hdev->notify)
 		hdev->notify(hdev, HCI_NOTIFY_CONN_DEL);
 
+	// +s QCT_BT_PATCH_SR00679315 munho2.lee@lge.com 111215, fix the issue that the OPP file reception is terminated if the connected stereo headset is out of range.
+	// Initiate TX Task after Link Cleanup is done
+	/* In case of 2 differnet ACL links, if one is disconneted
+	pending acl connection packets for that channel were
+	updated but a TX task was not scheduled. This results in
+	obex level disconnection from remote side.
+	*/
+	tasklet_schedule(&hdev->tx_task);
+	// +e QCT_BT_PATCH_SR00679315
 	tasklet_enable(&hdev->tx_task);
 
 	skb_queue_purge(&conn->data_q);
