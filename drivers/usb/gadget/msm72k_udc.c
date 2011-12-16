@@ -162,6 +162,7 @@ static void usb_do_remote_wakeup(struct work_struct *w);
 #define PHY_STATUS_CHECK_DELAY	(jiffies + msecs_to_jiffies(1000))
 #define EPT_PRIME_CHECK_DELAY	(jiffies + msecs_to_jiffies(1000))
 
+#define IDNO_56K_FUSB		(char)0x2 //20111214 lbh.lee@lge.com Factory USB FS
 struct usb_info {
 	/* lock for register/queue/device state changes */
 	spinlock_t lock;
@@ -1474,12 +1475,12 @@ static void usb_reset(struct usb_info *ui)
 
 	// LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-11-02
 	if (tmp < 0) {
-		printk(KERN_INFO " *** lge_get_cable_info : %x (unknown cable)\n", tmp);
+		printk(KERN_INFO " ***  lge_get_cable_info : %x (unknown cable)\n", tmp);
 		tmp = 0;
 	}
 	// LGE_CHANGE_E, [myunghwan.kim@lge.com], 2011-11-02
 
-	printk(KERN_INFO " *** lge_get_cable_info : %x\n", tmp);
+	printk(KERN_INFO " ***[LBH] lge_get_cable_info : %x\n", tmp);
 	is_manual_testmode = (tmp & LGE_CABLE_TYPE_NV_MANUAL_TESTMODE) > 0;
 	udc_cable = tmp & LGE_CABLE_TYPE_MASK;
 	if (udc_cable < LGE_CABLE_TYPE_56K)
@@ -1488,9 +1489,17 @@ static void usb_reset(struct usb_info *ui)
 	if (is_manual_testmode && udc_cable == 0)
 		udc_cable = LGE_CABLE_TYPE_56K;
 
+	if(tmp == IDNO_56K_FUSB)  //20111214 lbh.lee@lge.com Factory USB FS
+	{
+		udc_cable = LGE_CABLE_TYPE_56K;
+		printk(KERN_INFO " *** [LBH] Change Factory???????? : %x\n", udc_cable);
+
+	}
+
 	if (udc_cable == LGE_CABLE_TYPE_56K)
 	{
 		//USB_DBG( "factory cable 56kohm, usb full-speed\n");
+		printk(KERN_INFO " *** [LBH]USB Full Speed start ?????? : %x\n", udc_cable);
 		tmp = ulpi_read(ui, 0x04);
 		tmp |= 0x04;
 		ulpi_write(ui, tmp, 0x04);
