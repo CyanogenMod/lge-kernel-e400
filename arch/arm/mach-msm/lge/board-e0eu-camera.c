@@ -222,22 +222,24 @@ static int camera_power_on_rear(void)
 	if (rc < 0) {
 		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 0) failed(1)\n", __func__);
 	}
-	mdelay(1);		//hong.junki test
-	rc = gpio_direction_output(GPIO_CAM_PWDN, 1);
-	if (rc < 0) {
-		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 1) failed(2)\n", __func__);
-	}
-	mdelay(1);
-	
-	msm_camera_vreg_config(1);
-
-	mdelay(2);
 
 	rc = gpio_direction_output(GPIO_CAM_RESET, 0);
 	if (rc < 0) {
 		pr_err("%s: gpio_direction_output(GPIO_CAM_RESET, 0) failed(2)\n", __func__);
 	}
-	mdelay(1);		
+	
+	mdelay(1);	
+	
+	msm_camera_vreg_config(1);
+
+	udelay(10);
+
+	rc = gpio_direction_output(GPIO_CAM_PWDN, 1);
+	if (rc < 0) {
+		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 1) failed(2)\n", __func__);
+	}
+
+	udelay(10);		
 
 	msm_camio_clk_rate_set(HI351_MASTER_CLK_RATE);
 	pr_err("%s: msm_camio_clk_rate_set\n", __func__);
