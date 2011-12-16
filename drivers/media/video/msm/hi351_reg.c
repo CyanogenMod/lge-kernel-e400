@@ -735,6 +735,9 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	///////////////////////////////////////////
 	{0x03, 0x15, BYTE_LEN},
 	{0x10, 0x82, BYTE_LEN}, //lsc off
+
+	{0x03, 0xFE, DELAY_TYPE}, //need to merge for solving preview rainbow problem
+	{0xFE, 0x01, DELAY_TYPE},
 	
 	///////////////////////////////////////////
 	// 7 Page LSC data R=49,G=48,B=35

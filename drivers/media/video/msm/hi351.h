@@ -26,7 +26,7 @@ enum hi351_type {
 struct hi351_i2c_reg_conf {
 	uint8_t baddr;
 	uint8_t bdata;
-	enum hi351_type registr_type;
+	enum hi351_type register_type;
 };
 
 enum hi351_test_mode_t {

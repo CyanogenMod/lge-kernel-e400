@@ -131,7 +131,7 @@ static int32_t hi351_i2c_txdata(u16 saddr,
 			.buf = txdata,
 		},
 	};
-	udelay(20);		//for i2c stabilize
+
 #if SENSOR_DEBUG
 	pr_err("hi351_i2c_txdata: addr : 0x%x len : %d buf[0]: 0x%x\n", msg[0].addr, msg[0].len, *(msg[0].buf));
 
@@ -257,7 +257,7 @@ static long hi351_reg_init(void)
 	//for burst mode
 
 	for (i = 0; i < hi351_regs.reg_setting_size; i++) {
-		if ( hi351_regs.reg_settings[i].registr_type == BURST_TYPE && bufIndex < 301 ) {
+		if ( hi351_regs.reg_settings[i].register_type == BURST_TYPE && bufIndex < 301 ) {
 			if(bufIndex == 0) {
 				buf[bufIndex] = hi351_regs.reg_settings[i].baddr;
 				bufIndex++;
@@ -887,9 +887,9 @@ int hi351_sensor_release(void)
 
 	hi351_ctrl->sensordata->pdata->camera_power_off();	
 	
-	gpio_free(hi351_ctrl->sensordata->sensor_reset);
+	//gpio_free(hi351_ctrl->sensordata->sensor_reset);
 
-	gpio_free(hi351_ctrl->sensordata->sensor_pwd);
+	//gpio_free(hi351_ctrl->sensordata->sensor_pwd);
 
 	kfree(hi351_ctrl);
 
