@@ -875,7 +875,7 @@ Touchscreen doesn't work*/
 					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0/*g_Mtouch_info[i].strength*/ );
 					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width); 				   
 					input_mt_sync(ts->input_dev);		  
-					input_sync(ts->input_dev);
+					//input_sync(ts->input_dev);/* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-17]  blocking*/
 					Is_Release_Error[i]=0;
 				}		
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
