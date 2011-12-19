@@ -691,7 +691,27 @@ static int hi351_set_Fps(int mode)
 	prev_fps_mode = mode;
 	return rc;
 }
+//LGE_CHANGE_S QM TD#28886 Wrong EXIF data for Auto ISO hong.junki@lge.com [2011-12-19]
+int hi351_get_iso_speed( void )
+{
+	u8 analogGain = 0;
+	u8 digitalGain = 0;
 
+	hi351_i2c_write_b_sensor(0x03, 0x20);
+	hi351_i2c_read(hi351_client->addr, 0x50, &analogGain);
+
+	hi351_i2c_write_b_sensor(0x03, 0x20);
+	hi351_i2c_read(hi351_client->addr, 0x70, &digitalGain);
+
+	if( analogGain <= 0 || digitalGain <= 0 ) 
+	{
+		printk(KERN_ERR "### %s : iso speed %d %d ",  __func__, analogGain,  digitalGain);
+		return -EINVAL;
+	}
+	
+	return ((analogGain  / 32) * (digitalGain /128) * 100);
+}
+//LGE_CHANGE_E
 int hi351_sensor_config(void __user *argp)
 {
 	struct sensor_cfg_data cfg_data;
@@ -757,7 +777,20 @@ int hi351_sensor_config(void __user *argp)
 			printk(KERN_ERR "### %s: CFG_SET_FPS OR PICT_FPS: mode -> %d\n", __func__, cfg_data.mode);
 			rc = hi351_set_Fps(cfg_data.mode);
 			break;
-		
+//LGE_CHANGE_S QM TD#28886 Wrong EXIF data for Auto ISO hong.junki@lge.com [2011-12-19]
+		case CFG_GET_ISO_SPEED: 
+			cfg_data.iso_speed = hi351_get_iso_speed();
+
+			if(cfg_data.iso_speed <= 0 )
+				return -EFAULT;
+			
+			if (copy_to_user((void *)argp,
+					&cfg_data,
+				sizeof(struct sensor_cfg_data)))
+				rc = -EFAULT;
+			printk(KERN_ERR "### %s: CFG_GET_ISO_SPEED : iso_speed -> %d\n", __func__, cfg_data.iso_speed );
+			break;
+//LGE_CHANGE_E			
 		default:
 			pr_err("hi351_sensor_config wrong case entered!!! case: %d", cfg_data.cfgtype);
 			rc = -EINVAL;

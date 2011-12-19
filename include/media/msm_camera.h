@@ -631,6 +631,9 @@ struct msm_snapshot_pp_status {
 #define CFG_SET_ISO			201
 #define CFG_SET_SCENE		202
 //LGE_CHANGE_E
+//LGE_CHANGE_S QM TD#28886 Wrong EXIF data for Auto ISO hong.junki@lge.com [2011-12-19]
+#define CFG_GET_ISO_SPEED	203
+//LGE_CHANGE_E
 
 
 #define MOVE_NEAR	0
@@ -742,6 +745,9 @@ struct sensor_cfg_data {
 	int mode;
 	int rs;
 	uint8_t max_steps;
+//LGE_CHANGE_S QM TD#28886 Wrong EXIF data for Auto ISO	hong.junki@lge.com [2011-12-19]
+	uint32_t iso_speed;
+//LGE_CHANGE_E
 
 	union {
 		int8_t effect;
