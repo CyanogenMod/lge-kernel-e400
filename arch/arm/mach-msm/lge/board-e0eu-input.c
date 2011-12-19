@@ -304,7 +304,13 @@ static struct platform_device ts_i2c_device = {
 
 	printk(KERN_INFO "ts_set_veg : %d\n", onoff);
 	if(onoff){
-		rc = vreg_set_level(vreg_l1, 3000);
+
+		/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-19] 
+		: Changed the touchscreen operating power 3V into 3.05V*/
+		rc = vreg_set_level(vreg_l1, 3050);
+		/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-19] 
+		: Changed the touchscreen operating power 3V into 3.05V*/
+
 		if (rc < 0) {
 			pr_err("%s: vreg_set_level failed (%d)\n", __func__, rc);
 			goto vreg_touch_fail;
