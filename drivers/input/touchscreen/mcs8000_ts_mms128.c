@@ -905,13 +905,18 @@ Touchscreen doesn't work*/
 
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
 : For an abnormal condition of touchscreen after the phone sleeps on and off*/
-      if(Is_Touch_Valid)
-       msleep(1);
-       else
-      	{
-         printk("mcs8000_work : Invalid data INT happen !!! Added more delay !!!");
-         msleep(20); 
-       }
+  if(Is_Touch_Valid)
+		/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-20] 
+		: msleep function takes more than setting up delay time*/
+		//msleep(1);
+  		usleep_range(1000,1000);	
+		/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-20] 
+		: msleep function takes more than setting up delay time*/
+  else
+  {
+	  printk("mcs8000_work : Invalid data INT happen !!! Added more delay !!!");
+    msleep(20); 
+  }
  /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-23] 
 : For an abnormal condition of touchscreen after the phone sleeps on and off*/  
        

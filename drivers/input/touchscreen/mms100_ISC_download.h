@@ -24,7 +24,7 @@
 
 #define MELFAS_DOWNLAOD_CORE_VERSION            0x00
 #define MELFAS_DOWNLAOD_PRIVATE_VERSION         0x01
-#define MELFAS_DOWNLAOD_PUBLIC_VERSION          0x09
+#define MELFAS_DOWNLAOD_PUBLIC_VERSION          0x0A
 
 //----------------------------------------------------
 // ISC download pharameters
