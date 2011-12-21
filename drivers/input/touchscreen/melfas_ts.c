@@ -46,7 +46,7 @@
 #define CORE_FIRMWARE_VERSION   0xF3
 
 #define TS_LATEST_FW_VERSION_A	0x18
-#define TS_LATEST_FW_VERSION_B	0x26 //0x1b
+#define TS_LATEST_FW_VERSION_B	0x27//0xf8//0x26 //0x1b
 #define TS_READ_REGS_LEN 		100
 #define MELFAS_MAX_TOUCH		5
 
@@ -184,10 +184,18 @@ static void melfas_ts_work_func(struct work_struct *work)
 
 	buf[0] = MIP_INPUT_EVENT_PACKET_SIZE;
 	ret = i2c_master_send(ts->client, buf, 1);
+	if(ret<=0)
+		goto i2c_fail;
 	ret = i2c_master_recv(ts->client, &read_num, 1);
+	if(ret<=0)
+		goto i2c_fail;
 
-	if( read_num == 0 ) {
-		printk("read number 0 error!!!! \n");
+	if( read_num <= 0 ) {
+		printk("read number 0 error occured!!!! \n");
+		release_all_finger(ts);
+		ts->power(0);
+		msleep(800);
+		ts->power(1);
 		if (irq_flag == 0) {
 			irq_flag++;
 			enable_irq(ts->client->irq);
@@ -197,8 +205,12 @@ static void melfas_ts_work_func(struct work_struct *work)
 
 	buf[0] = MIP_INPUT_EVENT_INFORMATION;
 	ret = i2c_master_send(ts->client, buf, 1);
+	if(ret<=0)
+		goto i2c_fail;
+
 	ret = i2c_master_recv(ts->client, &buf[0], read_num);
-//	printk("***************read_num=%d\n", read_num);
+	if(ret<=0)
+		goto i2c_fail;
 	for (i = 0; i < read_num; i = i + 6) // extract touch information
 	{
 		if (ret < 0)
@@ -212,11 +224,11 @@ static void melfas_ts_work_func(struct work_struct *work)
 		}
 		else
 		{
-			if( buf[0] == 0x0f ){
+			if( buf[i] == 0x0f ){
 				printk(KERN_ERR "ESD ERROR occured\n");
 				release_all_finger(ts);
 				ts->power(0);
-				msleep(100);
+				msleep(800);
 				ts->power(1);
 					if (irq_flag == 0) {
 						irq_flag++;	
@@ -332,6 +344,19 @@ static void melfas_ts_work_func(struct work_struct *work)
 		irq_flag++;
 		enable_irq(ts->client->irq);
 	}
+	return;
+
+i2c_fail:	
+		printk("i2c failed occured!!!! \n");
+		release_all_finger(ts);
+		ts->power(0);
+		msleep(800);
+		ts->power(1);
+		
+		if (irq_flag == 0) {
+			irq_flag++;
+			enable_irq(ts->client->irq);
+		}
 }
 
 static irqreturn_t melfas_ts_irq_handler(int irq, void *handle)
