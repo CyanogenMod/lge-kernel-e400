@@ -59,12 +59,16 @@ struct pptp_addr {
 /************************************************************************
  * Protocols supported by AF_PPPOX
  */
+// LGE_CHANGE_S, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
+// wonkwon.lee 2011.12.21 : android/external/kernel-header에 정의되어 있는 값과 일치시켜 줌.(Kernel 2.6.38.6버전에 PPTP가 추가되면서 값들이 틀어짐.)
 #define PX_PROTO_OE    0 /* Currently just PPPoE */
 #define PX_PROTO_OL2TP 1 /* Now L2TP also */
-#define PX_PROTO_PPTP  2
-#define PX_PROTO_OLAC  3
-#define PX_PROTO_OPNS  4
+#define PX_PROTO_OLAC  2
+#define PX_PROTO_OPNS  3
+#define PX_PROTO_PPTP  4
 #define PX_MAX_PROTO   5
+// LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
+
 
 struct sockaddr_pppox {
 	sa_family_t     sa_family;            /* address family, AF_PPPOX */
