@@ -194,6 +194,7 @@ static int e0eu_gpio_earsense_work_func(int *value)
 		if (gpio_value) {
 			printk(KERN_INFO "headphone was inserted!\n");
 			*value = SW_HEADPHONE_INSERT;
+			gpio_set_value(GPIO_MIC_MODE, 1);			
 		} else {
 			printk(KERN_INFO "micorphone was inserted!\n");
 			*value = SW_MICROPHONE_INSERT;
