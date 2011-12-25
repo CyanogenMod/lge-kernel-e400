@@ -721,7 +721,8 @@ static void mcs8000_work(struct work_struct *work)
 	int read_num, FingerID;
 	int touchType = 0, touchState = 0;
 	struct mcs8000_ts_device *ts = container_of(work, struct mcs8000_ts_device, work);
-	int ret 		= 0, i;
+	int ret 		= 0;
+	int i = 0, j = 0;
 	uint8_t buf[TS_READ_REGS_LEN];
   int keyID 	= 0;
 	int iTouchedCnt;
@@ -828,23 +829,25 @@ Touchscreen doesn't work*/
 	/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-28] 
 	: For an abnormal condition after getting ESD */ 
 
-		touchType  = (buf[0]>>5)&0x03;
+		for(i=0; i<read_num; i=i+6) {
+
+			touchType  = (buf[i]>>5)&0x03;				
 #if DEBUG_PRINT
 		printk(KERN_INFO "TouchType  : [%d]\n", touchType);
 #endif
-		touchState = (buf[0]>>7)&0x01;
+			touchState = (buf[i]>>7)&0x01;
 #if DEBUG_PRINT
 		printk(KERN_INFO "touchState : [%d]\n", touchState);
 #endif
 		if (touchType == TOUCH_KEY) {
-			keyID = (buf[0]&0x0f);
+				keyID = (buf[i]&0x0f);
 #if DEBUG_PRINT
 			printk(KERN_INFO "keyID    : [%d]\n", keyID);
 #endif
 		}
 
 		if (touchType == TOUCH_SCREEN) {
-			for(i=0; i<read_num; i=i+6) {
+
 				FingerID = (buf[i] & 0x0F) -1;
 
 				g_Mtouch_info[FingerID].posX= (uint16_t)(buf[i+1] & 0x0F) << 8 | buf[i+2];
@@ -856,51 +859,53 @@ Touchscreen doesn't work*/
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-19] : 
 For the MIP Protocal*/
 					g_Mtouch_info[FingerID].strength	= buf[i+5];
+
 				g_Mtouch_info[FingerID].width		= buf[i+4]; 																																					 
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-19] : 
 For the MIP Protocal*/
-			}
 			
-			for(i=0; i<MELFAS_MAX_TOUCH; i++) {
-				if(g_Mtouch_info[i].strength== -1)
+				for(j=0; j<MELFAS_MAX_TOUCH; j++) {
+					if(g_Mtouch_info[j].strength== -1)
 					continue;
 					
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-09] : 
 TD1416085584 :  After sleeping on and off while sensing a touchscreen,
 Touchscreen doesn't work*/
-				if(Is_Release_Error[i]==1) {			
-					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[i].posX);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[i].posY);
-					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0/*g_Mtouch_info[i].strength*/ );
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width); 				   
-					input_mt_sync(ts->input_dev);		  
-					//input_sync(ts->input_dev);/* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-17]  blocking*/
-					Is_Release_Error[i]=0;
-				}		
+					if(Is_Release_Error[j]==1) {			
+						input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, j);
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[j].posX);
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[j].posY);
+						input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0/*g_Mtouch_info[j].strength*/ );
+						input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[j].width); 				   
+						input_mt_sync(ts->input_dev);		  
+						//input_sync(ts->input_dev);/* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-17]  blocking*/
+						Is_Release_Error[j]=0;
+					}		
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-09]*/
 
-				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[i].posX);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[i].posY);
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[i].strength);
-				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[i].width);      				
-				input_mt_sync(ts->input_dev);          
+					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, j);
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[j].posX);
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[j].posY);
+					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[j].strength);
+					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[j].width);      				
+					input_mt_sync(ts->input_dev);   
+
 #if DEBUG_PRINT
-				printk(KERN_ERR "melfas_ts_work_func: Touch ID: %d, State : %d, x: %d, y: %d, z: %d w: %d\n", 
-					i, (g_Mtouch_info[i].strength>0), g_Mtouch_info[i].posX, g_Mtouch_info[i].posY, g_Mtouch_info[i].strength, g_Mtouch_info[i].width);
+					printk(KERN_ERR "melfas_ts_work_func: Touch ID: %d, State : %d, x: %d, y: %d, z: %d w: %d\n", 
+						j, (g_Mtouch_info[i].strength>0), g_Mtouch_info[j].posX, g_Mtouch_info[j].posY, g_Mtouch_info[j].strength, g_Mtouch_info[j].width);
 #endif	
 
-				if(g_Mtouch_info[i].strength == 0)
-					g_Mtouch_info[i].strength = -1;
+					if(g_Mtouch_info[j].strength == 0)
+						g_Mtouch_info[j].strength = -1;
+				}
+			}else {
+				if (keyID == 0x1)
+					input_report_key(ts->input_dev, KEY_MENU, touchState ? PRESS_KEY : RELEASE_KEY);
+				if (keyID == 0x2)
+					input_report_key(ts->input_dev, KEY_BACK, touchState ? PRESS_KEY : RELEASE_KEY);
 			}
-		}else {
-			if (keyID == 0x1)
-				input_report_key(ts->input_dev, KEY_MENU, touchState ? PRESS_KEY : RELEASE_KEY);
-			if (keyID == 0x2)
-				input_report_key(ts->input_dev, KEY_BACK, touchState ? PRESS_KEY : RELEASE_KEY);
-		}
-		input_sync(ts->input_dev);
+			input_sync(ts->input_dev);
+		}	
 	}			
 
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-23] 
