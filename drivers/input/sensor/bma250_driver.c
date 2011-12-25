@@ -1176,9 +1176,21 @@ static ssize_t bma250_fast_calibration_x_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	unsigned char data;
+		short value1 =0;		
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
+/* LGE_CHANGE_E : E0 eee3114.lee@lge.com Calibration AT CMD [2011-12-23] */	
+		bma250_read_accel_z(bma250->bma250_client, &value1);
+		printk(KERN_INFO "x axis fast bma250_fast_calibration_x_show =%d\n",value1);
+		if(value1 > - 254)
+		{
+			value1 = 1;
+			printk(KERN_INFO "x HERE axis fast bma250_fast_calibration_x_show =%d\n",value1);
+			
+			return sprintf(buf, "%d\n", value1);	
+		}
+/* END E0 eee3114.lee@lge.com [2011-12-23] */	
 	if (bma250_get_offset_target_x(bma250->bma250_client, &data) < 0)
 		return sprintf(buf, "Read error\n");
 
