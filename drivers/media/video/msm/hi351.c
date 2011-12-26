@@ -132,13 +132,12 @@ static int32_t hi351_i2c_txdata(u16 saddr,
 		},
 	};
 
-	udelay(15);		//for i2c stabilize
 #if SENSOR_DEBUG
 	pr_err("hi351_i2c_txdata: addr : 0x%x len : %d buf[0]: 0x%x\n", msg[0].addr, msg[0].len, *(msg[0].buf));
 
 #endif
 	if (i2c_transfer(hi351_client->adapter, msg, 1) < 0) {
-		pr_err("hi351_i2c_txdata failed\n");
+		pr_err("hi351_i2c_txdata: addr : 0x%x len : %d failed\n", msg[0].addr, msg[0].len);
 		return -EIO;
 	}
 
