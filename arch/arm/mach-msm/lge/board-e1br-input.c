@@ -18,6 +18,33 @@
 #include "board-e1br.h"
 #endif
 
+/* LGE_S [yangwook.lim@lge.com] 2011-12-14 : atcmd virtual device */
+static unsigned short atcmd_virtual_keycode[ATCMD_VIRTUAL_KEYPAD_ROW][ATCMD_VIRTUAL_KEYPAD_COL] = {
+	{KEY_1, 		KEY_8, 				KEY_Q,  	 KEY_I,          KEY_D,      	KEY_HOME,	KEY_B,          KEY_UP},
+	{KEY_2, 		KEY_9, 		  		KEY_W,		 KEY_O,       	 KEY_F,		 	KEY_RIGHTSHIFT, 	KEY_N,			KEY_DOWN},
+	{KEY_3, 		KEY_0, 		  		KEY_E,		 KEY_P,          KEY_G,      	KEY_Z,        	KEY_M, 			KEY_UNKNOWN},
+	{KEY_4, 		KEY_BACK,  			KEY_R,		 KEY_SEARCH,     KEY_H,			KEY_X,    		KEY_LEFTSHIFT,	KEY_UNKNOWN},
+	{KEY_5, 		KEY_BACKSPACE, 		KEY_T,		 KEY_LEFTALT,    KEY_J,      	KEY_C,     		KEY_REPLY,    KEY_CAMERA},
+	{KEY_6, 		KEY_ENTER,  		KEY_Y,  	 KEY_A,		     KEY_K,			KEY_V,  	    KEY_RIGHT,     	KEY_CAMERAFOCUS},
+	{KEY_7, 		KEY_MENU,	KEY_U,  	 KEY_S,    		 KEY_L, 	    KEY_SPACE,      KEY_LEFT,     	KEY_SEND},
+	{KEY_UNKNOWN, 	KEY_UNKNOWN,  		KEY_UNKNOWN, KEY_UNKNOWN, 	 KEY_UNKNOWN,	KEY_UNKNOWN,    KEY_FOLDER_MENU,      	KEY_FOLDER_HOME},
+};
+
+static struct atcmd_virtual_platform_data atcmd_virtual_pdata = {
+	.keypad_row = ATCMD_VIRTUAL_KEYPAD_ROW,
+	.keypad_col = ATCMD_VIRTUAL_KEYPAD_COL,
+	.keycode = (unsigned char *)atcmd_virtual_keycode,
+};
+
+static struct platform_device atcmd_virtual_device = {
+	.name = "atcmd_virtual_kbd",
+	.id = -1,
+	.dev = {
+		.platform_data = &atcmd_virtual_pdata,
+	},
+};
+/* LGE_E [yangwook.lim@lge.com] 2011-12-14 : atcmd virtual device */
+
 /* handset device */
 static struct msm_handset_platform_data hs_platform_data = {
 	.hs_name = "7k_handset",
@@ -261,6 +288,7 @@ static struct platform_device hdk_qwerty_device = {
 /* input platform device */
 static struct platform_device *e0eu_input_devices[] __initdata = {
 	&hs_pdev,
+	&atcmd_virtual_device,
 };
 
 static struct platform_device *e0eu_gpio_input_devices[] __initdata = {
@@ -309,7 +337,13 @@ static struct platform_device ts_i2c_device = {
 
 	printk(KERN_INFO "ts_set_veg : %d\n", onoff);
 	if(onoff){
-		rc = vreg_set_level(vreg_l1, 3000);
+
+		/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-12-19] 
+		: Changed the touchscreen operating power 3V into 3.05V*/
+		rc = vreg_set_level(vreg_l1, 3050);
+		/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-19] 
+		: Changed the touchscreen operating power 3V into 3.05V*/
+
 		if (rc < 0) {
 			pr_err("%s: vreg_set_level failed (%d)\n", __func__, rc);
 			goto vreg_touch_fail;
