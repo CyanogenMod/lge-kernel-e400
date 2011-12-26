@@ -333,9 +333,7 @@ static void __init msm7x2x_init(void)
 	/*7x25a kgsl initializations*/
 	msm7x25a_kgsl_3d0_init();
 
-	if (lge_get_uart_mode()) {
-		platform_device_register(&msm_device_uart1);
-	}
+	platform_device_register(&msm_device_uart1);
 
 	lge_add_input_devices();
 	lge_add_misc_devices();
