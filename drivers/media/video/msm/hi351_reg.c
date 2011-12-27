@@ -6710,8 +6710,8 @@ struct hi351_i2c_reg_conf hi351_snap_settings[] = {
 	{ 0x03, 0xc5, BYTE_LEN}, //AWB off
 	{ 0x10, 0x30, BYTE_LEN},
 
-	{ 0x03, 0x11, BYTE_LEN},                                 
-	{ 0xf0, 0x00, BYTE_LEN}, // STEVE Recovery Dark mode for Sawtooth
+	//{ 0x03, 0x11, BYTE_LEN},                                 
+	//{ 0xf0, 0x00, BYTE_LEN}, // STEVE Recovery Dark mode for Sawtooth
   
 	{ 0x03, 0x19, BYTE_LEN}, //Scaler Off
 	{ 0x10, 0x00, BYTE_LEN},
