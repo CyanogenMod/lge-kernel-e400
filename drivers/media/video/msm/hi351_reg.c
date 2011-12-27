@@ -646,13 +646,13 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xf7, 0x00, BURST_TYPE},
 	
 	// STEVE Luminanace level setting (Add to DMA)
-	{0x32, 0x8b},
-	{0x33, 0x54},
-	{0x34, 0x2c},
-	{0x35, 0x29},
-	{0x36, 0x18},
-	{0x37, 0x1e},
-	{0x38, 0x17},
+	{0x32, 0x8b, BYTE_LEN},
+	{0x33, 0x54, BYTE_LEN},
+	{0x34, 0x2c, BYTE_LEN},
+	{0x35, 0x29, BYTE_LEN},
+	{0x36, 0x18, BYTE_LEN},
+	{0x37, 0x1e, BYTE_LEN},
+	{0x38, 0x17, BYTE_LEN},
 
 	///////////////////////////////////////////
 	// 12 page DPC / GBGR /LensDebulr
@@ -747,7 +747,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x10, 0x82, BYTE_LEN}, //lsc off
 
 	{0x03, 0xFE, DELAY_TYPE}, //need to merge for solving preview rainbow problem
-	{0xFE, 0x01, DELAY_TYPE},
+	{0xFE, 0x0A, DELAY_TYPE},
 	
 	///////////////////////////////////////////
 	// 7 Page LSC data (STEVE 75p)
@@ -1842,7 +1842,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	/////////////////////////////////////////// 			
 	{0x03, 0x20, BYTE_LEN},
 	{0x10, 0xcf, BYTE_LEN},//auto flicker auto 60hz select
-	{0x12, 0x0d, BYTE_LEN}, // STEVE Dgain off
+	{0x12, 0x2d, BYTE_LEN}, // STEVE Dgain off (2d)
 	{0x17, 0xa0, BYTE_LEN},
 	{0x1f, 0x1f, BYTE_LEN},
 	
@@ -2041,7 +2041,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x36, 0x22, BYTE_LEN}, // AE Yth º¯°æ
 	
 	{0x03, 0x20, BYTE_LEN},
-	{0x12, 0x0d, BYTE_LEN}, // STEVE 6d -> 0d (AE digital gain OFF)
+	{0x12, 0x2d, BYTE_LEN}, // STEVE 6d -> 2d (AE digital gain OFF)
 	
 	///////////////////////////////////////////
 	// c3 Page MCU AE Weight
@@ -2189,8 +2189,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
   //{0x20, 0x40, BYTE_LEN}, // Capture Hblank 320
 
   // STEVE When capture process, decrease Green
-  {0x1f, 0x00, BYTE_LEN},                      
-  {0x20, 0xDC, BYTE_LEN}, // Capture Hblank 220 -> one line 2400
+  	{0x1f, 0x00, BYTE_LEN},                      
+   	{0x20, 0xDC, BYTE_LEN}, // Capture Hblank 220 -> one line 2400
 
 	{0x21, 0x09, BYTE_LEN},
 	{0x22, 0xc4, BYTE_LEN},// Capture Line unit 2180+226 = 2500
