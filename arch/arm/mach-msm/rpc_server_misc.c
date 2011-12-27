@@ -806,7 +806,6 @@ static int  dsatHandleAT_ARM11(uint32_t at_cmd, uint32_t at_act, uint32_t at_par
 		break;			
 // BEGIN: eternalblue@lge.com:2009-11-06
 // 0001840: [ARM9] AT%GKPD / AT%FKPD added 
-		#if 0
 		case ATCMD_FKPD:	// 33       	
 		{
           if (at_act == ATCMD_ASSIGN) {
@@ -824,7 +823,7 @@ static int  dsatHandleAT_ARM11(uint32_t at_cmd, uint32_t at_act, uint32_t at_par
 		}
 		break;			
 		// chinsu.ko@lge.com
-//		#if 0
+		#if 0
 		case ATCMD_GKPD:	// 34
 		{
        	if (at_act == ATCMD_ACTION) {

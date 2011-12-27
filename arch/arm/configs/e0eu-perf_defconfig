@@ -1166,11 +1166,7 @@ CONFIG_INPUT_EVDEV=y
 #
 # Input Device Drivers
 #
-#LGE_CHANGE_S : ATcmd virtual device
-CONFIG_INPUT_KEYBOARD=y
-CONFIG_KEYBOARD_ATCMD_VIRTUAL=y
-#LGE_CHANGE_E : ATcmd virtual device
-
+# CONFIG_INPUT_KEYBOARD is not set
 # CONFIG_INPUT_MOUSE is not set
 # CONFIG_INPUT_JOYSTICK is not set
 # CONFIG_INPUT_TABLET is not set

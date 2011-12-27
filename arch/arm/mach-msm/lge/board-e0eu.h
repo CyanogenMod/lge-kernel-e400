@@ -34,15 +34,6 @@ enum {
 	GPIO_CAM_GP_LED_EN2,
 };
 
-/* LGE_E [yangwook.lim@lge.com] 2011-12-14 : atcmd - virtual device */
-#define ATCMD_VIRTUAL_KEYPAD_ROW	8
-#define ATCMD_VIRTUAL_KEYPAD_COL	8
-#define KEY_SPEAKERMODE 241 // KEY_VIDEO_NEXT is not used in GED
-#define KEY_CAMERAFOCUS 242 // KEY_VIDEO_PREV is not used in GED
-#define KEY_FOLDER_HOME 243
-#define KEY_FOLDER_MENU 244
-/* LGE_E [yangwook.lim@lge.com] 2011-12-14 : atcmd - virtual device */
-
 /* touch-screen macros */
 #define TS_X_MIN		0
 #define TS_X_MAX		240

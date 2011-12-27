@@ -276,14 +276,6 @@ struct pp2106_platform_data {
 	int (*power)(unsigned char onoff);
 };
 #if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined(CONFIG_MACH_MSM7X25A_E1BR)
-
-/* LGE_CHANGE_S : ATcmd virtual device */
-struct atcmd_virtual_platform_data {
-	unsigned int keypad_row;
-	unsigned int keypad_col;
-	unsigned char *keycode;
-};
-/* LGE_CHANGE_E : ATcmd virtual device */
 /* LCD panel */
 enum {
 	PANEL_ID_AUTO = 0,
