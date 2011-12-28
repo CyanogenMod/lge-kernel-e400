@@ -323,7 +323,7 @@ CONFIG_LGE_PROC_COMM=y
 #
 CONFIG_LGE_H9DA4VH4JJMMCR_NAND_PATCH=y
 # CONFIG_LGE_FBCON_INACTIVE_CONSOLE is not set
-# CONFIG_LGE_GRAM_REFRESH_PATCH is not set
+CONFIG_LGE_GRAM_REFRESH_PATCH=y
 CONFIG_LGE_HANDLE_PANIC=y
 CONFIG_LGE_BDI_TIMER_BUG_PATCH=y
 CONFIG_LGE_REPORT_RMT_STORAGE_CLIENT_READY=y
@@ -618,10 +618,13 @@ CONFIG_UNIX=y
 CONFIG_XFRM=y
 # LGE_CHANGE_S, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 CONFIG_XFRM_USER=y
+CONFIG_XFRM_SUB_POLICY=y
+CONFIG_XFRM_MIGRATE=y
+CONFIG_XFRM_STATISTICS=y
+# LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 # CONFIG_XFRM_SUB_POLICY is not set
 # CONFIG_XFRM_MIGRATE is not set
 # CONFIG_XFRM_STATISTICS is not set
-# LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 CONFIG_XFRM_IPCOMP=y
 # CONFIG_NET_KEY is not set
 CONFIG_INET=y
@@ -645,7 +648,9 @@ CONFIG_INET_ESP=y
 CONFIG_CRYPTO_NULL=y
 # LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 # CONFIG_INET_IPCOMP is not set
-# CONFIG_INET_XFRM_TUNNEL is not set
+# LGE_CHANGE_S, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
+CONFIG_INET_XFRM_TUNNEL=y
+# LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 CONFIG_INET_TUNNEL=y
 CONFIG_INET_XFRM_MODE_TRANSPORT=y
 CONFIG_INET_XFRM_MODE_TUNNEL=y
@@ -1121,7 +1126,21 @@ CONFIG_LIBRA_SDIOIF=m
 #
 # CAIF transport drivers
 #
-# CONFIG_PPP is not set
+# LGE_CHANGE_S, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
+CONFIG_PPP=y
+CONFIG_PPP_MULTILINK=y
+CONFIG_PPP_FILTER=y
+CONFIG_PPP_ASYNC=y
+CONFIG_PPP_SYNC_TTY=y
+CONFIG_PPP_DEFLATE=y
+CONFIG_PPP_BSDCOMP=y
+CONFIG_PPP_MPPE=y
+CONFIG_PPPOE=y
+CONFIG_PPTP=y
+CONFIG_PPPOL2TP=y
+CONFIG_PPPOLAC=y
+CONFIG_PPPOPNS=y
+# LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 # CONFIG_SLIP is not set
 # CONFIG_NETCONSOLE is not set
 CONFIG_MSM_RMNET=y
@@ -1151,11 +1170,7 @@ CONFIG_INPUT_EVDEV=y
 #
 # Input Device Drivers
 #
-#LGE_CHANGE_S : ATcmd virtual device
-CONFIG_INPUT_KEYBOARD=y
-CONFIG_KEYBOARD_ATCMD_VIRTUAL=y
-#LGE_CHANGE_E : ATcmd virtual device
-
+# CONFIG_INPUT_KEYBOARD is not set
 # CONFIG_INPUT_MOUSE is not set
 # CONFIG_INPUT_JOYSTICK is not set
 # CONFIG_INPUT_TABLET is not set
@@ -2144,9 +2159,6 @@ CONFIG_LEDS_CLASS=y
 # CONFIG_LEDS_GPIO_M3 is not set
 # CONFIG_LEDS_GPIO_E0 is not set
 CONFIG_LEDS_MSM_PMIC_E1=y
-# CONFIG_LEDS_GPIO_E1 is not set
-# CONFIG_LEDS_MSM_PMIC_E1 is not set
-
 #
 # LED Triggers
 #
@@ -2526,6 +2538,7 @@ CONFIG_CRYPTO_MANAGER=y
 CONFIG_CRYPTO_MANAGER2=y
 CONFIG_CRYPTO_MANAGER_DISABLE_TESTS=y
 # CONFIG_CRYPTO_GF128MUL is not set
+# CONFIG_CRYPTO_NULL is not set
 CONFIG_CRYPTO_WORKQUEUE=y
 # CONFIG_CRYPTO_CRYPTD is not set
 CONFIG_CRYPTO_AUTHENC=y
@@ -2544,7 +2557,9 @@ CONFIG_CRYPTO_AUTHENC=y
 CONFIG_CRYPTO_CBC=y
 # CONFIG_CRYPTO_CTR is not set
 # CONFIG_CRYPTO_CTS is not set
-# CONFIG_CRYPTO_ECB is not set
+# LGE_CHANGE_S, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
+CONFIG_CRYPTO_ECB=y
+# LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 # CONFIG_CRYPTO_LRW is not set
 # CONFIG_CRYPTO_PCBC is not set
 # CONFIG_CRYPTO_XTS is not set
@@ -2579,7 +2594,9 @@ CONFIG_CRYPTO_SHA256=y
 #
 CONFIG_CRYPTO_AES=y
 # CONFIG_CRYPTO_ANUBIS is not set
-# CONFIG_CRYPTO_ARC4 is not set
+# LGE_CHANGE_S, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
+CONFIG_CRYPTO_ARC4=y
+# LGE_CHANGE_E, [Data_Patch_016] [data-lab2@lge.com], 2011-04-26 <VPN support - kernel config>
 # CONFIG_CRYPTO_BLOWFISH is not set
 # CONFIG_CRYPTO_CAMELLIA is not set
 # CONFIG_CRYPTO_CAST5 is not set
