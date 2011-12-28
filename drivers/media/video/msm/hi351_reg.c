@@ -141,7 +141,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x03, 0x00, BYTE_LEN},
 	{0x0B, 0x02, BYTE_LEN}, //PLL lock time
 	{0x10, 0x00, BYTE_LEN},
-	{0x11, 0x93, BYTE_LEN}, //1frame skip, XY flip 
+	{0x11, 0x83, BYTE_LEN}, // STEVE 0frame skip, XY flip 
 	{0x13, 0x80, BYTE_LEN},
 	{0x14, 0x70, BYTE_LEN},
 	{0x15, 0x03, BYTE_LEN},
@@ -613,23 +613,24 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x62, 0x80, BYTE_LEN},
 	//Desat - Chroma 
 	// STEVE for achromatic color   
-	{0x70, 0x0c, BURST_TYPE},
-	{0x71, 0x12, BURST_TYPE},
-	{0x72, 0x7e, BURST_TYPE},
-	{0x73, 0xcc, BURST_TYPE},
+	{0x03, 0x10, BYTE_LEN},
+	{0x70, 0x08, BURST_TYPE},
+	{0x71, 0x18, BURST_TYPE},
+	{0x72, 0xac, BURST_TYPE},
+	{0x73, 0xe1, BURST_TYPE},
 	{0x74, 0x99, BURST_TYPE},
 	{0x75, 0x00, BURST_TYPE},
-	{0x76, 0x06, BURST_TYPE},
-	{0x77, 0x20, BURST_TYPE},
+	{0x76, 0x0c, BURST_TYPE},
+	{0x77, 0x1e, BURST_TYPE},
 	           
-	{0x78, 0x00, BURST_TYPE},
-	{0x79, 0x33, BURST_TYPE},
-	{0x7a, 0x33, BURST_TYPE},
+	{0x78, 0xb8, BURST_TYPE},
+	{0x79, 0x30, BURST_TYPE},
+	{0x7a, 0x00, BURST_TYPE},
 	{0x7b, 0x40, BURST_TYPE},
 	{0x7c, 0x00, BURST_TYPE},
 	{0x7d, 0x04, BURST_TYPE},
-	{0x7e, 0x08, BURST_TYPE},
-	{0x7f, 0x10, BURST_TYPE},
+	{0x7e, 0x0a, BURST_TYPE},
+	{0x7f, 0x14, BURST_TYPE},
 	
 	///////////////////////////////////////////
 	// 11 page D-LPF
@@ -2174,6 +2175,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xA5, 0x11, BURST_TYPE},
 	
 	{0x03, 0xc3, BYTE_LEN},
+	{0xe1, 0x28, BYTE_LEN}, //STEVE OUT AG MAX 
 	{0xe2, 0x03, BYTE_LEN},//flicker option
 	
 	///////////////////////////////////////////
@@ -2220,7 +2222,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x03, 0xc5, BYTE_LEN}, 
 	{0x10, 0xb0, BURST_TYPE}, //bCtl1_a00_n00
 	{0x11, 0xa1, BURST_TYPE}, // Steve [4] bit must 0 for MWB
-	{0x12, 0x97, BURST_TYPE}, //bCtl3_a00_n00
+	{0x12, 0x9f, BURST_TYPE}, // STEVE 97 -> 9f YNorm
 	{0x13, 0x19, BURST_TYPE}, //bCtl4_a00_n00
 	{0x14, 0x24, BURST_TYPE}, //bLockTh_a00_n00
 	{0x15, 0x04, BURST_TYPE},
@@ -6645,7 +6647,7 @@ struct hi351_i2c_reg_conf hi351_prev_settings[] = {
 	{ 0x10, 0x87, BYTE_LEN},
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x10, 0x13, BYTE_LEN}, //Sub1/2 + Pre2
-	{ 0x11, 0x93, BYTE_LEN}, //Fix Frame Off, XY Flip
+	{ 0x11, 0x83, BYTE_LEN}, // STEVE 0 skip Fix Frame Off, XY Flip
 	{ 0x13, 0x80, BYTE_LEN}, //Fix AE Set Off
 	
 	{ 0x03, 0xFE, DELAY_TYPE},
@@ -7784,7 +7786,7 @@ struct hi351_i2c_reg_conf hi351_auto_framerate_settings[] = {
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x10, 0x13, BYTE_LEN},  // scale 
-	{ 0x11, 0x93, BYTE_LEN}, // 
+	{ 0x11, 0x83, BYTE_LEN}, // 
 	{ 0x03, 0x18, BYTE_LEN}, //Page 18 
 	{ 0xC4, 0x7e, BYTE_LEN}, //FLK200 
 	{ 0xC5, 0x69, BYTE_LEN}, //FLK240  
