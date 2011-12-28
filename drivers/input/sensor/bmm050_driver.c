@@ -1,6 +1,6 @@
 /*
- * Last modified: Nov 28, 2011
- * Revision: V1.8
+ * Last modified: Dec 27, 2011
+ * Revision: V2.1
  * This software program is licensed subject to the GNU General Public License
  * (GPL).Version 2,June 1991, available at http://www.fsf.org/copyleft/gpl.html
 
@@ -56,6 +56,8 @@
 #define BMM_SELF_TEST 1
 #define BMM_ADV_TEST 2
 
+#define BMM_OP_MODE_UNKNOWN (-1)
+
 struct op_mode_map {
 	char *op_mode_name;
 	long op_mode;
@@ -68,6 +70,7 @@ static const struct op_mode_map op_mode_maps[] = {
 	{"suspend", BMM_VAL_NAME(SUSPEND_MODE)},
 	{"sleep", BMM_VAL_NAME(SLEEP_MODE)},
 };
+
 
 struct bmm_client_data {
 	struct bmc050 device;
@@ -82,8 +85,8 @@ struct bmm_client_data {
 	atomic_t delay;
 
 	struct bmc050_mdata value;
-	u8 op_mode:2;
 	u8 enable:1;
+	s8 op_mode:4;
 	u8 odr;
 	u8 rept_xy;
 	u8 rept_z;
@@ -443,12 +446,29 @@ static ssize_t bmm_show_op_mode(struct device *dev,
 
 	mutex_unlock(&client_data->mutex_power_mode);
 
-	PINFO("op_mode: %d", op_mode);
+	PDEBUG("op_mode: %d", op_mode);
 
 	ret = sprintf(buf, "%d\n", op_mode);
 
 	return ret;
 }
+
+
+static inline int bmm_get_op_mode_idx(u8 op_mode)
+{
+	int i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(op_mode_maps); i++) {
+		if (op_mode_maps[i].op_mode == op_mode)
+			break;
+	}
+
+	if (i < ARRAY_SIZE(op_mode_maps))
+		return i;
+	else
+		return -1;
+}
+
 
 static ssize_t bmm_store_op_mode(struct device *dev,
 		struct device_attribute *attr,
@@ -467,13 +487,9 @@ static ssize_t bmm_store_op_mode(struct device *dev,
 
 	mutex_lock(&client_data->mutex_power_mode);
 
-	for (i = 0; i < ARRAY_SIZE(op_mode_maps); i++) {
-		if (op_mode_maps[i].op_mode == op_mode)
-			break;
-	}
+	i = bmm_get_op_mode_idx(op_mode);
 
-	if (i < ARRAY_SIZE(op_mode_maps)) {
-		PDEBUG("op_mode: %ld", op_mode);
+	if (i != -1) {
 		mutex_lock(&client_data->mutex_op_mode);
 		if (op_mode != client_data->op_mode) {
 			if (BMM_VAL_NAME(FORCED_MODE) == op_mode) {
@@ -486,14 +502,13 @@ static ssize_t bmm_store_op_mode(struct device *dev,
 			}
 
 			if (!err) {
-				if (BMM_VAL_NAME(FORCED_MODE) == op_mode) {
+				if (BMM_VAL_NAME(FORCED_MODE) == op_mode)
 					client_data->op_mode =
-						BMM_VAL_NAME(SLEEP_MODE);
-				} else {
+						BMM_OP_MODE_UNKNOWN;
+				else
 					client_data->op_mode = op_mode;
 				}
 			}
-		}
 		mutex_unlock(&client_data->mutex_op_mode);
 	} else {
 		err = -EINVAL;
@@ -984,6 +999,9 @@ static int bmm_restore_hw_cfg(struct i2c_client *client)
 	int op_mode;
 
 	mutex_lock(&client_data->mutex_op_mode);
+	err = BMM_CALL_API(set_functional_state)(BMM_VAL_NAME(SLEEP_MODE));
+
+	if (bmm_get_op_mode_idx(client_data->op_mode) != -1)
 	err = BMM_CALL_API(set_functional_state)(client_data->op_mode);
 
 	op_mode = client_data->op_mode;
@@ -991,6 +1009,8 @@ static int bmm_restore_hw_cfg(struct i2c_client *client)
 
 	if (BMM_VAL_NAME(SUSPEND_MODE) == op_mode)
 		return err;
+
+	PINFO("app did not close this sensor before suspend");
 
 	mutex_lock(&client_data->mutex_odr);
 	BMM_CALL_API(set_datarate)(client_data->odr);
@@ -1175,12 +1195,12 @@ static int bmm_pre_suspend(struct i2c_client *client)
 	int err = 0;
 	struct bmm_client_data *client_data =
 		(struct bmm_client_data *)i2c_get_clientdata(client);
-	PINFO("function entrance");
+	PDEBUG("function entrance");
 
 	mutex_lock(&client_data->mutex_enable);
 	if (client_data->enable) {
 		cancel_delayed_work_sync(&client_data->work);
-		PINFO("cancel work");
+		PDEBUG("cancel work");
 	}
 	mutex_unlock(&client_data->mutex_enable);
 
@@ -1213,7 +1233,7 @@ static void bmm_early_suspend(struct early_suspend *handler)
 			struct bmm_client_data, early_suspend_handler);
 	struct i2c_client *client = client_data->client;
 	u8 power_mode;
-	PINFO("function entrance");
+	PDEBUG("function entrance");
 
 	mutex_lock(&client_data->mutex_power_mode);
 	BMM_CALL_API(get_powermode)(&power_mode);
@@ -1233,7 +1253,7 @@ static void bmm_late_resume(struct early_suspend *handler)
 		(struct bmm_client_data *)container_of(handler,
 			struct bmm_client_data, early_suspend_handler);
 	struct i2c_client *client = client_data->client;
-	PINFO("function entrance");
+	PDEBUG("function entrance");
 
 	mutex_lock(&client_data->mutex_power_mode);
 
@@ -1251,7 +1271,7 @@ static int bmm_suspend(struct i2c_client *client, pm_message_t mesg)
 		(struct bmm_client_data *)i2c_get_clientdata(client);
 	u8 power_mode;
 
-	PINFO("function entrance");
+	PDEBUG("function entrance");
 
 	mutex_lock(&client_data->mutex_power_mode);
 	BMM_CALL_API(get_powermode)(&power_mode);
@@ -1271,7 +1291,7 @@ static int bmm_resume(struct i2c_client *client)
 	struct bmm_client_data *client_data =
 		(struct bmm_client_data *)i2c_get_clientdata(client);
 
-	PINFO("function entrance");
+	PDEBUG("function entrance");
 
 	mutex_lock(&client_data->mutex_power_mode);
 	err = bmm_restore_hw_cfg(client);
@@ -1298,7 +1318,7 @@ static int bmm_remove(struct i2c_client *client)
 		mutex_lock(&client_data->mutex_op_mode);
 		if (BMM_VAL_NAME(NORMAL_MODE) == client_data->op_mode) {
 			cancel_delayed_work_sync(&client_data->work);
-			PINFO("cancel work");
+			PDEBUG("cancel work");
 		}
 		mutex_unlock(&client_data->mutex_op_mode);
 
