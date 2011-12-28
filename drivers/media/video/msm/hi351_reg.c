@@ -2020,7 +2020,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x11, 0x30, BYTE_LEN}, // ae speed B[7:6] 0 (SLOW) ~ 3 (FAST), 0x70 - 0x30   
 	{0x12, 0x10, BYTE_LEN}, 		
 	{0x19, 0x30, BURST_TYPE}, // band0 gain 40fps 0x2d
-	{0x1a, 0x34, BURST_TYPE}, // band1 gain 20fps
+	{0x1a, 0x38, BURST_TYPE}, // band1 gain 20fps original 34 Steve
 	{0x1b, 0x4c, BURST_TYPE}, // band2 gain 12fps
 	{0x1c, 0x04, BURST_TYPE},
 	{0x1d, 0x80, BURST_TYPE},
@@ -6775,7 +6775,7 @@ struct hi351_i2c_reg_conf hi351_scene_normal_settings[] = {
 		
 	{ 0x03, 0xc4, BYTE_LEN},
 	{ 0x19, 0x30, BYTE_LEN}, //Bnd0 Gain
-	{ 0x1a, 0x34, BYTE_LEN}, //Bnd1 Gain
+	{ 0x1a, 0x38, BYTE_LEN}, //Bnd1 Gain original 34 Steve
 	{ 0x1b, 0x4c, BYTE_LEN}, //Bnd2 Gain
 		
 	//Metering - Center
