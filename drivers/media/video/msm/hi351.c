@@ -220,15 +220,17 @@ static void hi351_stop_stream(void)
 static int hi351_probe_init_done(const struct msm_camera_sensor_info *data)
 {
 	CDBG("%s : hi351 sensor_probe_init_done which sensor initialize failed 0\n", __func__);
+	mutex_lock(&hi351_mut);	
+
 	hi351_stop_stream();
+
 	msleep(2);
-	gpio_direction_output(data->sensor_reset, 0);
-	msleep(1);
-	gpio_direction_output(data->sensor_pwd, 0);
-	gpio_free(data->sensor_reset);
-	gpio_free(data->sensor_pwd);
 
 	hi351_ctrl->sensordata->pdata->camera_power_off();	
+
+	kfree(hi351_ctrl);
+
+	mutex_unlock(&hi351_mut);	
 		
 	return 0;
 }
@@ -575,7 +577,7 @@ static int32_t hi351_set_brightness(int8_t brightness)
 							  hi351_regs.brightness_reg_settings[brightness+2].bdata);
 
  	if (rc < 0) {
-		pr_err("%s: %d  Exit \n",__func__, __LINE__);
+		pr_err("%s: %d Error Exit \n",__func__, __LINE__);
  		return rc;
 	}
  	return rc;
@@ -694,21 +696,23 @@ static int hi351_set_Fps(int mode)
 int hi351_get_iso_speed( void )
 {
 	u8 analogGain = 0;
-	u8 digitalGain = 0;
+	u8 digitalGain = 128;
+	int result = 0;
 
 	hi351_i2c_write_b_sensor(0x03, 0x20);
 	hi351_i2c_read(hi351_client->addr, 0x50, &analogGain);
 
-	hi351_i2c_write_b_sensor(0x03, 0x20);
-	hi351_i2c_read(hi351_client->addr, 0x70, &digitalGain);
-
-	if( analogGain <= 0 || digitalGain <= 0 ) 
+	if( analogGain <= 0x28 )
 	{
-		printk(KERN_ERR "### %s : iso speed %d %d ",  __func__, analogGain,  digitalGain);
-		return -EINVAL;
+		printk(KERN_ERR "### %s : iso speed - analogGain = 0x%x ",  __func__, analogGain);
+		analogGain = 0x28;  		//analogGain cannot move down than 0x28
 	}
+
+	printk(KERN_ERR "### %s : iso speed - analogGain = 0x%x ",  __func__, analogGain);
+
+	result = ((analogGain / 32) * (digitalGain /128) * 100);
 	
-	return ((analogGain  / 32) * (digitalGain /128) * 100);
+	return result;
 }
 //LGE_CHANGE_E
 int hi351_sensor_config(void __user *argp)
@@ -728,7 +732,7 @@ int hi351_sensor_config(void __user *argp)
 		return -EFAULT;
 
 	mutex_lock(&hi351_mut);
-	printk(KERN_ERR "### %s: cfgtype = %d, mode -> %d\n", __func__, cfg_data.cfgtype, cfg_data.mode);
+	//printk(KERN_ERR "### %s: cfgtype = %d, mode -> %d\n", __func__, cfg_data.cfgtype, cfg_data.mode);
 
 	CDBG("hi351_ioctl, cfgtype = %d, mode = %d\n",
 		cfg_data.cfgtype, cfg_data.mode);
