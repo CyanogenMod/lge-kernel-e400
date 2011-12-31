@@ -237,7 +237,7 @@ static void do_ilitek_init(struct platform_device *pdev)
 
 	/* Display Function control*/
 	EBI2_WRITE16C(DISP_CMD_PORT, 0xb6);
-	EBI2_WRITE16D(DISP_DATA_PORT,0x0a);
+	EBI2_WRITE16D(DISP_DATA_PORT,0x02);
 	EBI2_WRITE16D(DISP_DATA_PORT,0x82);
 	EBI2_WRITE16D(DISP_DATA_PORT,0x27);
 	EBI2_WRITE16D(DISP_DATA_PORT,0x00);
