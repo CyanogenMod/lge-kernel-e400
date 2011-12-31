@@ -6691,8 +6691,8 @@ struct hi351_i2c_reg_conf hi351_snap_settings[] = {
 	{ 0x10, 0x00, BYTE_LEN},
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x10, 0x00, BYTE_LEN}, //Full
-	{ 0x03, 0xFE, DELAY_TYPE},
-	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
+	//{ 0x03, 0xFE, DELAY_TYPE},
+	//{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x20, 0x00, BYTE_LEN},
 	{ 0x21, 0x03, BYTE_LEN}, //preview row start set.
