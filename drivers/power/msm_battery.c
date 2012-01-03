@@ -1687,7 +1687,7 @@ static ssize_t msm_batt_batt_id_show(struct device* dev, struct device_attribute
 static DEVICE_ATTR(batt_id, S_IRUGO, msm_batt_batt_id_show, NULL);
 //LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
 
-#if defined(LGE_MODEL_E0_EU) || defined (LGE_MODEL_E1_BR) /* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-26] QEM */
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) /* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-26] QEM */
 extern unsigned lge_get_nv_qem(void);
 static ssize_t msm_batt_qem_show(struct device* dev, struct device_attribute* attr, char* buf)
 {
@@ -1713,7 +1713,7 @@ static struct attribute* dev_attrs_lge_batt_info[] = {
 	//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
 	&dev_attr_batt_id.attr,
 	//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
-#if defined(LGE_MODEL_E0_EU) || defined (LGE_MODEL_E1_BR) /* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-26] QEM */
+#if defined(CONFIG_MACH_MSM7X25A_E0EU) /* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-26] QEM */
 	&dev_attr_qem.attr,
 #endif
 	NULL,
