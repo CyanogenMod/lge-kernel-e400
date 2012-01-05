@@ -38,6 +38,7 @@
 #include <mach/msm_serial_pdata.h>
 #include "msm_serial.h"
 
+#undef CONFIG_PM_RUNTIME
 
 #ifdef CONFIG_SERIAL_MSM_CLOCK_CONTROL
 enum msm_clk_states_e {
@@ -1070,7 +1071,9 @@ static int __init msm_serial_probe(struct platform_device *pdev)
 	msm_port->clk_off_delay = ktime_set(0, 1000000);  /* 1 ms */
 #endif
 
+#ifdef CONFIG_PM_RUNTIME
 	pm_runtime_enable(port->dev);
+#endif
 	return uart_add_one_port(&msm_uart_driver, port);
 }
 
@@ -1121,6 +1124,7 @@ static int msm_serial_resume(struct device *dev)
 #define msm_serial_resume NULL
 #endif
 
+#ifdef CONFIG_PM_RUNTIME
 static int msm_serial_runtime_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -1142,12 +1146,15 @@ static int msm_serial_runtime_resume(struct device *dev)
 	msm_init_clock(port);
 	return 0;
 }
+#endif
 
 static struct dev_pm_ops msm_serial_dev_pm_ops = {
 	.suspend = msm_serial_suspend,
 	.resume = msm_serial_resume,
+#ifdef CONFIG_PM_RUNTIME
 	.runtime_suspend = msm_serial_runtime_suspend,
 	.runtime_resume = msm_serial_runtime_resume,
+#endif
 };
 
 static struct platform_driver msm_platform_driver = {
