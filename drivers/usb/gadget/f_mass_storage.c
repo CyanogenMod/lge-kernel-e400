@@ -332,8 +332,8 @@ static const char fsg_string_interface[] = "Mass Storage";
 #define PRODUCT_NAME_INTERNAL "E400"
 #define PRODUCT_NAME_EXTERNAL "E400 SD Card"
 #elif defined(CONFIG_MACH_MSM7X25A_E1BR)
-#define PRODUCT_NAME_INTERNAL "E405"
-#define PRODUCT_NAME_EXTERNAL "E405 SD Card"
+#define PRODUCT_NAME_INTERNAL "E405f"
+#define PRODUCT_NAME_EXTERNAL "E405f SD Card"
 #else
 #define PRODUCT_NAME_INTERNAL "MS695 "
 #define PRODUCT_NAME_EXTERNAL "MS695 SD Card"
