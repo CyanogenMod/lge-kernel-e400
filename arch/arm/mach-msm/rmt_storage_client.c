@@ -16,7 +16,7 @@
  *
  */
 
-#if defined (CONFIG_MACH_MSM7X25A_E1BR) /* jjm : efs_sync test */
+#if defined (CONFIG_MACH_MSM7X25A_E1BR) || defined (CONFIG_MACH_MSM7X25A_E0EU) /* jjm : efs_sync test */
 #include <linux/miscdevice.h>
 #include <linux/wait.h>
 #include <linux/module.h>
