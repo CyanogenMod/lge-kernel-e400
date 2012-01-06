@@ -77,6 +77,25 @@ static int __init lge_uart_mode(char *uart_mode)
 
 __setup("uart_console=", lge_uart_mode);
 
+
+static char frst_mode[6];
+
+static int __init lge_frst_mode(char *cmdline)
+{
+	strncpy(cmdline, frst_mode, 5);
+	frst_mode[5]='\0';
+	printk(KERN_INFO "FRST MODE : %s",frst_mode);
+
+	return 1;
+}
+__setup("lge.frst=", lge_frst_mode);
+
+char* get_frst_mode(void)
+{
+	return frst_mode;
+}
+EXPORT_SYMBOL(get_frst_mode);
+
 /* pmem devices */
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.name = "pmem_adsp",

@@ -1696,7 +1696,13 @@ static ssize_t msm_batt_qem_show(struct device* dev, struct device_attribute* at
 }
 static DEVICE_ATTR(qem, S_IRUGO, msm_batt_qem_show, NULL);
 
-#endif	
+extern char* get_frst_mode(void);
+static ssize_t msm_batt_frst_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	return sprintf(buf,"%s\n", get_frst_mode());
+}
+static DEVICE_ATTR(frst, S_IRUGO, msm_batt_frst_show, NULL);
+#endif
 #endif
 
 static struct attribute* dev_attrs_lge_batt_info[] = {
@@ -1705,16 +1711,17 @@ static struct attribute* dev_attrs_lge_batt_info[] = {
 	&dev_attr_pcb_version.attr,
 	&dev_attr_chg_curr_volt.attr,
 	&dev_attr_batt_therm.attr,
-	&dev_attr_batt_volt_raw.attr,	
+	&dev_attr_batt_volt_raw.attr,
 #if 1 //#ifdef CONFIG_MACH_MSM7X27_GELATO
 	&dev_attr_chg_stat_reg.attr,
 	&dev_attr_chg_en_reg.attr,
-#endif	
+#endif
 	//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-10-10
 	&dev_attr_batt_id.attr,
 	//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-10-10
 #if defined(CONFIG_MACH_MSM7X25A_E0EU) || defined (CONFIG_MACH_MSM7X25A_E1BR) /* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-26] QEM */
 	&dev_attr_qem.attr,
+	&dev_attr_frst.attr,
 #endif
 	NULL,
 };
