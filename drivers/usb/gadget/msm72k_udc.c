@@ -1496,6 +1496,7 @@ static void usb_reset(struct usb_info *ui)
 
 	}
 
+	#if 0 //lbh.lee@lge.com for 56k usb insert fullspeed change delete...
 	if (udc_cable == LGE_CABLE_TYPE_56K)
 	{
 		//USB_DBG( "factory cable 56kohm, usb full-speed\n");
@@ -1505,7 +1506,9 @@ static void usb_reset(struct usb_info *ui)
 		ulpi_write(ui, tmp, 0x04);
 		writel(readl(USB_PORTSC) | (1<<24), USB_PORTSC);
 	}
+	#endif
 
+	
 	if (udc_cable == LGE_CABLE_TYPE_56K || udc_cable == LGE_CABLE_TYPE_130K || udc_cable == LGE_CABLE_TYPE_910K)
 	{
 		// 4.7V defence code
