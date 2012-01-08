@@ -62,7 +62,7 @@ static void msm_keypad_bl_led_set(struct led_classdev *led_cdev,
 		break;
 	default:
 		//brightness = PM_MPP__I_SINK__LEVEL_25mA;
-		brightness = PM_MPP__I_SINK__LEVEL_5mA;/* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-02] LED brightness chnanged 25mA --> 5mA */
+		brightness = PM_MPP__I_SINK__LEVEL_15mA;/* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-02] LED brightness chnanged 25mA --> 5mA -> 15mA */
 		break;
 	}
 	pmic_secure_mpp_config_i_sink((enum mpp_which)PM_MPP_3, brightness, (enum mpp_i_sink_switch)on_off);
