@@ -469,7 +469,7 @@ static int usb_ep_get_stall(struct msm_endpoint *ept)
 }
 
 // LGE_CHANGE_S, [myunghwan.kim@lge.com], 2011-10-27
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER //ulpi_read from SBA 2030_07
+#if 0 //def CONFIG_LGE_USB_GADGET_DRIVER //ulpi_read from SBA 2030_07
 static unsigned ulpi_read(struct usb_info *ui, unsigned reg)
 {
 	unsigned ret, timeout = 100000;
@@ -497,7 +497,9 @@ static unsigned ulpi_read(struct usb_info *ui, unsigned reg)
 
 	return ret;
 }
+#endif //lbh.lee@lge.com defined but not used error fix
 
+#ifdef CONFIG_LGE_USB_GADGET_DRIVER
 static void ulpi_write(struct usb_info *ui, unsigned val, unsigned reg)
 {
 	unsigned timeout = 10000;
