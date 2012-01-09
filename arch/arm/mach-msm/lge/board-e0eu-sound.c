@@ -189,16 +189,31 @@ static int e0eu_gpio_earsense_work_func(int *value)
 		snd_fm_vol_mute();
 	} else {
 		state = EAR_STATE_INJECT;
+
+/* LGE_CHANGE_S : E0 jisun.kwon@lge.com [2012-01-09]
+	Reson : Improvement of Headset booting noise.
+*/
+		gpio_set_value(GPIO_MIC_MODE, 1); 
+/* LGE_CHANGE_E : E0 jisun.kwon@lge.com@lge.com [2012-01-09] */
+		
 		msleep(100);
 		gpio_value = !gpio_get_value(GPIO_BUTTON_DETECT);
 		if (gpio_value) {
 			printk(KERN_INFO "headphone was inserted!\n");
 			*value = SW_HEADPHONE_INSERT;
-			gpio_set_value(GPIO_MIC_MODE, 1);			
+/* LGE_CHANGE_S : E0 jisun.kwon@lge.com [2012-01-09]
+	Reson : Improvement of Headset booting noise.
+*/
+			//gpio_set_value(GPIO_MIC_MODE, 1);			
+/* LGE_CHANGE_E : E0 jisun.kwon@lge.com@lge.com [2012-01-09] */
 		} else {
 			printk(KERN_INFO "micorphone was inserted!\n");
 			*value = SW_MICROPHONE_INSERT;
-			gpio_set_value(GPIO_MIC_MODE, 1);
+/* LGE_CHANGE_S : E0 jisun.kwon@lge.com [2012-01-09]
+	Reson : Improvement of Headset booting noise.
+*/
+			//gpio_set_value(GPIO_MIC_MODE, 1);
+/* LGE_CHANGE_E : E0 jisun.kwon@lge.com@lge.com [2012-01-09] */
 		}
 	}
 

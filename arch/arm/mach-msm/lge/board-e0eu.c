@@ -324,6 +324,13 @@ static void __init msm7x2x_init(void)
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
 #endif
 
+
+/* LGE_CHANGE_S : E0 jisun.kwon@lge.com [2012-01-09]
+	Reson : Improvement of Headset booting noise.
+*/
+	gpio_set_value(GPIO_MIC_MODE, 1);
+/* LGE_CHANGE_E : E0 jisun.kwon@lge.com@lge.com [2012-01-09] */
+
 	msm_add_pmem_devices();
 	msm_add_fb_device();
 
