@@ -89,6 +89,11 @@ u32 msm_fb_msg_level = 7;
 /* Setting mddi_msg_level to 8 prints out ALL messages */
 u32 mddi_msg_level = 5;
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2012-01-03] 
+: For the calibration of LCD Color temperature */
+extern int mdp_write_kcal_reg(const char* buf);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-03] 
+: For the calibration of LCD Color temperature */
 extern int32 mdp_block_power_cnt[MDP_MAX_BLOCK];
 extern unsigned long mdp_timer_duration;
 
@@ -318,6 +323,20 @@ static void msm_fb_remove_sysfs(struct platform_device *pdev)
 	sysfs_remove_group(&mfd->fbi->dev->kobj, &msm_fb_attr_group);
 }
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2012-01-03] 
+: For the calibration of LCD Color temperature */
+static ssize_t mdp_write_kcal(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int result;
+	
+	result = mdp_write_kcal_reg(buf);
+	printk("#### mdp_write_kcal Out : the result=%d  count=%d ####\n",result, count);
+
+	return count;
+}
+static DEVICE_ATTR(mdp_kcal,0777,NULL,mdp_write_kcal);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-03] 
+: For the calibration of LCD Color temperature */
 static int msm_fb_probe(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
@@ -384,6 +403,13 @@ static int msm_fb_probe(struct platform_device *pdev)
 
 	pdev_list[pdev_list_cnt++] = pdev;
 	msm_fb_create_sysfs(pdev);
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2012-01-03] 
+: For the calibration of LCD Color temperature */
+	err = device_create_file(&pdev->dev, &dev_attr_mdp_kcal);
+	if(err != 0)
+		printk("%s: could not create kcal file\n",__func__ );
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-03] 
+: For the calibration of LCD Color temperature */
 	return 0;
 }
 
