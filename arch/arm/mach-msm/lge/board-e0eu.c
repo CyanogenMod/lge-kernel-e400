@@ -151,6 +151,57 @@ int check_smem_ers_status(void)
 
 
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2012-01-07] 
+: For the calibration of LCD Color temperature */
+static int atoi(const char *name)
+{
+	int val = 0;
+
+	for (;; name++) {
+		switch (*name) {
+		case '0' ... '9':
+			val = 10*val+(*name-'0');
+			break;
+		default:
+			return val;
+		}
+	}
+}	
+	
+int g_kcal[6];
+static int __init lcd_kcal_setup(char *kcal)
+{
+	char buf[4]={0,};
+
+	
+	memcpy(buf, kcal+0, 3);
+	g_kcal[0] = atoi(buf);
+	
+	memcpy(buf, kcal+3, 3);
+	g_kcal[1] = atoi(buf);
+	
+	memcpy(buf, kcal+6, 3);
+	g_kcal[2] = atoi(buf);
+	
+	memcpy(buf, kcal+9, 3);
+	g_kcal[3] = atoi(buf);
+
+	memcpy(buf, kcal+12, 3);
+	g_kcal[4] = atoi(buf);
+
+	memcpy(buf, kcal+15, 3);
+	g_kcal[5] = atoi(buf);
+
+	printk(KERN_INFO " *** lcd_k_cal=%s, r:%d, g:%d, b:%d \n", kcal, g_kcal[0], g_kcal[1], g_kcal[2]);
+	printk(KERN_INFO " *** lcd_k_cal=%s, r:%d, g:%d, b:%d \n", kcal, g_kcal[3], g_kcal[4], g_kcal[5]);
+
+	return 1;
+}
+__setup("kcal=", lcd_kcal_setup);
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-07] 
+: For the calibration of LCD Color temperature */
+
+
 static struct msm_gpio qup_i2c_gpios_io[] = {
 	{ GPIO_CFG(60, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 		"qup_scl" },
