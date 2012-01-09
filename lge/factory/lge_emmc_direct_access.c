@@ -94,6 +94,12 @@ static char *vfat_partitions[] = {"modem", "mdm",  "NONE"};
 
 
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2012-01-04] 
+: For the calibration of LCD Color temperature */
+#define LCD_K_CAL_SIZE 6
+static unsigned char lcd_buf[LCD_K_CAL_SIZE]={255,};
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-04] 
+: For the calibration of LCD Color temperature */
 struct MmcPartition {
     char *device_index;
     char *filesystem;
@@ -675,6 +681,136 @@ int lge_mmc_scan_partitions(void) {
 EXPORT_SYMBOL(lge_mmc_scan_partitions);
 
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2012-01-04] 
+: For the calibration of LCD Color temperature */
+int misc_write_block(const char* buffer, int size);
+int misc_read_block(char* buffer, int size);
+int read_lcd_k_cal( char *buf);
+
+static int write_lcd_k_cal(const char *val, struct kernel_param *kp)
+{
+	char myBuf[10];
+	int i = 0;
+	//int err;
+	//int mtd_op_result = 0;
+	//const MmcPartition *pMisc_part;
+	//unsigned long lcdkcal_bytes_pos_in_emmc = 0;
+
+	int iRed 		= 0;
+	int iGreen = 0;
+	int iBlue 	= 0;
+
+	char iChkSum1 = 'c';
+	char iChkSum2 = 'a';
+	char iChkSum3 = 'l';
+
+	sscanf(val, "%d,%d,%d", &iRed, &iGreen, &iBlue);
+
+	printk(KERN_ERR "================mdp_write_kcal_reg function starts ~~~~~~!\n");
+	printk(KERN_ERR "================Param 1 : %d, Param 2 : %d, Param 3: %d ~~~~~~!\n", iRed, iGreen, iBlue);
+	//printk(KERN_ERR "================CheckSum 1 : %d, CheckSum 2 : %d, CheckSum 3: %d ~~~~~~!\n", iChkSum1, iChkSum2, iChkSum3);
+
+	lcd_buf[0] = (char)iRed;
+	lcd_buf[1] = (char)iGreen;
+	lcd_buf[2] = (char)iBlue;
+	lcd_buf[3] = iChkSum1;
+	lcd_buf[4] = iChkSum2;
+	lcd_buf[5] = iChkSum3;
+
+	i = misc_write_block(lcd_buf, LCD_K_CAL_SIZE);
+	if (i == LCD_K_CAL_SIZE)
+		printk("<6>" "write %d block\n", i);
+	else
+		printk("<6>" "write fail\n");//*/
+
+	memset(myBuf, 0, 10);
+
+	read_lcd_k_cal(myBuf);
+	printk(KERN_ERR "================Param 1 : %d, Param 2 : %d, Param 3: %d ~~~~~~!\n", myBuf[0], myBuf[1], myBuf[2]);
+	printk(KERN_ERR "================CheckSum 1 : %d, CheckSum 2 : %d, CheckSum 3: %d ~~~~~~!\n", myBuf[3], myBuf[4], myBuf[5]);
+
+
+
+#if 0
+	for(i=0;i<LCD_K_CAL_SIZE;i++)
+	{
+		printk("write_lcd_k_cal :%x:\n",lcd_buf[i]);
+	}
+#endif
+
+#if 0
+
+	lge_mmc_scan_partitions();
+	pMisc_part = lge_mmc_find_partition_by_name("misc");
+	if ( pMisc_part == NULL )
+	{
+		printk(KERN_INFO"NO MISC\n");
+		return 0;
+	}
+
+	lcdkcal_bytes_pos_in_emmc = (pMisc_part->dfirstsec*512)+PTN_LCD_K_CAL_PARTITION;
+
+	printk("write_lcd_k_cal %ld block\n", lcdkcal_bytes_pos_in_emmc);
+
+	mtd_op_result = lge_write_block(lcdkcal_bytes_pos_in_emmc, lcd_buf, LCD_K_CAL_SIZE);
+
+	if ( mtd_op_result != LCD_K_CAL_SIZE ) {
+		printk("%s: write %u block fail\n", __func__, i);
+		return err;
+	}
+	printk("write %d block\n", i);
+#endif
+
+	return 0;
+}
+
+
+int read_lcd_k_cal( char *buf)
+{
+	int size = misc_read_block(buf, LCD_K_CAL_SIZE);
+	buf[LCD_K_CAL_SIZE-1] = '\0';
+	return size;
+
+#if 0
+		int err=0;
+		int mtd_op_result = 0;
+	//	int i;
+
+	const MmcPartition *pMisc_part;
+	unsigned long lcdkcal_bytes_pos_in_emmc = 0;
+
+	printk(KERN_INFO"read read_lcd_k_cal\n");
+
+	lge_mmc_scan_partitions();
+	pMisc_part = lge_mmc_find_partition_by_name("misc");
+
+	if ( pMisc_part == NULL )
+	{
+		printk(KERN_INFO"NO MISC\n");
+		return 0;
+	}
+
+	lcdkcal_bytes_pos_in_emmc = (pMisc_part->dfirstsec*512)+PTN_LCD_K_CAL_PARTITION;
+
+	memset(lcd_buf, 0 ,LCD_K_CAL_SIZE);
+	mtd_op_result = lge_read_block(lcdkcal_bytes_pos_in_emmc, &lcd_buf[0], LCD_K_CAL_SIZE);
+
+	if (mtd_op_result != LCD_K_CAL_SIZE ) {
+		printk(KERN_INFO" read %ld block fail\n", lcdkcal_bytes_pos_in_emmc);
+		return err;
+	}
+
+	printk(KERN_INFO"read %ld block\n", lcdkcal_bytes_pos_in_emmc);
+	memcpy(&buf[0],&lcd_buf[0],LCD_K_CAL_SIZE);
+
+	return LCD_K_CAL_SIZE;
+#endif
+}
+EXPORT_SYMBOL(read_lcd_k_cal);
+module_param_call(lcd_k_cal, write_lcd_k_cal, read_lcd_k_cal, NULL,S_IWUSR|S_IRUSR|S_IRGRP|S_IWGRP);	
+
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-04] 
+: For the calibration of LCD Color temperature */
 /* BEGIN: 0013861 jihoon.lee@lge.com 20110111 */
 /* MOD 0013861: [FACTORY RESET] emmc_direct_access factory reset flag access */
 /* add carriage return and change flag size in each functions for the platform access */
@@ -888,6 +1024,95 @@ did_dload_func(struct work_struct *work)
 
 
 
+/* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2012-01-07] 
+: For the calibration of LCD Color temperature */
+
+int misc_write_block(const char* buffer, int size)
+{
+	struct file *fp_misc = NULL;
+	mm_segment_t old_fs;
+	unsigned int write_bytes = 0;
+
+	// exception handling
+	if((buffer == NULL) || size <= 0)
+	{
+		printk(KERN_ERR "%s, NULL buffer or NULL size : %d\n", __func__, size);
+		return 0;
+	}
+
+	old_fs=get_fs();
+	set_fs(get_ds());
+
+	// try to open
+	fp_misc = filp_open("/dev/block/mmcblk0p8", O_WRONLY | O_SYNC, 0);
+	if(IS_ERR(fp_misc))
+	{
+		printk(KERN_ERR "%s, Can not access MISC\n", __func__);
+		goto write_fail;
+	}
+
+	fp_misc->f_pos = (loff_t) (512 * 44);
+	write_bytes = fp_misc->f_op->write(fp_misc, buffer, size, &fp_misc->f_pos);
+
+	if(write_bytes <= 0)
+	{
+		printk(KERN_ERR "%s, Can not write (MISC) \n", __func__);
+		goto write_fail;
+	}
+
+write_fail:
+	if (!IS_ERR(fp_misc))
+		filp_close(fp_misc, NULL);
+	set_fs(old_fs);
+	
+	return write_bytes;
+}
+EXPORT_SYMBOL(misc_write_block);
+
+int misc_read_block(char* buffer, int size)
+{
+	struct file *fp_misc = NULL;
+	mm_segment_t old_fs;
+	unsigned int read_bytes = 0;
+
+	// exception handling
+	if((buffer == NULL) || size <= 0)
+	{
+		printk(KERN_ERR "%s, NULL buffer or NULL size : %d\n", __func__, size);
+		return 0;
+	}
+
+	old_fs=get_fs();
+	set_fs(get_ds());
+
+	// try to open
+	fp_misc = filp_open("/dev/block/mmcblk0p8", O_RDONLY | O_SYNC, 0);
+	if(IS_ERR(fp_misc))
+	{
+		printk(KERN_ERR "%s, Can not access MISC (%ld)\n", __func__, PTR_ERR(fp_misc));
+		goto read_fail;
+	}
+
+	fp_misc->f_pos = (loff_t) (512*44);
+	read_bytes = fp_misc->f_op->read(fp_misc, buffer, size, &fp_misc->f_pos);
+
+	if(read_bytes <= 0)
+	{
+		printk(KERN_ERR "%s, Can not read (MISC) \n", __func__);
+		goto read_fail;
+	}
+
+read_fail:
+	if (!IS_ERR(fp_misc))
+		filp_close(fp_misc, NULL);
+	set_fs(old_fs);
+	
+	return read_bytes;
+}
+EXPORT_SYMBOL(misc_read_block);
+
+/* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-07] 
+: For the calibration of LCD Color temperature */
 /* BEGIN: 0013860 jihoon.lee@lge.com 20110111 */
 /* ADD 0013860: [FACTORY RESET] ERI file save */
 
