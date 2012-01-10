@@ -55,6 +55,31 @@ static uint32_t camera_on_gpio_table[] = {
 static void msm_camera_vreg_config(int vreg_en)
 {
 	int rc;
+	static int gpio_initialzed;
+
+	if (!gpio_initialzed) {
+		rc = gpio_request(GPIO_CAM_PWDN, "hi351_pwdn");
+		if (rc < 0) {
+			pr_err("%s: gpio_request(GPIO_CAM_PWDN) failed\n", __func__);
+		}
+		
+		rc = gpio_request(GPIO_CAM_RESET, "hi351_reset");
+		if (rc < 0) {
+			pr_err("%s: gpio_request(GPIO_CAM_RESET) failed\n", __func__);
+		}
+		
+		rc = gpio_direction_output(GPIO_CAM_PWDN, 0);
+		if (rc < 0) {
+			pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 0) failed(1)\n", __func__);
+		}
+
+		rc = gpio_direction_output(GPIO_CAM_RESET, 0);
+		if (rc < 0) {
+			pr_err("%s: gpio_direction_output(GPIO_CAM_RESET, 0) failed(2)\n", __func__);
+		}
+		gpio_initialzed = 1;
+	}
+	
 #if defined(CONFIG_BACKLIGHT_AAT2870)
 	if (vreg_en) {
 		pr_err("%s: msm_camera_vreg_config power on vreg_en enable\n", __func__);
@@ -143,6 +168,7 @@ static void msm_camera_vreg_config(int vreg_en)
 
 	} 
 	else {
+		
 	 	pr_err("%s: msm_camera_vreg_config power on vreg_en disable start\n", __func__);
 
 		rc = bu61800_ldo_enable(NULL,3,vreg_en);
@@ -190,6 +216,10 @@ static int config_camera_on_gpios_rear(void)
 {
 	int rc = 0;
 
+	msm_camera_vreg_config(1);
+
+	udelay(10);
+
 	rc = config_gpio_table(camera_on_gpio_table,
 			ARRAY_SIZE(camera_on_gpio_table));
 	if (rc < 0) {
@@ -203,9 +233,19 @@ static int config_camera_on_gpios_rear(void)
 
 static void config_camera_off_gpios_rear(void)
 {
+	gpio_direction_output(GPIO_CAM_RESET, 0);
+
+	mdelay(1);
+
+	gpio_direction_output(GPIO_CAM_PWDN, 0);
+
+	mdelay(1);
 
 	config_gpio_table(camera_off_gpio_table,
 			ARRAY_SIZE(camera_off_gpio_table));
+
+	msm_camera_vreg_config(0);
+
 }
 
 #ifdef CONFIG_HI351
@@ -213,37 +253,13 @@ static int camera_power_on_rear(void)
 {
 	int rc = 0;
 	mutex_lock(&camera_power_mutex);
-
-	rc = gpio_request(GPIO_CAM_PWDN, "hi351_pwdn");
-	if (rc < 0) {
-		pr_err("%s: gpio_request(GPIO_CAM_PWDN) failed\n", __func__);
-	}
-	
-	rc = gpio_request(GPIO_CAM_RESET, "hi351_reset");
-	if (rc < 0) {
-		pr_err("%s: gpio_request(GPIO_CAM_RESET) failed\n", __func__);
-	}
-	
-	rc = gpio_direction_output(GPIO_CAM_PWDN, 0);
-	if (rc < 0) {
-		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 0) failed(1)\n", __func__);
-	}
-	mdelay(1);		//hong.junki test
+		
 	rc = gpio_direction_output(GPIO_CAM_PWDN, 1);
 	if (rc < 0) {
 		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 1) failed(2)\n", __func__);
 	}
-	mdelay(1);
-	
-	msm_camera_vreg_config(1);
 
-	mdelay(2);
-
-	rc = gpio_direction_output(GPIO_CAM_RESET, 0);
-	if (rc < 0) {
-		pr_err("%s: gpio_direction_output(GPIO_CAM_RESET, 0) failed(2)\n", __func__);
-	}
-	mdelay(1);		
+	udelay(10);		
 
 	msm_camio_clk_rate_set(HI351_MASTER_CLK_RATE);
 	pr_err("%s: msm_camio_clk_rate_set\n", __func__);
@@ -264,16 +280,7 @@ static int camera_power_on_rear(void)
 
 static int camera_power_off_rear(void)
 {
-
-	gpio_direction_output(GPIO_CAM_RESET, 0);
-
-	mdelay(1);
-
-	gpio_direction_output(GPIO_CAM_PWDN, 0);
-
-	mdelay(1);
-	
-	msm_camera_vreg_config(0);
+	//Dummy function
 	return 0;
 }
 
