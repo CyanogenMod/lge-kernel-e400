@@ -118,6 +118,7 @@ struct tavarua_device {
 	int pi;
 	/*PS repeatcount for PS Tx */
 	int ps_repeatcount;
+	int newFMSrchAlg;
 };
 
 /**************************************************************************
@@ -1162,6 +1163,196 @@ static int tavarua_disable_irq(struct tavarua_device *radio)
 	return 0;
 }
 
+static int New_Srch_Alg(struct tavarua_device *radio,
+				int region)
+{
+	unsigned char adie_type_bahma;
+	int retval = 0;
+	unsigned int rdsMask = 0;
+	unsigned char value;
+
+	adie_type_bahma = is_bahama();
+
+/* ************************************************************ */
+		/* Debug Section */
+/* ************************************************************ */
+
+	switch (region) {
+
+	case TAVARUA_REGION_US:
+/*
+	Radio band for all the 200KHz channel-spaced regions
+	coming under EUROPE too, have been set as TAVARUA_REGION_US.
+	*/
+
+		printk(KERN_INFO "%s: The region selected from APP is"
+			" : TAVARUA_REGION_US", __func__);
+		break;
+
+	case TAVARUA_REGION_EU:
+	/*
+	Radio band for all the 50KHz channel-spaced regions
+	coming under EUROPE, have been set as TAVARUA_REGION_EU.
+	*/
+
+		printk(KERN_INFO "%s: The region selected from APP is : "
+			"TAVARUA_REGION_EU", __func__);
+		break;
+
+	case TAVARUA_REGION_JAPAN:
+	/*
+	Radio band for the 100KHz channel-spaced JAPAN region
+	has been set as TAVARUA_REGION_JAPAN.
+	*/
+
+		printk(KERN_INFO "%s: The region selected from APP is"
+			" : TAVARUA_REGION_JAPAN", __func__);
+		break;
+
+	case TAVARUA_REGION_JAPAN_WIDE:
+	/*
+	Radio band for the 50KHz channel-spaced JAPAN WIDE region
+	has been set as TAVARUA_REGION_JAPAN_WIDE.
+	*/
+
+		printk(KERN_INFO "%s: The region selected from APP is"
+			" : TAVARUA_REGION_JAPAN_WIDE", __func__);
+		break;
+
+	case TAVARUA_REGION_OTHER:
+	/*
+Radio band for all the 100KHz channel-spaced regions
+	including those coming under EUROPE have been set as
+	TAVARUA_REGION_OTHER.
+	*/
+
+		printk(KERN_INFO "%s: The region selected from APP is"
+			" : TAVARUA_REGION_OTHER", __func__);
+		break;
+
+	}
+
+/* *********************************************************************** */
+		/* Enable or Disable the 200KHz enforcer */
+/* *********************************************************************** */
+	switch (region) {
+	case TAVARUA_REGION_US:
+	case TAVARUA_REGION_JAPAN:
+	case TAVARUA_REGION_OTHER:
+	/*
+	These are the 3 bands for which we need to enable the
+	200KHz enforcer in ADVCTL reg.
+	*/
+		if (adie_type_bahma) {
+			FMDBG("Adie type : Bahama\n");
+			printk(KERN_INFO "%s: Enabling the 200KHz enforcer for"
+				" Region : %d", __func__, region);
+			/*Enable the 200KHz enforcer*/
+		retval = tavarua_read_registers(radio,
+				ADVCTRL, 1);
+			if (retval >= 0) {
+				rdsMask = radio->registers[ADVCTRL];
+				SET_REG_FIELD(rdsMask, ENF_SRCH200khz,
+					SRCH200KHZ_OFFSET, SRCH_MASK);
+				msleep(TAVARUA_DELAY);
+				retval = tavarua_write_register(radio,
+					ADVCTRL, rdsMask);
+			} else
+				return retval;
+		} /* if Marimba do nothing */
+		break;
+	case TAVARUA_REGION_EU:
+	case TAVARUA_REGION_JAPAN_WIDE:
+	/*
+	These are the 2 bands for which we need to disable the
+	200KHz enforcer in ADVCTL reg.
+	Radio band for all the 50KHz channel-spaced regions
+	coming under EUROPE have been set as TAVARUA_REGION_EU.
+	*/
+		if (adie_type_bahma) {
+			FMDBG("Adie type : Bahama\n");
+			printk(KERN_INFO "%s: Disabling the 200KHz enforcer for"
+				" Region : %d", __func__, region);
+			/*
+			Disable 200KHz enforcer for all 50 KHz
+			spaced regions.
+			*/
+			retval = tavarua_read_registers(radio,
+				ADVCTRL, 1);
+			if (retval >= 0) {
+				rdsMask = radio->registers[ADVCTRL];
+				SET_REG_FIELD(rdsMask, NO_SRCH200khz,
+					SRCH200KHZ_OFFSET, SRCH_MASK);
+				msleep(TAVARUA_DELAY);
+				retval = tavarua_write_register(radio,
+					ADVCTRL, rdsMask);
+			} else
+				return retval;
+		} /* if Marimba do nothing */
+		break;
+	default:
+		printk(KERN_INFO "%s: Defaulting in case of Enabling/Disabling"
+			"the 200KHz Enforcer", __func__);
+		break;
+	}
+
+/* *********************************************************************** */
+		/* Set channel spacing */
+/* *********************************************************************** */
+		switch (region) {
+		case TAVARUA_REGION_US:
+			if (adie_type_bahma) {
+				FMDBG("Adie type : Bahama\n");
+				/*
+				Configuring all 200KHZ spaced regions as
+				100KHz due to change in the new Bahma
+				FM SoC search algorithm.
+				*/
+				value = FM_CH_SPACE_100KHZ;
+			} else {
+				FMDBG("Adie type : Marimba\n");
+				value = FM_CH_SPACE_200KHZ;
+			}
+			break;
+		case TAVARUA_REGION_JAPAN:
+		case TAVARUA_REGION_OTHER:
+			if (adie_type_bahma) {
+				FMDBG("Adie type : Bahama\n");
+				printk(KERN_INFO "%s: Configuring the channel-"
+					"spacing as 50KHz for the Region : %d",
+					 __func__, region);
+				/*
+				Configuring all 100KHZ spaced regions as
+				50KHz due to change in the new Bahma
+				FM SoC search algorithm.
+				*/
+				value = FM_CH_SPACE_50KHZ;
+			} else {
+				FMDBG("Adie type : Marimba\n");
+				value = FM_CH_SPACE_100KHZ;
+			}
+			break;
+		case TAVARUA_REGION_EU:
+		case TAVARUA_REGION_JAPAN_WIDE:
+			value = FM_CH_SPACE_50KHZ;
+			break;
+		default:
+			/*
+			Set the channel spacing as configured from
+			the upper layers.
+			*/
+			printk(KERN_INFO "%s: Defualting in case of Channel-"
+				"Spacing", __func__);
+			value = radio->region_params.spacing;
+			break;
+		}
+
+		SET_REG_FIELD(radio->registers[RDCTRL], value,
+			RDCTRL_CHSPACE_OFFSET, RDCTRL_CHSPACE_MASK);
+
+	return retval;
+}
+
 /*************************************************************************
  * fops/IOCTL helper functions
  ************************************************************************/
@@ -1260,14 +1451,11 @@ static int tavarua_set_region(struct tavarua_device *radio,
 	switch (region) {
 	case TAVARUA_REGION_US:
 	case TAVARUA_REGION_EU:
-	case TAVARUA_REGION_JAPAN_WIDE:
 		SET_REG_FIELD(radio->registers[RDCTRL], 0,
 			RDCTRL_BAND_OFFSET, RDCTRL_BAND_MASK);
 		break;
+	case TAVARUA_REGION_JAPAN_WIDE:
 	case TAVARUA_REGION_JAPAN:
-		SET_REG_FIELD(radio->registers[RDCTRL], 1,
-			RDCTRL_BAND_OFFSET, RDCTRL_BAND_MASK);
-		break;
 	default:
 		retval = sync_read_xfr(radio, RADIO_CONFIG, xfr_buf);
 		if (retval < 0) {
@@ -1291,86 +1479,9 @@ static int tavarua_set_region(struct tavarua_device *radio,
 		break;
 	}
 
-	/* Enable/Disable the 200KHz enforcer for respectiver regions */
-	switch (region) {
-	case TAVARUA_REGION_US:
-		if (adie_type_bahma) {
-			FMDBG("Adie type : Bahama\n");
-			/*Enable the 200KHz enforcer*/
-			retval = tavarua_read_registers(radio,
-				ADVCTRL, 1);
-			if (retval >= 0) {
-				rdsMask = radio->registers[ADVCTRL];
-				SET_REG_FIELD(rdsMask, ENF_SRCH200khz,
-					SRCH200KHZ_OFFSET, SRCH_MASK);
-				msleep(TAVARUA_DELAY);
-				retval = tavarua_write_register(radio,
-					ADVCTRL, rdsMask);
-			} else
-				return retval;
-		} /* if Marimba do nothing */
-		break;
-	case TAVARUA_REGION_EU:
-	case TAVARUA_REGION_JAPAN:
-	case TAVARUA_REGION_JAPAN_WIDE:
-	default:
-		if (adie_type_bahma) {
-			FMDBG("Adie type : Bahama\n");
-			/*
-			Disable 200KHz enforcer for all 100/50 KHz
-			spaced regions.
-			*/
-			retval = tavarua_read_registers(radio,
-				ADVCTRL, 1);
-			if (retval >= 0) {
-				rdsMask = radio->registers[ADVCTRL];
-				SET_REG_FIELD(rdsMask, NO_SRCH200khz,
-					SRCH200KHZ_OFFSET, SRCH_MASK);
-				msleep(TAVARUA_DELAY);
-				retval = tavarua_write_register(radio,
-					ADVCTRL, rdsMask);
-			} else
-				return retval;
-		} /* if Marimba do nothing */
-		break;
-	}
-
-	/* Set channel spacing */
-	switch (region) {
-	case TAVARUA_REGION_US:
-		if (adie_type_bahma) {
-			FMDBG("Adie type : Bahama\n");
-			/*
-			Configuring all 200KHZ spaced regions as
-			100KHz due to change in the new Bahma
-			FM SoC search algorithm.
-			*/
-			value = FM_CH_SPACE_100KHZ;
-		} else {
-			FMDBG("Adie type : Marimba\n");
-			value = FM_CH_SPACE_200KHZ;
-		}
-		break;
-	case TAVARUA_REGION_EU:
-	case TAVARUA_REGION_JAPAN:
-		value = FM_CH_SPACE_100KHZ;
-		break;
-	case TAVARUA_REGION_JAPAN_WIDE:
-		value = FM_CH_SPACE_50KHZ;
-		break;
-	default:
-		/*
-		Set the channel spacing as configured from
-		the upper layers.
-		*/
-		value = radio->region_params.spacing;
-		break;
-	}
-
-	SET_REG_FIELD(radio->registers[RDCTRL], value,
-		RDCTRL_CHSPACE_OFFSET, RDCTRL_CHSPACE_MASK);
-
-	/* Set De-emphasis and soft band range*/
+	/* *********************************************************************** */
+		/* Set De-emphasis and soft band range*/
+	/* *********************************************************************** */
 	switch (region) {
 	case TAVARUA_REGION_US:
 	case TAVARUA_REGION_JAPAN:
@@ -1387,7 +1498,9 @@ static int tavarua_set_region(struct tavarua_device *radio,
 	SET_REG_FIELD(radio->registers[RDCTRL], value,
 		RDCTRL_DEEMPHASIS_OFFSET, RDCTRL_DEEMPHASIS_MASK);
 
-	/* set RDS standard */
+/* *********************************************************************** */
+		/* Set RDS standard */
+/* *********************************************************************** */
 	switch (region) {
 	default:
 		value = radio->region_params.rds_std;
@@ -1408,15 +1521,9 @@ static int tavarua_set_region(struct tavarua_device *radio,
 	if (retval < 0)
 		return retval;
 
-	FMDBG("RDCTRL: %x\n", radio->registers[RDCTRL]);
-	retval = tavarua_write_register(radio, RDCTRL,
-					radio->registers[RDCTRL]);
-	if (retval < 0) {
-		FMDERR("Could not set region in rdctrl\n");
-		return retval;
-	}
-
-	/* setting soft band */
+/* *********************************************************************** */
+		/* Setting soft band */
+/* *********************************************************************** */
 	switch (region) {
 	case TAVARUA_REGION_US:
 	case TAVARUA_REGION_EU:
@@ -1434,7 +1541,114 @@ static int tavarua_set_region(struct tavarua_device *radio,
 	default:
 		break;
 	}
-	radio->region_params.region = region;
+       radio->region_params.region = region;
+
+/* *********************************************************************** */
+		/* Check for the FM Algorithm used */
+/* *********************************************************************** */
+	if (radio->newFMSrchAlg) {
+		printk(KERN_INFO "New Srch Algorithm!!!");
+		New_Srch_Alg(radio, region);
+	} else {
+		printk(KERN_INFO "Old Srch Algorithm!!!");
+
+/* *********************************************************************** */
+		/* Enable/Disable the 200KHz enforcer */
+/* *********************************************************************** */
+		switch (region) {
+		case TAVARUA_REGION_US:
+			if (adie_type_bahma) {
+				FMDBG("Adie type : Bahama\n");
+				/*Enable the 200KHz enforcer*/
+				retval = tavarua_read_registers(radio,
+					ADVCTRL, 1);
+				if (retval >= 0) {
+					rdsMask = radio->registers[ADVCTRL];
+					SET_REG_FIELD(rdsMask, ENF_SRCH200khz,
+						SRCH200KHZ_OFFSET, SRCH_MASK);
+					msleep(TAVARUA_DELAY);
+					retval = tavarua_write_register(radio,
+						ADVCTRL, rdsMask);
+				} else
+					return retval;
+			} /* if Marimba do nothing */
+			break;
+		case TAVARUA_REGION_EU:
+		case TAVARUA_REGION_JAPAN:
+		case TAVARUA_REGION_JAPAN_WIDE:
+		default:
+			if (adie_type_bahma) {
+				FMDBG("Adie type : Bahama\n");
+				/*
+				Disable 200KHz enforcer for all 100/50 KHz
+				spaced regions.
+				*/
+				retval = tavarua_read_registers(radio,
+					ADVCTRL, 1);
+				if (retval >= 0) {
+					rdsMask = radio->registers[ADVCTRL];
+					SET_REG_FIELD(rdsMask, NO_SRCH200khz,
+						SRCH200KHZ_OFFSET, SRCH_MASK);
+					msleep(TAVARUA_DELAY);
+					retval = tavarua_write_register(radio,
+						ADVCTRL, rdsMask);
+				} else
+					return retval;
+			} /* if Marimba do nothing */
+			break;
+		}
+
+
+/* *********************************************************************** */
+		/* Set channel spacing */
+/* *********************************************************************** */
+		switch (region) {
+		case TAVARUA_REGION_US:
+			if (adie_type_bahma) {
+				FMDBG("Adie type : Bahama\n");
+				/*
+				Configuring all 200KHZ spaced regions as
+				100KHz due to change in the new Bahma
+				FM SoC search algorithm.
+			*/
+				value = FM_CH_SPACE_100KHZ;
+			} else {
+				FMDBG("Adie type : Marimba\n");
+				value = FM_CH_SPACE_200KHZ;
+		}
+			break;
+		case TAVARUA_REGION_JAPAN:
+		value = FM_CH_SPACE_100KHZ;
+			break;
+		case TAVARUA_REGION_EU:
+		case TAVARUA_REGION_JAPAN_WIDE:
+			value = FM_CH_SPACE_50KHZ;
+			break;
+		default:
+			/*
+			Set the channel spacing as configured from
+			the upper layers.
+			*/
+			value = radio->region_params.spacing;
+			break;
+		}
+
+		SET_REG_FIELD(radio->registers[RDCTRL], value,
+			RDCTRL_CHSPACE_OFFSET, RDCTRL_CHSPACE_MASK);
+
+	}
+
+/* *********************************************************************** */
+		/* Write the config values into RDCTL register */
+/* *********************************************************************** */
+	printk(KERN_INFO "RDCTRL: %x\n", radio->registers[RDCTRL]);
+	retval = tavarua_write_register(radio, RDCTRL,
+					radio->registers[RDCTRL]);
+	if (retval < 0) {
+		FMDERR("Could not set region in rdctrl\n");
+		return retval;
+	}
+
 	return retval;
 }
 
@@ -2811,6 +3025,11 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 					FMDBG("turning off timedout...\n");
 			}
 		}
+		break;
+	case V4L2_CID_PRIVATE_TAVARUA_SRCH_ALGORITHM:
+		radio->newFMSrchAlg = ctrl->value;
+		printk(KERN_INFO "V4L2_CID_PRIVATE_TAVARUA_SRCH_ALGORITHM : %d",
+			radio->newFMSrchAlg);
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_REGION:
 		retval = tavarua_set_region(radio, ctrl->value);
