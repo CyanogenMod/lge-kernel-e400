@@ -1177,11 +1177,36 @@ static ssize_t bma250_fast_calibration_x_show(struct device *dev,
 	{
 		unsigned char data;
 		short value1 =0;
-		
+		struct bma250acc acc_cal;
+//struct bma250acc acc;
 		struct i2c_client *client = to_i2c_client(dev);
 		struct bma250_data *bma250 = i2c_get_clientdata(client);
 
+//clubsh add temp
+//		bma250_read_accel_xyz(bma250->bma250_client, &bma250->value);
+
+		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
+
+//		if( (abs(bma250->value.x) < 26) && (abs(bma250->value.y) < 26) && (bma250->value.y > 130))
+		printk(KERN_INFO "x axis fast bma250_fast_calibration_x_show =%d\n",acc_cal.x);
+		printk(KERN_INFO "x axis fast bma250_fast_calibration_y_show =%d\n",acc_cal.y);
+		printk(KERN_INFO "x axis fast bma250_fast_calibration_z_show =%d\n",acc_cal.z);
+
+		if( (abs(acc_cal.x) < 26) && (abs(acc_cal.y) < 26) && ((acc_cal.z) < -245))
+		{
+			value1 = 1;
+			return sprintf(buf, "%d\n", value1);	
+		}
+		else
+		{
+			value1 = 0;
+			return sprintf(buf, "%d\n", value1);	
+
+		}
+//end
+
 /* LGE_CHANGE_E : E0 eee3114.lee@lge.com Calibration AT CMD [2011-12-23] */	
+		/* clubsh remove temp
 		bma250_read_accel_z(bma250->bma250_client, &value1);
 		printk(KERN_INFO "x axis fast bma250_fast_calibration_x_show =%d\n",value1);
 		if(value1 > - 254)
@@ -1191,6 +1216,7 @@ static ssize_t bma250_fast_calibration_x_show(struct device *dev,
 			
 			return sprintf(buf, "%d\n", value1);	
 		}
+*/		
 /* END E0 eee3114.lee@lge.com [2011-12-23] */	
 		if (bma250_get_offset_target_x(bma250->bma250_client, &data) < 0)
 			return sprintf(buf, "Read error\n");
