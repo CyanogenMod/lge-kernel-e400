@@ -11,12 +11,8 @@
 #include <linux/regulator/consumer.h>
 
 #include "devices-msm7x2xa.h"
-
-#if defined(CONFIG_MACH_MSM7X25A_E0EU)
-#include "board-e0eu.h"
-#elif defined(CONFIG_MACH_MSM7X25A_E1BR)
 #include "board-e1br.h"
-#endif
+
 
 /* handset device */
 static struct msm_handset_platform_data hs_platform_data = {
@@ -32,58 +28,28 @@ static struct platform_device hs_pdev = {
 	},
 };
 
-
-
-// SIM Change Key
-#if defined (CONFIG_MACH_MSM7X25A_E1BR)
-/* GPIO key map for E1 EVB */
-static unsigned int keypad_row_gpios[] = {36, 37, 38};
-static unsigned int keypad_col_gpios[] = {32, 33};
+static unsigned int keypad_row_gpios[] = {36, 37};
+static unsigned int keypad_col_gpios[] = {33};
 
 #define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
 
-static const unsigned short keypad_keymap_e0eu[] = {
-		[KEYMAP_INDEX(1, 1)] = KEY_VOLUMEUP,
-		[KEYMAP_INDEX(1, 0)] = KEY_VOLUMEDOWN,
-		[KEYMAP_INDEX(0, 2)] = KEY_HOME,
-		[KEYMAP_INDEX(0, 0)] = KEY_SIM_SWITCH,		
+static const unsigned short keypad_keymap_e1br[] = {
+		[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEUP,
+		[KEYMAP_INDEX(0, 0)] = KEY_VOLUMEDOWN,
 };
-#else
- /* GPIO key map for M3EU EVB */
- /* LGE_CHANGE_S: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
-static unsigned int keypad_row_gpios[] = {
-		36, 37, 38
-};
-	static unsigned int keypad_col_gpios[] = {32, 33};
-/* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
 
-#define KEYMAP_INDEX(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios) + (row))
-
-/* LGE_CHANGE_S: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
-static const unsigned short keypad_keymap_e0eu[] = {
-		[KEYMAP_INDEX(1, 1)] = KEY_VOLUMEUP,
-		[KEYMAP_INDEX(1, 0)] = KEY_VOLUMEDOWN,
-		[KEYMAP_INDEX(0, 2)] = KEY_HOME,
-};
-/* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
-#endif
-// END , SIM key switch 
-
-int e0eu_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,
+int e1br_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,
 							 struct gpio_event_info *info, void **data, int func)
 {
         int ret ;
-		if (func == GPIO_EVENT_FUNC_RESUME) {
-		gpio_tlmm_config(
-			GPIO_CFG(keypad_row_gpios[0], 0,
-						GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-		gpio_tlmm_config(
-			GPIO_CFG(keypad_row_gpios[1], 0,
-						GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-
-		/* LGE_CHANGE_S: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
-				gpio_tlmm_config(
-					GPIO_CFG(keypad_row_gpios[2], 0,
+		
+		if (func == GPIO_EVENT_FUNC_RESUME) 
+		{
+			gpio_tlmm_config(
+				GPIO_CFG(keypad_row_gpios[0], 0,
+							GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			gpio_tlmm_config(
+				GPIO_CFG(keypad_row_gpios[1], 0,
 							GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 		}
 		/* LGE_CHANGE_N: E0 wonsang.yoon@lge.com [2011-10-17] : for Rev.B Key MAPl */
@@ -92,7 +58,7 @@ int e0eu_matrix_info_wrapper(struct gpio_event_input_devs *input_dev,
         return ret ;
 }
 
-static int e0eu_gpio_matrix_power(const struct gpio_event_platform_data *pdata, bool on)
+static int e1br_gpio_matrix_power(const struct gpio_event_platform_data *pdata, bool on)
 {
 	/* this is dummy function
 	 * to make gpio_event driver register suspend function
@@ -104,34 +70,34 @@ static int e0eu_gpio_matrix_power(const struct gpio_event_platform_data *pdata, 
 	return 0;
 }
 
-static struct gpio_event_matrix_info e0eu_keypad_matrix_info = {
-	.info.func	= e0eu_matrix_info_wrapper,
-	.keymap		= keypad_keymap_e0eu,
-	.output_gpios	= keypad_col_gpios,
-	.input_gpios	= keypad_row_gpios,
-	.noutputs	= ARRAY_SIZE(keypad_col_gpios),
-	.ninputs	= ARRAY_SIZE(keypad_row_gpios),
+static struct gpio_event_matrix_info e1br_keypad_matrix_info = {
+	.info.func	= e1br_matrix_info_wrapper,
+	.keymap		= keypad_keymap_e1br,
+	.output_gpios	= keypad_col_gpios, 
+	.input_gpios	= keypad_row_gpios, 
+	.noutputs	= ARRAY_SIZE(keypad_col_gpios), 
+	.ninputs	= ARRAY_SIZE(keypad_row_gpios), 
 	.settle_time.tv.nsec = 40 * NSEC_PER_USEC,
 	.poll_time.tv.nsec = 20 * NSEC_PER_MSEC,
 	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_PRINT_UNMAPPED_KEYS | GPIOKPF_DRIVE_INACTIVE
 };
 
-static struct gpio_event_info *e0eu_keypad_info[] = {
-	&e0eu_keypad_matrix_info.info
+static struct gpio_event_info *e1br_keypad_info[] = {
+	&e1br_keypad_matrix_info.info
 };
 
-static struct gpio_event_platform_data e0eu_keypad_data = {
+static struct gpio_event_platform_data e1br_keypad_data = {
 	.name		= "e0_keypad",
-	.info		= e0eu_keypad_info,
-	.info_count	= ARRAY_SIZE(e0eu_keypad_info),
-	.power          = e0eu_gpio_matrix_power,
+	.info		= e1br_keypad_info,
+	.info_count	= ARRAY_SIZE(e1br_keypad_info),
+	.power          = e1br_gpio_matrix_power,
 };
 
-struct platform_device keypad_device_e0eu = {
+struct platform_device keypad_device_e1br = {
 	.name	= GPIO_EVENT_DEV_NAME,
 	.id	= -1,
 	.dev	= {
-		.platform_data	= &e0eu_keypad_data,
+		.platform_data	= &e1br_keypad_data,
 	},
 };
 
@@ -259,12 +225,12 @@ static struct platform_device hdk_qwerty_device = {
 #endif /* CONFIG_KEYBOARD_PP2106 */
 
 /* input platform device */
-static struct platform_device *e0eu_input_devices[] __initdata = {
+static struct platform_device *e1br_input_devices[] __initdata = {
 	&hs_pdev,
 };
 
-static struct platform_device *e0eu_gpio_input_devices[] __initdata = {
-	&keypad_device_e0eu,/* the gpio keypad for m3eu EVB */
+static struct platform_device *e1br_gpio_input_devices[] __initdata = {
+	&keypad_device_e1br,/* the gpio keypad for m3eu EVB */
 #ifdef CONFIG_KEYBOARD_PP2106
 	&hdk_qwerty_device,
 #endif
@@ -398,7 +364,7 @@ static int init_gpio_i2c_pin_touch(
 	return 0;
 }
 
-static void __init e0eu_init_i2c_touch(int bus_num)
+static void __init e1br_init_i2c_touch(int bus_num)
 {
 	ts_i2c_device.id = bus_num;
 
@@ -478,7 +444,7 @@ static struct i2c_board_info ts_i2c_bdinfo[] = {
 	},
 };
 
-static void __init e0eu_init_i2c_touch(int bus_num)
+static void __init e1br_init_i2c_touch(int bus_num)
 {
 	ts_i2c_device.id = bus_num;
 	/* workaround for HDK rev_a no pullup */
@@ -529,7 +495,7 @@ static struct i2c_board_info sensor_i2c_bdinfo[] = {
 	},
 };
 
-static void __init e0_init_i2c_sensor(int bus_num)
+static void __init e1_init_i2c_sensor(int bus_num)
 {
 	sensor_i2c_device.id = bus_num;
 
@@ -618,7 +584,7 @@ static struct platform_device proxi_i2c_device = {
         .dev.platform_data = &proxi_i2c_pdata,
 };
 
-static void __init e0eu_init_i2c_prox(int bus_num)
+static void __init e1br_init_i2c_prox(int bus_num)
 {
 	proxi_i2c_device.id = bus_num;
 
@@ -631,18 +597,18 @@ static void __init e0eu_init_i2c_prox(int bus_num)
 /* common function */
 void __init lge_add_input_devices(void)
 {
-	platform_add_devices(e0eu_input_devices, ARRAY_SIZE(e0eu_input_devices));
-	platform_add_devices(e0eu_gpio_input_devices, ARRAY_SIZE(e0eu_gpio_input_devices));
-	lge_add_gpio_i2c_device(e0eu_init_i2c_touch);
+	platform_add_devices(e1br_input_devices, ARRAY_SIZE(e1br_input_devices));
+	platform_add_devices(e1br_gpio_input_devices, ARRAY_SIZE(e1br_gpio_input_devices));
+	lge_add_gpio_i2c_device(e1br_init_i2c_touch);
 
         /* LGE_CHANGE_S [seven.kim@lge.com] to support new bosch accel+compass sensor */
 	#if defined (CONFIG_SENSORS_BMM050) ||defined(CONFIG_SENSORS_BMA250)
-	lge_add_gpio_i2c_device(e0_init_i2c_sensor);
+	lge_add_gpio_i2c_device(e1_init_i2c_sensor);
 	#else
-	lge_add_gpio_i2c_device(e0eu_init_i2c_acceleration);
-	lge_add_gpio_i2c_device(e0eu_init_i2c_ecom);
+	lge_add_gpio_i2c_device(e1br_init_i2c_acceleration);
+	lge_add_gpio_i2c_device(e1br_init_i2c_ecom);
 	#endif
 	/* LGE_CHANGE_E [seven.kim@lge.com] to support new bosch accel+compass sensor */
 
-	lge_add_gpio_i2c_device(e0eu_init_i2c_prox);
+	lge_add_gpio_i2c_device(e1br_init_i2c_prox);
 }

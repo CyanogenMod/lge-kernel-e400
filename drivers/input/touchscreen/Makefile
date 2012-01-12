@@ -70,7 +70,16 @@ obj-$(CONFIG_TOUCHSCREEN_CY8C_TS)	+= cy8c_ts.o
 obj-$(CONFIG_TOUCHSCREEN_CYTTSP_I2C)       += cyttsp-i2c.o
 obj-$(CONFIG_TOUCHSCREEN_MXT140)	+= qt602240.o
 obj-$(CONFIG_TOUCHSCREEN_MELFAS_TS)	+= melfas_ts.o mcs8000_download.o
+#LGE_CHANGE_S e1, yongboem.kim@lge.com [2012-1-10]
+ifdef CONFIG_MACH_MSM7X25A_E1BR
+obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mms100_firmware_binary_e1.o
+obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mms100_ISC_download_e1.o
+obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mms100_ISP_download_e1.o
+obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mcs8000_ts_mms128_e1.o
+else
 obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mms100_firmware_binary.o
 obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mms100_ISC_download.o
 obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mms100_ISP_download.o
 obj-$(CONFIG_TOUCHSCREEN_MCS8000_MMS128)	+= mcs8000_ts_mms128.o
+endif
+#LGE_CHANGE_E e1, yongboem.kim@lge.com [2012-1-10]
