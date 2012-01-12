@@ -104,6 +104,12 @@ static struct snd_ctxt the_snd;
 #define SND_WRITE_MEM_PROC 71
 #endif
 /* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
+
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-03]
+	Reson : Implementation of BT_NREC
+*/
+#define SND_SET_NREC_PROC 77
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2012-01-03] */
 #endif
 
 struct rpc_snd_set_device_args {
@@ -309,6 +315,27 @@ struct snd_set_dtmf_volume_param_msg {
     struct rpc_request_hdr hdr;
     struct rpc_snd_set_dtmf_volume_param_args args;
 };
+
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-03]
+	Reson : Implementation of BT_NREC
+*/
+struct snd_set_hook_param_rep {
+	struct rpc_reply_hdr hdr;
+	uint32_t get_mode;
+}hkrep;
+
+struct rpc_snd_set_hook_mode_args {
+     uint32_t mode;
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+
+struct snd_set_hook_mode_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_hook_mode_args args;
+};
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2012-01-03] */
+
 /* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-10-21]
 	Reson : For HiddenMenu Audio Calibration Tool
 */
@@ -453,6 +480,13 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	union snd_set_union_param_msg umsg;
 #endif
 /* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
+
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-03]
+	Reson : Implementation of BT_NREC
+*/
+	struct msm_snd_set_hook_mode_param hook_param;
+	struct snd_set_hook_mode_msg hookmsg;	
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2012-01-03] */
 #endif
 
 	int rc = 0;
@@ -985,6 +1019,40 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 #endif
 /* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2011-10-21] */
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-03]
+	Reson : Implementation of BT_NREC
+*/
+case SND_SET_NREC:
+	if (copy_from_user(&hook_param, (void __user *) arg, sizeof(hook_param))) {
+		pr_err("snd_ioctl set_NREC: invalid pointer.\n");
+		rc = -EFAULT;
+		break;
+	}
+
+	hookmsg.args.mode = cpu_to_be32(hook_param.mode);
+	hookmsg.args.cb_func = -1;
+	hookmsg.args.client_data = 0;
+
+	pr_info("set_NREC %d \n", hook_param.mode);
+
+	rc = msm_rpc_call_reply(snd->ept,
+		SND_SET_NREC_PROC,
+		&hookmsg, sizeof(hookmsg),&hkrep, sizeof(hkrep), 5 * HZ);
+	
+	if (rc < 0){
+		printk(KERN_ERR "%s:rpc err because of %d\n", __func__, rc);
+	}
+	else
+	{
+		hook_param.get_param = be32_to_cpu(hkrep.get_mode);
+		printk(KERN_INFO "%s:NREC mode ->%d\n", __func__, hook_param.get_param);
+		if (copy_to_user((void __user *)arg, &hook_param, sizeof(hook_param))) {
+			pr_err("snd_ioctl get NREC mode: invalid write pointer.\n");
+			rc = -EFAULT;
+		}
+	}
+	break;
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2012-01-03] */
 #endif
 
 	default:

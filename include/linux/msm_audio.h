@@ -643,4 +643,9 @@ struct msm_snd_set_hook_mode_param {
 #define SND_SET_AMP_MODE			_IOWR(SND_IOCTL_MAGIC, 21, struct msm_snd_set_hook_mode_param *)
 #endif
 
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-03]
+	Reson : Implementation of BT_NREC
+*/
+#define SND_SET_NREC _IOWR(SND_IOCTL_MAGIC, 22, struct msm_snd_set_hook_mode_param *)
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com [2012-01-03] */
 #endif
