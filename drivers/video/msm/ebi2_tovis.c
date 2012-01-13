@@ -140,9 +140,9 @@ static int ilitek_qvga_disp_off(struct platform_device *pdev)
 #endif
 
 	EBI2_WRITE16C(DISP_CMD_PORT, 0x28);
-	mdelay(50);
+	msleep(50);
 	EBI2_WRITE16C(DISP_CMD_PORT, 0x10); // SPLIN
-	mdelay(120);
+	msleep(120);
 
 /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 #if 1 
@@ -314,7 +314,7 @@ static void do_ilitek_init(struct platform_device *pdev)
 	/* Exit Sleep - This command should be only used at Power on sequence*/
 	EBI2_WRITE16C(DISP_CMD_PORT,0x11); // Exit Sleep
 
-	mdelay(120);
+	msleep(120);
 
 /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 #if 1
@@ -325,7 +325,7 @@ static void do_ilitek_init(struct platform_device *pdev)
 			EBI2_WRITE16D(DISP_DATA_PORT,pixel);
 		}
 	}
-	mdelay(30);
+	msleep(30);
 #endif
 /* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 		   
@@ -615,13 +615,13 @@ static int ilitek_qvga_disp_on(struct platform_device *pdev)
 if(IsFirstDisplayOn==0)
 {
 		if(pdata->gpio) {
-			mdelay(10);
+			//mdelay(10);	// prevent stop to listen to music with BT
 			gpio_set_value(pdata->gpio, 1);
 			mdelay(1);
 			gpio_set_value(pdata->gpio, 0);
 			mdelay(10);
 			gpio_set_value(pdata->gpio, 1);
-			mdelay(120);
+			msleep(120);
 		}
 }
 		if(IsFirstDisplayOn > 0) 
@@ -642,11 +642,11 @@ if(IsFirstDisplayOn==0)
 
 /* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 #if 1
-      if(!Is_Backlight_Set) 
-      	{
-            mdelay(50);
-	     bu61800_force_set();    //backlight current level force setting here
-     	}
+	if(!Is_Backlight_Set)
+	{
+		msleep(50);
+		bu61800_force_set();    //backlight current level force setting here
+	}
 #endif
 /* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 
