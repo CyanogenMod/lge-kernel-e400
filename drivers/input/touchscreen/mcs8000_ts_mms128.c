@@ -1060,7 +1060,7 @@ static ssize_t read_touch_version(struct device *dev, struct device_attribute *a
 
 	mcs8000_firmware_info(&fw_ver, &hw_ver, &comp_ver);
 
-	iRet = sprintf(buf, "%02x \n", fw_ver);
+	iRet = sprintf(buf, "%02d \n", fw_ver);
 	printk(KERN_DEBUG "TOUCHSCREEN FW VERSION : %d \n", fw_ver);
 
 	if(is_touch_suspend)
