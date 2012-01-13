@@ -32,7 +32,10 @@
 
 //#define MSM_PMEM_MDP_SIZE       0x1600000// 22MB
 //#define MSM_PMEM_MDP_SIZE       0x026000 //no cam preview, no 3gp play 
-#define MSM_PMEM_MDP_SIZE       0x028000 //Preview .Video Playback Ok
+//#define MSM_PMEM_MDP_SIZE       0x028000 //Preview .Video Playback Ok	//160KB
+//LGE_CHANGE_S With 160KB mdp size Camera Preview and Galley shows abnormal action follow the previous model's mdp size hong.junki@lge.com 2012-01-13
+#define MSM_PMEM_MDP_SIZE	0x5A0000 //5MB	5760KB	fix the out of memory issue	hong.junki@lge.com
+//LGE_CHANGE_E
 
 //#define MSM_PMEM_ADSP_SIZE      0x96F000
 //#define MSM_PMEM_ADSP_SIZE      0x1200000
