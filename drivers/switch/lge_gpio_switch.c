@@ -66,15 +66,21 @@ static void gpio_switch_work(struct work_struct *work)
 		state = data->work_func(&value);
 		if (state) {
 			if (value == SW_MICROPHONE_INSERT) {
-				for (i = 0; i < data->num_key_gpios; ++i)
+				for (i = 0; i < data->num_key_gpios; ++i) {
+					if (data->wakeup_flag)
+						set_irq_wake(gpio_to_irq(data->key_gpios[i]), 1);
 					enable_irq(gpio_to_irq(data->key_gpios[i]));
+				}
 			}
 			headset_type = value;
 			input_report_switch(data->ipdev, headset_type, state);
 		} else {
 			if (headset_type == SW_MICROPHONE_INSERT) {
-				for (i = 0; i < data->num_key_gpios; ++i)
+				for (i = 0; i < data->num_key_gpios; ++i) {
+					if (data->wakeup_flag)
+						set_irq_wake(gpio_to_irq(data->key_gpios[i]), 0);
 					disable_irq(gpio_to_irq(data->key_gpios[i]));
+				}
 			}
 			input_report_switch(data->ipdev, headset_type, state);
 			headset_type = 0;
@@ -305,8 +311,9 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto err_request_gpio;
 
+		/* Do not set_irq_wake here because of Pending IRQ */
 		if (switch_data->wakeup_flag)
-			set_irq_wake(gpio_to_irq(switch_data->key_gpios[index]), 1);
+			set_irq_wake(gpio_to_irq(switch_data->key_gpios[index]), 0);
 
 		disable_irq(gpio_to_irq(switch_data->key_gpios[index]));
 	}
