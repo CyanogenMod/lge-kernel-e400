@@ -123,9 +123,12 @@ static struct rmt_storage_client_info *rmc;
 // LGE_UPDATE_S nv_default_write
 static struct workqueue_struct *rmt_storage_work_queue;
 static struct msm_rpc_client *client_nv;
+
+/* LGE_CHANGE_S [sunflwr.lee@lge.com] 20120113 **
 static void rmt_storate_report_available(struct work_struct *work);
 static DECLARE_DELAYED_WORK(rmt_storage_work, rmt_storate_report_available);
 // LGE_UPDATE_E nv_default_write
+** LGE_CHANGE_E [sunflwr.lee@lge.com] 20120113 */
 
 #ifdef CONFIG_MSM_SDIO_SMEM
 static struct sdio_smem_client *sdio_smem;
@@ -877,8 +880,10 @@ out:
 	return rc;
 }
 
+/* LGE_CHANGE_S [sunflwr.lee@lge.com] 20120113 */
 // LGE_UPDATE_S nv_default_write
-static void rmt_storate_report_available(struct work_struct *work)
+static void rmt_storate_report_available(void)
+/* LGE_CHANGE_E [sunflwr.lee@lge.com] 20120113 */
 {
 	printk(KERN_DEBUG "%s\n", __func__);
 
@@ -887,6 +892,31 @@ static void rmt_storate_report_available(struct work_struct *work)
 }
 // LGE_UPDATE_E
 
+/* LGE_CHANGE_S [sunflwr.lee@lge.com] 20120113 */
+#if 1 // LGE_CHANGE_X
+static int rmt_storage_open(struct inode *ip, struct file *fp)
+{
+	int ret = 0;
+
+	spin_lock(&rmc->lock);
+	if (!rmc->open_excl)
+		rmc->open_excl = 1;
+	else
+		ret = -EBUSY;
+	spin_unlock(&rmc->lock);
+#ifdef CONFIG_LGE_REPORT_RMT_STORAGE_CLIENT_READY
+	/* LGE_CHANGE
+	 *  notify that rmt storage client is ready to msm
+	 * 2011-03-23, cheongil.hyun@lge.com
+	 */
+	if(ret == 0)
+		rmt_storate_report_available();
+#endif
+
+	return ret;
+}
+/* LGE_CHANGE_E [sunflwr.lee@lge.com] 20120113 */
+#else // LGE_CHANGE_X
 static int rmt_storage_open(struct inode *ip, struct file *fp)
 {
 	int ret = 0;
@@ -911,6 +941,7 @@ static int rmt_storage_open(struct inode *ip, struct file *fp)
 
 	return ret;
 }
+#endif
 
 static int rmt_storage_release(struct inode *ip, struct file *fp)
 {
@@ -1336,6 +1367,24 @@ show_sync_sts(struct device *dev, struct device_attribute *attr, char *buf)
 			rmt_storage_get_sync_status(srv->rpc_client));
 }
 
+/* LGE_CHANGE, Add interface "send_sync" for syncing efs */
+static ssize_t
+store_send_sync(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int value;
+
+	pr_info("%s: do rmt_storage sync!\n", __func__);
+
+	sscanf(buf, "%d", &value);
+	if (!!value) {
+#ifdef CONFIG_LGE_REPORT_RMT_STORAGE_CLIENT_READY
+		rmt_storate_report_available();
+#endif
+	}
+	return count;
+}
+
 static int rmt_storage_init_ramfs(struct rmt_storage_srv *srv)
 {
 	struct shared_ramfs_table *ramfs_table;
@@ -1384,9 +1433,13 @@ static void rmt_storage_set_client_status(struct rmt_storage_srv *srv,
 
 static DEVICE_ATTR(force_sync, S_IRUGO | S_IWUSR, NULL, set_force_sync);
 static DEVICE_ATTR(sync_sts, S_IRUGO | S_IWUSR, show_sync_sts, NULL);
+/* LGE_CHANGE_S [sunflwr.lee@lge.com] 20120113 */
+static DEVICE_ATTR(send_sync, S_IRUGO | S_IWUSR, NULL, store_send_sync);
+/* LGE_CHANGE_E [sunflwr.lee@lge.com] 20120113 */
 static struct attribute *dev_attrs[] = {
 	&dev_attr_force_sync.attr,
 	&dev_attr_sync_sts.attr,
+	&dev_attr_send_sync.attr,
 	NULL,
 };
 static struct attribute_group dev_attr_grp = {
