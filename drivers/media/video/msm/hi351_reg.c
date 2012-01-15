@@ -27,16 +27,16 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 
 	{0x03, 0x00, BYTE_LEN},
 	{0x01, 0xf1, BYTE_LEN}, //Initial_111221_AWB(EV)_target_ColorRatio_lsc75p_AGC_D0_50_deSat_Ysat
-	
+
 	{0x0A, 0x01, BYTE_LEN}, // MCU hardware reset
 	{0x0A, 0x00, BYTE_LEN},
 	{0x0A, 0x01, BYTE_LEN},
 	{0x0A, 0x00, BYTE_LEN},
-	
+
 	{0x01, 0xf1, BYTE_LEN},
 	{0x01, 0xf3, BYTE_LEN},
 	{0x01, 0xf1, BYTE_LEN},
-	
+
 	///////////////////////////////////////////
 	// 0 Page PLL setting
 	///////////////////////////////////////////
@@ -47,8 +47,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x07, 0xa5, BYTE_LEN},
 	{0x07, 0xa5, BYTE_LEN},
 	{0x09, 0xa2, BYTE_LEN},
-	
-	
+
+
 	///////////////////////////////////////////
 	// 20 Page OTP/ROM LSC download select setting
 	///////////////////////////////////////////
@@ -56,18 +56,18 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x3a, 0x00, BYTE_LEN}, 
 	{0x3b, 0x00, BYTE_LEN}, 
 	{0x3c, 0x00, BYTE_LEN}, 
-	
-	
+
+
 	///////////////////////////////////////////
 	// 0 Page 
 	/////////////////////////////////////////// 	   
 	{0x03, 0x00, BYTE_LEN},
 	{0x50, 0x01, BYTE_LEN}, // HBLANK 2180 + 288 = 2468
 	{0x51, 0x20, BYTE_LEN},
-	
+
 	{0x52, 0x00, BYTE_LEN}, //VBLANK = 33
 	{0x53, 0x32, BYTE_LEN},
-	
+
 	///////////////////////////////////////////
 	// 30 Page MCU reset, enable setting
 	///////////////////////////////////////////
@@ -82,7 +82,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x10, 0x89, BYTE_LEN}, // mcu enable high
 	{0x11, 0x08, BYTE_LEN}, // xdata memory reset high
 	{0x11, 0x00, BYTE_LEN}, // xdata memory reset low
-	
+
 	///////////////////////////////////////////
 	// 7 Page OTP/ROM color ratio download select setting
 	/////////////////////////////////////////// 
@@ -97,13 +97,13 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x32, 0x00, BYTE_LEN}, 
 	{0x33, 0xFF, BYTE_LEN}, 
 	{0x10, 0x02, BYTE_LEN},
-	
+
 	{0x03, 0x07, BYTE_LEN}, //delay
 	{0x03, 0x07, BYTE_LEN},
 	{0x03, 0x07, BYTE_LEN},
 	{0x03, 0x07, BYTE_LEN},
 	{0x03, 0x07, BYTE_LEN},
-	
+
 	{0x2e, 0x03, BYTE_LEN}, // color ratio reg down
 	{0x2f, 0x20, BYTE_LEN},
 	{0x30, 0x20, BYTE_LEN},
@@ -111,14 +111,14 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x32, 0x01, BYTE_LEN},
 	{0x33, 0x00, BYTE_LEN},
 	{0x10, 0x02, BYTE_LEN},
-	
-	
+
+
 	{0x03, 0x07, BYTE_LEN}, //delay
 	{0x03, 0x07, BYTE_LEN},
 	{0x03, 0x07, BYTE_LEN},
 	{0x03, 0x07, BYTE_LEN},
 	{0x03, 0x07, BYTE_LEN},
-	
+
 	{0x12, 0x00, BYTE_LEN}, 
 	{0x98, 0x00, BYTE_LEN}, 
 	{0x97, 0x01, BYTE_LEN}, 
@@ -134,7 +134,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	///////////////////////////////////////////
 	{0x03, 0x30, BYTE_LEN},
 	{0x10, 0x09, BYTE_LEN}, // mcu reset low  = mcu start!!
-	
+
 	///////////////////////////////////////////
 	// 0 Page 
 	///////////////////////////////////////////
@@ -146,17 +146,17 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x14, 0x70, BYTE_LEN},
 	{0x15, 0x03, BYTE_LEN},
 	{0x17, 0x04, BYTE_LEN}, //Parallel, MIPI : 04, JPEG : 0c
-	
+
 	{0x20, 0x00, BYTE_LEN}, //Start Width
 	{0x21, 0x01, BYTE_LEN},
 	{0x22, 0x00, BYTE_LEN}, //Start Height
 	{0x23, 0x0a, BYTE_LEN},
-	
+
 	{0x24, 0x06, BYTE_LEN}, //Widht Size
 	{0x25, 0x00, BYTE_LEN},
 	{0x26, 0x08, BYTE_LEN}, //Height Size
 	{0x27, 0x00, BYTE_LEN},
-	
+
 	//BLC
 	{0x80, 0x02, BURST_TYPE},
 	{0x81, 0x87, BURST_TYPE},
@@ -179,9 +179,9 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x96, 0xfe, BYTE_LEN}, //BLC_OUT_TH
 	{0x97, 0xfd, BYTE_LEN}, //BLC_OUT_TH
 	{0x98, 0x20, BYTE_LEN},
-	
-	
-	
+
+
+
 	{0xa0, 0x85, BURST_TYPE}, //odd_adj_normal		 
 	{0xa1, 0x85, BURST_TYPE}, //out r
 	{0xa2, 0x85, BURST_TYPE}, //in
@@ -190,13 +190,13 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xa5, 0x85, BURST_TYPE}, //out b 
 	{0xa6, 0x85, BURST_TYPE}, //in
 	{0xa7, 0x87, BURST_TYPE}, //dark	 
-	
-	
+
+
 	{0xbb, 0x20, BYTE_LEN}, 
 	///////////////////////////////////////////
 	// 2 Page								   
 	///////////////////////////////////////////
-	
+
 	{0x03, 0x02, BYTE_LEN},
 	{0x10, 0x00, BYTE_LEN},
 	{0x13, 0x00, BYTE_LEN},
@@ -219,15 +219,15 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x30, 0x00, BURST_TYPE},
 	{0x31, 0xf0, BURST_TYPE},
 	{0x32, 0x22, BURST_TYPE},
-	{0x33, 0x42, BURST_TYPE},
+	{0x33, 0x02, BURST_TYPE},
 	{0x34, 0x30, BURST_TYPE},
 	{0x35, 0x00, BURST_TYPE},
 	{0x36, 0x08, BURST_TYPE},
-	{0x37, 0x70, BURST_TYPE},
+	{0x37, 0x20, BURST_TYPE},
 	{0x38, 0x14, BURST_TYPE},
 	{0x39, 0x02, BURST_TYPE}, 
 	{0x3a, 0x00, BURST_TYPE},
-	
+
 	{0x3d, 0x70, BYTE_LEN},
 	{0x3e, 0x04, BURST_TYPE},
 	{0x3f, 0x00, BURST_TYPE},
@@ -352,7 +352,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xE1, 0xf0, BURST_TYPE},//ncp adaptive
 	{0xE2, 0xf0, BURST_TYPE},//ncp adaptive
 	{0xE3, 0xf0, BURST_TYPE},//ncp adaptive
-	{0xE4, 0xe1, BURST_TYPE},//ncp adaptive
+	{0xE4, 0xd0, BURST_TYPE},//ncp adaptive
 	{0xE5, 0x00, BURST_TYPE},//ncp adaptive
 	{0xE6, 0x00, BURST_TYPE},
 	{0xE7, 0x00, BURST_TYPE},
@@ -595,19 +595,34 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xf0, 0x00, BURST_TYPE},
 	{0xf1, 0x34, BURST_TYPE},
 	{0xf2, 0x00, BURST_TYPE},
-	
+
 	///////////////////////////////////////////
 	// 10 Page
 	///////////////////////////////////////////
 	{0x03, 0x10, BYTE_LEN},
 	{0xe0, 0xff, BYTE_LEN}, 
+	{0xe1, 0x3f, BYTE_LEN}, // don't touch update
+	{0xe2, 0xff, BYTE_LEN}, // don't touch update
+	{0xe3, 0xff, BYTE_LEN}, // don't touch update
+	{0xe4, 0xf7, BYTE_LEN}, // don't touch update
+	{0xe5, 0x79, BYTE_LEN}, // don't touch update
+	{0xe6, 0xce, BYTE_LEN}, // don't touch update
+	{0xe7, 0x1f, BYTE_LEN}, // don't touch update
+	{0xe8, 0x5f, BYTE_LEN}, // don't touch update
+	{0xe9, 0x00, BYTE_LEN}, // don't touch update
+	{0xea, 0x00, BYTE_LEN}, // don't touch update
+	{0xeb, 0x00, BYTE_LEN}, // don't touch update
+	{0xec, 0x00, BYTE_LEN}, // don't touch update
+	{0xed, 0x00, BYTE_LEN}, // don't touch update
 	{0xf0, 0x3f, BYTE_LEN},
-	
+	{0xf1, 0x00, BYTE_LEN}, // don't touch update
+	{0xf2, 0x40, BYTE_LEN}, // don't touch update
+
 	{0x10, 0x03, BYTE_LEN}, //YUV422-YUYV
 	{0x12, 0x10, BYTE_LEN}, //Y,DY offset Enb
 	{0x13, 0x02, BYTE_LEN}, //Bright2, Contrast Enb
 	{0x20, 0x80, BYTE_LEN},
-	
+
 	{0x60, 0x03, BYTE_LEN}, //Sat, Trans Enb
 	{0x61, 0x80, BYTE_LEN},
 	{0x62, 0x80, BYTE_LEN},
@@ -631,7 +646,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x7d, 0x04, BURST_TYPE},
 	{0x7e, 0x0a, BURST_TYPE},
 	{0x7f, 0x14, BURST_TYPE},
-	
+
 	///////////////////////////////////////////
 	// 11 page D-LPF
 	///////////////////////////////////////////  
@@ -645,7 +660,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xf5, 0xfd, BURST_TYPE},
 	{0xf6, 0x00, BURST_TYPE},
 	{0xf7, 0x00, BURST_TYPE},
-	
+
 	// STEVE Luminanace level setting (Add to DMA)
 	{0x32, 0x8b, BYTE_LEN},
 	{0x33, 0x54, BYTE_LEN},
@@ -713,26 +728,28 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x3D, 0x00, BURST_TYPE},
 	{0x3E, 0x00, BURST_TYPE},
 	{0x3F, 0x00, BURST_TYPE},
-	
+
+	{0x40, 0x33, BYTE_LEN},
+	{0xE0, 0x0c, BYTE_LEN},
 	{0xE1, 0x58, BYTE_LEN},
 	{0xEC, 0x10, BYTE_LEN},
 	{0xEE, 0x03, BYTE_LEN},
-	
+
 	///////////////////////////////////////////
 	// 13 page YC2D LPF
 	///////////////////////////////////////////
 	{0x03, 0x13, BYTE_LEN},
-	
+
 	{0x10, 0x33, BYTE_LEN}, //Don't touch
 	{0xa0, 0x0f, BYTE_LEN}, //Don't touch
-	
+
 	{0xe1, 0x07, BYTE_LEN},
-	
+
 	///////////////////////////////////////////
 	// 14 page Sharpness
 	///////////////////////////////////////////
 	{0x03, 0x14, BYTE_LEN},
-	
+
 	{0x10, 0x27, BYTE_LEN}, //Don't touch
 	{0x11, 0x02, BYTE_LEN}, //Don't touch
 	{0x12, 0x40, BYTE_LEN}, //Don't touch
@@ -740,7 +757,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x30, 0x82, BYTE_LEN}, //Don't touch
 	{0x40, 0x84, BYTE_LEN}, //Don't touch
 	{0x50, 0x84, BYTE_LEN}, //Don't touch
-	
+
 	///////////////////////////////////////////
 	// 15 Page LSC off
 	///////////////////////////////////////////
@@ -749,7 +766,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 
 	{0x03, 0xFE, DELAY_TYPE}, //need to merge for solving preview rainbow problem
 	{0xFE, 0x0A, DELAY_TYPE},
-	
+
 	///////////////////////////////////////////
 	// 7 Page LSC data (STEVE 75p)
 	///////////////////////////////////////////
@@ -759,7 +776,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x35, 0x00, BYTE_LEN},
 	{0x13, 0x85, BYTE_LEN},
 	{0x13, 0x05, BYTE_LEN},
-	
+
 	//================ LSC set start
 	//start
 	{0x37, 0x39, BYTE_LEN},
@@ -1771,24 +1788,24 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x37, 0x46, BYTE_LEN},
 	{0x37, 0x46, BYTE_LEN},
 	//END
-	
+
 	//================ LSC set end
-	
+
 	{0x12, 0x00, BYTE_LEN},
 	{0x13, 0x00, BYTE_LEN},
-	
+
 	{0x03, 0x15, BYTE_LEN},
 	{0x10, 0x83, BYTE_LEN}, // LSC ON
-	
+
 	///////////////////////////////////////////
 	// 16 Page CMC
 	///////////////////////////////////////////
 	{0x03, 0x16, BYTE_LEN},
-	
+
 	{0x10, 0x0f, BYTE_LEN}, //cmc
 	{0x17, 0x2f, BYTE_LEN}, //CMC SIGN
 	{0x60, 0x3f, BYTE_LEN}, //mcmc steve MCMC ON 20111221 
-	
+
 	// STEVE automatic saturation according Y level
 	{0x8a, 0x5c, BURST_TYPE},
 	{0x8b, 0x73, BURST_TYPE},
@@ -1807,14 +1824,14 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x98, 0x7f, BURST_TYPE},
 	{0x99, 0x7c, BURST_TYPE},
 	{0x9a, 0x78, BURST_TYPE},
-	
+
 	//Dgain
 	{0xa0, 0x81, BYTE_LEN}, //Manual WB gain enable
 	{0xa1, 0x00, BYTE_LEN},
-	
+
 	{0xa2, 0x68, BYTE_LEN}, //R_dgain_byr
 	{0xa3, 0x70, BYTE_LEN}, //B_dgain_byr
-	
+
 	{0xa6, 0xa0, BYTE_LEN}, //r max
 	{0xa8, 0xa0, BYTE_LEN}, //b max
 			// Pre WB gain setting(after AWB setting)
@@ -1828,7 +1845,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	///////////////////////////////////////////
 	{0x03, 0x17, BYTE_LEN},
 	{0x10, 0x01, BYTE_LEN},
-	
+
 	///////////////////////////////////////////
 	// 18 Page Histogram
 	///////////////////////////////////////////
@@ -1837,7 +1854,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xc0, 0x01, BYTE_LEN},
 	{0xc4, 0x7e, BYTE_LEN},//110927
 	{0xc5, 0x69, BYTE_LEN},
-	
+
 	///////////////////////////////////////////
 	// 20 Page AE
 	/////////////////////////////////////////// 			
@@ -1846,7 +1863,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x12, 0x2d, BYTE_LEN}, // STEVE Dgain off (2d)
 	{0x17, 0xa0, BYTE_LEN},
 	{0x1f, 0x1f, BYTE_LEN},
-	
+
 	{0x03, 0x20, BYTE_LEN}, //Page 20
 	{0x20, 0x00, BURST_TYPE}, //EXP Normal 30.00 fps 
 	{0x21, 0x12, BURST_TYPE}, 
@@ -1856,52 +1873,52 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x25, 0x44, BURST_TYPE}, 
 	{0x26, 0xa3, BURST_TYPE}, 
 	{0x27, 0x18, BURST_TYPE}, 
-	
+
 	{0x28, 0x00, BURST_TYPE}, //EXPMin 25210.08 fps
 	{0x29, 0x0b, BURST_TYPE}, 
 	{0x2a, 0x28, BURST_TYPE}, 
-	
+
 	{0x30, 0x05, BYTE_LEN}, //EXP100 
 	{0x31, 0x7d, BURST_TYPE}, 
 	{0x32, 0xb0, BURST_TYPE}, 
-	
+
 	{0x33, 0x04, BURST_TYPE}, //EXP120 
 	{0x34, 0x93, BURST_TYPE}, 
 	{0x35, 0x68, BURST_TYPE}, 
 	{0x36, 0x00, BURST_TYPE}, //EXP Unit 
 	{0x37, 0x05, BURST_TYPE}, 
 	{0x38, 0x94, BURST_TYPE}, 
-	
+
 	{0x40, 0x00, BYTE_LEN}, //exp 12000
 	{0x41, 0x04, BYTE_LEN}, 
 	{0x42, 0x93, BYTE_LEN}, 
 	{0x43, 0x04, BYTE_LEN},
-	
+
 	{0x51, 0xD0, BYTE_LEN}, //pga_max_total A0 -> D0 STEVE
 	{0x52, 0x28, BYTE_LEN}, //pga_min_total
-	
+
 	{0x71, 0x80, BYTE_LEN}, //DG MAX 0x80 STEVE
 	{0x72, 0x80, BYTE_LEN}, //DG MIN
-	
+
 	{0x80, 0x36, BYTE_LEN}, //AE target 34 -> 36 STEVE
-	
+
 	///////////////////////////////////////////
 	// Preview Setting
 	///////////////////////////////////////////
-	
+
 	{0x03, 0x00, BYTE_LEN},
 	{0x10, 0x13, BYTE_LEN}, //Pre2
-	
+
 	{0x20, 0x00, BYTE_LEN},
 	{0x21, 0x01, BYTE_LEN}, //preview row start set.
-	
+
 	{0x03, 0x15, BYTE_LEN},  //Shading
 	{0x10, 0x81, BYTE_LEN},  //
 	{0x20, 0x04, BYTE_LEN},  //Shading Width 2048
 	{0x21, 0x00, BYTE_LEN},
 	{0x22, 0x03, BYTE_LEN},  //Shading Height 768
 	{0x23, 0x00, BYTE_LEN},
-	
+
 	{0x03, 0x19, BYTE_LEN}, 
 	{0x10, 0x87, BYTE_LEN},//MODE_ZOOM			 
 	{0x11, 0x00, BYTE_LEN},//MODE_ZOOM2 		 
@@ -1924,7 +1941,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x2e, 0x0c, BYTE_LEN},//ZOOM_HOR_STEP_H	 
 	{0x2f, 0xcc, BYTE_LEN},//ZOOM_HOR_STEP_L	 
 	{0x30, 0x42, BYTE_LEN},//ZOOM_FIFO_DELAY	 
-	
+
 	///////////////////////////////////////////
 	// 30 Page DMA address set
 	///////////////////////////////////////////
@@ -1955,18 +1972,18 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x31, 0x20, BYTE_LEN}, //Delay before DMA write
 	{0x33, 0x20, BYTE_LEN}, //DMA full stuck mode
 	{0x32, 0x01, BYTE_LEN}, //DMA on first 
-	
+
 	{0x03, 0xC0, BYTE_LEN},
 	{0x2F, 0xf0, BYTE_LEN}, //DMA busy flag check
 	{0x31, 0x20, BYTE_LEN}, //Delay before DMA write
 	{0x33, 0x20, BYTE_LEN},
 	{0x32, 0x01, BYTE_LEN}, //DMA on second
-	
-	
+
+
 	{0x03, 0xC0, BYTE_LEN},
 	{0xe1, 0x80, BYTE_LEN},// PCON Enable option
 	{0xe1, 0x80, BYTE_LEN},// PCON MODE ON
-	
+
 	//MCU Set
 	{0x03, 0x30, BYTE_LEN},
 	{0x12, 0x00, BYTE_LEN},
@@ -1979,7 +1996,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xe4, 0x64, BYTE_LEN}, //delay
 	{0x03, 0x00, BYTE_LEN},
 	{0x01, 0xF0, BYTE_LEN}, // sleep off
-	
+
 	///////////////////////////////////////////
 	// CD Page Adaptive Mode(Color ratio)
 	///////////////////////////////////////////
@@ -1991,7 +2008,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x15, 0x80, BYTE_LEN}, //Ratio WB B gain min
 	{0x16, 0x90, BYTE_LEN}, //Ratio WB B gain max
 	{0x10, 0x38, BYTE_LEN}, // STEVE b9 -> 38 Disable
-	
+
 	///////////////////////////////////////////
 	// 1F Page SSD
 	///////////////////////////////////////////
@@ -2004,15 +2021,15 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x20, 0x18, BYTE_LEN}, //ssd_x_start_pos
 	{0x21, 0x14, BYTE_LEN}, //ssd_y_start_pos
 	{0x22, 0x8C, BYTE_LEN}, //ssd_blk_width
-	{0x23, 0x60, BYTE_LEN}, //ssd_blk_height
+	{0x23, 0x9c, BYTE_LEN}, //ssd_blk_height
 	{0x28, 0x18, BYTE_LEN},
 	{0x29, 0x02, BYTE_LEN},
 	{0x3B, 0x18, BYTE_LEN},
 	{0x3C, 0x8C, BYTE_LEN},
 	{0x10, 0x19, BYTE_LEN}, //SSD enable
-	
+
 	///////////////////////////////////////////
-	
+
 	///////////////////////////////////////////
 	// C4 Page MCU AE
 	///////////////////////////////////////////
@@ -2038,12 +2055,12 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x28, 0xc6, BURST_TYPE},
 	           
 	{0x29, 0xc0, BURST_TYPE},
-	
+
 	{0x36, 0x22, BYTE_LEN}, // AE Yth º¯°æ
-	
+
 	{0x03, 0x20, BYTE_LEN},
 	{0x12, 0x2d, BYTE_LEN}, // STEVE 6d -> 2d (AE digital gain OFF)
-	
+
 	///////////////////////////////////////////
 	// c3 Page MCU AE Weight
 	///////////////////////////////////////////
@@ -2173,11 +2190,11 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xA3, 0x11, BURST_TYPE},
 	{0xA4, 0x11, BURST_TYPE},
 	{0xA5, 0x11, BURST_TYPE},
-	
+
 	{0x03, 0xc3, BYTE_LEN},
 	{0xe1, 0x30, BYTE_LEN}, //STEVE OUT AG MAX 
 	{0xe2, 0x03, BYTE_LEN}, //flicker option
-	
+
 	///////////////////////////////////////////
 	// Capture Setting
 	///////////////////////////////////////////
@@ -2187,21 +2204,21 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x14, 0xfd, BYTE_LEN}, // STEVE EXPMIN x2
 	{0x1e, 0x02, BYTE_LEN}, //capture clock set
 	{0x86, 0x02, BYTE_LEN}, //preview clock set
-  //{0x1f, 0x01, BYTE_LEN}, //
-  //{0x20, 0x40, BYTE_LEN}, // Capture Hblank 320
+	//{0x1f, 0x01, BYTE_LEN}, //
+	//{0x20, 0x40, BYTE_LEN}, // Capture Hblank 320
 
-  // STEVE When capture process, decrease Green
-  	{0x1f, 0x00, BYTE_LEN},                      
-   	{0x20, 0xDC, BYTE_LEN}, // Capture Hblank 220 -> one line 2400
+	// STEVE When capture process, decrease Green
+		{0x1f, 0x00, BYTE_LEN},                      
+		{0x20, 0xDC, BYTE_LEN}, // Capture Hblank 220 -> one line 2400
 
 	{0x21, 0x09, BYTE_LEN},
 	{0x22, 0xc4, BYTE_LEN},// Capture Line unit 2180+226 = 2500
-	
+
 	///////////////////////////////////////////
 	// Capture Mode option D6
 	///////////////////////////////////////////   
 	{0x03, 0xd6, BYTE_LEN}, 	 
-	
+
 	{0x03, 0xd6, BYTE_LEN}, 
 	{0x10, 0x28, BYTE_LEN}, // ISO 100
 	{0x11, 0x38, BYTE_LEN}, // ISO 200
@@ -2214,15 +2231,15 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	///////////////////////////////////////////
 	{0x03, 0xc0, BYTE_LEN},
 	{0x16, 0x81, BYTE_LEN}, //MCU main roof holding on
-	
+
 	///////////////////////////////////////////
 	// C5 Page AWB
 	///////////////////////////////////////////
-	
+
 	{0x03, 0xc5, BYTE_LEN}, 
 	{0x10, 0xb0, BURST_TYPE}, //bCtl1_a00_n00
 	{0x11, 0xa1, BURST_TYPE}, // Steve [4] bit must 0 for MWB
-	{0x12, 0x1f, BURST_TYPE}, // STEVE 97 -> 1f YNorm
+	{0x12, 0x17, BURST_TYPE}, // STEVE 97 -> 9f YNorm -> 1f -> 17 near pt chek, Ynorm OFF
 	{0x13, 0x19, BURST_TYPE}, //bCtl4_a00_n00
 	{0x14, 0x24, BURST_TYPE}, //bLockTh_a00_n00
 	{0x15, 0x04, BURST_TYPE},
@@ -2235,24 +2252,24 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x1b, 0x18, BURST_TYPE},//awb min ylvl
 	{0x1c, 0x0a, BURST_TYPE},//awb frame skip when min max
 	{0x1d, 0x40, BURST_TYPE},
-	{0x1e, 0x00, BURST_TYPE},
-	{0x1f, 0xF2, BURST_TYPE},//sky limit
+	{0x1e, 0x01, BURST_TYPE},
+	{0x1f, 0x04, BURST_TYPE},//sky limit
 	           
-	{0x20, 0x00, BURST_TYPE},
-	{0x21, 0xcd, BURST_TYPE}, //steve outdoor awb angle min (for tree) 205
-	{0x22, 0x00, BURST_TYPE},
-	{0x23, 0xF2, BURST_TYPE},//sky limit
-	{0x24, 0x00, BURST_TYPE},
-	{0x25, 0xcd, BURST_TYPE}, //steve 
-	{0x26, 0x00, BURST_TYPE}, //iInAglMaxLmt_a00_n00
-	{0x27, 0xf5, BURST_TYPE}, //iInAglMaxLmt_a00_n01
+	{0x20, 0x00, BURST_TYPE}, // out2 Angle MIN
+	{0x21, 0xa0, BURST_TYPE}, // out2 Angle MIN steve outdoor awb angle min (for tree) 160
+	{0x22, 0x01, BURST_TYPE}, // out2 Anble Max
+	{0x23, 0x0e, BURST_TYPE}, // out2 Anble Max              sky limit
+	{0x24, 0x00, BURST_TYPE}, // out1 Angle MIN
+	{0x25, 0xa0, BURST_TYPE}, // out1 Angle MIN //steve 
+	{0x26, 0x01, BURST_TYPE}, // out1 Anble Max //iInAglMaxLmt_a00_n00
+	{0x27, 0x04, BURST_TYPE}, // out1 Anble Max //iInAglMaxLmt_a00_n01
 	           
 	{0x28, 0x00, BURST_TYPE},
 	{0x29, 0x73, BURST_TYPE}, //64(100) -> 73(115) yellow prev.
-	{0x2a, 0x00, BURST_TYPE},
-	{0x2b, 0xd2, BURST_TYPE},
-	{0x2c, 0x00, BURST_TYPE},
-	{0x2d, 0x82, BURST_TYPE},
+	{0x2a, 0x01, BURST_TYPE}, //iDakAglMaxLmt_a00_n00
+	{0x2b, 0x04, BURST_TYPE}, //iDakAglMaxLmt_a00_n01
+	{0x2c, 0x00, BURST_TYPE}, //iDakAglMinLmt_a00_n00
+	{0x2d, 0x64, BURST_TYPE}, //iDakAglMinLmt_a00_n01
 	{0x2e, 0x00, BURST_TYPE},
 	{0x2f, 0x00, BURST_TYPE},
 	           
@@ -2268,9 +2285,9 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x38, 0xdd, BURST_TYPE},
 	{0x39, 0xd0, BURST_TYPE},
 	{0x3a, 0x00, BURST_TYPE},
-	{0x3b, 0x0d, BURST_TYPE},
-	{0x3c, 0xbb, BURST_TYPE},
-	{0x3d, 0xa0, BURST_TYPE},
+	{0x3b, 0x08, BURST_TYPE}, //dwOut1StrLmtTh_a00_n01
+	{0x3c, 0xd9, BURST_TYPE}, //dwOut1StrLmtTh_a00_n02
+	{0x3d, 0xa0, BURST_TYPE}, //dwOut1StrLmtTh_a00_n03
 	{0x3e, 0x00, BURST_TYPE},
 	{0x3f, 0xdb, BURST_TYPE},
 	           
@@ -2286,9 +2303,9 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x48, 0x93, BURST_TYPE},
 	{0x49, 0xE0, BURST_TYPE},
 	{0x4a, 0x00, BURST_TYPE},  // steve H outdoor -> indoor(EV) 
-	{0x4b, 0x33, BURST_TYPE},  // steve M1 outdoor -> indoor(EV)
-	{0x4c, 0x7a, BURST_TYPE},  // steve M2 outdoor -> indoor(EV)
-	{0x4d, 0x52, BURST_TYPE},  // steve L outdoor -> indoor(EV) 
+	{0x4b, 0x06, BURST_TYPE},  // steve M1 outdoor -> indoor(EV)
+	{0x4c, 0x1a, BURST_TYPE},  // steve M2 outdoor -> indoor(EV)
+	{0x4d, 0x80, BURST_TYPE},  // steve L outdoor -> indoor(EV) 
 	{0x4e, 0x00, BURST_TYPE},  // white region shift X
 	{0x4f, 0x00, BURST_TYPE},  // white region shift Y
 	           
@@ -2322,66 +2339,66 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x68, 0x55, BURST_TYPE},
 	{0x69, 0x55, BURST_TYPE},
 	{0x6a, 0x55, BURST_TYPE},
-	{0x6b, 0x2d, BURST_TYPE}, //aInWhtRgnBg_a00_n00
-	{0x6c, 0x30, BURST_TYPE}, //aInWhtRgnBg_a01_n00
-	{0x6d, 0x34, BURST_TYPE}, //aInWhtRgnBg_a02_n00
-	{0x6e, 0x3a, BURST_TYPE}, //aInWhtRgnBg_a03_n00
+	{0x6b, 0x24, BURST_TYPE}, //aInWhtRgnBg_a00_n00
+	{0x6c, 0x2a, BURST_TYPE}, //aInWhtRgnBg_a01_n00
+	{0x6d, 0x31, BURST_TYPE}, //aInWhtRgnBg_a02_n00
+	{0x6e, 0x38, BURST_TYPE}, //aInWhtRgnBg_a03_n00
 	{0x6f, 0x3e, BURST_TYPE}, //aInWhtRgnBg_a04_n00
 	{0x70, 0x42, BURST_TYPE}, //aInWhtRgnBg_a05_n00
-	{0x71, 0x48, BURST_TYPE}, //aInWhtRgnBg_a06_n00
-	{0x72, 0x52, BURST_TYPE}, //aInWhtRgnBg_a07_n00
-	{0x73, 0x5a, BURST_TYPE}, //aInWhtRgnBg_a08_n00
+	{0x71, 0x4a, BURST_TYPE}, //aInWhtRgnBg_a06_n00
+	{0x72, 0x53, BURST_TYPE}, //aInWhtRgnBg_a07_n00
+	{0x73, 0x5c, BURST_TYPE}, //aInWhtRgnBg_a08_n00
 	{0x74, 0x69, BURST_TYPE}, //aInWhtRgnBg_a09_n00
 	{0x75, 0x75, BURST_TYPE}, //aInWhtRgnBg_a10_n00
-	{0x76, 0x87, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a00_n00
-	{0x77, 0x7a, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a01_n00
-	{0x78, 0x6e, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a02_n00
-	{0x79, 0x5f, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a03_n00
-	{0x7a, 0x57, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a04_n00
-	{0x7b, 0x51, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a05_n00
-	{0x7c, 0x4b, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a06_n00
-	{0x7d, 0x46, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a07_n00
-	{0x7e, 0x41, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a08_n00
+	{0x76, 0x86, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a00_n00
+	{0x77, 0x79, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a01_n00
+	{0x78, 0x69, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a02_n00
+	{0x79, 0x5b, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a03_n00
+	{0x7a, 0x53, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a04_n00
+	{0x7b, 0x4e, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a05_n00
+	{0x7c, 0x48, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a06_n00
+	{0x7d, 0x43, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a07_n00
+	{0x7e, 0x40, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a08_n00
 	{0x7f, 0x3c, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a09_n00
 	{0x80, 0x3c, BURST_TYPE}, //aInWhtRgnRgLeftLmt_a10_n00
-	{0x81, 0x91, BURST_TYPE}, //aInWhtRgnRgRightLmt_a00_n00
-	{0x82, 0x8c, BURST_TYPE}, //aInWhtRgnRgRightLmt_a01_n00
-	{0x83, 0x85, BURST_TYPE}, //aInWhtRgnRgRightLmt_a02_n00
-	{0x84, 0x7c, BURST_TYPE}, //aInWhtRgnRgRightLmt_a03_n00
-	{0x85, 0x78, BURST_TYPE}, //aInWhtRgnRgRightLmt_a04_n00
-	{0x86, 0x6f, BURST_TYPE}, //aInWhtRgnRgRightLmt_a05_n00
-	{0x87, 0x63, BURST_TYPE}, //aInWhtRgnRgRightLmt_a06_n00
-	{0x88, 0x55, BURST_TYPE}, //aInWhtRgnRgRightLmt_a07_n00
-	{0x89, 0x4e, BURST_TYPE}, //aInWhtRgnRgRightLmt_a08_n00
-	{0x8a, 0x46, BURST_TYPE}, //aInWhtRgnRgRightLmt_a09_n00
-	{0x8b, 0x46, BURST_TYPE}, //aInWhtRgnRgRightLmt_a10_n00
-	{0x8c, 0x2d, BURST_TYPE}, //aInWhtLineBg_a00_n00
-	{0x8d, 0x33, BURST_TYPE}, //aInWhtLineBg_a01_n00
-	{0x8e, 0x38, BURST_TYPE}, //aInWhtLineBg_a02_n00
+	{0x81, 0x95, BURST_TYPE}, //aInWhtRgnRgRightLmt_a00_n00
+	{0x82, 0x8f, BURST_TYPE}, //aInWhtRgnRgRightLmt_a01_n00
+	{0x83, 0x88, BURST_TYPE}, //aInWhtRgnRgRightLmt_a02_n00
+	{0x84, 0x81, BURST_TYPE}, //aInWhtRgnRgRightLmt_a03_n00
+	{0x85, 0x79, BURST_TYPE}, //aInWhtRgnRgRightLmt_a04_n00
+	{0x86, 0x71, BURST_TYPE}, //aInWhtRgnRgRightLmt_a05_n00
+	{0x87, 0x6b, BURST_TYPE}, //aInWhtRgnRgRightLmt_a06_n00
+	{0x88, 0x62, BURST_TYPE}, //aInWhtRgnRgRightLmt_a07_n00
+	{0x89, 0x5a, BURST_TYPE}, //aInWhtRgnRgRightLmt_a08_n00
+	{0x8a, 0x52, BURST_TYPE}, //aInWhtRgnRgRightLmt_a09_n00
+	{0x8b, 0x4e, BURST_TYPE}, //aInWhtRgnRgRightLmt_a10_n00
+	{0x8c, 0x25, BURST_TYPE}, //aInWhtLineBg_a00_n00
+	{0x8d, 0x30, BURST_TYPE}, //aInWhtLineBg_a01_n00
+	{0x8e, 0x35, BURST_TYPE}, //aInWhtLineBg_a02_n00
 	{0x8f, 0x3b, BURST_TYPE}, //aInWhtLineBg_a03_n00
 	{0x90, 0x40, BURST_TYPE}, //aInWhtLineBg_a04_n00
-	{0x91, 0x43, BURST_TYPE}, //aInWhtLineBg_a05_n00
-	{0x92, 0x4b, BURST_TYPE}, //aInWhtLineBg_a06_n00
-	{0x93, 0x52, BURST_TYPE}, //aInWhtLineBg_a07_n00
+	{0x91, 0x44, BURST_TYPE}, //aInWhtLineBg_a05_n00
+	{0x92, 0x4c, BURST_TYPE}, //aInWhtLineBg_a06_n00
+	{0x93, 0x55, BURST_TYPE}, //aInWhtLineBg_a07_n00
 	{0x94, 0x60, BURST_TYPE}, //aInWhtLineBg_a08_n00
 	{0x95, 0x69, BURST_TYPE}, //aInWhtLineBg_a09_n00
 	{0x96, 0x75, BURST_TYPE}, //aInWhtLineBg_a10_n00
-	{0x97, 0x8a, BURST_TYPE}, //aInWhtLineRg_a00_n00
-	{0x98, 0x81, BURST_TYPE}, //aInWhtLineRg_a01_n00
-	{0x99, 0x76, BURST_TYPE}, //aInWhtLineRg_a02_n00
-	{0x9a, 0x6e, BURST_TYPE}, //aInWhtLineRg_a03_n00
-	{0x9b, 0x5f, BURST_TYPE}, //aInWhtLineRg_a04_n00
-	{0x9c, 0x57, BURST_TYPE}, //aInWhtLineRg_a05_n00
-	{0x9d, 0x50, BURST_TYPE}, //aInWhtLineRg_a06_n00
-	{0x9e, 0x4c, BURST_TYPE}, //aInWhtLineRg_a07_n00
-	{0x9f, 0x45, BURST_TYPE}, //aInWhtLineRg_a08_n00
-	{0xa0, 0x41, BURST_TYPE}, //aInWhtLineRg_a09_n00
-	{0xa1, 0x41, BURST_TYPE}, //aInWhtLineRg_a10_n00
+	{0x97, 0x8e, BURST_TYPE}, //aInWhtLineRg_a00_n00
+	{0x98, 0x7c, BURST_TYPE}, //aInWhtLineRg_a01_n00
+	{0x99, 0x73, BURST_TYPE}, //aInWhtLineRg_a02_n00
+	{0x9a, 0x6a, BURST_TYPE}, //aInWhtLineRg_a03_n00
+	{0x9b, 0x61, BURST_TYPE}, //aInWhtLineRg_a04_n00
+	{0x9c, 0x5c, BURST_TYPE}, //aInWhtLineRg_a05_n00
+	{0x9d, 0x55, BURST_TYPE}, //aInWhtLineRg_a06_n00
+	{0x9e, 0x4f, BURST_TYPE}, //aInWhtLineRg_a07_n00
+	{0x9f, 0x4a, BURST_TYPE}, //aInWhtLineRg_a08_n00
+	{0xa0, 0x47, BURST_TYPE}, //aInWhtLineRg_a09_n00
+	{0xa1, 0x46, BURST_TYPE}, //aInWhtLineRg_a10_n00
 	{0xa2, 0x32, BURST_TYPE}, //aInTgtAngle_a00_n00
 	{0xa3, 0x3c, BURST_TYPE}, //aInTgtAngle_a01_n00
 	{0xa4, 0x46, BURST_TYPE}, //aInTgtAngle_a02_n00
 	{0xa5, 0x50, BURST_TYPE}, //aInTgtAngle_a03_n00
-	{0xa6, 0x5a, BURST_TYPE}, //aInTgtAngle_a04_n00
+	{0xa6, 0x50, BURST_TYPE}, //aInTgtAngle_a04_n00
 	{0xa7, 0x64, BURST_TYPE}, //aInTgtAngle_a05_n00
 	{0xa8, 0x6e, BURST_TYPE}, //aInTgtAngle_a06_n00
 	{0xa9, 0x78, BURST_TYPE}, //aInTgtAngle_a07_n00
@@ -2480,7 +2497,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfd, 0x0a, BURST_TYPE}, //bInSplTmpAglOfs_a00_n00
 	{0xfe, 0x1e, BURST_TYPE},
 	{0xff, 0x1e, BURST_TYPE},//pt core
-	
+
 	{0x03, 0xc6, BYTE_LEN}, 
 	{0x10, 0x14, BURST_TYPE}, //bInSplTmpBpCntTh_a00_n00
 	{0x11, 0x32, BURST_TYPE}, //bInSplTmpPtCorWgt_a00_n00
@@ -2497,14 +2514,14 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x1b, 0xf0, BURST_TYPE}, //bInBgainMax_a00_n00
 	{0x1c, 0x08, BURST_TYPE},
 	{0x1d, 0x00, BURST_TYPE},
-	{0x1e, 0x37, BURST_TYPE}, //aOutWhtRgnBg_a00_n00
+	{0x1e, 0x35, BURST_TYPE}, //aOutWhtRgnBg_a00_n00
 	{0x1f, 0x3a, BURST_TYPE}, //aOutWhtRgnBg_a01_n00
-	{0x20, 0x3e, BURST_TYPE}, //aOutWhtRgnBg_a02_n00
+	{0x20, 0x3f, BURST_TYPE}, //aOutWhtRgnBg_a02_n00
 	{0x21, 0x43, BURST_TYPE}, //aOutWhtRgnBg_a03_n00
-	{0x22, 0x48, BURST_TYPE}, //aOutWhtRgnBg_a04_n00
+	{0x22, 0x49, BURST_TYPE}, //aOutWhtRgnBg_a04_n00
 	{0x23, 0x4f, BURST_TYPE}, //aOutWhtRgnBg_a05_n00
 	{0x24, 0x55, BURST_TYPE}, //aOutWhtRgnBg_a06_n00
-	{0x25, 0x5c, BURST_TYPE}, //aOutWhtRgnBg_a07_n00
+	{0x25, 0x5e, BURST_TYPE}, //aOutWhtRgnBg_a07_n00
 	{0x26, 0x66, BURST_TYPE}, //aOutWhtRgnBg_a08_n00
 	{0x27, 0x6e, BURST_TYPE}, //aOutWhtRgnBg_a09_n00
 	{0x28, 0x78, BURST_TYPE}, //aOutWhtRgnBg_a10_n00
@@ -2515,47 +2532,46 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x2d, 0x4b, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a04_n00
 	{0x2e, 0x46, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a05_n00
 	{0x2f, 0x43, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a06_n00
-	{0x30, 0x40, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a07_n00
+	{0x30, 0x3e, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a07_n00
 	{0x31, 0x3d, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a08_n00
 	{0x32, 0x3c, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a09_n00
 	{0x33, 0x3b, BURST_TYPE}, //aOutWhtRgnRgLeftLmt_a10_n00
-	{0x34, 0x69, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a00_n00
-	{0x35, 0x68, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a01_n00
-	{0x36, 0x64, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a02_n00
-	{0x37, 0x5f, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a03_n00
-	{0x38, 0x5a, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a04_n00
-	{0x39, 0x57, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a05_n00
-	{0x3a, 0x54, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a06_n00
-	{0x3b, 0x50, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a07_n00
-	{0x3c, 0x4d, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a08_n00
+	{0x34, 0x6f, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a00_n00
+	{0x35, 0x6b, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a01_n00
+	{0x36, 0x68, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a02_n00
+	{0x37, 0x63, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a03_n00
+	{0x38, 0x60, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a04_n00
+	{0x39, 0x5c, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a05_n00
+	{0x3a, 0x58, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a06_n00
+	{0x3b, 0x53, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a07_n00
+	{0x3c, 0x4f, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a08_n00
 	{0x3d, 0x4c, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a09_n00
 	{0x3e, 0x4a, BURST_TYPE}, //aOutWhtRgnRgRightLmt_a10_n00
-	{0x3f, 0x37, BURST_TYPE}, //aOutWhtLineBg_a00_n00
-	{0x40, 0x3c, BURST_TYPE}, //aOutWhtLineBg_a01_n00
+	{0x3f, 0x34, BURST_TYPE}, //aOutWhtLineBg_a00_n00
+	{0x40, 0x3b, BURST_TYPE}, //aOutWhtLineBg_a01_n00
 	{0x41, 0x41, BURST_TYPE}, //aOutWhtLineBg_a02_n00
 	{0x42, 0x46, BURST_TYPE}, //aOutWhtLineBg_a03_n00
 	{0x43, 0x4b, BURST_TYPE}, //aOutWhtLineBg_a04_n00
 	{0x44, 0x51, BURST_TYPE}, //aOutWhtLineBg_a05_n00
-	{0x45, 0x57, BURST_TYPE}, //aOutWhtLineBg_a06_n00
-	{0x46, 0x60, BURST_TYPE}, //aOutWhtLineBg_a07_n00
+	{0x45, 0x56, BURST_TYPE}, //aOutWhtLineBg_a06_n00
+	{0x46, 0x5f, BURST_TYPE}, //aOutWhtLineBg_a07_n00
 	{0x47, 0x6a, BURST_TYPE}, //aOutWhtLineBg_a08_n00
 	{0x48, 0x71, BURST_TYPE}, //aOutWhtLineBg_a09_n00
 	{0x49, 0x78, BURST_TYPE}, //aOutWhtLineBg_a10_n00
-	{0x4a, 0x64, BURST_TYPE}, //aOutWhtLineRg_a00_n00
-	{0x4b, 0x5e, BURST_TYPE}, //aOutWhtLineRg_a01_n00
-	{0x4c, 0x58, BURST_TYPE}, //aOutWhtLineRg_a02_n00
-	{0x4d, 0x53, BURST_TYPE}, //aOutWhtLineRg_a03_n00
-	{0x4e, 0x50, BURST_TYPE}, //aOutWhtLineRg_a04_n00
-	{0x4f, 0x4d, BURST_TYPE}, //aOutWhtLineRg_a05_n00
-	           
-	{0x50, 0x4a, BURST_TYPE}, //aOutWhtLineRg_a06_n00
-	{0x51, 0x46, BURST_TYPE},
-	{0x52, 0x44, BURST_TYPE},
-	{0x53, 0x42, BURST_TYPE},
-	{0x54, 0x41, BURST_TYPE},
-	{0x55, 0x50, BURST_TYPE},
-	{0x56, 0x5a, BURST_TYPE},
-	{0x57, 0x64, BURST_TYPE},
+	{0x4a, 0x66, BURST_TYPE}, //aOutWhtLineRg_a00_n00
+	{0x4b, 0x61, BURST_TYPE}, //aOutWhtLineRg_a01_n00
+	{0x4c, 0x5c, BURST_TYPE}, //aOutWhtLineRg_a02_n00
+	{0x4d, 0x59, BURST_TYPE}, //aOutWhtLineRg_a03_n00
+	{0x4e, 0x55, BURST_TYPE}, //aOutWhtLineRg_a04_n00
+	{0x4f, 0x51, BURST_TYPE}, //aOutWhtLineRg_a05_n00
+	{0x50, 0x4e, BURST_TYPE}, //aOutWhtLineRg_a06_n00
+	{0x51, 0x49, BURST_TYPE}, //aOutWhtLineRg_a07_n00
+	{0x52, 0x44, BURST_TYPE}, //aOutWhtLineRg_a08_n00
+	{0x53, 0x43, BURST_TYPE}, //aOutWhtLineRg_a09_n00
+	{0x54, 0x43, BURST_TYPE}, //aOutWhtLineRg_a10_n00
+	{0x55, 0x50, BURST_TYPE}, //aOutTgtAngle_a00_n00
+	{0x56, 0x5a, BURST_TYPE}, //aOutTgtAngle_a01_n00
+	{0x57, 0x64, BURST_TYPE}, //aOutTgtAngle_a02_n00
 	           
 	{0x58, 0x6e, BURST_TYPE},
 	{0x59, 0x78, BURST_TYPE},
@@ -2664,26 +2680,27 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xb7, 0x08, BURST_TYPE},
 	           
 	{0xb8, 0xd2, BURST_TYPE},
-	{0xb9, 0x5f, BURST_TYPE}, // steve OutRgainMin	
+	{0xb9, 0x50, BURST_TYPE}, // steve OutRgainMin	
 	{0xba, 0xf0, BURST_TYPE}, // steve OutRgainMax	
 	{0xbb, 0x40, BURST_TYPE}, // steve OutBgainMin	
-	{0xbc, 0x63, BURST_TYPE}, // steve OutBgainMax	
+	{0xbc, 0x80, BURST_TYPE}, // steve OutBgainMax	
+
 	{0xbd, 0x04, BURST_TYPE},
 	{0xbe, 0x00, BURST_TYPE},
 	{0xbf, 0xcd, BURST_TYPE},
-	
+
 	///////////////////////////////////////////
 	// CD Page (Color ratio)
 	///////////////////////////////////////////
 	{0x03, 0xCD, BYTE_LEN},
 	{0x47, 0x06, BYTE_LEN},
 	{0x10, 0x38, BYTE_LEN}, //STEVE B8 -> 38 disable
-	
+
 	///////////////////////////////////////////
 	//Adaptive mode : Page Mode = 0xCF
 	///////////////////////////////////////////
 	{0x03, 0xcf, BYTE_LEN},
-	
+
 	{0x10, 0x00, BURST_TYPE},
 	{0x11, 0x84, BURST_TYPE}, // STEVE 04 -> 84  //cmc + - , adaptive lsc
 	{0x12, 0x01, BURST_TYPE},
@@ -2902,322 +2919,322 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xc8, 0xFF, BURST_TYPE},
 	           
 	{0xc9, 0x00, BURST_TYPE},//GMA03
-	{0xca, 0x05, BURST_TYPE},
-	{0xcb, 0x0a, BURST_TYPE},
+	{0xca, 0x03, BURST_TYPE},
+	{0xcb, 0x08, BURST_TYPE},
 	{0xcc, 0x12, BURST_TYPE},
-	{0xcd, 0x1d, BURST_TYPE},
-	{0xce, 0x2f, BURST_TYPE},
-	{0xcf, 0x41, BURST_TYPE},
-	{0xd0, 0x52, BURST_TYPE},
-	{0xd1, 0x5c, BURST_TYPE},
-	{0xd2, 0x66, BURST_TYPE},
-	{0xd3, 0x6d, BURST_TYPE},
-	{0xd4, 0x76, BURST_TYPE},
-	{0xd5, 0x7d, BURST_TYPE},
-	{0xd6, 0x84, BURST_TYPE},
-	{0xd7, 0x89, BURST_TYPE},
-	{0xd8, 0x8f, BURST_TYPE},
-	{0xd9, 0x94, BURST_TYPE},
-	{0xda, 0x98, BURST_TYPE},
-	{0xdb, 0x9d, BURST_TYPE},
-	{0xdc, 0xa3, BURST_TYPE},
-	{0xdd, 0xa8, BURST_TYPE},
-	{0xde, 0xb1, BURST_TYPE},
-	{0xdf, 0xba, BURST_TYPE},
-	{0xe0, 0xc2, BURST_TYPE},
-	{0xe1, 0xd1, BURST_TYPE},
-	{0xe2, 0xdd, BURST_TYPE},
-	{0xe3, 0xe6, BURST_TYPE},
-	{0xe4, 0xed, BURST_TYPE},
-	{0xe5, 0xf3, BURST_TYPE},
-	{0xe6, 0xf7, BURST_TYPE},
-	{0xe7, 0xf9, BURST_TYPE},
-	{0xe8, 0xfb, BURST_TYPE},
-	{0xe9, 0xfd, BURST_TYPE},
-	{0xea, 0xff, BURST_TYPE},
+	{0xcd, 0x19, BURST_TYPE},
+	{0xce, 0x25, BURST_TYPE},
+	{0xcf, 0x32, BURST_TYPE},
+	{0xd0, 0x3E, BURST_TYPE},
+	{0xd1, 0x4B, BURST_TYPE},
+	{0xd2, 0x56, BURST_TYPE},
+	{0xd3, 0x62, BURST_TYPE},
+	{0xd4, 0x6A, BURST_TYPE},
+	{0xd5, 0x71, BURST_TYPE},
+	{0xd6, 0x78, BURST_TYPE},
+	{0xd7, 0x7F, BURST_TYPE},
+	{0xd8, 0x85, BURST_TYPE},
+	{0xd9, 0x8A, BURST_TYPE},
+	{0xda, 0x90, BURST_TYPE},
+	{0xdb, 0x95, BURST_TYPE},
+	{0xdc, 0x9A, BURST_TYPE},
+	{0xdd, 0x9F, BURST_TYPE},
+	{0xde, 0xA9, BURST_TYPE},
+	{0xdf, 0xB1, BURST_TYPE},
+	{0xe0, 0xB9, BURST_TYPE},
+	{0xe1, 0xC6, BURST_TYPE},
+	{0xe2, 0xD0, BURST_TYPE},
+	{0xe3, 0xD8, BURST_TYPE},
+	{0xe4, 0xDF, BURST_TYPE},
+	{0xe5, 0xE6, BURST_TYPE},
+	{0xe6, 0xEC, BURST_TYPE},
+	{0xe7, 0xF1, BURST_TYPE},
+	{0xe8, 0xF7, BURST_TYPE},
+	{0xe9, 0xFB, BURST_TYPE},
+	{0xea, 0xFF, BURST_TYPE},
 	           
-	{0xeb, 0x00, BURST_TYPE},//GMA04
-	{0xec, 0x05, BURST_TYPE},
-	{0xed, 0x0a, BURST_TYPE},
-	{0xee, 0x12, BURST_TYPE},
-	{0xef, 0x1d, BURST_TYPE},
-	{0xf0, 0x2f, BURST_TYPE},
-	{0xf1, 0x41, BURST_TYPE},
-	{0xf2, 0x52, BURST_TYPE},
-	{0xf3, 0x5c, BURST_TYPE},
-	{0xf4, 0x66, BURST_TYPE},
-	{0xf5, 0x6d, BURST_TYPE},
-	{0xf6, 0x76, BURST_TYPE},
-	{0xf7, 0x7d, BURST_TYPE},
-	{0xf8, 0x84, BURST_TYPE},
-	{0xf9, 0x89, BURST_TYPE},
-	{0xfa, 0x8f, BURST_TYPE},
-	{0xfb, 0x94, BURST_TYPE},
-	{0xfc, 0x98, BURST_TYPE},
-	{0xfd, 0x9d, BURST_TYPE},
-	{0x03, 0xd0, BYTE_LEN},//Page d0
-	{0x10, 0xa3, BURST_TYPE},
-	{0x11, 0xa8, BURST_TYPE},
-	{0x12, 0xb1, BURST_TYPE},
-	{0x13, 0xba, BURST_TYPE},
-	{0x14, 0xc2, BURST_TYPE},
-	{0x15, 0xd1, BURST_TYPE},
-	{0x16, 0xdd, BURST_TYPE},
-	{0x17, 0xe6, BURST_TYPE},
-	{0x18, 0xed, BURST_TYPE},
-	{0x19, 0xf3, BURST_TYPE},
-	{0x1a, 0xf7, BURST_TYPE},
-	{0x1b, 0xf9, BURST_TYPE},
-	{0x1c, 0xfb, BURST_TYPE},
-	{0x1d, 0xfd, BURST_TYPE},
-	{0x1e, 0xff, BURST_TYPE},
+	{0xeb, 0x00, BURST_TYPE},//GMA04 
+	{0xec, 0x03, BURST_TYPE},         
+	{0xed, 0x08, BURST_TYPE},         
+	{0xee, 0x12, BURST_TYPE},         
+	{0xef, 0x19, BURST_TYPE},         
+	{0xf0, 0x25, BURST_TYPE},         
+	{0xf1, 0x32, BURST_TYPE},         
+	{0xf2, 0x3E, BURST_TYPE},         
+	{0xf3, 0x4B, BURST_TYPE},         
+	{0xf4, 0x56, BURST_TYPE},         
+	{0xf5, 0x62, BURST_TYPE},         
+	{0xf6, 0x6A, BURST_TYPE},         
+	{0xf7, 0x71, BURST_TYPE},         
+	{0xf8, 0x78, BURST_TYPE},         
+	{0xf9, 0x7F, BURST_TYPE},         
+	{0xfa, 0x85, BURST_TYPE},         
+	{0xfb, 0x8A, BURST_TYPE},         
+	{0xfc, 0x90, BURST_TYPE},         
+	{0xfd, 0x95, BURST_TYPE},         
+	{0x03, 0xd0, BYTE_LEN},//Page d0  
+	{0x10, 0x9A, BURST_TYPE},         
+	{0x11, 0x9F, BURST_TYPE},         
+	{0x12, 0xA9, BURST_TYPE},         
+	{0x13, 0xB1, BURST_TYPE},         
+	{0x14, 0xB9, BURST_TYPE},         
+	{0x15, 0xC6, BURST_TYPE},         
+	{0x16, 0xD0, BURST_TYPE},         
+	{0x17, 0xD8, BURST_TYPE},         
+	{0x18, 0xDF, BURST_TYPE},         
+	{0x19, 0xE6, BURST_TYPE},         
+	{0x1a, 0xEC, BURST_TYPE},         
+	{0x1b, 0xF1, BURST_TYPE},         
+	{0x1c, 0xF7, BURST_TYPE},         
+	{0x1d, 0xFB, BURST_TYPE},         
+	{0x1e, 0xFF, BURST_TYPE},
 	           
 	{0x1f, 0x00, BURST_TYPE},//GMA05
-	{0x20, 0x05, BURST_TYPE},
-	{0x21, 0x0a, BURST_TYPE},
+	{0x20, 0x03, BURST_TYPE},
+	{0x21, 0x08, BURST_TYPE},
 	{0x22, 0x12, BURST_TYPE},
-	{0x23, 0x1d, BURST_TYPE},
-	{0x24, 0x2f, BURST_TYPE},
-	{0x25, 0x41, BURST_TYPE},
-	{0x26, 0x52, BURST_TYPE},
-	{0x27, 0x5c, BURST_TYPE},
-	{0x28, 0x66, BURST_TYPE},
-	{0x29, 0x6d, BURST_TYPE},
-	{0x2a, 0x76, BURST_TYPE},
-	{0x2b, 0x7d, BURST_TYPE},
-	{0x2c, 0x84, BURST_TYPE},
-	{0x2d, 0x89, BURST_TYPE},
-	{0x2e, 0x8f, BURST_TYPE},
-	{0x2f, 0x94, BURST_TYPE},
-	{0x30, 0x98, BURST_TYPE},
-	{0x31, 0x9d, BURST_TYPE},
-	{0x32, 0xa3, BURST_TYPE},
-	{0x33, 0xa8, BURST_TYPE},
-	{0x34, 0xb1, BURST_TYPE},
-	{0x35, 0xba, BURST_TYPE},
-	{0x36, 0xc2, BURST_TYPE},
-	{0x37, 0xd1, BURST_TYPE},
-	{0x38, 0xdd, BURST_TYPE},
-	{0x39, 0xe6, BURST_TYPE},
-	{0x3a, 0xed, BURST_TYPE},
-	{0x3b, 0xf3, BURST_TYPE},
-	{0x3c, 0xf7, BURST_TYPE},
-	{0x3d, 0xf9, BURST_TYPE},
-	{0x3e, 0xfb, BURST_TYPE},
-	{0x3f, 0xfd, BURST_TYPE},
-	{0x40, 0xff, BURST_TYPE},
+	{0x23, 0x19, BURST_TYPE},
+	{0x24, 0x25, BURST_TYPE},
+	{0x25, 0x32, BURST_TYPE},
+	{0x26, 0x3E, BURST_TYPE},
+	{0x27, 0x4B, BURST_TYPE},
+	{0x28, 0x56, BURST_TYPE},
+	{0x29, 0x62, BURST_TYPE},
+	{0x2a, 0x6A, BURST_TYPE},
+	{0x2b, 0x71, BURST_TYPE},
+	{0x2c, 0x78, BURST_TYPE},
+	{0x2d, 0x7F, BURST_TYPE},
+	{0x2e, 0x85, BURST_TYPE},
+	{0x2f, 0x8A, BURST_TYPE},
+	{0x30, 0x90, BURST_TYPE},
+	{0x31, 0x95, BURST_TYPE},
+	{0x32, 0x9A, BURST_TYPE},
+	{0x33, 0x9F, BURST_TYPE},
+	{0x34, 0xA9, BURST_TYPE},
+	{0x35, 0xB1, BURST_TYPE},
+	{0x36, 0xB9, BURST_TYPE},
+	{0x37, 0xC6, BURST_TYPE},
+	{0x38, 0xD0, BURST_TYPE},
+	{0x39, 0xD8, BURST_TYPE},
+	{0x3a, 0xDF, BURST_TYPE},
+	{0x3b, 0xE6, BURST_TYPE},
+	{0x3c, 0xEC, BURST_TYPE},
+	{0x3d, 0xF1, BURST_TYPE},
+	{0x3e, 0xF7, BURST_TYPE},
+	{0x3f, 0xFB, BURST_TYPE},
+	{0x40, 0xFF, BURST_TYPE},
 	           
 	{0x41, 0x00, BURST_TYPE},//GMA06
 	{0x42, 0x03, BURST_TYPE},
 	{0x43, 0x08, BURST_TYPE},
 	{0x44, 0x12, BURST_TYPE},
-	{0x45, 0x1a, BURST_TYPE},
-	{0x46, 0x26, BURST_TYPE},
-	{0x47, 0x31, BURST_TYPE},
-	{0x48, 0x3f, BURST_TYPE},
-	{0x49, 0x49, BURST_TYPE},
-	{0x4a, 0x55, BURST_TYPE},
-	{0x4b, 0x61, BURST_TYPE},
-	{0x4c, 0x6a, BURST_TYPE},
-	{0x4d, 0x70, BURST_TYPE},
-	{0x4e, 0x77, BURST_TYPE},
-	{0x4f, 0x7f, BURST_TYPE},
+	{0x45, 0x19, BURST_TYPE},
+	{0x46, 0x25, BURST_TYPE},
+	{0x47, 0x32, BURST_TYPE},
+	{0x48, 0x3E, BURST_TYPE},
+	{0x49, 0x4B, BURST_TYPE},
+	{0x4a, 0x56, BURST_TYPE},
+	{0x4b, 0x62, BURST_TYPE},
+	{0x4c, 0x6A, BURST_TYPE},
+	{0x4d, 0x71, BURST_TYPE},
+	{0x4e, 0x78, BURST_TYPE},
+	{0x4f, 0x7F, BURST_TYPE},
 	{0x50, 0x85, BURST_TYPE},
-	{0x51, 0x8b, BURST_TYPE},
-	{0x52, 0x91, BURST_TYPE},
+	{0x51, 0x8A, BURST_TYPE},
+	{0x52, 0x90, BURST_TYPE},
 	{0x53, 0x95, BURST_TYPE},
-	{0x54, 0x9a, BURST_TYPE},
-	{0x55, 0x9f, BURST_TYPE},
-	{0x56, 0xa7, BURST_TYPE},
-	{0x57, 0xaf, BURST_TYPE},
-	{0x58, 0xb7, BURST_TYPE},
-	{0x59, 0xc4, BURST_TYPE},
-	{0x5a, 0xd0, BURST_TYPE},
-	{0x5b, 0xd9, BURST_TYPE},
-	{0x5c, 0xe0, BURST_TYPE},
-	{0x5d, 0xe7, BURST_TYPE},
-	{0x5e, 0xed, BURST_TYPE},
-	{0x5f, 0xf2, BURST_TYPE},
-	{0x60, 0xf6, BURST_TYPE},
-	{0x61, 0xf9, BURST_TYPE},
-	{0x62, 0xfa, BURST_TYPE},
+	{0x54, 0x9A, BURST_TYPE},
+	{0x55, 0x9F, BURST_TYPE},
+	{0x56, 0xA9, BURST_TYPE},
+	{0x57, 0xB1, BURST_TYPE},
+	{0x58, 0xB9, BURST_TYPE},
+	{0x59, 0xC6, BURST_TYPE},
+	{0x5a, 0xD0, BURST_TYPE},
+	{0x5b, 0xD8, BURST_TYPE},
+	{0x5c, 0xDF, BURST_TYPE},
+	{0x5d, 0xE6, BURST_TYPE},
+	{0x5e, 0xEC, BURST_TYPE},
+	{0x5f, 0xF1, BURST_TYPE},
+	{0x60, 0xF7, BURST_TYPE},
+	{0x61, 0xFB, BURST_TYPE},
+	{0x62, 0xFF, BURST_TYPE},
 	           
 	{0x63, 0x00, BURST_TYPE},//GMA07
 	{0x64, 0x03, BURST_TYPE},
 	{0x65, 0x08, BURST_TYPE},
 	{0x66, 0x12, BURST_TYPE},
-	{0x67, 0x1a, BURST_TYPE},
-	{0x68, 0x26, BURST_TYPE},
-	{0x69, 0x31, BURST_TYPE},
-	{0x6a, 0x3f, BURST_TYPE},
-	{0x6b, 0x49, BURST_TYPE},
-	{0x6c, 0x55, BURST_TYPE},
-	{0x6d, 0x61, BURST_TYPE},
-	{0x6e, 0x6a, BURST_TYPE},
-	{0x6f, 0x70, BURST_TYPE},
-	{0x70, 0x77, BURST_TYPE},
-	{0x71, 0x7f, BURST_TYPE},
+	{0x67, 0x19, BURST_TYPE},
+	{0x68, 0x25, BURST_TYPE},
+	{0x69, 0x32, BURST_TYPE},
+	{0x6a, 0x3E, BURST_TYPE},
+	{0x6b, 0x4B, BURST_TYPE},
+	{0x6c, 0x56, BURST_TYPE},
+	{0x6d, 0x62, BURST_TYPE},
+	{0x6e, 0x6A, BURST_TYPE},
+	{0x6f, 0x71, BURST_TYPE},
+	{0x70, 0x78, BURST_TYPE},
+	{0x71, 0x7F, BURST_TYPE},
 	{0x72, 0x85, BURST_TYPE},
-	{0x73, 0x8b, BURST_TYPE},
-	{0x74, 0x91, BURST_TYPE},
+	{0x73, 0x8A, BURST_TYPE},
+	{0x74, 0x90, BURST_TYPE},
 	{0x75, 0x95, BURST_TYPE},
-	{0x76, 0x9a, BURST_TYPE},
-	{0x77, 0x9f, BURST_TYPE},
-	{0x78, 0xa7, BURST_TYPE},
-	{0x79, 0xaf, BURST_TYPE},
-	{0x7a, 0xb7, BURST_TYPE},
-	{0x7b, 0xc4, BURST_TYPE},
-	{0x7c, 0xd0, BURST_TYPE},
-	{0x7d, 0xd9, BURST_TYPE},
-	{0x7e, 0xe0, BURST_TYPE},
-	{0x7f, 0xe7, BURST_TYPE},
-	{0x80, 0xed, BURST_TYPE},
-	{0x81, 0xf2, BURST_TYPE},
-	{0x82, 0xf6, BURST_TYPE},
-	{0x83, 0xf9, BURST_TYPE},
-	{0x84, 0xfa, BURST_TYPE},
+	{0x76, 0x9A, BURST_TYPE},
+	{0x77, 0x9F, BURST_TYPE},
+	{0x78, 0xA9, BURST_TYPE},
+	{0x79, 0xB1, BURST_TYPE},
+	{0x7a, 0xB9, BURST_TYPE},
+	{0x7b, 0xC6, BURST_TYPE},
+	{0x7c, 0xD0, BURST_TYPE},
+	{0x7d, 0xD8, BURST_TYPE},
+	{0x7e, 0xDF, BURST_TYPE},
+	{0x7f, 0xE6, BURST_TYPE},
+	{0x80, 0xEC, BURST_TYPE},
+	{0x81, 0xF1, BURST_TYPE},
+	{0x82, 0xF7, BURST_TYPE},
+	{0x83, 0xFB, BURST_TYPE},
+	{0x84, 0xFF, BURST_TYPE},
 	           
 	{0x85, 0x00, BURST_TYPE},//GMA08
 	{0x86, 0x03, BURST_TYPE},
 	{0x87, 0x08, BURST_TYPE},
 	{0x88, 0x12, BURST_TYPE},
-	{0x89, 0x1a, BURST_TYPE},
-	{0x8a, 0x26, BURST_TYPE},
-	{0x8b, 0x31, BURST_TYPE},
-	{0x8c, 0x3f, BURST_TYPE},
-	{0x8d, 0x49, BURST_TYPE},
-	{0x8e, 0x55, BURST_TYPE},
-	{0x8f, 0x61, BURST_TYPE},
-	{0x90, 0x6a, BURST_TYPE},
-	{0x91, 0x70, BURST_TYPE},
-	{0x92, 0x77, BURST_TYPE},
-	{0x93, 0x7f, BURST_TYPE},
+	{0x89, 0x19, BURST_TYPE},
+	{0x8a, 0x25, BURST_TYPE},
+	{0x8b, 0x32, BURST_TYPE},
+	{0x8c, 0x3E, BURST_TYPE},
+	{0x8d, 0x4B, BURST_TYPE},
+	{0x8e, 0x56, BURST_TYPE},
+	{0x8f, 0x62, BURST_TYPE},
+	{0x90, 0x6A, BURST_TYPE},
+	{0x91, 0x71, BURST_TYPE},
+	{0x92, 0x78, BURST_TYPE},
+	{0x93, 0x7F, BURST_TYPE},
 	{0x94, 0x85, BURST_TYPE},
-	{0x95, 0x8b, BURST_TYPE},
-	{0x96, 0x91, BURST_TYPE},
+	{0x95, 0x8A, BURST_TYPE},
+	{0x96, 0x90, BURST_TYPE},
 	{0x97, 0x95, BURST_TYPE},
-	{0x98, 0x9a, BURST_TYPE},
-	{0x99, 0x9f, BURST_TYPE},
-	{0x9a, 0xa7, BURST_TYPE},
-	{0x9b, 0xaf, BURST_TYPE},
-	{0x9c, 0xb7, BURST_TYPE},
-	{0x9d, 0xc4, BURST_TYPE},
-	{0x9e, 0xd0, BURST_TYPE},
-	{0x9f, 0xd9, BURST_TYPE},
-	{0xa0, 0xe0, BURST_TYPE},
-	{0xa1, 0xe7, BURST_TYPE},
-	{0xa2, 0xed, BURST_TYPE},
-	{0xa3, 0xf2, BURST_TYPE},
-	{0xa4, 0xf6, BURST_TYPE},
-	{0xa5, 0xf9, BURST_TYPE},
-	{0xa6, 0xfa, BURST_TYPE},
+	{0x98, 0x9A, BURST_TYPE},
+	{0x99, 0x9F, BURST_TYPE},
+	{0x9a, 0xA9, BURST_TYPE},
+	{0x9b, 0xB1, BURST_TYPE},
+	{0x9c, 0xB9, BURST_TYPE},
+	{0x9d, 0xC6, BURST_TYPE},
+	{0x9e, 0xD0, BURST_TYPE},
+	{0x9f, 0xD8, BURST_TYPE},
+	{0xa0, 0xDF, BURST_TYPE},
+	{0xa1, 0xE6, BURST_TYPE},
+	{0xa2, 0xEC, BURST_TYPE},
+	{0xa3, 0xF1, BURST_TYPE},
+	{0xa4, 0xF7, BURST_TYPE},
+	{0xa5, 0xFB, BURST_TYPE},
+	{0xa6, 0xFF, BURST_TYPE},
 	           
 	{0xa7, 0x00, BURST_TYPE},//GMA09
 	{0xa8, 0x03, BURST_TYPE},
 	{0xa9, 0x08, BURST_TYPE},
 	{0xaa, 0x12, BURST_TYPE},
-	{0xab, 0x1a, BURST_TYPE},
-	{0xac, 0x26, BURST_TYPE},
-	{0xad, 0x31, BURST_TYPE},
-	{0xae, 0x3f, BURST_TYPE},
-	{0xaf, 0x49, BURST_TYPE},
-	{0xb0, 0x55, BURST_TYPE},
-	{0xb1, 0x61, BURST_TYPE},
-	{0xb2, 0x6a, BURST_TYPE},
-	{0xb3, 0x70, BURST_TYPE},
-	{0xb4, 0x77, BURST_TYPE},
-	{0xb5, 0x7f, BURST_TYPE},
+	{0xab, 0x19, BURST_TYPE},
+	{0xac, 0x25, BURST_TYPE},
+	{0xad, 0x32, BURST_TYPE},
+	{0xae, 0x3E, BURST_TYPE},
+	{0xaf, 0x4B, BURST_TYPE},
+	{0xb0, 0x56, BURST_TYPE},
+	{0xb1, 0x62, BURST_TYPE},
+	{0xb2, 0x6A, BURST_TYPE},
+	{0xb3, 0x71, BURST_TYPE},
+	{0xb4, 0x78, BURST_TYPE},
+	{0xb5, 0x7F, BURST_TYPE},
 	{0xb6, 0x85, BURST_TYPE},
-	{0xb7, 0x8b, BURST_TYPE},
-	{0xb8, 0x91, BURST_TYPE},
+	{0xb7, 0x8A, BURST_TYPE},
+	{0xb8, 0x90, BURST_TYPE},
 	{0xb9, 0x95, BURST_TYPE},
-	{0xba, 0x9a, BURST_TYPE},
-	{0xbb, 0x9f, BURST_TYPE},
-	{0xbc, 0xa7, BURST_TYPE},
-	{0xbd, 0xaf, BURST_TYPE},
-	{0xbe, 0xb7, BURST_TYPE},
-	{0xbf, 0xc4, BURST_TYPE},
-	{0xc0, 0xd0, BURST_TYPE},
-	{0xc1, 0xd9, BURST_TYPE},
-	{0xc2, 0xe0, BURST_TYPE},
-	{0xc3, 0xe7, BURST_TYPE},
-	{0xc4, 0xed, BURST_TYPE},
-	{0xc5, 0xf2, BURST_TYPE},
-	{0xc6, 0xf6, BURST_TYPE},
-	{0xc7, 0xf9, BURST_TYPE},
-	{0xc8, 0xfa, BURST_TYPE},
+	{0xba, 0x9A, BURST_TYPE},
+	{0xbb, 0x9F, BURST_TYPE},
+	{0xbc, 0xA9, BURST_TYPE},
+	{0xbd, 0xB1, BURST_TYPE},
+	{0xbe, 0xB9, BURST_TYPE},
+	{0xbf, 0xC6, BURST_TYPE},
+	{0xc0, 0xD0, BURST_TYPE},
+	{0xc1, 0xD8, BURST_TYPE},
+	{0xc2, 0xDF, BURST_TYPE},
+	{0xc3, 0xE6, BURST_TYPE},
+	{0xc4, 0xEC, BURST_TYPE},
+	{0xc5, 0xF1, BURST_TYPE},
+	{0xc6, 0xF7, BURST_TYPE},
+	{0xc7, 0xFB, BURST_TYPE},
+	{0xc8, 0xFF, BURST_TYPE},
 	           
 	{0xc9, 0x00, BURST_TYPE},//GMA10
 	{0xca, 0x03, BURST_TYPE},
 	{0xcb, 0x08, BURST_TYPE},
 	{0xcc, 0x12, BURST_TYPE},
-	{0xcd, 0x1a, BURST_TYPE},
-	{0xce, 0x26, BURST_TYPE},
-	{0xcf, 0x31, BURST_TYPE},
-	{0xd0, 0x3f, BURST_TYPE},
-	{0xd1, 0x49, BURST_TYPE},
-	{0xd2, 0x55, BURST_TYPE},
-	{0xd3, 0x61, BURST_TYPE},
-	{0xd4, 0x6a, BURST_TYPE},
-	{0xd5, 0x70, BURST_TYPE},
-	{0xd6, 0x77, BURST_TYPE},
-	{0xd7, 0x7f, BURST_TYPE},
+	{0xcd, 0x19, BURST_TYPE},
+	{0xce, 0x25, BURST_TYPE},
+	{0xcf, 0x32, BURST_TYPE},
+	{0xd0, 0x3E, BURST_TYPE},
+	{0xd1, 0x4B, BURST_TYPE},
+	{0xd2, 0x56, BURST_TYPE},
+	{0xd3, 0x62, BURST_TYPE},
+	{0xd4, 0x6A, BURST_TYPE},
+	{0xd5, 0x71, BURST_TYPE},
+	{0xd6, 0x78, BURST_TYPE},
+	{0xd7, 0x7F, BURST_TYPE},
 	{0xd8, 0x85, BURST_TYPE},
-	{0xd9, 0x8b, BURST_TYPE},
-	{0xda, 0x91, BURST_TYPE},
+	{0xd9, 0x8A, BURST_TYPE},
+	{0xda, 0x90, BURST_TYPE},
 	{0xdb, 0x95, BURST_TYPE},
-	{0xdc, 0x9a, BURST_TYPE},
-	{0xdd, 0x9f, BURST_TYPE},
-	{0xde, 0xa7, BURST_TYPE},
-	{0xdf, 0xaf, BURST_TYPE},
-	{0xe0, 0xb7, BURST_TYPE},
-	{0xe1, 0xc4, BURST_TYPE},
-	{0xe2, 0xd0, BURST_TYPE},
-	{0xe3, 0xd9, BURST_TYPE},
-	{0xe4, 0xe0, BURST_TYPE},
-	{0xe5, 0xe7, BURST_TYPE},
-	{0xe6, 0xed, BURST_TYPE},
-	{0xe7, 0xf2, BURST_TYPE},
-	{0xe8, 0xf6, BURST_TYPE},
-	{0xe9, 0xf9, BURST_TYPE},
-	{0xea, 0xfa, BURST_TYPE},
+	{0xdc, 0x9A, BURST_TYPE},
+	{0xdd, 0x9F, BURST_TYPE},
+	{0xde, 0xA9, BURST_TYPE},
+	{0xdf, 0xB1, BURST_TYPE},
+	{0xe0, 0xB9, BURST_TYPE},
+	{0xe1, 0xC6, BURST_TYPE},
+	{0xe2, 0xD0, BURST_TYPE},
+	{0xe3, 0xD8, BURST_TYPE},
+	{0xe4, 0xDF, BURST_TYPE},
+	{0xe5, 0xE6, BURST_TYPE},
+	{0xe6, 0xEC, BURST_TYPE},
+	{0xe7, 0xF1, BURST_TYPE},
+	{0xe8, 0xF7, BURST_TYPE},
+	{0xe9, 0xFB, BURST_TYPE},
+	{0xea, 0xFF, BURST_TYPE},
 	           
-	{0xeb, 0x00, BURST_TYPE},//GMA11
-	{0xec, 0x03, BURST_TYPE},
-	{0xed, 0x08, BURST_TYPE},
-	{0xee, 0x12, BURST_TYPE},
-	{0xef, 0x1a, BURST_TYPE},
-	{0xf0, 0x26, BURST_TYPE},
-	{0xf1, 0x31, BURST_TYPE},
-	{0xf2, 0x3f, BURST_TYPE},
-	{0xf3, 0x49, BURST_TYPE},
-	{0xf4, 0x55, BURST_TYPE},
-	{0xf5, 0x61, BURST_TYPE},
-	{0xf6, 0x6a, BURST_TYPE},
-	{0xf7, 0x70, BURST_TYPE},
-	{0xf8, 0x77, BURST_TYPE},
-	{0xf9, 0x7f, BURST_TYPE},
-	{0xfa, 0x85, BURST_TYPE},
-	{0xfb, 0x8b, BURST_TYPE},
-	{0xfc, 0x91, BURST_TYPE},
-	{0xfd, 0x95, BURST_TYPE},
-	{0x03, 0xd1, BYTE_LEN},//Page d1
-	{0x10, 0x9a, BURST_TYPE},
-	{0x11, 0x9f, BURST_TYPE},
-	{0x12, 0xa7, BURST_TYPE},
-	{0x13, 0xaf, BURST_TYPE},
-	{0x14, 0xb7, BURST_TYPE},
-	{0x15, 0xc4, BURST_TYPE},
-	{0x16, 0xd0, BURST_TYPE},
-	{0x17, 0xd9, BURST_TYPE},
-	{0x18, 0xe0, BURST_TYPE},
-	{0x19, 0xe7, BURST_TYPE},
-	{0x1a, 0xed, BURST_TYPE},
-	{0x1b, 0xf2, BURST_TYPE},
-	{0x1c, 0xf6, BURST_TYPE},
-	{0x1d, 0xf9, BURST_TYPE},
-	{0x1e, 0xfa, BURST_TYPE},
-	
+	{0xeb, 0x00, BURST_TYPE},//GMA11  
+	{0xec, 0x03, BURST_TYPE},         
+	{0xed, 0x08, BURST_TYPE},         
+	{0xee, 0x12, BURST_TYPE},         
+	{0xef, 0x19, BURST_TYPE},         
+	{0xf0, 0x25, BURST_TYPE},         
+	{0xf1, 0x32, BURST_TYPE},         
+	{0xf2, 0x3E, BURST_TYPE},         
+	{0xf3, 0x4B, BURST_TYPE},         
+	{0xf4, 0x56, BURST_TYPE},         
+	{0xf5, 0x62, BURST_TYPE},         
+	{0xf6, 0x6A, BURST_TYPE},         
+	{0xf7, 0x71, BURST_TYPE},         
+	{0xf8, 0x78, BURST_TYPE},         
+	{0xf9, 0x7F, BURST_TYPE},         
+	{0xfa, 0x85, BURST_TYPE},         
+	{0xfb, 0x8A, BURST_TYPE},         
+	{0xfc, 0x90, BURST_TYPE},         
+	{0xfd, 0x95, BURST_TYPE},         
+	{0x03, 0xd1, BYTE_LEN},//Page d1  
+	{0x10, 0x9A, BURST_TYPE},         
+	{0x11, 0x9F, BURST_TYPE},         
+	{0x12, 0xA9, BURST_TYPE},         
+	{0x13, 0xB1, BURST_TYPE},         
+	{0x14, 0xB9, BURST_TYPE},         
+	{0x15, 0xC6, BURST_TYPE},         
+	{0x16, 0xD0, BURST_TYPE},         
+	{0x17, 0xD8, BURST_TYPE},         
+	{0x18, 0xDF, BURST_TYPE},         
+	{0x19, 0xE6, BURST_TYPE},         
+	{0x1a, 0xEC, BURST_TYPE},         
+	{0x1b, 0xF1, BURST_TYPE},         
+	{0x1c, 0xF7, BURST_TYPE},         
+	{0x1d, 0xFB, BURST_TYPE},         
+	{0x1e, 0xFF, BURST_TYPE},
+
 	///////////////////////////////////////////
 	// D1 Page Adaptive Y Target delta
 	///////////////////////////////////////////
@@ -3248,7 +3265,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x34, 0x88, BURST_TYPE},//SATB_09
 	{0x35, 0x88, BURST_TYPE},//SATB_10
 	{0x36, 0x88, BURST_TYPE},//SATB_11 
-	
+
 	//Cr		
 
 	{0x37, 0x70, BURST_TYPE},//SATR_00
@@ -3264,11 +3281,11 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x41, 0x88, BURST_TYPE},//SATR_10
 	{0x42, 0x88, BURST_TYPE},//SATR_11
 
-	
+
 	///////////////////////////////////////////
 	// D1 Page Adaptive CMC
 	///////////////////////////////////////////
-	
+
 	{0x43, 0x2f, BURST_TYPE},//CMC_00
 	{0x44, 0x74, BURST_TYPE},
 	{0x45, 0x3f, BURST_TYPE},
@@ -3405,7 +3422,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	/////////////////////////////////////////// 		  
 	//MCMC_00
 	{0xbb, 0x80, BURST_TYPE},//GLB_GAIN
-	{0xbc, 0x02, BURST_TYPE},//GLB_HUE  
+	{0xbc, 0x01, BURST_TYPE},//GLB_HUE  
 	{0xbd, 0x73, BURST_TYPE},//0_GAIN   
 	{0xbe, 0x81, BURST_TYPE},//0_HUE	  
 	{0xbf, 0x35, BURST_TYPE},//0_CENTER
@@ -3432,7 +3449,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xd4, 0x1c, BURST_TYPE},//5_DELTA  
 	//MCMC_01  
 	{0xd5, 0x80, BURST_TYPE},//GLB_GAIN
-	{0xd6, 0x02, BURST_TYPE},//GLB_HUE
+	{0xd6, 0x01, BURST_TYPE},//GLB_HUE
 	{0xd7, 0x66, BURST_TYPE},//0_GAIN  
 	{0xd8, 0x00, BURST_TYPE},//0_HUE
 	{0xd9, 0x35, BURST_TYPE},//0_CENTER
@@ -3459,7 +3476,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xee, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_02  
 	{0xef, 0x80, BURST_TYPE},//GLB_GAIN
-	{0xf0, 0x02, BURST_TYPE},//GLB_HUE
+	{0xf0, 0x01, BURST_TYPE},//GLB_HUE
 	{0xf1, 0x66, BURST_TYPE},//0_GAIN  
 	{0xf2, 0x00, BURST_TYPE},//0_HUE
 	{0xf3, 0x35, BURST_TYPE},//0_CENTER
@@ -3489,7 +3506,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x1a, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_03  
 	{0x1b, 0x80, BURST_TYPE},//GLB_GAIN
-	{0x1c, 0x03, BURST_TYPE},//GLB_HUE
+	{0x1c, 0x01, BURST_TYPE},//GLB_HUE
 	{0x1d, 0x70, BURST_TYPE},//0_GAIN
 	{0x1e, 0x04, BURST_TYPE},//0_HUE
 	{0x1f, 0x36, BURST_TYPE},//0_CENTER
@@ -3516,7 +3533,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x34, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_04  
 	{0x35, 0x80, BURST_TYPE},//GLB_GAIN
-	{0x36, 0x03, BURST_TYPE},//GLB_HUE
+	{0x36, 0x82, BURST_TYPE},//GLB_HUE
 	{0x37, 0x80, BURST_TYPE},//0_GAIN
 	{0x38, 0x80, BURST_TYPE},//0_HUE
 	{0x39, 0x36, BURST_TYPE},//0_CENTER
@@ -3543,7 +3560,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x4e, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_05  
 	{0x4f, 0x80, BURST_TYPE},//GLB_GAIN
-	{0x50, 0x03, BURST_TYPE},//GLB_HUE
+	{0x50, 0x01, BURST_TYPE},//GLB_HUE
 	{0x51, 0x80, BURST_TYPE},//0_GAIN
 	{0x52, 0x80, BURST_TYPE},//0_HUE
 	{0x53, 0x36, BURST_TYPE},//0_CENTER
@@ -3570,7 +3587,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x68, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_06  
 	{0x69, 0x80, BURST_TYPE},//GLB_GAIN
-	{0x6a, 0x03, BURST_TYPE},//GLB_HUE
+	{0x6a, 0x01, BURST_TYPE},//GLB_HUE
 	{0x6b, 0x80, BURST_TYPE},//0_GAIN
 	{0x6c, 0x04, BURST_TYPE},//0_HUE
 	{0x6d, 0x36, BURST_TYPE},//0_CENTER
@@ -3597,7 +3614,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x82, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_07  
 	{0x83, 0x80, BURST_TYPE},//GLB_GAIN
-	{0x84, 0x03, BURST_TYPE},//GLB_HUE
+	{0x84, 0x82, BURST_TYPE},//GLB_HUE
 	{0x85, 0x80, BURST_TYPE},//0_GAIN
 	{0x86, 0x04, BURST_TYPE},//0_HUE
 	{0x87, 0x36, BURST_TYPE},//0_CENTER
@@ -3624,7 +3641,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x9c, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_08  
 	{0x9d, 0x80, BURST_TYPE},//GLB_GAIN
-	{0x9e, 0x03, BURST_TYPE},//GLB_HUE
+	{0x9e, 0x01, BURST_TYPE},//GLB_HUE
 	{0x9f, 0x80, BURST_TYPE},//0_GAIN
 	{0xa0, 0x04, BURST_TYPE},//0_HUE
 	{0xa1, 0x36, BURST_TYPE},//0_CENTER
@@ -3651,7 +3668,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xb6, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_09  
 	{0xb7, 0x80, BURST_TYPE},//GLB_GAIN
-	{0xb8, 0x03, BURST_TYPE},//GLB_HUE
+	{0xb8, 0x01, BURST_TYPE},//GLB_HUE
 	{0xb9, 0x80, BURST_TYPE},//0_GAIN
 	{0xba, 0x04, BURST_TYPE},//0_HUE
 	{0xbb, 0x36, BURST_TYPE},//0_CENTER
@@ -3678,7 +3695,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xd0, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_10  
 	{0xd1, 0x80, BURST_TYPE},//GLB_GAIN
-	{0xd2, 0x03, BURST_TYPE},//GLB_HUE
+	{0xd2, 0x01, BURST_TYPE},//GLB_HUE
 	{0xd3, 0x80, BURST_TYPE},//0_GAIN
 	{0xd4, 0x04, BURST_TYPE},//0_HUE
 	{0xd5, 0x36, BURST_TYPE},//0_CENTER
@@ -3705,7 +3722,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xea, 0x1d, BURST_TYPE},//5_DELTA
 	//MCMC_11  
 	{0xeb, 0x80, BURST_TYPE},//GLB_GAIN
-	{0xec, 0x03, BURST_TYPE},//GLB_HUE
+	{0xec, 0x01, BURST_TYPE},//GLB_HUE
 	{0xed, 0x80, BURST_TYPE},//0_GAIN
 	{0xee, 0x04, BURST_TYPE},//0_HUE
 	{0xef, 0x36, BURST_TYPE},//0_CENTER
@@ -3726,9 +3743,9 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	           
 	{0xfe, 0x0c, BURST_TYPE},
 	{0xff, 0x76, BURST_TYPE},
-	
+
 	{0x03, 0xd3, BYTE_LEN},//Page d3
-	
+
 	{0x10, 0x0c, BURST_TYPE},//4_HUE
 	{0x11, 0x76, BURST_TYPE},//4_CENTER
 	{0x12, 0x1c, BURST_TYPE},//4_DELTA
@@ -3736,11 +3753,11 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x14, 0x8a, BURST_TYPE},//5_HUE
 	{0x15, 0x52, BURST_TYPE},//5_CENTER
 	{0x16, 0x1d, BURST_TYPE},//5_DELTA
-	
+
 	///////////////////////////////////////////
 	// D3 Page Adaptive LSC
 	///////////////////////////////////////////
-	
+
 	{0x17, 0x00, BURST_TYPE}, //LSC 00 ofs GB
 	{0x18, 0x00, BURST_TYPE}, //LSC 00 ofs B
 	{0x19, 0x00, BURST_TYPE}, //LSC 00 ofs R
@@ -3885,13 +3902,13 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	           
 	{0x90, 0x80, BURST_TYPE}, //DNP CB
 	{0x91, 0x80, BURST_TYPE}, //DNP CR
-	
+
 	///////////////////////////////////
 	//Page 0xD9 DMA EXTRA
 	///////////////////////////////////
-	
+
 	{0x03, 0xd9, BYTE_LEN},
-	
+
 	{0x10, 0x03, BURST_TYPE},
 	{0x11, 0x10, BURST_TYPE},//Page 10
 	{0x12, 0x61, BURST_TYPE},
@@ -4092,7 +4109,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	// Page 0xDA(DMA Outdoor)
 	///////////////////////////////////
 	{0x03, 0xda, BYTE_LEN},
-	
+
 	{0x10, 0x03, BURST_TYPE},
 	{0x11, 0x11, BURST_TYPE},//11 page
 	{0x12, 0x10, BURST_TYPE},
@@ -4125,7 +4142,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x2b, 0x1e, BURST_TYPE}, //21                                         
 	{0x2c, 0x38, BURST_TYPE}, //outdoor 0x1138                             
 	{0x2d, 0x17, BURST_TYPE}, //18                                         
-	
+
 	{0x2e, 0x39, BURST_TYPE},
 	{0x2f, 0x28, BURST_TYPE},				
 	{0x30, 0x3a, BURST_TYPE},
@@ -4361,7 +4378,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfd, 0x02, BURST_TYPE},
 	{0xfe, 0x45, BURST_TYPE},
 	{0xff, 0x0a, BURST_TYPE},
-	
+
 	// Page 0xdb		  
 	{0x03, 0xdb, BYTE_LEN},
 					
@@ -4754,7 +4771,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x2b, 0x1e, BURST_TYPE}, //21                                                          
 	{0x2c, 0x38, BURST_TYPE}, //Indoor 0x1138                                               
 	{0x2d, 0x17, BURST_TYPE}, //18                                                          
-	
+
 	{0x2e, 0x39, BURST_TYPE},//Indoor 0x1139 gain 1           
 	{0x2f, 0x34, BURST_TYPE},    //r2 1
 	{0x30, 0x3a, BURST_TYPE},//Indoor 0x113a
@@ -4963,7 +4980,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x80, BURST_TYPE},
 	{0xfc, 0x44, BURST_TYPE}, //Indoor 0x1244
 	{0xfd, 0x02, BURST_TYPE},
-	
+
 	{0x03, 0xde, BYTE_LEN},
 	{0x10, 0x45, BURST_TYPE}, //Indoor 0x1245
 	{0x11, 0x0a, BURST_TYPE},
@@ -5203,7 +5220,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x48, BURST_TYPE},
 	{0xfc, 0x3b, BURST_TYPE},//Indoor 0x143b
 	{0xfd, 0x30, BURST_TYPE},
-	
+
 	{0x03, 0xdf, BYTE_LEN},
 	{0x10, 0x3c, BURST_TYPE},//Indoor 0x143c
 	{0x11, 0x30, BURST_TYPE},
@@ -5292,12 +5309,12 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x64, 0x7b, BURST_TYPE},//Indoor 0x147b	   //green sharp nega Low		  
 	{0x65, 0x60, BURST_TYPE},
 
-	
-	
+
+
 	//////////////////
 	// e0 Page (DMA Dark1)
 	//////////////////
-	
+
 	//Page 0xe0
 	{0x03, 0xe0, BYTE_LEN},
 	{0x10, 0x03, BURST_TYPE},
@@ -5316,7 +5333,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x1d, 0x24, BURST_TYPE}, //20
 	{0x1e, 0x31, BURST_TYPE}, //Dark1 0x1131
 	{0x1f, 0x24, BURST_TYPE}, //20
-	
+
 	{0x20, 0x32, BURST_TYPE}, //Dark1 0x1132 //STEVE Lum. Level. in DLPF
 	{0x21, 0x8b, BURST_TYPE}, //52                                      
 	{0x22, 0x33, BURST_TYPE}, //Dark1 0x1133                            
@@ -5541,7 +5558,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x80, BURST_TYPE},
 	{0xfc, 0x44, BURST_TYPE}, //Dark1 0x1244
 	{0xfd, 0x02, BURST_TYPE},
-	
+
 	{0x03, 0xe1, BYTE_LEN},
 	{0x10, 0x45, BURST_TYPE}, //Dark1 0x1245
 	{0x11, 0x0a, BURST_TYPE},
@@ -5781,7 +5798,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x18, BURST_TYPE}, //dr gain
 	{0xfc, 0x3b, BURST_TYPE}, //Dark1 0x143b
 	{0xfd, 0x20, BURST_TYPE},
-	
+
 	{0x03, 0xe2, BYTE_LEN},
 	{0x10, 0x3c, BURST_TYPE}, //Dark1 0x143c
 	{0x11, 0x18, BURST_TYPE},
@@ -5874,7 +5891,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	//////////////////
 	// e3 Page (DMA Dark2)
 	//////////////////
-	
+
 	{0x03, 0xe3, BYTE_LEN},
 	{0x10, 0x03, BURST_TYPE},//Dark2 Page11
 	{0x11, 0x11, BURST_TYPE},
@@ -6117,7 +6134,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfd, 0x02, BURST_TYPE},
 	{0xfe, 0x45, BURST_TYPE},
 	{0xff, 0x0a, BURST_TYPE},
-	
+
 	{0x03, 0xe4, BYTE_LEN},
 	{0x10, 0x45, BURST_TYPE}, //Dark2 0x1245
 	{0x11, 0x0a, BURST_TYPE},
@@ -6359,7 +6376,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfd, 0x20, BURST_TYPE},
 	{0xfe, 0x3c, BURST_TYPE},
 	{0xff, 0x20, BURST_TYPE},
-	
+
 	{0x03, 0xe5, BYTE_LEN},
 	{0x10, 0x3c, BURST_TYPE}, //Dark2 0x143c
 	{0x11, 0x18, BURST_TYPE},
@@ -6451,22 +6468,22 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 
 
 	// DMA END
-	
+
 	{0x03, 0x00, BYTE_LEN},
 	{0x01, 0xF1, BYTE_LEN}, //Sleep mode on
-	
+
 	{0x03, 0xc0, BYTE_LEN},
 	{0x16, 0x80, BYTE_LEN}, //MCU main roof holding off
-	
+
 	{0x03, 0xC0, BYTE_LEN},
 	{0x33, 0x01, BYTE_LEN}, //DMA hand shake mode set
 	{0x32, 0x01, BYTE_LEN}, //DMA off
 	{0x03, 0x30, BYTE_LEN},
 	{0x11, 0x04, BYTE_LEN}, //Bit[0]: MCU hold off
-	
+
 	{0x03, 0xc0, BYTE_LEN},
 	{0xe1, 0x00, BYTE_LEN},
-	
+
 	{0x03, 0x30, BYTE_LEN},
 	{0x25, 0x0e, BYTE_LEN},
 	{0x25, 0x1e, BYTE_LEN},
@@ -6488,13 +6505,13 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x3B, 0x18, BYTE_LEN},
 	{0x3C, 0x8C, BYTE_LEN},
 	{0x10, 0x19, BYTE_LEN}, //SSD enable
-	
+
 	{0x03, 0xc4, BYTE_LEN}, //AE en
 	{0x10, 0xe3, BYTE_LEN},
-	
+
 	{0x03, 0xc3, BYTE_LEN}, //AE Static en
 	{0x10, 0x84, BYTE_LEN},
-	
+
 	///////////////////////////////////////////
 	// 30 Page DMA address set
 	///////////////////////////////////////////
@@ -6519,16 +6536,16 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x8d, 0x04, BYTE_LEN},
 	{0x8e, 0x2c, BYTE_LEN}, //Dark2 end
 	{0x8f, 0xcd, BYTE_LEN},
-	
-	
-	
+
+
+
 	///////////////////////////////////////////
 	// CD Page (Color ratio)
 	///////////////////////////////////////////
 	{0x03, 0xCD, BYTE_LEN},
 	{0x10, 0x38, BYTE_LEN}, //ColorRatio disable ½ÃÅ´
-	
-	
+
+
 	{0x03, 0xc9, BYTE_LEN}, //AWB Start Point
 	{0x2a, 0x00, BYTE_LEN},
 	{0x2b, 0xb2, BYTE_LEN},
@@ -6538,13 +6555,13 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x2f, 0xb2, BYTE_LEN},
 	{0x30, 0x00, BYTE_LEN},
 	{0x31, 0x82, BYTE_LEN},
-	
+
 	{0x03, 0xc5, BYTE_LEN}, //AWB en
 	{0x10, 0xb1, BYTE_LEN},
-	
+
 	{0x03, 0xcf, BYTE_LEN}, //Adative en
 	{0x10, 0xaf, BYTE_LEN}, // STEVE 8f -> af ON :Ytar, Gam, CCM, Sat, LSC, MCMC / OFF: Yoffs, Contrast
-	
+
 	///////////////////////////////////////////
 	// 48 Page MIPI setting
 	///////////////////////////////////////////
@@ -6554,7 +6571,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x11, 0x00, BYTE_LEN}, //Normal Mode
 	{0x14, 0x50, BYTE_LEN}, //Skew
 	{0x16, 0x04, BYTE_LEN}, 
-	
+
 	{0x1a, 0x11, BYTE_LEN},
 	{0x1b, 0x0d, BYTE_LEN}, //Short Packet
 	{0x1c, 0x0a, BYTE_LEN}, //Control DP
@@ -6563,24 +6580,24 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x1f, 0x07, BYTE_LEN},
 	{0x20, 0x00, BYTE_LEN},
 	{0x24, 0x1e, BYTE_LEN}, //Bayer8 : 2a, Bayer10 : 2b, YUV : 1e
-	
+
 	{0x30, 0x00, BYTE_LEN}, //2048*2
 	{0x31, 0x05, BYTE_LEN},
 	{0x32, 0x0f, BYTE_LEN}, // Tclk zero
 	{0x34, 0x06, BYTE_LEN}, // Tclk prepare
-	
+
 	{0x39, 0x03, BYTE_LEN}, //Drivability 00
-	
+
 	{0x03, 0x00, BYTE_LEN},
 	{0x0c, 0xf0, BYTE_LEN}, //Parallel Line Off
-	
+
 	{0x03, 0x00, BYTE_LEN},
 	{0x01, 0xf0, BYTE_LEN}, //sleep off
-	
+
 	{0x03, 0xC0, BYTE_LEN},
 	{0x33, 0x00, BYTE_LEN},
 	{0x32, 0x01, BYTE_LEN}, //DMA on
-	
+
 	//////////////////////////////////////////////
 	// Delay
 	//////////////////////////////////////////////
@@ -6594,7 +6611,7 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x03, 0x00, BYTE_LEN},
 	{0x03, 0x00, BYTE_LEN},
 	{0x03, 0x00, BYTE_LEN},
-	
+
 
 
 
@@ -6621,9 +6638,9 @@ struct hi351_i2c_reg_conf hi351_prev_settings[] = {
 	{ 0x10, 0x13, BYTE_LEN}, //Sub1/2 + Pre2
 	{ 0x11, 0x83, BYTE_LEN}, // STEVE 0 skip Fix Frame Off, XY Flip
 	{ 0x13, 0x80, BYTE_LEN}, //Fix AE Set Off
-	
+	{ 0x14, 0x70, BYTE_LEN}, // for Pre2mode
 	{ 0x03, 0xFE, DELAY_TYPE},
-	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
+	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay STEVE DV2 MUST WAIT 10msec
 	
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x20, 0x00, BYTE_LEN},
@@ -6651,7 +6668,7 @@ struct hi351_i2c_reg_conf hi351_prev_settings[] = {
 	{ 0xf0, 0x0d, BYTE_LEN}, // STEVE Dark mode for Sawtooth
 	
 	{ 0x03, 0xc4, BYTE_LEN}, //AE en
-	{ 0x10, 0xe3, BYTE_LEN},
+	{ 0x10, 0xe1, BYTE_LEN},
 	
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
@@ -6690,9 +6707,10 @@ struct hi351_i2c_reg_conf hi351_snap_settings[] = {
 	{ 0x03, 0x19, BYTE_LEN}, //Scaler Off
 	{ 0x10, 0x00, BYTE_LEN},
 	{ 0x03, 0x00, BYTE_LEN},
+	{ 0x14, 0x20, BYTE_LEN}, // for Full mode
 	{ 0x10, 0x00, BYTE_LEN}, //Full
-	//{ 0x03, 0xFE, DELAY_TYPE},
-	//{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
+	{ 0x03, 0xFE, DELAY_TYPE},
+	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay STEVE DV2 MUST WAIT 10msec
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x20, 0x00, BYTE_LEN},
 	{ 0x21, 0x03, BYTE_LEN}, //preview row start set.
@@ -6747,15 +6765,6 @@ struct hi351_i2c_reg_conf hi351_scene_normal_settings[] = {
 	{ 0x25, 0x44, BYTE_LEN}, 
 	{ 0x26, 0x3a, BYTE_LEN}, 
 	{ 0x27, 0x18, BYTE_LEN}, 
-
-	//ISO Auto
-	{ 0x51, 0xD0, BYTE_LEN}, //Max Gain
-	{ 0x52, 0x28, BYTE_LEN}, //Min Gain
-
-	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x19, 0x30, BYTE_LEN}, //Bnd0 Gain
-	{ 0x1a, 0x38, BYTE_LEN}, //Bnd1 Gain STEVE
-	{ 0x1b, 0x4c, BYTE_LEN}, //Bnd2 Gain
 
 	//Meteriyng - Center
 	{ 0x03, 0xc3, BYTE_LEN},
@@ -6815,10 +6824,6 @@ struct hi351_i2c_reg_conf hi351_scene_normal_settings[] = {
 	{ 0x6E, 0x11, BYTE_LEN},
 	{ 0x6F, 0x11, BYTE_LEN},
 
-	//Brightness 0
-	{ 0x03, 0xd9, BYTE_LEN},
-	{ 0x17, 0x00, BYTE_LEN},
-
 	//WB Auto
 	{ 0x03, 0xc5, BYTE_LEN}, //Page 0xc5
 	{ 0x10, 0xb1, BYTE_LEN}, //STEVE AWB on 
@@ -6828,11 +6833,10 @@ struct hi351_i2c_reg_conf hi351_scene_normal_settings[] = {
 	{ 0x19, 0xf0, BYTE_LEN}, //bInRgainMax_a00_n00 
 	{ 0x1a, 0x40, BYTE_LEN}, //bInBgainMin_a00_n00 
 	{ 0x1b, 0xf0, BYTE_LEN}, //bInBgainMax_a00_n00 
-
-	{0xb9, 0x5f, BYTE_LEN}, // steve OutRgainMin	
-	{0xba, 0xf0, BYTE_LEN}, // steve OutRgainMax	
-	{0xbb, 0x40, BYTE_LEN}, // steve OutBgainMin	
-	{0xbc, 0x63, BYTE_LEN}, // steve OutBgainMax	
+{ 0xb9, 0x50, BYTE_LEN}, //bOutRgainMin_a00_n00
+{ 0xba, 0xf0, BYTE_LEN}, //bOutRgainMax_a00_n00
+{ 0xbb, 0x40, BYTE_LEN}, //bOutBgainMin_a00_n00
+{ 0xbc, 0x80, BYTE_LEN}, //bOutBgainMax_a00_n00
 
 
 	//Saturation 0
@@ -6882,7 +6886,7 @@ struct hi351_i2c_reg_conf hi351_scene_normal_settings[] = {
 
 	//AE On
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN},
+{ 0x10, 0xe1, BYTE_LEN},
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 
@@ -6909,14 +6913,6 @@ struct hi351_i2c_reg_conf hi351_scene_portrait_settings[] = {
 	{ 0x26, 0x3a, BYTE_LEN}, 
 	{ 0x27, 0x18, BYTE_LEN}, 
 
-	//ISO Auto
-	{ 0x51, 0xD0, BYTE_LEN}, //Max Gain
-	{ 0x52, 0x28, BYTE_LEN}, //Min Gain
-
-	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x19, 0x30, BYTE_LEN}, //Bnd0 Gain
-	{ 0x1a, 0x34, BYTE_LEN}, //Bnd1 Gain
-	{ 0x1b, 0x4c, BYTE_LEN}, //Bnd2 Gain
 
 	//Metering - Center
 	{ 0x03, 0xc3, BYTE_LEN},
@@ -6976,9 +6972,6 @@ struct hi351_i2c_reg_conf hi351_scene_portrait_settings[] = {
 	{ 0x6E, 0x11, BYTE_LEN},
 	{ 0x6F, 0x11, BYTE_LEN},
 
-	//Brightness 0
-	{ 0x03, 0xd9, BYTE_LEN},
-	{ 0x17, 0x00, BYTE_LEN},
 
 	//WB Auto
 	{ 0x03, 0xc5, BYTE_LEN}, //Page 0xc5
@@ -6989,10 +6982,10 @@ struct hi351_i2c_reg_conf hi351_scene_portrait_settings[] = {
 	{ 0x19, 0xf0, BYTE_LEN}, //bInRgainMax_a00_n00 
 	{ 0x1a, 0x40, BYTE_LEN}, //bInBgainMin_a00_n00 
 	{ 0x1b, 0xf0, BYTE_LEN}, //bInBgainMax_a00_n00 
-	{0xb9, 0x5f, BYTE_LEN}, // steve OutRgainMin	
-	{0xba, 0xf0, BYTE_LEN}, // steve OutRgainMax	
-	{0xbb, 0x40, BYTE_LEN}, // steve OutBgainMin	
-	{0xbc, 0x63, BYTE_LEN}, // steve OutBgainMax	
+	{ 0xb9, 0x50, BYTE_LEN}, //bOutRgainMin_a00_n00
+	{ 0xba, 0xf0, BYTE_LEN}, //bOutRgainMax_a00_n00
+	{ 0xbb, 0x40, BYTE_LEN}, //bOutBgainMin_a00_n00
+	{ 0xbc, 0x80, BYTE_LEN}, //bOutBgainMax_a00_n00
 
 
 	//Saturation 0
@@ -7042,7 +7035,7 @@ struct hi351_i2c_reg_conf hi351_scene_portrait_settings[] = {
 
 	//AE On
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN},
+	{ 0x10, 0xe1, BYTE_LEN},
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 
@@ -7069,16 +7062,7 @@ struct hi351_i2c_reg_conf hi351_scene_landscape_settings[] = {
 	{ 0x26, 0x3a, BYTE_LEN}, 
 	{ 0x27, 0x18, BYTE_LEN}, 
 
-	//ISO Auto
-	{ 0x51, 0xD0, BYTE_LEN}, //Max Gain
-	{ 0x52, 0x28, BYTE_LEN}, //Min Gain
-
-	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x19, 0x30, BYTE_LEN}, //Bnd0 Gain
-	{ 0x1a, 0x34, BYTE_LEN}, //Bnd1 Gain
-	{ 0x1b, 0x4c, BYTE_LEN}, //Bnd2 Gain
-
-	//Metering - Center
+	//Metering - Matrix
 	{ 0x03, 0xc3, BYTE_LEN},
 
 	{ 0x3A, 0x11, BYTE_LEN},
@@ -7100,45 +7084,41 @@ struct hi351_i2c_reg_conf hi351_scene_landscape_settings[] = {
 	{ 0x4A, 0x11, BYTE_LEN},
 	{ 0x4B, 0x11, BYTE_LEN},
 	{ 0x4C, 0x11, BYTE_LEN},
-	{ 0x4D, 0x21, BYTE_LEN},
-	{ 0x4E, 0x44, BYTE_LEN},
-	{ 0x4F, 0x44, BYTE_LEN},
-	{ 0x50, 0x12, BYTE_LEN},
+	{ 0x4D, 0x11, BYTE_LEN},
+	{ 0x4E, 0x11, BYTE_LEN},
+	{ 0x4F, 0x11, BYTE_LEN},
+	{ 0x50, 0x11, BYTE_LEN},
 	{ 0x51, 0x11, BYTE_LEN},
 	{ 0x52, 0x11, BYTE_LEN},
-	{ 0x53, 0x22, BYTE_LEN},
-	{ 0x54, 0x44, BYTE_LEN},
-	{ 0x55, 0x44, BYTE_LEN},
-	{ 0x56, 0x22, BYTE_LEN},
+	{ 0x53, 0x11, BYTE_LEN},
+	{ 0x54, 0x11, BYTE_LEN},
+	{ 0x55, 0x11, BYTE_LEN},
+	{ 0x56, 0x11, BYTE_LEN},
 	{ 0x57, 0x11, BYTE_LEN},
-	{ 0x58, 0x21, BYTE_LEN},
-	{ 0x59, 0x44, BYTE_LEN},
-	{ 0x5A, 0x44, BYTE_LEN},
-	{ 0x5B, 0x44, BYTE_LEN},
-	{ 0x5C, 0x44, BYTE_LEN},
-	{ 0x5D, 0x12, BYTE_LEN},
-	{ 0x5E, 0x21, BYTE_LEN},
-	{ 0x5F, 0x44, BYTE_LEN},
-	{ 0x60, 0x44, BYTE_LEN},
-	{ 0x61, 0x44, BYTE_LEN},
-	{ 0x62, 0x44, BYTE_LEN},
-	{ 0x63, 0x12, BYTE_LEN},
-	{ 0x64, 0x21, BYTE_LEN},
-	{ 0x65, 0x44, BYTE_LEN},
-	{ 0x66, 0x44, BYTE_LEN},
-	{ 0x67, 0x44, BYTE_LEN},
-	{ 0x68, 0x44, BYTE_LEN},
-	{ 0x69, 0x12, BYTE_LEN},
+	{ 0x58, 0x11, BYTE_LEN},
+	{ 0x59, 0x11, BYTE_LEN},
+	{ 0x5A, 0x11, BYTE_LEN},
+	{ 0x5B, 0x11, BYTE_LEN},
+	{ 0x5C, 0x11, BYTE_LEN},
+	{ 0x5D, 0x11, BYTE_LEN},
+	{ 0x5E, 0x11, BYTE_LEN},
+	{ 0x5F, 0x11, BYTE_LEN},
+	{ 0x60, 0x11, BYTE_LEN},
+	{ 0x61, 0x11, BYTE_LEN},
+	{ 0x62, 0x11, BYTE_LEN},
+	{ 0x63, 0x11, BYTE_LEN},
+	{ 0x64, 0x11, BYTE_LEN},
+	{ 0x65, 0x11, BYTE_LEN},
+	{ 0x66, 0x11, BYTE_LEN},
+	{ 0x67, 0x11, BYTE_LEN},
+	{ 0x68, 0x11, BYTE_LEN},
+	{ 0x69, 0x11, BYTE_LEN},
 	{ 0x6A, 0x11, BYTE_LEN},
 	{ 0x6B, 0x11, BYTE_LEN},
 	{ 0x6C, 0x11, BYTE_LEN},
 	{ 0x6D, 0x11, BYTE_LEN},
 	{ 0x6E, 0x11, BYTE_LEN},
 	{ 0x6F, 0x11, BYTE_LEN},
-
-	//Brightness 0
-	{ 0x03, 0xd9, BYTE_LEN},
-	{ 0x17, 0x00, BYTE_LEN},
 
 	//WB Auto
 	{ 0x03, 0xc5, BYTE_LEN}, //Page 0xc5
@@ -7149,66 +7129,67 @@ struct hi351_i2c_reg_conf hi351_scene_landscape_settings[] = {
 	{ 0x19, 0xf0, BYTE_LEN}, //bInRgainMax_a00_n00 
 	{ 0x1a, 0x40, BYTE_LEN}, //bInBgainMin_a00_n00 
 	{ 0x1b, 0xf0, BYTE_LEN}, //bInBgainMax_a00_n00 
-	{0xb9, 0x5f, BYTE_LEN}, // steve OutRgainMin	
-	{0xba, 0xf0, BYTE_LEN}, // steve OutRgainMax	
-	{0xbb, 0x40, BYTE_LEN}, // steve OutBgainMin	
-	{0xbc, 0x63, BYTE_LEN}, // steve OutBgainMax	
+	{ 0xb9, 0x50, BYTE_LEN}, //bOutRgainMin_a00_n00
+	{ 0xba, 0xf0, BYTE_LEN}, //bOutRgainMax_a00_n00
+	{ 0xbb, 0x40, BYTE_LEN}, //bOutBgainMin_a00_n00
+	{ 0xbc, 0x80, BYTE_LEN}, //bOutBgainMax_a00_n00
 
 
-	//Saturation 0
+	//Saturation 1
 	{ 0x03, 0xd1, BYTE_LEN}, //page D1(Adaptive)
 
-	// STEVE SATB 
-	{ 0x2b, 0x70, BYTE_LEN},//SATB_00"
-	{ 0x2c, 0x70, BYTE_LEN},//SATB_01"
-	{ 0x2d, 0x70, BYTE_LEN},//SATB_02"
-	{ 0x2e, 0x80, BYTE_LEN},//SATB_03"
-	{ 0x2f, 0x80, BYTE_LEN},//SATB_04"
-	{ 0x30, 0x80, BYTE_LEN},//SATB_05"
-	{ 0x31, 0x88, BYTE_LEN},//SATB_06"
-	{ 0x32, 0x88, BYTE_LEN},//SATB_07"
-	{ 0x33, 0x88, BYTE_LEN},//SATB_08"
-	{ 0x34, 0x88, BYTE_LEN},//SATB_09"
-	{ 0x35, 0x88, BYTE_LEN},//SATB_10"
-	{ 0x36, 0x88, BYTE_LEN},//SATB_11"
+	//SATB 
+	{ 0x2b, 0x80, BYTE_LEN},//SATB_00"
+	{ 0x2c, 0x80, BYTE_LEN},//SATB_01"
+	{ 0x2d, 0x80, BYTE_LEN},//SATB_02"
+	{ 0x2e, 0xaa, BYTE_LEN},//SATB_03"
+	{ 0x2f, 0xa4, BYTE_LEN},//SATB_04"
+	{ 0x30, 0xa4, BYTE_LEN},//SATB_05"
+	{ 0x31, 0xa8, BYTE_LEN},//SATB_06"
+	{ 0x32, 0xa8, BYTE_LEN},//SATB_07"
+	{ 0x33, 0xa8, BYTE_LEN},//SATB_08"
+	{ 0x34, 0xa8, BYTE_LEN},//SATB_09"
+	{ 0x35, 0xa8, BYTE_LEN},//SATB_10"
+	{ 0x36, 0xa8, BYTE_LEN},//SATB_11"
 
-	// STEVE SATR 
-	{ 0x37, 0x70, BYTE_LEN},//SATR_00"
-	{ 0x38, 0x70, BYTE_LEN},//SATR_01"
-	{ 0x39, 0x70, BYTE_LEN},//SATR_02"
-	{ 0x3a, 0x80, BYTE_LEN},//SATR_03"
-	{ 0x3b, 0x80, BYTE_LEN},//SATR_04"
-	{ 0x3c, 0x80, BYTE_LEN},//SATR_05"
-	{ 0x3d, 0x88, BYTE_LEN},//SATR_06"
-	{ 0x3e, 0x88, BYTE_LEN},//SATR_07"
-	{ 0x3f, 0x88, BYTE_LEN},//SATR_08"
-	{ 0x40, 0x88, BYTE_LEN},//SATR_09"
-	{ 0x41, 0x88, BYTE_LEN},//SATR_10"
-	{ 0x42, 0x88, BYTE_LEN},//SATR_11"
+	//SATR 
+	{ 0x37, 0x80, BYTE_LEN},//SATR_00"
+	{ 0x38, 0x80, BYTE_LEN},//SATR_01"
+	{ 0x39, 0x80, BYTE_LEN},//SATR_02"
+	{ 0x3a, 0x9a, BYTE_LEN},//SATR_03"
+	{ 0x3b, 0x98, BYTE_LEN},//SATR_04"
+	{ 0x3c, 0x98, BYTE_LEN},//SATR_05"
+	{ 0x3d, 0x9c, BYTE_LEN},//SATR_06"
+	{ 0x3e, 0x9c, BYTE_LEN},//SATR_07"
+	{ 0x3f, 0x9c, BYTE_LEN},//SATR_08"
+	{ 0x40, 0x9c, BYTE_LEN},//SATR_09"
+	{ 0x41, 0x9c, BYTE_LEN},//SATR_10"
+	{ 0x42, 0x9c, BYTE_LEN},//SATR_11"
 
-	//Sharpness -1
+	//Sharpness 1
 	{ 0x03, 0xda, BYTE_LEN},
-	{ 0x1d, 0x24, BYTE_LEN},//outdoor
+	{ 0x1d, 0x1f, BYTE_LEN},//outdoor
 
 	{ 0x03, 0xdd, BYTE_LEN},
-	{ 0x1d, 0x24, BYTE_LEN},//indoor
+	{ 0x1d, 0x1f, BYTE_LEN},//indoor
 
 	{ 0x03, 0xe0, BYTE_LEN},
-	{ 0x1d, 0x26, BYTE_LEN},//dark1
+	{ 0x1d, 0x22, BYTE_LEN},//dark1
 
 	{ 0x03, 0xe3, BYTE_LEN},
-	{ 0x1d, 0x26, BYTE_LEN},//dark2
+	{ 0x1d, 0x24, BYTE_LEN},//dark2
 
 
 	//AE On
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN},
+	{ 0x10, 0xe1, BYTE_LEN},
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 
 	//AWB On
 	{ 0x03, 0xc5, BYTE_LEN},
 	{ 0x10, 0xb1, BYTE_LEN},
+
 
 
 };
@@ -7230,15 +7211,6 @@ struct hi351_i2c_reg_conf hi351_scene_sport_settings[] = {
 	{ 0x26, 0xE1, BYTE_LEN}, 
 	{ 0x27, 0x08, BYTE_LEN}, 
 
-	//ISO Auto
-	{ 0x51, 0xD0, BYTE_LEN}, //Max Gain
-	{ 0x52, 0x28, BYTE_LEN}, //Min Gain
-
-	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x19, 0x30, BYTE_LEN}, //Bnd0 Gain
-	{ 0x1a, 0x34, BYTE_LEN}, //Bnd1 Gain
-	{ 0x1b, 0x4c, BYTE_LEN}, //Bnd2 Gain
-
 	//Metering - Center
 	{ 0x03, 0xc3, BYTE_LEN},
 
@@ -7296,10 +7268,6 @@ struct hi351_i2c_reg_conf hi351_scene_sport_settings[] = {
 	{ 0x6D, 0x11, BYTE_LEN},
 	{ 0x6E, 0x11, BYTE_LEN},
 	{ 0x6F, 0x11, BYTE_LEN},
-
-	//Brightness 0
-	{ 0x03, 0xd9, BYTE_LEN},
-	{ 0x17, 0x00, BYTE_LEN},
 
 	//WB Auto
 	{ 0x03, 0xc5, BYTE_LEN}, //Page 0xc5
@@ -7310,10 +7278,10 @@ struct hi351_i2c_reg_conf hi351_scene_sport_settings[] = {
 	{ 0x19, 0xf0, BYTE_LEN}, //bInRgainMax_a00_n00 
 	{ 0x1a, 0x40, BYTE_LEN}, //bInBgainMin_a00_n00 
 	{ 0x1b, 0xf0, BYTE_LEN}, //bInBgainMax_a00_n00 
-	{0xb9, 0x5f, BYTE_LEN}, // steve OutRgainMin	
-	{0xba, 0xf0, BYTE_LEN}, // steve OutRgainMax	
-	{0xbb, 0x40, BYTE_LEN}, // steve OutBgainMin	
-	{0xbc, 0x63, BYTE_LEN}, // steve OutBgainMax	
+	{ 0xb9, 0x50, BYTE_LEN}, //bOutRgainMin_a00_n00
+	{ 0xba, 0xf0, BYTE_LEN}, //bOutRgainMax_a00_n00
+	{ 0xbb, 0x40, BYTE_LEN}, //bOutBgainMin_a00_n00
+	{ 0xbc, 0x80, BYTE_LEN}, //bOutBgainMax_a00_n00
 
 
 	//Saturation 0
@@ -7363,14 +7331,14 @@ struct hi351_i2c_reg_conf hi351_scene_sport_settings[] = {
 
 	//AE On
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN},
+	{ 0x10, 0xe1, BYTE_LEN},
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 
 	//AWB On
 	{ 0x03, 0xc5, BYTE_LEN},
 	{ 0x10, 0xb1, BYTE_LEN},
-	
+
 
 
 };
@@ -7379,30 +7347,21 @@ struct hi351_i2c_reg_conf hi351_scene_sunset_settings[] = {
 
 	{ 0x03, 0xc4, BYTE_LEN},
 	{ 0x10, 0x60, BYTE_LEN},
-	
+
 	//AWB OFF
 	{ 0x03, 0xc5, BYTE_LEN},
 	{ 0x10, 0x30, BYTE_LEN},
-	
+
 	//FPS Auto
 	{ 0x03, 0x20, BYTE_LEN}, 
 	{ 0x24, 0x00, BYTE_LEN}, //EXP Max 8.00 fps 
 	{ 0x25, 0x44, BYTE_LEN}, 
 	{ 0x26, 0x3a, BYTE_LEN}, 
 	{ 0x27, 0x18, BYTE_LEN}, 
-	
-	//ISO Auto
-	{ 0x51, 0xD0, BYTE_LEN}, //Max Gain
-	{ 0x52, 0x28, BYTE_LEN}, //Min Gain
-	
-	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x19, 0x30, BYTE_LEN}, //Bnd0 Gain
-	{ 0x1a, 0x34, BYTE_LEN}, //Bnd1 Gain
-	{ 0x1b, 0x4c, BYTE_LEN}, //Bnd2 Gain
-	
+
 	//Metering - Center
 	{ 0x03, 0xc3, BYTE_LEN},
-	
+
 	{ 0x3A, 0x11, BYTE_LEN},
 	{ 0x3B, 0x11, BYTE_LEN},
 	{ 0x3C, 0x11, BYTE_LEN},
@@ -7457,15 +7416,11 @@ struct hi351_i2c_reg_conf hi351_scene_sunset_settings[] = {
 	{ 0x6D, 0x11, BYTE_LEN},
 	{ 0x6E, 0x11, BYTE_LEN},
 	{ 0x6F, 0x11, BYTE_LEN},
-	
-	//Brightness 0
-	{ 0x03, 0xd9, BYTE_LEN},
-	{ 0x17, 0x00, BYTE_LEN},
-	
+
 	//WB Daylight
 	{ 0x03, 0xc5, BYTE_LEN},
 	{ 0x10, 0xb1, BYTE_LEN}, //STEVE AWB on 
-	
+
 	{ 0x03, 0xc6, BYTE_LEN},
 	{ 0x18, 0x58, BYTE_LEN}, //bInRgainMin_a00_n00 
 	{ 0x19, 0x70, BYTE_LEN}, //bInRgainMax_a00_n00 
@@ -7475,11 +7430,11 @@ struct hi351_i2c_reg_conf hi351_scene_sunset_settings[] = {
 	{ 0xba, 0x70, BYTE_LEN}, //bOutRgainMax_a00_n00
 	{ 0xbb, 0x68, BYTE_LEN}, //bOutBgainMin_a00_n00
 	{ 0xbc, 0x7a, BYTE_LEN}, //bOutBgainMax_a00_n00
-	
-	
+
+
 	//Saturation 0
 	{ 0x03, 0xd1, BYTE_LEN}, //page D1(Adaptive)
-	
+
 	// STEVE SATB 
 	{ 0x2b, 0x70, BYTE_LEN},//SATB_00"
 	{ 0x2c, 0x70, BYTE_LEN},//SATB_01"
@@ -7493,7 +7448,7 @@ struct hi351_i2c_reg_conf hi351_scene_sunset_settings[] = {
 	{ 0x34, 0x88, BYTE_LEN},//SATB_09"
 	{ 0x35, 0x88, BYTE_LEN},//SATB_10"
 	{ 0x36, 0x88, BYTE_LEN},//SATB_11"
-	
+
 	// STEVE SATR 
 	{ 0x37, 0x70, BYTE_LEN},//SATR_00"
 	{ 0x38, 0x70, BYTE_LEN},//SATR_01"
@@ -7507,31 +7462,32 @@ struct hi351_i2c_reg_conf hi351_scene_sunset_settings[] = {
 	{ 0x40, 0x88, BYTE_LEN},//SATR_09"
 	{ 0x41, 0x88, BYTE_LEN},//SATR_10"
 	{ 0x42, 0x88, BYTE_LEN},//SATR_11"
-	
+
 	// STEVE Sharpness 0 
 	{ 0x03, 0xda, BYTE_LEN},
 	{ 0x1d, 0x20, BYTE_LEN},//outdoor
-	
+
 	{ 0x03, 0xdd, BYTE_LEN},
 	{ 0x1d, 0x20, BYTE_LEN},//indoor
-	
+
 	{ 0x03, 0xe0, BYTE_LEN},
 	{ 0x1d, 0x24, BYTE_LEN},//dark1
-	
+
 	{ 0x03, 0xe3, BYTE_LEN},
 	{ 0x1d, 0x26, BYTE_LEN},//dark2
-	
-	
+
+
 	//AE On
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN},
+	{ 0x10, 0xe1, BYTE_LEN},
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
-	
+
 	//AWB On
 	{ 0x03, 0xc5, BYTE_LEN},
 	{ 0x10, 0xb1, BYTE_LEN},
-	
+
+		
 
 
 };
@@ -7552,15 +7508,6 @@ struct hi351_i2c_reg_conf hi351_scene_night_settings[] = {
 	{ 0x26, 0xd1, BYTE_LEN}, 
 	{ 0x27, 0xc0, BYTE_LEN}, 
 
-	//ISO Auto
-	{ 0x51, 0xD0, BYTE_LEN}, //Max Gain
-	{ 0x52, 0x28, BYTE_LEN}, //Min Gain
-
-	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x19, 0x30, BYTE_LEN}, //Bnd0 Gain
-	{ 0x1a, 0x34, BYTE_LEN}, //Bnd1 Gain
-	{ 0x1b, 0x4c, BYTE_LEN}, //Bnd2 Gain
-
 	//Metering - Center
 	{ 0x03, 0xc3, BYTE_LEN},
 
@@ -7619,12 +7566,8 @@ struct hi351_i2c_reg_conf hi351_scene_night_settings[] = {
 	{ 0x6E, 0x11, BYTE_LEN},
 	{ 0x6F, 0x11, BYTE_LEN},
 
-	//Brightness 0
-	{ 0x03, 0xd9, BYTE_LEN},
-	{ 0x17, 0x00, BYTE_LEN},
-
-	//WB Daylight
-	{ 0x03, 0xc5, BYTE_LEN},
+	//WB Auto
+	{ 0x03, 0xc5, BYTE_LEN}, //Page 0xc5
 	{ 0x10, 0xb1, BYTE_LEN}, //STEVE AWB on 
 
 	{ 0x03, 0xc6, BYTE_LEN},
@@ -7632,10 +7575,10 @@ struct hi351_i2c_reg_conf hi351_scene_night_settings[] = {
 	{ 0x19, 0xf0, BYTE_LEN}, //bInRgainMax_a00_n00 
 	{ 0x1a, 0x40, BYTE_LEN}, //bInBgainMin_a00_n00 
 	{ 0x1b, 0xf0, BYTE_LEN}, //bInBgainMax_a00_n00 
-	{0xb9, 0x5f, BYTE_LEN}, // steve OutRgainMin	
-	{0xba, 0xf0, BYTE_LEN}, // steve OutRgainMax	
-	{0xbb, 0x40, BYTE_LEN}, // steve OutBgainMin	
-	{0xbc, 0x63, BYTE_LEN}, // steve OutBgainMax	
+	{ 0xb9, 0x50, BYTE_LEN}, //bOutRgainMin_a00_n00
+	{ 0xba, 0xf0, BYTE_LEN}, //bOutRgainMax_a00_n00
+	{ 0xbb, 0x40, BYTE_LEN}, //bOutBgainMin_a00_n00
+	{ 0xbc, 0x80, BYTE_LEN}, //bOutBgainMax_a00_n00
 
 
 	//Saturation 0
@@ -7685,13 +7628,14 @@ struct hi351_i2c_reg_conf hi351_scene_night_settings[] = {
 
 	//AE On
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN},
+	{ 0x10, 0xe1, BYTE_LEN},
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 
 	//AWB On
 	{ 0x03, 0xc5, BYTE_LEN},
 	{ 0x10, 0xb1, BYTE_LEN},
+
 
 	
 
@@ -7786,7 +7730,7 @@ struct hi351_i2c_reg_conf hi351_auto_framerate_settings[] = {
 
 	
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN}, // STEVE AE ON
+	{ 0x10, 0xe1, BYTE_LEN}, // STEVE AE ON
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 	{ 0x03, 0xc5, BYTE_LEN}, //AWB en
@@ -7895,7 +7839,7 @@ struct hi351_i2c_reg_conf hi351_fixed_framerate_settings[] = {
 	{0x16, 0xb4, BYTE_LEN},                              
 
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN}, // STEVE AE en
+	{ 0x10, 0xe1, BYTE_LEN}, // STEVE AE en
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 	{ 0x03, 0xc5, BYTE_LEN}, //AWB en
@@ -7973,7 +7917,7 @@ struct hi351_i2c_reg_conf hi351_attached_framerate_settings[] = {
 
 
 	{ 0x03, 0xc4, BYTE_LEN},
-	{ 0x10, 0xe3, BYTE_LEN}, // STEVE AE ON
+	{ 0x10, 0xe1, BYTE_LEN}, // STEVE AE ON
 	{ 0x03, 0xFE, DELAY_TYPE},
 	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay 10ms
 	{ 0x03, 0xc5, BYTE_LEN}, //AWB en
@@ -8078,10 +8022,10 @@ struct hi351_i2c_reg_conf hi351_wb_auto_settings[] = {
 	{0x19, 0xf0, BYTE_LEN}, //bInRgainMax_a00_n00 
 	{0x1a, 0x40, BYTE_LEN}, //bInBgainMin_a00_n00 
 	{0x1b, 0xf0, BYTE_LEN}, //bInBgainMax_a00_n00 
-	{0xb9, 0x40, BYTE_LEN}, //bOutRgainMin_a00_n00	
+	{0xb9, 0x50, BYTE_LEN}, //bOutRgainMin_a00_n00	
 	{0xba, 0xf0, BYTE_LEN}, //bOutRgainMax_a00_n00	
 	{0xbb, 0x40, BYTE_LEN}, //bOutBgainMin_a00_n00	
-	{0xbc, 0xf0, BYTE_LEN}, //bOutBgainMax_a00_n00	
+	{0xbc, 0x80, BYTE_LEN}, //bOutBgainMax_a00_n00	
 	{0x03, 0xc5, BYTE_LEN},
 	{0x10, 0xb1, BYTE_LEN}, //AWB On
 
