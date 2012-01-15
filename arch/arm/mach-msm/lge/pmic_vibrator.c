@@ -52,10 +52,18 @@ static int set_pmic_vibrator(int on)
 			config_pmic_vibrator();
 			is_vib_congiged = 1;
 		}
+
 		if (pmic_vib_mot_set_volt(PMIC_VIBRATOR_LEVEL) < 0 ) {
-			printk(KERN_ERR "Failed to set Vibrator Motor Voltage level\n");
-			return -EFAULT;
-		}
+
+			msleep(1);		
+			pmic_vib_mot_set_mode(PM_VIB_MOT_MODE__MANUAL);
+
+			msleep(1);	
+			if (pmic_vib_mot_set_volt(PMIC_VIBRATOR_LEVEL) < 0 ) {
+			   printk(KERN_ERR "Failed to set Vibrator Motor Voltage level\n");
+			  return -EFAULT;
+		      }
+	        }
 	}
 	else {
 		pmic_vib_mot_set_volt(0);
