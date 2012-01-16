@@ -637,6 +637,12 @@ ifneq ($(KCFLAGS),)
         KBUILD_CFLAGS += $(KCFLAGS)
 endif
 
+#LGE_CHANGE_S, [Data_Patch_GB_US_65] for operator/country checking by d3sw1-data@lge.com
+ifeq (E0TRF, $(TARGET_CARRIER))
+KBUILD_CFLAGS   += -DLGE_TRACFONE_US
+endif
+#LGE_CHANGE_E, [Data_Patch_GB_US_65] for operator/country checking by d3sw1-data@lge.com
+
 # Use --build-id when available.
 LDFLAGS_BUILD_ID = $(patsubst -Wl$(comma)%,%,\
 			      $(call cc-ldoption, -Wl$(comma)--build-id,))
