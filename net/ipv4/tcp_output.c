@@ -228,6 +228,11 @@ void tcp_select_initial_window(int __space, __u32 mss,
 		}
 	}
 
+	// LGE_CHANGE_S, [Data_Patch_GB_US_47] [d3sw1-data@lge.com], 2012.01.15 <TCP window size bug>
+	#if TARGET_CARRIER_E0TRF 
+	(*rcv_wnd) = space;
+	#else
+
 	/* Set initial window to a value enough for senders starting with
 	 * initial congestion window of TCP_DEFAULT_INIT_RCVWND. Place
 	 * a limit on the initial window when mss is larger than 1460.
@@ -245,6 +250,9 @@ void tcp_select_initial_window(int __space, __u32 mss,
 		else
 			*rcv_wnd = min(*rcv_wnd, init_cwnd * mss);
 	}
+	#endif
+	// LGE_CHANGE_E, [Data_Patch_GB_US_47] [d3sw1-data@lge.com], 2012.01.15 <TCP window size bug>
+	
 
 	/* Set the clamp no higher than max representable value */
 	(*window_clamp) = min(65535U << (*rcv_wscale), *window_clamp);

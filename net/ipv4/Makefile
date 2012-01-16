@@ -2,6 +2,13 @@
 # Makefile for the Linux TCP/IP (INET) layer.
 #
 
+
+#LGE_CHANGE_S, [Data_Patch_GB_US_47] [d3sw1-data@lge.com], 2012.01.15 <TCP window size bug>
+ifeq ($(TARGET_CARRIER), E0TRF)
+EXTRA_CFLAGS += -DTARGET_CARRIER_$(TARGET_CARRIER)
+endif
+#LGE_CHANGE_E, [Data_Patch_GB_US_47] [d3sw1-data@lge.com], 2012.01.15 <TCP window size bug>
+
 obj-y     := route.o inetpeer.o protocol.o \
 	     ip_input.o ip_fragment.o ip_forward.o ip_options.o \
 	     ip_output.o ip_sockglue.o inet_hashtables.o \
