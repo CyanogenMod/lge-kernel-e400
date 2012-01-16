@@ -31,8 +31,8 @@
 #ifdef CONFIG_ARCH_MSM7X27A
 
 #if defined (CONFIG_MACH_MSM7X25A_E1BR) /* jjm_mdp */
-#define MSM_PMEM_MDP_SIZE       0x1600000 // 22MB (From 5.625MB)
-#define MSM_PMEM_ADSP_SIZE      0x96F000 // 9.43MB (From 13MB)
+#define MSM_PMEM_MDP_SIZE       0x1000000 // 16MB (From 5.625MB -> 22MB -> 16MB)
+#define MSM_PMEM_ADSP_SIZE      0xD00000 // 13MB (From 13MB -> 9.43MB -> 13MB)
 #else
 //#define MSM_PMEM_MDP_SIZE       0x1600000// 22MB
 //#define MSM_PMEM_MDP_SIZE       0x026000 //no cam preview, no 3gp play 
