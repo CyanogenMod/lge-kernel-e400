@@ -125,6 +125,7 @@ struct tavarua_device {
  * Module Parameters
  **************************************************************************/
 
+static int is_turned_off;
 /* Radio Nr */
 static int radio_nr = -1;
 module_param(radio_nr, int, 0);
@@ -697,9 +698,9 @@ FUNCTION:  tavarua_start_xfr
 static void tavarua_start_xfr(struct tavarua_device *radio,
 		enum tavarua_xfr_t pending_id, enum tavarua_xfr_ctrl_t xfr_id)
 {
-		if (radio->xfr_in_progress)
+		if (radio->xfr_in_progress) {
 			radio->pending_xfrs[pending_id] = 1;
-		else {
+		} else {
 			radio->xfr_in_progress = 1;
 			request_read_xfr(radio, xfr_id);
 		}
@@ -1229,7 +1230,8 @@ Radio band for all the 100KHz channel-spaced regions
 		printk(KERN_INFO "%s: The region selected from APP is"
 			" : TAVARUA_REGION_OTHER", __func__);
 		break;
-
+	default:
+		FMDERR("%s: UNKNOWN REGION %d\n", __func__, region);
 	}
 
 /* *********************************************************************** */
@@ -1256,9 +1258,10 @@ Radio band for all the 100KHz channel-spaced regions
 					SRCH200KHZ_OFFSET, SRCH_MASK);
 				msleep(TAVARUA_DELAY);
 				retval = tavarua_write_register(radio,
-					ADVCTRL, rdsMask);
-			} else
+						ADVCTRL, rdsMask);
+			} else {
 				return retval;
+			}
 		} /* if Marimba do nothing */
 		break;
 	case TAVARUA_REGION_EU:
@@ -1285,9 +1288,10 @@ Radio band for all the 100KHz channel-spaced regions
 					SRCH200KHZ_OFFSET, SRCH_MASK);
 				msleep(TAVARUA_DELAY);
 				retval = tavarua_write_register(radio,
-					ADVCTRL, rdsMask);
-			} else
+						ADVCTRL, rdsMask);
+			} else {
 				return retval;
+			}
 		} /* if Marimba do nothing */
 		break;
 	default:
@@ -1568,9 +1572,10 @@ static int tavarua_set_region(struct tavarua_device *radio,
 						SRCH200KHZ_OFFSET, SRCH_MASK);
 					msleep(TAVARUA_DELAY);
 					retval = tavarua_write_register(radio,
-						ADVCTRL, rdsMask);
-				} else
+							ADVCTRL, rdsMask);
+				} else {
 					return retval;
+				}
 			} /* if Marimba do nothing */
 			break;
 		case TAVARUA_REGION_EU:
@@ -1591,9 +1596,10 @@ static int tavarua_set_region(struct tavarua_device *radio,
 						SRCH200KHZ_OFFSET, SRCH_MASK);
 					msleep(TAVARUA_DELAY);
 					retval = tavarua_write_register(radio,
-						ADVCTRL, rdsMask);
-				} else
+							ADVCTRL, rdsMask);
+				} else {
 					return retval;
+				}
 			} /* if Marimba do nothing */
 			break;
 		}
@@ -1835,7 +1841,7 @@ static ssize_t tavarua_fops_write(struct file *file, const char __user *data,
 		break;
 	default:
 		FMDERR("%s: Unknown TX mode\n", __func__);
-		return -1;
+		return -EPERM;
 	}
 	retval = sync_write_xfr(radio, radio->tx_mode, tx_data);
 	if (retval < 0)
@@ -1875,7 +1881,7 @@ static ssize_t tavarua_fops_write(struct file *file, const char __user *data,
 		break;
 	default:
 		FMDERR("%s: Unknown TX mode\n", __func__);
-		return -1;
+		return -EPERM;
 	}
 	retval = sync_write_xfr(radio, radio->tx_mode, tx_data);
 	if (retval < 0)
@@ -1921,7 +1927,10 @@ static int tavarua_fops_open(struct file *file)
 	if (retval) {
 		printk(KERN_ERR "%s: failed config gpio & pmic\n", __func__);
 		goto open_err_setup;
+	} else {
+		FMDBG("initializing SoC\n");
 	}
+
 	if (radio->pdata->config_i2s_gpio != NULL) {
 		retval = radio->pdata->config_i2s_gpio(FM_I2S_ON);
 		if (retval) {
@@ -2139,10 +2148,40 @@ static int tavarua_fops_release(struct file *file)
 		return -ENODEV;
 	}
 
+	if (!is_turned_off)	{
+		radio->handle_irq = 1;
+		FMDBG("turning off forcely...\n");
+		retval = tavarua_write_register(radio, RDCTRL,
+				FM_OFF);
+		/*Make it synchronous
+		  Block it till READY interrupt
+		  Wait for interrupt i.e.
+		  complete(&radio->sync_req_done)
+		  */
+
+		if (retval >= 0) {
+			if (!wait_for_completion_timeout(
+						&radio->sync_req_done,
+						msecs_to_jiffies(wait_timeout)))
+				FMDBG("turning off timedout...\n");
+				FMDERR("Resetting the SOC");
+				retval = tavarua_write_register(radio, RDCTRL,FM_RESET);
+				FMDERR("reset return value = %x and sending ready event to APP",retval);
+				tavarua_q_event(radio, TAVARUA_EVT_RADIO_READY);
+		}
+	} else {
+		is_turned_off = 0;
+	}
+
 	FMDBG("In %s", __func__);
 
 	/* disable radio ctrl */
 	retval = tavarua_write_register(radio, RDCTRL, 0x00);
+
+    /*BEGIN: Modified Code*/ 
+    FMDERR("Wait for the READY event to be triggered before un-registering the Interrupt handler");
+    msleep(TAVARUA_DELAY*10); 
+    /*END: Modified Code*/ 
 
 	FMDBG("%s, Disable IRQs\n", __func__);
 	/* disable irq */
@@ -2211,7 +2250,7 @@ static int tavarua_fops_release(struct file *file)
 			 1, internal_vreg_ctl[index][0]);
 		if (retval < 0) {
 			printk(KERN_ERR "%s:0xF0 write failed\n", __func__);
-			return retval;
+			goto exit;
 		}
 		/* actual value itself used as mask*/
 		retval = marimba_write_bit_mask(radio->marimba,
@@ -2219,7 +2258,7 @@ static int tavarua_fops_release(struct file *file)
 			1, internal_vreg_ctl[index][1]);
 		if (retval < 0) {
 			printk(KERN_ERR "%s:0xF4 write failed\n", __func__);
-			return retval;
+			goto exit;
 		}
 	} else    {
 		/* disable fm core */
@@ -2231,8 +2270,9 @@ static int tavarua_fops_release(struct file *file)
 							&value, 1, FM_ENABLE);
 	if (retval < 0) {
 		printk(KERN_ERR "%s:XO_BUFF_CNTRL write failed\n", __func__);
-		return retval;
+		goto exit;
 	}
+exit:    
 	FMDBG("%s, Calling fm_shutdown\n", __func__);
 	/* teardown gpio and pmic */
 
@@ -2243,7 +2283,7 @@ static int tavarua_fops_release(struct file *file)
 	radio->handle_irq = 1;
 	atomic_inc(&radio->users);
 	radio->marimba->mod_id = SLAVE_ID_BAHAMA;
-	return 0;
+	return retval;
 }
 
 /*
@@ -2783,6 +2823,15 @@ static int tavarua_vidioc_g_ctrl(struct file *file, void *priv,
 			ctrl->value = radio->registers[ADVCTRL];
 		msleep(TAVARUA_DELAY*5);
 		break;
+	case V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA:
+		retval = sync_read_xfr(radio, RX_CONFIG, xfr_buf);
+		if (retval < 0) {
+			FMDERR("V4L2_CID_PRIVATE_TAVARUA_RSSI_DELTA]\n");
+			FMDERR("sync_read_xfr [retval=%d]\n", retval);
+			break;
+		}
+		ctrl->value = (unsigned char)xfr_buf[4];
+		break;
 	case V4L2_CID_PRIVATE_TAVARUA_RDSD_BUF:
 		retval = sync_read_xfr(radio, RDS_CONFIG, xfr_buf);
 		if (retval > -1)
@@ -2952,6 +3001,7 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 	unsigned char value;
 	unsigned char xfr_buf[XFR_REG_NUM];
 	unsigned char tx_data[XFR_REG_NUM];
+    unsigned char dis_buf[XFR_REG_NUM];
 
 	switch (ctrl->id) {
 	case V4L2_CID_AUDIO_VOLUME:
@@ -3000,30 +3050,37 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 				}
 			 /* Enabling 'SoftMute' and 'SignalBlending' features */
 			value = (radio->registers[IOCTRL] |
-				    IOC_SFT_MUTE | IOC_SIG_BLND);
+						IOC_SFT_MUTE | IOC_SIG_BLND);
 			retval = tavarua_write_register(radio, IOCTRL, value);
-			if (retval < 0)
-				FMDBG("SMute and SBlending not enabled\n");
+				if (retval < 0)
+					FMDBG("SMute and SBlending"
+							"not enabled\n");
 			}
 		}
 		/* check if off */
 		else if ((ctrl->value == FM_OFF) && radio->registers[RDCTRL]) {
 			FMDBG("turning off...\n");
-			retval = tavarua_write_register(radio, RDCTRL,
-							ctrl->value);
-			/*Make it synchronous
-			Block it till READY interrupt
-			Wait for interrupt i.e.
-			complete(&radio->sync_req_done)
-			*/
-
-			if (retval >= 0) {
-
-				if (!wait_for_completion_timeout(
-					&radio->sync_req_done,
-					msecs_to_jiffies(wait_timeout)))
-					FMDBG("turning off timedout...\n");
-			}
+                     tavarua_write_register(radio, RDCTRL, ctrl->value);
+                     /* flush the event and work queues */
+                     kfifo_reset(&radio->data_buf[TAVARUA_BUF_EVENTS]);
+                     flush_workqueue(radio->wqueue);
+                     /*
+                     queue the READY event from the host side
+                     in case of FM off
+                     */
+                     tavarua_q_event(radio, TAVARUA_EVT_RADIO_READY);
+                     
+                     FMDBG("%s, Disable All Interrupts\n", __func__);
+                     /* disable irq */
+                     dis_buf[STATUS_REG1] = 0x00;
+                     dis_buf[STATUS_REG2] = 0x00;
+                     dis_buf[STATUS_REG3] = TRANSFER;
+                     retval = sync_write_xfr(radio, INT_CTRL, dis_buf);
+                     if (retval < 0) {
+          				 printk(KERN_ERR "%s: failed to disable Interrupts\n", __func__);
+                         return retval;
+                     }
+			is_turned_off = 1;
 		}
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_SRCH_ALGORITHM:
@@ -3212,6 +3269,7 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 	} break;
 
 	default:
+		printk(KERN_INFO "Undefined Private control\n");
 		retval = -EINVAL;
 	}
 	if (retval < 0)
