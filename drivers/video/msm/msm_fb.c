@@ -334,7 +334,7 @@ static ssize_t mdp_write_kcal(struct device *dev, struct device_attribute *attr,
 
 	return count;
 }
-static DEVICE_ATTR(mdp_kcal,0777,NULL,mdp_write_kcal);
+static DEVICE_ATTR(mdp_kcal,0770,NULL,mdp_write_kcal);
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2012-01-03] 
 : For the calibration of LCD Color temperature */
 static int msm_fb_probe(struct platform_device *pdev)
