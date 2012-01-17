@@ -122,7 +122,7 @@ extern void tcp_time_wait(struct sock *sk, int state, int timeo);
 #endif
 
 // LGE_CHANGE_S, [Data_Patch_GB_US_65] d3sw1-data@lge.com, 2012-01-15 <MAX RTO set to 3sec>
-#if LGE_TRACFONE_US
+#ifdef LGE_TRACFONE_US
 #define TCP_RTO_MAX	((unsigned)(3*HZ))
 #else
 // LGE_CHANGE_E, [Data_Patch_GB_US_65] d3sw1-data@lge.com, 2012-01-15 <MAX RTO set to 3sec>

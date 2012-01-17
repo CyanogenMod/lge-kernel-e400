@@ -229,7 +229,7 @@ void tcp_select_initial_window(int __space, __u32 mss,
 	}
 
 	// LGE_CHANGE_S, [Data_Patch_GB_US_47] [d3sw1-data@lge.com], 2012.01.15 <TCP window size bug>
-	#if TARGET_CARRIER_E0TRF 
+	#ifdef TARGET_CARRIER_E0TRF 
 	(*rcv_wnd) = space;
 	#else
 
