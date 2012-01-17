@@ -325,6 +325,13 @@ static int hi351_set_effect(int effect)
 {
 	int rc = 0;
 
+	if(prev_effect_mode == -1)
+	{
+		printk(KERN_ERR "###  [CHECK]%s: skip this function, Previous Init sets \n", __func__);
+		prev_effect_mode = effect;
+		return rc;
+	}
+
 	if(prev_effect_mode == effect)
 	{
 		printk(KERN_ERR "###  [CHECK]%s: skip this function, effect_mode -> %d\n", __func__, effect);
@@ -381,6 +388,13 @@ static int hi351_set_effect(int effect)
 static int hi351_set_wb(int mode)
 {
 	int32_t rc = 0;
+
+	if(prev_balance_mode == -1)
+	{
+		printk(KERN_ERR "###  [CHECK]%s: skip this function, Previous Init sets \n", __func__);
+		prev_balance_mode = mode;
+		return rc;
+	}
 
 	if(prev_balance_mode == mode)
 	{
@@ -445,6 +459,13 @@ static int hi351_set_iso(int mode)
 {
 	int32_t rc = 0;
 
+	if(prev_iso_mode == -1)
+	{
+		printk(KERN_ERR "###  [CHECK]%s: skip this function, Previous Init sets \n", __func__);
+		prev_iso_mode = mode;
+		return rc;
+	}
+
 	if(prev_iso_mode == mode)
 	{
 		printk(KERN_ERR "###  [CHECK]%s: skip this function, iso_mode -> %d\n", __func__, mode);
@@ -495,6 +516,13 @@ static int hi351_set_iso(int mode)
 static long hi351_set_scene_mode(int8_t mode)
 {
 	int32_t rc = 0;
+
+	if(prev_scene_mode == -1)
+	{
+		printk(KERN_ERR "###  [CHECK]%s: skip this function, Previous Init sets \n", __func__);
+		prev_scene_mode = mode;
+		return rc;
+	}
 
 	if(prev_scene_mode == mode)
 	{
@@ -652,6 +680,13 @@ static long hi351_set_sensor_mode(int mode)
 static int hi351_set_Fps(int mode)
 {
 	int32_t rc = 0;
+
+	if(prev_fps_mode == -1)
+	{
+		printk(KERN_ERR "###  [CHECK]%s: skip this function, Previous Init sets \n", __func__);
+		prev_fps_mode = mode;
+		return rc;
+	}
 	
 	if(prev_fps_mode == mode)
 	{
@@ -809,6 +844,7 @@ static int hi351_sensor_init_probe(const struct msm_camera_sensor_info *data)
 {
 	int rc = 0;
 	unsigned char chipid1 = 0;
+	int retry = 0;
 
 	CDBG("%s in :%d\n",__func__, __LINE__);
 
@@ -846,7 +882,14 @@ static int hi351_sensor_init_probe(const struct msm_camera_sensor_info *data)
 
 	CDBG("init entry \n");
 
-	rc = hi351_reg_init();
+	for (retry = 0; retry < 3; ++retry) {
+		printk(KERN_ERR "%s:Sensor Init Setting In\n", __func__);
+		rc = hi351_reg_init();
+		if (rc < 0)
+			printk(KERN_ERR "[ERROR]%s:Sensor Init Setting Fail\n", __func__);
+		else
+			break;
+	}
 
 	CDBG("init entry END \n");
 	if (rc < 0) {
