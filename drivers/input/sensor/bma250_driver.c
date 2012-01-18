@@ -179,6 +179,16 @@
 #define BMA250_EE_WRITE_SETTING_S__MSK          0x04
 #define BMA250_EE_WRITE_SETTING_S__REG          BMA250_EEPROM_CTRL_REG
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+#define BMA250_EN_SOFT_RESET__POS         0
+#define BMA250_EN_SOFT_RESET__LEN         8
+#define BMA250_EN_SOFT_RESET__MSK         0xFF
+#define BMA250_EN_SOFT_RESET__REG         BMA250_RESET_REG
+
+#define BMA250_EN_SOFT_RESET_VALUE        0xB6
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+
 #define BMA250_GET_BITSLICE(regvar, bitname)\
 	((regvar & bitname##__MSK) >> bitname##__POS)
 
@@ -248,6 +258,10 @@
 #define BMA250_COMP_TARGET_OFFSET_Z__MSK        0x60
 #define BMA250_COMP_TARGET_OFFSET_Z__REG        BMA250_OFFSET_PARAMS_REG
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+#define BMA250_SHAKING_DETECT_THRESHOLD	(5)	/* threshold of shaking detection under 2G */
+
+
 
 static const u8 bma250_valid_range[] = {
 	BMA250_RANGE_2G,
@@ -290,12 +304,22 @@ struct bma250_data {
 #endif
 
 	atomic_t selftest_result;
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	atomic_t fast_calib_x_rslt;
+	atomic_t fast_calib_y_rslt;
+	atomic_t fast_calib_z_rslt;
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	
 };
+
+
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void bma250_early_suspend(struct early_suspend *h);
 static void bma250_late_resume(struct early_suspend *h);
 #endif
+
+
 
 static int bma250_smbus_read_byte(struct i2c_client *client,
 		unsigned char reg_addr, unsigned char *data)
@@ -986,6 +1010,9 @@ static int bma250_set_offset_target_x(struct i2c_client *client,
 	return comres;
 }
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+/*
 static int bma250_get_offset_target_x(struct i2c_client *client,
 		unsigned char *offsettarget)
 {
@@ -999,6 +1026,8 @@ static int bma250_get_offset_target_x(struct i2c_client *client,
 
 	return comres;
 }
+*/
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 static int bma250_set_offset_target_y(struct i2c_client *client,
 		unsigned char offsettarget)
@@ -1016,6 +1045,10 @@ static int bma250_set_offset_target_y(struct i2c_client *client,
 	return comres;
 }
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+/*
+
 static int bma250_get_offset_target_y(struct i2c_client *client,
 		unsigned char *offsettarget)
 {
@@ -1029,6 +1062,8 @@ static int bma250_get_offset_target_y(struct i2c_client *client,
 
 	return comres;
 }
+*/
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 static int bma250_set_offset_target_z(struct i2c_client *client,
 		unsigned char offsettarget)
@@ -1046,6 +1081,10 @@ static int bma250_set_offset_target_z(struct i2c_client *client,
 	return comres;
 }
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+/*
+
 static int bma250_get_offset_target_z(struct i2c_client *client,
 		unsigned char *offsettarget)
 {
@@ -1059,7 +1098,8 @@ static int bma250_get_offset_target_z(struct i2c_client *client,
 
 	return comres;
 }
-
+*/
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 static int bma250_set_offset_filt_x(struct i2c_client *client, unsigned char
 		offsetfilt)
@@ -1171,57 +1211,51 @@ static int bma250_set_cal_trigger(struct i2c_client *client,
 	return comres;
 }
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+static int bma250_soft_reset(struct i2c_client *client)
+{
+	int comres = 0;
+	unsigned char data = BMA250_EN_SOFT_RESET_VALUE ;
+
+	comres = bma250_smbus_write_byte(client, BMA250_EN_SOFT_RESET__REG,
+					&data);
+
+	return comres;
+}
+
+
+static ssize_t bma250_softreset_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma250_data *bma250 = i2c_get_clientdata(client);
+
+	if (bma250_soft_reset(bma250->bma250_client) < 0)
+		return -EINVAL;
+
+	return count;
+}
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+
 
 static ssize_t bma250_fast_calibration_x_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 	{
-		unsigned char data;
-		short value1 =0;
-		struct bma250acc acc_cal;
-//struct bma250acc acc;
 		struct i2c_client *client = to_i2c_client(dev);
 		struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-//clubsh add temp
-//		bma250_read_accel_xyz(bma250->bma250_client, &bma250->value);
-
-		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
-
-//		if( (abs(bma250->value.x) < 26) && (abs(bma250->value.y) < 26) && (bma250->value.y > 130))
-		printk(KERN_INFO "x axis fast bma250_fast_calibration_x_show =%d\n",acc_cal.x);
-		printk(KERN_INFO "x axis fast bma250_fast_calibration_y_show =%d\n",acc_cal.y);
-		printk(KERN_INFO "x axis fast bma250_fast_calibration_z_show =%d\n",acc_cal.z);
-
-		if( (abs(acc_cal.x) < 26) && (abs(acc_cal.y) < 26) && ((acc_cal.z) < -245))
-		{
-			value1 = 1;
-			return sprintf(buf, "%d\n", value1);	
-		}
-		else
-		{
-			value1 = 0;
-			return sprintf(buf, "%d\n", value1);	
-
-		}
-//end
-
-/* LGE_CHANGE_E : E0 eee3114.lee@lge.com Calibration AT CMD [2011-12-23] */	
-		/* clubsh remove temp
-		bma250_read_accel_z(bma250->bma250_client, &value1);
-		printk(KERN_INFO "x axis fast bma250_fast_calibration_x_show =%d\n",value1);
-		if(value1 > - 254)
-		{
-			value1 = 1;
-			printk(KERN_INFO "x HERE axis fast bma250_fast_calibration_x_show =%d\n",value1);
-			
-			return sprintf(buf, "%d\n", value1);	
-		}
-*/		
-/* END E0 eee3114.lee@lge.com [2011-12-23] */	
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+		return sprintf(buf, "%d\n", atomic_read(&bma250->fast_calib_x_rslt));	
+#if 0
 		if (bma250_get_offset_target_x(bma250->bma250_client, &data) < 0)
 			return sprintf(buf, "Read error\n");
 	
 		return sprintf(buf, "%d\n", data);
+#endif
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 	}
 
 
@@ -1235,21 +1269,58 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 	int error;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	struct bma250acc acc_cal;
+	struct bma250acc acc_cal_pre; 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 	error = strict_strtoul(buf, 10, &data);
 	if (error)
 		return error;
+	
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	bma250_read_accel_xyz(bma250->bma250_client, &acc_cal_pre);
+	mdelay(50);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 	if (bma250_set_offset_target_x(bma250->bma250_client,
 				(unsigned char)data) < 0)
-		return -EINVAL;
+		{		
+ 		return -EINVAL;
+		}
 
 	if (bma250_set_cal_trigger(bma250->bma250_client, 1) < 0)
-		return -EINVAL;
+		{
+ 		return -EINVAL;
+		}
+
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	atomic_set(&bma250->fast_calib_x_rslt, 0);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 	do {
 		mdelay(2);
 		bma250_get_cal_ready(bma250->bma250_client, &tmp);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
+
+		if( //(tmp == 0)	&&
+			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
+				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
+				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
+		  )
+		{			
+			return count;
+		}
+		else
+		{
+			acc_cal_pre.x = acc_cal.x;
+			acc_cal_pre.y = acc_cal.y;
+			acc_cal_pre.z = acc_cal.z;
+		}
+
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
 				tmp);
@@ -1261,6 +1332,8 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 
 	} while (tmp == 0);
 
+	atomic_set(&bma250->fast_calib_x_rslt, 1);
+
 	printk(KERN_INFO "x axis fast calibration finished\n");
 	return count;
 }
@@ -1270,14 +1343,20 @@ static ssize_t bma250_fast_calibration_y_show(struct device *dev,
 {
 
 
-	unsigned char data;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
+	return sprintf(buf, "%d\n", atomic_read(&bma250->fast_calib_y_rslt));	
+
+#if 0
 	if (bma250_get_offset_target_y(bma250->bma250_client, &data) < 0)
 		return sprintf(buf, "Read error\n");
 
 	return sprintf(buf, "%d\n", data);
+#endif
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 
 }
 
@@ -1291,10 +1370,21 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 	int error;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	struct bma250acc acc_cal;
+	struct bma250acc acc_cal_pre; 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 
 	error = strict_strtoul(buf, 10, &data);
 	if (error)
 		return error;
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+	bma250_read_accel_xyz(bma250->bma250_client, &acc_cal_pre);
+	mdelay(50);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 
 	if (bma250_set_offset_target_y(bma250->bma250_client,
 				(unsigned char)data) < 0)
@@ -1303,9 +1393,35 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 	if (bma250_set_cal_trigger(bma250->bma250_client, 2) < 0)
 		return -EINVAL;
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	atomic_set(&bma250->fast_calib_x_rslt, 0);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+
 	do {
 		mdelay(2);
 		bma250_get_cal_ready(bma250->bma250_client, &tmp);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);		
+		if( //(tmp == 0)	&&
+			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
+				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
+				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
+		  )
+		{
+			
+			return count;
+		}
+		else
+		{
+			acc_cal_pre.x = acc_cal.x;
+			acc_cal_pre.y = acc_cal.y;
+			acc_cal_pre.z = acc_cal.z;
+		}
+
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 
 		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
 				tmp);
@@ -1317,6 +1433,10 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 
 	} while (tmp == 0);
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	atomic_set(&bma250->fast_calib_x_rslt, 1);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 	printk(KERN_INFO "y axis fast calibration finished\n");
 	return count;
 }
@@ -1326,14 +1446,18 @@ static ssize_t bma250_fast_calibration_z_show(struct device *dev,
 {
 
 
-	unsigned char data;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	return sprintf(buf, "%d\n", atomic_read(&bma250->fast_calib_z_rslt));	
+#if 0
 	if (bma250_get_offset_target_z(bma250->bma250_client, &data) < 0)
 		return sprintf(buf, "Read error\n");
 
 	return sprintf(buf, "%d\n", data);
+#endif
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 }
 
@@ -1347,10 +1471,22 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 	int error;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+	struct bma250acc acc_cal;
+	struct bma250acc acc_cal_pre; 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 
 	error = strict_strtoul(buf, 10, &data);
 	if (error)
 		return error;
+	
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	bma250_read_accel_xyz(bma250->bma250_client, &acc_cal_pre);
+	mdelay(50);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 
 	if (bma250_set_offset_target_z(bma250->bma250_client,
 				(unsigned char)data) < 0)
@@ -1359,9 +1495,34 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 	if (bma250_set_cal_trigger(bma250->bma250_client, 3) < 0)
 		return -EINVAL;
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+		atomic_set(&bma250->fast_calib_x_rslt, 0);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 	do {
 		mdelay(2);
 		bma250_get_cal_ready(bma250->bma250_client, &tmp);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
+
+		if( //(tmp == 0)	&&
+			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
+				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
+				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
+		  )
+		{
+			return count;
+		}
+		else
+		{
+			acc_cal_pre.x = acc_cal.x;
+			acc_cal_pre.y = acc_cal.y;
+			acc_cal_pre.z = acc_cal.z;
+		}
+
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
 
 		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
 				tmp);
@@ -1372,6 +1533,10 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 		}
 
 	} while (tmp == 0);
+
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	atomic_set(&bma250->fast_calib_x_rslt, 1);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 	printk(KERN_INFO "z axis fast calibration finished\n");
 	return count;
@@ -1591,6 +1756,12 @@ static DEVICE_ATTR(offset_filt_z, S_IRUGO|S_IWUSR|S_IWGRP,
 		bma250_offset_filt_z_show,
 		bma250_offset_filt_z_store);
 
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+static DEVICE_ATTR(softreset, S_IWUSR|S_IWGRP,
+		NULL, bma250_softreset_store);
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+
+
 
 static struct attribute *bma250_attributes[] = {
 	&dev_attr_range.attr,
@@ -1608,6 +1779,10 @@ static struct attribute *bma250_attributes[] = {
 	&dev_attr_offset_filt_x.attr,
 	&dev_attr_offset_filt_y.attr,
 	&dev_attr_offset_filt_z.attr,
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	&dev_attr_softreset.attr,	
+//eee3114.lee@lge.com "sensor SURV shake detection" 			
+	
 	NULL
 };
 
