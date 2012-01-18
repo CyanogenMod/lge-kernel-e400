@@ -219,11 +219,11 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x30, 0x00, BURST_TYPE},
 	{0x31, 0xf0, BURST_TYPE},
 	{0x32, 0x22, BURST_TYPE},
-	{0x33, 0x02, BURST_TYPE}, // STEVE00 value fixed : 0x02
+	{0x33, 0x42, BURST_TYPE}, // STEVE01 0x02 -)0x42 DV3 fix 
 	{0x34, 0x30, BURST_TYPE},
 	{0x35, 0x00, BURST_TYPE},
 	{0x36, 0x08, BURST_TYPE},
-	{0x37, 0x20, BURST_TYPE}, // STEVE00 value fixed : 0x20
+	{0x37, 0x40, BURST_TYPE}, // STEVE01 0x20 -) 0x40 DV3 fix
 	{0x38, 0x14, BURST_TYPE},
 	{0x39, 0x02, BURST_TYPE}, 
 	{0x3a, 0x00, BURST_TYPE},
@@ -2495,8 +2495,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x19, BURST_TYPE}, //bInDyMinMaxTempWgt_a00_n00
 	{0xfc, 0xc8, BURST_TYPE}, //96 (100(96) -> 200(c8)deg  //bInSplTmpAgl_a00_n00
 	{0xfd, 0x0a, BURST_TYPE}, //bInSplTmpAglOfs_a00_n00
-	{0xfe, 0x1e, BURST_TYPE},
-	{0xff, 0x1e, BURST_TYPE},//pt core
+	//{0xfe, 0x1e, BURST_TYPE}, // STEVE delete
+	//{0xff, 0x1e, BURST_TYPE}, //pt core STEVE delete
 
 	{0x03, 0xc6, BYTE_LEN}, 
 	{0x10, 0x14, BURST_TYPE}, //bInSplTmpBpCntTh_a00_n00
@@ -3490,8 +3490,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0xaf, BURST_TYPE},//2_CENTER
 	{0xfc, 0x1c, BURST_TYPE},//2_DELTA
 	{0xfd, 0x9a, BURST_TYPE},//3_GAIN  
-	{0xfe, 0x86, BURST_TYPE},
-	{0xff, 0x52, BURST_TYPE},
+	//{0xfe, 0x86, BURST_TYPE}, // STEVE deleted
+	//{0xff, 0x52, BURST_TYPE}, // STEVE deleted
 	{0x03, 0xd2, BYTE_LEN},//Page d2
 	{0x10, 0x86, BURST_TYPE},//3_HUE	 
 	{0x11, 0x52, BURST_TYPE},//3_CENTER
@@ -3741,8 +3741,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfc, 0x14, BURST_TYPE},//3_DELTA 
 	{0xfd, 0x80, BURST_TYPE},//4_GAIN
 	           
-	{0xfe, 0x0c, BURST_TYPE},
-	{0xff, 0x76, BURST_TYPE},
+	//{0xfe, 0x0c, BURST_TYPE},// STEVE deleted
+	//{0xff, 0x76, BURST_TYPE},// STEVE deleted
 
 	{0x03, 0xd3, BYTE_LEN},//Page d3
 
@@ -4376,8 +4376,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x62, BURST_TYPE},
 	{0xfc, 0x44, BURST_TYPE},
 	{0xfd, 0x02, BURST_TYPE},
-	{0xfe, 0x45, BURST_TYPE},
-	{0xff, 0x0a, BURST_TYPE},
+	//{0xfe, 0x45, BURST_TYPE}, // STEVE deleted
+	//{0xff, 0x0a, BURST_TYPE}, // STEVE deleted
 
 	// Page 0xdb		  
 	{0x03, 0xdb, BYTE_LEN},
@@ -4641,8 +4641,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x28, BURST_TYPE},
 	{0xfc, 0x3b, BURST_TYPE},
 	{0xfd, 0x28, BURST_TYPE},
-	{0xfe, 0x3c, BURST_TYPE},
-	{0xff, 0x28, BURST_TYPE},
+	//{0xfe, 0x3c, BURST_TYPE}, // STEVE deleted
+	//{0xff, 0x28, BURST_TYPE}, // STEVE deleted
 		   
 	{0x03, 0xdc, BYTE_LEN},
 	{0x10, 0x3c, BURST_TYPE},
@@ -6132,8 +6132,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x80, BURST_TYPE},
 	{0xfc, 0x44, BURST_TYPE}, //Dark2 0x1244
 	{0xfd, 0x02, BURST_TYPE},
-	{0xfe, 0x45, BURST_TYPE},
-	{0xff, 0x0a, BURST_TYPE},
+	//{0xfe, 0x45, BURST_TYPE}, // STEVE deleted
+	//{0xff, 0x0a, BURST_TYPE}, // STEVE deleted
 
 	{0x03, 0xe4, BYTE_LEN},
 	{0x10, 0x45, BURST_TYPE}, //Dark2 0x1245
@@ -6374,8 +6374,8 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0xfb, 0x18, BURST_TYPE}, //dr gain
 	{0xfc, 0x3b, BURST_TYPE}, //Dark2 0x143b
 	{0xfd, 0x20, BURST_TYPE},
-	{0xfe, 0x3c, BURST_TYPE},
-	{0xff, 0x20, BURST_TYPE},
+	//{0xfe, 0x3c, BURST_TYPE}, // STEVE deleted
+	//{0xff, 0x20, BURST_TYPE}, // STEVE deleted
 
 	{0x03, 0xe5, BYTE_LEN},
 	{0x10, 0x3c, BURST_TYPE}, //Dark2 0x143c
