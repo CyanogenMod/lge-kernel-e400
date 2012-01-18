@@ -218,12 +218,12 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x2f, 0x00, BURST_TYPE},
 	{0x30, 0x00, BURST_TYPE},
 	{0x31, 0xf0, BURST_TYPE},
-	{0x32, 0x22, BURST_TYPE},	//steve 0117 original 0x02
-	{0x33, 0x42, BURST_TYPE},
+	{0x32, 0x22, BURST_TYPE},
+	{0x33, 0x02, BURST_TYPE}, // STEVE00 value fixed : 0x02
 	{0x34, 0x30, BURST_TYPE},
 	{0x35, 0x00, BURST_TYPE},
 	{0x36, 0x08, BURST_TYPE},
-	{0x37, 0x70, BURST_TYPE},	//steve 0117 original 0x20
+	{0x37, 0x20, BURST_TYPE}, // STEVE00 value fixed : 0x20
 	{0x38, 0x14, BURST_TYPE},
 	{0x39, 0x02, BURST_TYPE}, 
 	{0x3a, 0x00, BURST_TYPE},
@@ -1929,11 +1929,11 @@ struct hi351_i2c_reg_conf hi351_reg_settings[] = {
 	{0x22, 0x01, BYTE_LEN},//ZOOM_DST_HEIGHT_H	 
 	{0x23, 0xe0, BYTE_LEN},//ZOOM_DST_HEIGHT_L	 
 	{0x24, 0x00, BYTE_LEN},//ZOOM_WIN_STX_H 	 
-	{0x25, 0x03, BYTE_LEN},//ZOOM_WIN_STX_L 	 
+	{0x25, 0x01, BYTE_LEN},//ZOOM_WIN_STX_L 	 STEVE00 value changed : 0x03 -) 0x01
 	{0x26, 0x00, BYTE_LEN},//ZOOM_WIN_STY_H 	 
 	{0x27, 0x01, BYTE_LEN},//ZOOM_WIN_STY_L 	 
 	{0x28, 0x02, BYTE_LEN},//ZOOM_WIN_ENX_H 	 
-	{0x29, 0x83, BYTE_LEN},//ZOOM_WIN_ENX_L 	 
+	{0x29, 0x81, BYTE_LEN},//ZOOM_WIN_ENX_L 	 STEVE00 value changed : 0x83 -) 0x81
 	{0x2a, 0x01, BYTE_LEN},//ZOOM_WIN_ENY_H 	 
 	{0x2b, 0xe1, BYTE_LEN},//ZOOM_WIN_ENY_L 	 
 	{0x2c, 0x0c, BYTE_LEN},//ZOOM_VER_STEP_H	 
