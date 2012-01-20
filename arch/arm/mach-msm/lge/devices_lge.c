@@ -82,7 +82,7 @@ static char frst_mode[6];
 
 static int __init lge_frst_mode(char *cmdline)
 {
-	strncpy(cmdline, frst_mode, 5);
+	strncpy(frst_mode, cmdline, 5);
 	frst_mode[5]='\0';
 	printk(KERN_INFO "FRST MODE : %s",frst_mode);
 
