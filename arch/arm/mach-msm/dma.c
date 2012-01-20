@@ -536,6 +536,11 @@ static irqreturn_t msm_datamover_irq_handler(int irq, void *dev_id)
 	unsigned long irq_flags;
 	unsigned int ch_status;
 	unsigned int ch_result;
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2011-12-13]
+	Reson : Remove UMTS WB part from Audio Calibration Tool only for E0.
+*/
+	unsigned int valid = 0;
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com@lge.com [2012-01-20] */
 	struct msm_dmov_cmd *cmd;
 	int adm = DMOV_IRQ_TO_ADM(irq);
 
@@ -557,6 +562,11 @@ static irqreturn_t msm_datamover_irq_handler(int irq, void *dev_id)
 			continue;
 		}
 		do {
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-20]
+	Reson : Qualcomm Patch.
+*/
+			valid = 1;
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com@lge.com [2012-01-20] */
 			ch_result = readl_relaxed(DMOV_REG(DMOV_RSLT(ch), adm));
 			if (list_empty(&dmov_conf[adm].active_commands[ch])) {
 				PRINT_ERROR("msm_datamover_irq_handler id %d, got result "
@@ -634,14 +644,22 @@ static irqreturn_t msm_datamover_irq_handler(int irq, void *dev_id)
 	}
 
 	start_ready_cmds(adm);
-	if (!dmov_conf[adm].channel_active) {
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-20]
+	Reson : Qualcomm Patch.
+*/
+	if (!dmov_conf[adm].channel_active && valid) {		//	if (!dmov_conf[adm].channel_active) {
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com@lge.com [2012-01-20] */
 		disable_irq_nosync(dmov_conf[adm].irq);
 		dmov_conf[adm].clk_ctl = CLK_TO_BE_DIS;
 		mod_timer(&dmov_conf[adm].timer, jiffies + HZ);
 	}
 
 	spin_unlock_irqrestore(&dmov_conf[adm].lock, irq_flags);
-	return IRQ_HANDLED;
+/* LGE_CHANGE_S : E0 sungmin1217.kim@lge.com [2012-01-20]
+	Reson : Qualcomm Patch.
+*/
+	return valid ? IRQ_HANDLED : IRQ_NONE;//	return IRQ_HANDLED;
+/* LGE_CHANGE_E : E0 sungmin1217.kim@lge.com@lge.com [2012-01-20] */
 }
 
 static int msm_dmov_suspend_late(struct device *dev)
