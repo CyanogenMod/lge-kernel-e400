@@ -52,7 +52,7 @@ struct lge_gpio_switch_data {
 
 struct lge_gpio_switch_data *lge_switch_data;
 
-static int headset_type;
+static int headset_type = SW_MAX;
 
 static void gpio_switch_work(struct work_struct *work)
 {
@@ -65,7 +65,7 @@ static void gpio_switch_work(struct work_struct *work)
 	if (data->work_func) {
 		state = data->work_func(&value);
 		if (state) {
-			if (value == SW_MICROPHONE_INSERT) {
+			if (value == SW_MICROPHONE_INSERT && headset_type != SW_MAX) {
 				for (i = 0; i < data->num_key_gpios; ++i) {
 					if (data->wakeup_flag)
 						set_irq_wake(gpio_to_irq(data->key_gpios[i]), 1);
@@ -311,11 +311,8 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto err_request_gpio;
 
-		/* Do not set_irq_wake here because of Pending IRQ */
 		if (switch_data->wakeup_flag)
-			set_irq_wake(gpio_to_irq(switch_data->key_gpios[index]), 0);
-
-		disable_irq(gpio_to_irq(switch_data->key_gpios[index]));
+			set_irq_wake(gpio_to_irq(switch_data->key_gpios[index]), 1);
 	}
 
 	switch_data->ipdev->name = switch_data->sdev.name;
