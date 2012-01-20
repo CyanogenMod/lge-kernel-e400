@@ -259,7 +259,7 @@
 #define BMA250_COMP_TARGET_OFFSET_Z__REG        BMA250_OFFSET_PARAMS_REG
 
 //eee3114.lee@lge.com "sensor SURV shake detection" 			
-#define BMA250_SHAKING_DETECT_THRESHOLD	(5)	/* threshold of shaking detection under 2G */
+#define BMA250_SHAKING_DETECT_THRESHOLD	(10)	/* threshold of shaking detection under 2G */
 
 
 
@@ -1305,7 +1305,7 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 
 		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
 
-		if( //(tmp == 0)	&&
+		if( (tmp == 0)	&&
 			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
 				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
 				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
@@ -1404,7 +1404,7 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 //eee3114.lee@lge.com "sensor SURV shake detection" 			
 
 		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);		
-		if( //(tmp == 0)	&&
+		if( (tmp == 0)	&&
 			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
 				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
 				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
@@ -1506,7 +1506,7 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 //eee3114.lee@lge.com "sensor SURV shake detection" 			
 		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
 
-		if( //(tmp == 0)	&&
+		if( (tmp == 0)	&&
 			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
 				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
 				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
