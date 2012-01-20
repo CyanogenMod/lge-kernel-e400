@@ -220,7 +220,7 @@ int mms100_ISC_download_binary_data(void)
 			  version_info = mms100_ISC_read_data(MELFAS_FIRMWARE_VER_REG_PUBLIC_CUSTOM);
 			  printk("<MELFAS> CORE_VERSION : 0x%2X\n",version_info);
 
-				if(version_info != MELFAS_DOWNLAOD_PUBLIC_VERSION || version_info==0xFF)
+				if(version_info < MELFAS_DOWNLAOD_PUBLIC_VERSION || version_info==0xFF)
 			  	dl_enable_bit |= 0x01;
 			} else {
 				dl_enable_bit |= 0x01;
