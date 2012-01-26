@@ -1631,7 +1631,12 @@ static inline void hci_conn_request_evt(struct hci_dev *hdev, struct sk_buff *sk
 			cp.rx_bandwidth   = cpu_to_le32(0x00001f40);
 			cp.max_latency    = cpu_to_le16(0x000A);
 			cp.content_format = cpu_to_le16(hdev->voice_setting);
+// *s QCT_BT_PATCH_SR00713060 jaehun7.kim 20120126 ,HF audio path change is not work with RT5 carkit		
+       /* google orignal		
 			cp.retrans_effort = 0x01;
+			*/
+			cp.retrans_effort = 0xff;
+// *e QCT_BT_PATCH_SR00713060 	
 
 			hci_send_cmd(hdev, HCI_OP_ACCEPT_SYNC_CONN_REQ,
 							sizeof(cp), &cp);
