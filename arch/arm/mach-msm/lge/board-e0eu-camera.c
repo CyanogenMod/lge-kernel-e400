@@ -247,18 +247,20 @@ static int camera_power_on_rear(void)
 {
 	int rc = 0;
 	mutex_lock(&camera_power_mutex);
-		
-	rc = gpio_direction_output(GPIO_CAM_PWDN, 1);
-	if (rc < 0) {
-		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 1) failed(2)\n", __func__);
-	}
 
-	udelay(10);		
+	mdelay(2);
 
 	msm_camio_clk_rate_set(HI351_MASTER_CLK_RATE);
 	pr_err("%s: msm_camio_clk_rate_set\n", __func__);
 
-	mdelay(10);
+	udelay(10);	
+		
+	rc = gpio_direction_output(GPIO_CAM_PWDN, 1);
+	if (rc < 0) {
+		pr_err("%s: gpio_direction_output(GPIO_CAM_PWDN, 1) failed(2)\n", __func__);
+	}	
+
+	mdelay(30);
 
 	gpio_set_value(GPIO_CAM_RESET, 1);
 	pr_err("%s: gpio_set_value(GPIO_CAM_RESET, 1) final\n", __func__);
