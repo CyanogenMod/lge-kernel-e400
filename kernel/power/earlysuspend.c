@@ -200,6 +200,19 @@ void request_suspend_state(suspend_state_t new_state)
 			printk(KERN_INFO"%s: late_resume_work is queued already.\n", __func__);
 //LGE_CHANGE_E, [youngbae.choi@lge.com] , 2011-11-27 :: log message add.
 	}
+//LGE_CHANGE_S, [hyo.park@lge.com] , 2011-11-23
+    else
+    {
+        if (new_state != PM_SUSPEND_ON) {
+                state |= SUSPEND_REQUESTED;
+                queue_work(suspend_work_queue, &early_suspend_work);
+        } else if (new_state == PM_SUSPEND_ON) {
+                state &= ~SUSPEND_REQUESTED;
+                wake_lock(&main_wake_lock);
+                queue_work(suspend_work_queue, &late_resume_work);
+        }
+    }
+//LGE_CHANGE_E, [hyo.park@lge.com] , 2011-11-23
 	requested_suspend_state = new_state;
 	spin_unlock_irqrestore(&state_lock, irqflags);
 }
