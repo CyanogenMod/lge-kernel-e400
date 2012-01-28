@@ -1,3 +1,10 @@
+# LGE_CHANGE
+# NDIS driver is not used on E0 Tracfone model
+# 2012-01-12 junghyun.cha@lge.com
+ifeq (E0TRF, $(TARGET_CARRIER))
+	EXTRA_CFLAGS += -DLGE_TRACFONE
+endif
+
 EXTRA_CFLAGS += -Iarch/arm/mach-msm
 obj-$(CONFIG_LGE_PROC_COMM) += lge_proc_comm.o
 

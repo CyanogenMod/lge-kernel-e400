@@ -34,6 +34,25 @@ char *usb_functions_lge_all[] = {
 	"adb",
 };
 
+#ifdef LGE_TRACFONE
+/* LGE_CHANGE
+ * Add PID 61FA for E0 Tracfone model
+ * 2012-01-13 junghyun.cha@lge.com
+ */
+char *usb_functions_lge_android_plat[] = {
+	"acm",
+	"diag",
+	"usb_mass_storage",
+};
+
+char *usb_functions_lge_android_plat_adb[] = {
+	"acm",
+	"diag",
+	"usb_mass_storage",
+	"adb",
+};
+#endif
+
 static char *usb_functions_ndis[] = {
 	"acm",
 	"diag",
@@ -75,6 +94,22 @@ char *usb_functions_lge_charge_only[] = {
 #endif
 
 struct android_usb_product usb_products[] = {
+#ifdef LGE_TRACFONE
+	/* LGE_CHANGE
+	 * Add PID 61FA for E0 Tracfone model
+	 * 2012-01-12 junghyun.cha@lge.com
+	 */
+	{
+		.product_id = 0x61FA,
+		.num_functions = ARRAY_SIZE(usb_functions_lge_android_plat),
+		.functions = usb_functions_lge_android_plat,
+	},
+	{
+		.product_id = 0x61FA,
+		.num_functions = ARRAY_SIZE(usb_functions_lge_android_plat_adb),
+		.functions = usb_functions_lge_android_plat_adb,
+	},
+#endif
 	{
 		.product_id = 0x61FC,
 		.num_functions = ARRAY_SIZE(usb_functions_ndis),
@@ -279,6 +314,22 @@ struct platform_device usb_cdrom_storage_device = {
 
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 struct android_usb_platform_data android_usb_pdata = {
+#ifdef LGE_TRACFONE
+	/* LGE_CHANGE
+	 * Add PID 61FA for E0 Tracfone model
+	 * 2012-01-12 junghyun.cha@lge.com
+	 */
+	.vendor_id  = 0x1004,
+	.product_id = 0x61FA,
+	.version    = 0x0100,
+	.product_name       = "LGE Android Phone",
+	.manufacturer_name  = "LG Electronics Inc.",
+	.num_products = ARRAY_SIZE(usb_products),
+	.products = usb_products,
+	.num_functions = ARRAY_SIZE(usb_functions_lge_all),
+	.functions = usb_functions_lge_all,
+	.serial_number = "LG_ANDROID_E0TRF_US_",
+#else
 	.vendor_id  = 0x1004,
 	.product_id = 0x61FC,
 	.version    = 0x0100,
@@ -289,7 +340,7 @@ struct android_usb_platform_data android_usb_pdata = {
 	.num_functions = ARRAY_SIZE(usb_functions_lge_all),
 	.functions = usb_functions_lge_all,
 	.serial_number = "LG_ANDROID_E0OPEN_GB_",
-
+#endif
 };
 #else
 static struct android_usb_platform_data android_usb_pdata = {
