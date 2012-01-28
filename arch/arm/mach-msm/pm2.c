@@ -120,7 +120,7 @@ module_param_named(
 // BEGIN: eternalblue@lge.com.2009-11-15
 // 0001956: [ARM9] operationg code added for AT%FRST
 int msm_pm_boot_complete = 0;
-module_param_named(boot_complete, msm_pm_boot_complete, int, S_IRUGO | S_IWUSR | S_IWGRP); 
+module_param_named(boot_complete, msm_pm_boot_complete, int, S_IRUGO | S_IWUSR | S_IWGRP);
 // END: eternalblue@lge.com.2009-11-15
 
 static int msm_pm_sleep_mode = CONFIG_MSM7X00A_SLEEP_MODE;
@@ -1755,21 +1755,12 @@ static void msm_pm_power_off(void)
 
 static void msm_pm_restart(char str, const char *cmd)
 {
-// [111017 bk.seol@lge.com M3_COMMON] Power On/Off Test [START]
-    int i   = 0;
-    for (i=0; i< 50; i++) {
-        if (cmd == NULL)
-            break;
-        if (rmt_storage_ioctl_1st == 1)
-            break;
-        printk(KERN_INFO"%s: wait rmt_storage_ioctl %d\n",__func__, rmt_storage_ioctl_1st);
-        msleep(100);        // sleep 100ms x 50
-        }
-// [111017 bk.seol@lge.com M3_COMMON] [END]
 	msm_rpcrouter_close();
 #ifdef CONFIG_LGE_HANDLE_PANIC
 #define CRASH_REBOOT    0x618E1000
 	if (restart_reason == CRASH_REBOOT)
+		msm_proc_comm(PCOM_RESET_CHIP_IMM, &restart_reason, 0);
+	else if (restart_reason == 0x776655AA)	/* Reboot fast for chargerlogo reset */
 		msm_proc_comm(PCOM_RESET_CHIP_IMM, &restart_reason, 0);
 	else
 		msm_proc_comm(PCOM_RESET_CHIP, &restart_reason, 0);
