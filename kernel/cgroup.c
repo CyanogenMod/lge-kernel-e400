@@ -710,6 +710,44 @@ static struct cgroup *task_cgroup_from_root(struct task_struct *task,
 	return res;
 }
 
+// LGE_CHANGE_S, [jinny.park@lge.com], 2011-11-23
+static int task_cgroup_from_root_null_check(struct task_struct *task,
+                                            struct cgroupfs_root *root)
+{
+        struct css_set *css;
+        struct cgroup *res = NULL;
+
+        read_lock(&css_set_lock);
+        /*
+         * No need to lock the task - since we hold cgroup_mutex the
+         * task can't change groups, so the only thing that can happen
+         * is that it exits and its css is set back to init_css_set.
+         */
+        css = task->cgroups;
+        if (css == &init_css_set) {
+                res = &root->top_cgroup;
+        } else {
+                struct cg_cgroup_link *link;
+                list_for_each_entry(link, &css->cg_links, cg_link_list) {
+                        struct cgroup *c = link->cgrp;
+                        if (NULL ==  link->cg_link_list.next || NULL == link->cgrp )
+                        {
+                            printk(KERN_ERR "Cgroup : task_cgroup_from_root_null_check link->cg_link_list.next = %d link->cgrp %d\n", (int)link->cg_link_list.next, (int)link->cgrp);
+                                return -EINVAL;
+                        }
+
+                        if (c->root == root) {
+                                res = c;
+                                break;
+                        }
+                }
+        }
+        read_unlock(&css_set_lock);
+        return 0;
+}
+// LGE_CHANGE_E, [jinny.park@lge.com], 2011-11-23
+
+
 /*
  * There is one global cgroup mutex. We also require taking
  * task_lock() when dereferencing a task's cgroup subsys pointers.
@@ -1886,6 +1924,9 @@ EXPORT_SYMBOL_GPL(cgroup_attach_task_all);
 static int attach_task_by_pid(struct cgroup *cgrp, u64 pid)
 {
 	struct task_struct *tsk;
+         // LGE_CHANGE_S, [jinny.park@lge.com], 2011-11-23
+         struct cgroupfs_root *root = cgrp->root;        
+         // LGE_CHANGE_E, [jinny.park@lge.com], 2011-11-23
 	int ret;
 
 	if (pid) {
@@ -1901,7 +1942,13 @@ static int attach_task_by_pid(struct cgroup *cgrp, u64 pid)
 		tsk = current;
 		get_task_struct(tsk);
 	}
-
+         // LGE_CHANGE_S, [jinny.park@lge.com], 2011-11-23 Check Cgroup NULL poinr error
+         ret = task_cgroup_from_root_null_check(tsk, root);
+         if ( ret < 0)
+         {
+                 return ret;
+         }
+         // LGE_CHANGE_E, [jinny.park@lge.com], 2011-11-23
 	ret = cgroup_attach_task(cgrp, tsk);
 	put_task_struct(tsk);
 	return ret;
