@@ -6710,7 +6710,7 @@ struct hi351_i2c_reg_conf hi351_snap_settings[] = {
 	{ 0x14, 0x20, BYTE_LEN}, // for Full mode
 	{ 0x10, 0x00, BYTE_LEN}, //Full
 	{ 0x03, 0xFE, DELAY_TYPE},
-	{ 0xFE, 0x0A, DELAY_TYPE}, //Delay STEVE DV2 MUST WAIT 10msec
+	{ 0xFE, 0x08, DELAY_TYPE}, //Delay STEVE DV2 MUST WAIT 10msec - change to 8ms in code which measured actual 10 ms delay 
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x20, 0x00, BYTE_LEN},
 	{ 0x21, 0x03, BYTE_LEN}, //preview row start set.
@@ -6733,7 +6733,7 @@ struct hi351_i2c_reg_conf hi351_snap_settings[] = {
 	{ 0x03, 0x30, BYTE_LEN},
 	{ 0x36, 0x29, BYTE_LEN}, //Capture
 	{ 0x03, 0xFE, DELAY_TYPE},
-	{ 0xFE, 0x14, DELAY_TYPE}, //Delay 20ms
+	{ 0xFE, 0x10, DELAY_TYPE}, //Delay 20ms	16 ms delay but actual delay in measurement is 20 ms
 	
 	{ 0x03, 0x00, BYTE_LEN},
 	{ 0x01, 0xf0, BYTE_LEN}, //sleep off
