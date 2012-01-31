@@ -212,7 +212,7 @@ static int config_camera_on_gpios_rear(void)
 
 	msm_camera_vreg_config(1);
 
-	udelay(10);
+	mdelay(2);
 
 	rc = config_gpio_table(camera_on_gpio_table,
 			ARRAY_SIZE(camera_on_gpio_table));
@@ -247,8 +247,6 @@ static int camera_power_on_rear(void)
 {
 	int rc = 0;
 	mutex_lock(&camera_power_mutex);
-
-	mdelay(2);
 
 	msm_camio_clk_rate_set(HI351_MASTER_CLK_RATE);
 	pr_err("%s: msm_camio_clk_rate_set\n", __func__);
