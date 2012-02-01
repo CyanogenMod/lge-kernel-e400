@@ -717,6 +717,7 @@ config_failure:
 	kfree(scfg);
 	kfree(axio);
 	kfree(vfecmd);
+	kfree(sfcfg);
 	return rc;
 }
 
