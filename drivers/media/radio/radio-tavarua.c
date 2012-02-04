@@ -1915,12 +1915,19 @@ static int tavarua_fops_open(struct file *file)
 	char buffer[] = {0x00, 0x48, 0x8A, 0x8E, 0x97, 0xB7};
 	int bahama_present = -ENODEV;
 
-	if (!atomic_dec_and_test(&radio->users)) {
-		pr_err("%s: Device already in use."
-			"Try again later", __func__);
+/*	if (!atomic_dec_and_test(&radio->users)) {
+
 		atomic_inc(&radio->users);
 		return -EBUSY;
 	}
+*/
+	if (!atomic_dec_and_test(&radio->users)) {
+		pr_err("%s: Device already in use."
+			"Try again later", __func__);
+		atomic_set(&radio->users, 0);
+		//return -EBUSY;
+	}
+
 
 	/* initial gpio pin config & Power up */
 	retval = radio->pdata->fm_setup(radio->pdata);
