@@ -23,6 +23,7 @@
 #include <linux/gpio.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include <linux/wakelock.h>
 #include <mach/board_lge.h>
 
 static LIST_HEAD(switchs);
@@ -37,6 +38,7 @@ struct lge_gpio_switch_data {
 	size_t num_gpios;
 	unsigned long irqflags;
 	unsigned int wakeup_flag;
+	struct wake_lock event_wakelock; /* Make sure that event handled in android */
 	struct work_struct work;
 	int (*work_func)(int *value);
 	char *(*print_name)(int state);
@@ -61,6 +63,12 @@ static void gpio_switch_work(struct work_struct *work)
 	int i;
 	struct lge_gpio_switch_data	*data =
 		container_of(work, struct lge_gpio_switch_data, work);
+
+	if (data->wakeup_flag) {
+		if(wake_lock_active(&data->event_wakelock))
+			wake_unlock(&data->event_wakelock);
+		wake_lock_timeout(&data->event_wakelock, 3 * HZ);
+	}
 
 	if (data->work_func) {
 		state = data->work_func(&value);
@@ -262,6 +270,7 @@ static int lge_gpio_switch_probe(struct platform_device *pdev)
 			goto err_request_gpio;
 	}
 
+	wake_lock_init(&switch_data->event_wakelock,WAKE_LOCK_SUSPEND, "lge_gpio_switch");
 	INIT_WORK(&switch_data->work, gpio_switch_work);
 
 	for (index = 0; index < switch_data->num_gpios; index++) {
