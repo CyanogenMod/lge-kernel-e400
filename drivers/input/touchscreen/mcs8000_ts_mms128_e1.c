@@ -139,6 +139,8 @@ static void ResetTS(void);
 #define RELEASE_KEY												0
 #define DEBUG_PRINT 												0
 
+
+
 #define	SET_DOWNLOAD_BY_GPIO							1
 #define TS_MODULE_A												0
 #define TS_MODULE_B												16
@@ -163,6 +165,12 @@ static void ResetTS(void);
 #define GPIO_TS_ID										121
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-12-07] 
 : For the long delay in the case of booting without touchscreen */
+
+
+
+/*E1_Add the Touch power flag eungjin.kim@lge.com [2012-02-06]*/
+int power_flag=0;
+
 
 enum {
 	None = 0,
@@ -583,7 +591,20 @@ static int mcs8000_release(struct inode *inode, struct file *file)
 		return -EIO;	
 
 	if (ts->status == MCS8000_DEV_SUSPEND) {
-		ts->power(OFF);
+
+
+
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/
+		if(power_flag==1){
+			power_flag--;
+			ts->power(OFF);
+			}	
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/
+		
+
+
+
+
 		if (MCS8000_DM_TRACE_YES & mcs8000_debug_mask)
 			DMSG("touch download done: power off by ioctl\n");
 	} 
@@ -683,7 +704,15 @@ static void ResetTS(void)
 
 	//disable_irq(dev->num_irq);
 
-	dev->power(OFF);
+
+	/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+	if(power_flag==1){
+			power_flag--;
+			dev->power(OFF);
+	}	
+	/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+
+
 
 	mdelay(20);
 
@@ -995,7 +1024,13 @@ static int mcs8000_ts_off(void)
 
 	dev = &mcs8000_ts_dev;
 
-	ret = dev->power(OFF);
+/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+	if(power_flag==1){
+			power_flag--;
+			ret = dev->power(OFF);
+	}	
+/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+
 	if (ret < 0) {
 		printk(KERN_ERR "mcs8000_ts_on power on failed\n");
 		goto err_power_failed;
@@ -1013,7 +1048,13 @@ static int mcs8000_ts_on(void)
 
 	dev = &mcs8000_ts_dev;
 
-	ret = dev->power(ON);
+/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+		if(power_flag==0){
+			power_flag++;
+			ret = dev->power(ON);
+		}
+/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+
 	if (ret < 0) {
 		printk(KERN_ERR "mcs8000_ts_on power on failed\n");
 		goto err_power_failed;
@@ -1362,7 +1403,16 @@ static int mcs8000_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 		DMSG(KERN_INFO"%s: start! \n", __FUNCTION__);
 		disable_irq(dev->num_irq);
 		DMSG("%s: irq disable\n", __FUNCTION__);
-		dev->power(OFF);
+
+
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/
+		if(power_flag==1){
+			power_flag--;
+			dev->power(OFF);
+			}	
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/		
+
+
 	}
 	is_touch_suspend = 1;
 
@@ -1375,7 +1425,14 @@ static int mcs8000_ts_resume(struct i2c_client *client)
 
 	if (is_downloading == 0) {
 		DMSG(KERN_INFO"%s: start! \n", __FUNCTION__);
-		dev->power(ON);
+
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+		if(power_flag==0){
+			power_flag++;
+			dev->power(ON);
+		}
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/	
+
 		enable_irq(dev->num_irq);
 		DMSG("%s: irq enable\n", __FUNCTION__);
 	}
@@ -1405,8 +1462,14 @@ Touchscreen doesn't work*/
 //gpio_set_value(28, 0);
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
 
-		dev->power(OFF);
-	}
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/
+		if(power_flag==1){
+			power_flag--;
+			dev->power(OFF);
+			}	
+		/* add Touch power flag eungjin.kim@lge.com [2012-02-06]*/
+
+			}
 	is_touch_suspend = 1;
 }
 
