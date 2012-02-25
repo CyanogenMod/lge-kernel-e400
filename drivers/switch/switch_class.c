@@ -32,6 +32,13 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 	struct switch_dev *sdev = (struct switch_dev *)
 		dev_get_drvdata(dev);
 
+
+	if(!sdev)
+	{
+		return 0;
+	}
+
+
 	if (sdev->print_state) {
 		int ret = sdev->print_state(sdev, buf);
 		if (ret >= 0)
@@ -45,6 +52,16 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 {
 	struct switch_dev *sdev = (struct switch_dev *)
 		dev_get_drvdata(dev);
+
+
+
+
+	if(!sdev)
+	{
+		return 0;
+	}
+
+
 
 	if (sdev->print_name) {
 		int ret = sdev->print_name(sdev, buf);

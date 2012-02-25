@@ -36,10 +36,16 @@
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
-#include <linux/switch.h>
 
+/*
+ * USB function drivers should return USB_GADGET_DELAYED_STATUS if they
+ * wish to delay the data/status stages of the control transfer till they
+ * are ready. The control transfer will then be kept from completing till
+ * all the function drivers that requested for USB_GADGET_DELAYED_STAUS
+ * invoke usb_composite_setup_continue().
+ */
+#define USB_GADGET_DELAYED_STATUS       0x7fff	/* Impossibly large value */
 
-struct usb_composite_dev;
 struct usb_configuration;
 
 /**
@@ -103,9 +109,6 @@ struct usb_function {
 
 	struct usb_configuration	*config;
 
-	/* disabled is zero if the function is enabled */
-	int				disabled;
-
 	/* REVISIT:  bind() functions can be marked __init, which
 	 * makes trouble for section mismatch analysis.  See if
 	 * we can't restructure things to avoid mismatching.
@@ -133,7 +136,6 @@ struct usb_function {
 	/* internals */
 	struct list_head		list;
 	DECLARE_BITMAP(endpoints, 32);
-	struct device			*dev;
 };
 
 int usb_add_function(struct usb_configuration *, struct usb_function *);
@@ -142,13 +144,6 @@ int usb_function_deactivate(struct usb_function *);
 int usb_function_activate(struct usb_function *);
 
 int usb_interface_id(struct usb_configuration *, struct usb_function *);
-
-void usb_function_set_enabled(struct usb_function *, int);
-void usb_composite_force_reset(struct usb_composite_dev *);
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-/* hyunjin2.lim@lge.com added for mute switching. */
-void usb_composite_force_sw_reset(struct usb_composite_dev *);
-#endif
 
 /**
  * ep_choose - select descriptor endpoint at current device speed
@@ -201,7 +196,7 @@ ep_choose(struct usb_gadget *g, struct usb_endpoint_descriptor *hs,
  * @bind() method is then used to initialize all the functions and then
  * call @usb_add_function() for them.
  *
- * Those functions would normally be independant of each other, but that's
+ * Those functions would normally be independent of each other, but that's
  * not mandatory.  CDC WMC devices are an example where functions often
  * depend on other functions, with some functions subsidiary to others.
  * Such interdependency may be managed in any way, so long as all of the
@@ -245,6 +240,9 @@ int usb_add_config(struct usb_composite_dev *,
 		struct usb_configuration *,
 		int (*)(struct usb_configuration *));
 
+int usb_remove_config(struct usb_composite_dev *,
+		struct usb_configuration *);
+
 /**
  * struct usb_composite_driver - groups configurations into a gadget
  * @name: For diagnostics, identifies the driver.
@@ -286,9 +284,6 @@ struct usb_composite_driver {
 	struct usb_gadget_strings		**strings;
 	unsigned		needs_serial:1;
 
-	struct class		*class;
-	atomic_t		function_count;
-
 	int			(*unbind)(struct usb_composite_dev *);
 
 	void			(*disconnect)(struct usb_composite_dev *);
@@ -296,14 +291,12 @@ struct usb_composite_driver {
 	/* global suspend hooks */
 	void			(*suspend)(struct usb_composite_dev *);
 	void			(*resume)(struct usb_composite_dev *);
-
-	int			(*enable_function)(struct usb_function *f,
-							 int enable);
 };
 
 extern int usb_composite_probe(struct usb_composite_driver *driver,
 			       int (*bind)(struct usb_composite_dev *cdev));
 extern void usb_composite_unregister(struct usb_composite_driver *driver);
+extern void usb_composite_setup_continue(struct usb_composite_dev *cdev);
 
 
 /**
@@ -361,23 +354,13 @@ struct usb_composite_dev {
 	 */
 	unsigned			deactivations;
 
-	/* protects at least deactivation count */
+	/* the composite driver won't complete the control transfer's
+	 * data/status stages till delayed_status is zero.
+	 */
+	int				delayed_status;
+
+	/* protects deactivations and delayed_status counts*/
 	spinlock_t			lock;
-
-	/* switch indicating connected/disconnected state */
-	struct switch_dev		sw_connected;
-	/* switch indicating current configuration */
-	struct switch_dev		sw_config;
-	/* current connected state for sw_connected */
-	bool				connected;
-#ifdef CONFIG_LGE_USB_GADGET_DRIVER
-	/* hyunjin2.lim@lge.com added for mute switching. */
-	/* used by usb_composite_force_reset to avoid signalling switch changes */
-	bool				mute_switch;
-	struct switch_dev		sw_mute_connected;
-
-#endif
-	struct work_struct switch_work;
 };
 
 extern int usb_string_id(struct usb_composite_dev *c);

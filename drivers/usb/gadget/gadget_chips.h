@@ -45,20 +45,6 @@
 #define	gadget_is_goku(g)	0
 #endif
 
-/* SH3 UDC -- not yet ported 2.4 --> 2.6 */
-#ifdef CONFIG_USB_GADGET_SUPERH
-#define	gadget_is_sh(g)		!strcmp("sh_udc", (g)->name)
-#else
-#define	gadget_is_sh(g)		0
-#endif
-
-/* not yet stable on 2.6 (would help "original Zaurus") */
-#ifdef CONFIG_USB_GADGET_SA1100
-#define	gadget_is_sa1100(g)	!strcmp("sa1100_udc", (g)->name)
-#else
-#define	gadget_is_sa1100(g)	0
-#endif
-
 #ifdef CONFIG_USB_GADGET_LH7A40X
 #define	gadget_is_lh7a40x(g)	!strcmp("lh7a40x_udc", (g)->name)
 #else
@@ -110,7 +96,7 @@
 
 /* Mentor high speed "dual role" controller, in peripheral role */
 #ifdef CONFIG_USB_GADGET_MUSB_HDRC
-#define gadget_is_musbhdrc(g)	!strcmp("musb-hdrc", (g)->name)
+#define gadget_is_musbhdrc(g)	!strcmp("musb_hdrc", (g)->name)
 #else
 #define gadget_is_musbhdrc(g)	0
 #endif
@@ -134,10 +120,10 @@
 #define gadget_is_fsl_qe(g)	0
 #endif
 
-#ifdef CONFIG_USB_GADGET_CI13XXX_PCI
-#define gadget_is_ci13xxx_pci(g)	(!strcmp("ci13xxx_pci", (g)->name))
+#ifdef CONFIG_USB_GADGET_CI13XXX
+#define gadget_is_ci13xxx(g)	(!strcmp("ci13xxx_udc", (g)->name))
 #else
-#define gadget_is_ci13xxx_pci(g)	0
+#define gadget_is_ci13xxx(g)	0
 #endif
 
 #ifdef CONFIG_USB_GADGET_MSM_72K
@@ -162,17 +148,6 @@
 #define gadget_is_s3c_hsotg(g)    0
 #endif
 
-#ifdef CONFIG_USB_GADGET_EG20T
-#define	gadget_is_pch(g)	(!strcmp("pch_udc", (g)->name))
-#else
-#define	gadget_is_pch(g)	0
-#endif
-
-#ifdef CONFIG_USB_GADGET_CI13XXX_MSM
-#define gadget_is_ci13xxx_msm(g)	(!strcmp("ci13xxx_msm", (g)->name))
-#else
-#define gadget_is_ci13xxx_msm(g)	0
-#endif
 
 /**
  * usb_gadget_controller_number - support bcdDevice id convention
@@ -223,7 +198,7 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x21;
 	else if (gadget_is_fsl_qe(gadget))
 		return 0x22;
-	else if (gadget_is_ci13xxx_pci(gadget))
+	else if (gadget_is_ci13xxx(gadget))
 		return 0x23;
 	else if (gadget_is_langwell(gadget))
 		return 0x24;
@@ -231,12 +206,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x25;
 	else if (gadget_is_s3c_hsotg(gadget))
 		return 0x26;
-	else if (gadget_is_pch(gadget))
+	else if (gadget_is_msm72k(gadget))
 		return 0x27;
-	else if (gadget_is_ci13xxx_msm(gadget))
-		return 0x28;
-else if (gadget_is_msm72k(gadget))
-		return 0x29;
 	return -ENOENT;
 }
 
@@ -259,4 +230,14 @@ static inline bool gadget_supports_altsettings(struct usb_gadget *gadget)
 	return true;
 }
 
+/**
+ * gadget_dma32 - return true if we want buffer aligned on 32 bits (for dma)
+ * @gadget: the gadget in question
+ */
+static inline bool gadget_dma32(struct usb_gadget *gadget)
+{
+	if (gadget_is_musbhdrc(gadget))
+		return true;
+	return false;
+}
 #endif /* __GADGET_CHIPS_H */

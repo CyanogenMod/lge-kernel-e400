@@ -2350,6 +2350,7 @@ void* LGF_TestModeChangeUsbDriver(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rs
 
 	switch (pReq->change_usb_driver)
 	{
+#if 0
 		case CHANGE_MODEM:
 			lgeusb_switch_factory_mode(1);
 			break;
@@ -2357,7 +2358,7 @@ void* LGF_TestModeChangeUsbDriver(test_mode_req_type * pReq, DIAG_TEST_MODE_F_rs
 		case CHANGE_MASS:
 			lgeusb_switch_android_mode(1);
 			break;
-
+#endif
 		default:
 			pRsp->ret_stat_code = TEST_NOT_SUPPORTED_S;
 			break;

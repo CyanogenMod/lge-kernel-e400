@@ -14,7 +14,6 @@
 
 #include <linux/usb/composite.h>
 #include <linux/usb/cdc.h>
-#include <mach/usb_gadget_fserial.h>
 
 /*
  * One non-multiplexed "serial" I/O port ... there can be several of these
@@ -71,44 +70,14 @@ void gserial_cleanup(void);
 int gserial_connect(struct gserial *, u8 port_num);
 void gserial_disconnect(struct gserial *);
 
-#if defined(CONFIG_USB_F_SERIAL_SDIO) || defined(CONFIG_USB_ANDROID_ACM_SDIO)
 /* sdio related functions */
 int gsdio_setup(struct usb_gadget *g, unsigned n_ports);
 int gsdio_connect(struct gserial *, u8 port_num);
 void gsdio_disconnect(struct gserial *, u8 portno);
-#else
-static inline int gsdio_setup(struct usb_gadget *g, unsigned n_ports)
-{
-	return 0;
-}
-static inline int gsdio_connect(struct gserial *g, u8 port_num)
-{
-	return 0;
-}
-static inline void gsdio_disconnect(struct gserial *g, u8 portno)
-{
-	return;
-}
-#endif
 
-#if defined(CONFIG_USB_F_SERIAL_SMD) || defined(CONFIG_USB_ANDROID_ACM_SMD)
 int gsmd_setup(struct usb_gadget *g, unsigned n_ports);
 int gsmd_connect(struct gserial *, u8 port_num);
 void gsmd_disconnect(struct gserial *, u8 portno);
-#else
-static inline int gsmd_setup(struct usb_gadget *g, unsigned n_ports)
-{
-	return 0;
-}
-static inline int gsmd_connect(struct gserial *g, u8 port_num)
-{
-	return 0;
-}
-static inline void gsmd_disconnect(struct gserial *g, u8 portno)
-{
-	return;
-}
-#endif
 
 /* functions are bound to configurations by a config or gadget driver */
 int acm_bind_config(struct usb_configuration *c, u8 port_num);

@@ -25,10 +25,10 @@
 
 #include "u_rmnet.h"
 
-#define N_PORTS	1
+#define BAM_N_PORTS	1
 
 static struct workqueue_struct *gbam_wq;
-static int n_ports;
+static int n_bam_ports;
 static unsigned bam_ch_ids[] = { 8 };
 
 #define TX_PKT_DROP_THRESHOLD			1000
@@ -97,9 +97,9 @@ struct gbam_port {
 	struct work_struct	connect_w;
 };
 
-static struct portmaster {
+static struct bam_portmaster {
 	struct gbam_port *port;
-} ports[N_PORTS];
+} bam_ports[N_PORTS];
 
 static void gbam_start_rx(struct gbam_port *port);
 
@@ -513,7 +513,7 @@ static void gbam_connect_work(struct work_struct *w)
 
 static void gbam_port_free(int portno)
 {
-	struct gbam_port *port = ports[portno].port;
+	struct gbam_port *port = bam_ports[portno].port;
 
 	if (!port)
 		kfree(port);
@@ -544,7 +544,7 @@ static int gbam_port_alloc(int portno)
 	skb_queue_head_init(&d->rx_skb_q);
 	d->id = bam_ch_ids[portno];
 
-	ports[portno].port = port;
+	bam_ports[portno].port = port;
 
 	pr_debug("%s: port:%p portno:%d\n", __func__, port, portno);
 
@@ -568,8 +568,8 @@ static ssize_t gbam_read_stats(struct file *file, char __user *ubuf,
 	if (!buf)
 		return -ENOMEM;
 
-	for (i = 0; i < n_ports; i++) {
-		port = ports[i].port;
+	for (i = 0; i < n_bam_ports; i++) {
+		port = bam_ports[i].port;
 		if (!port)
 			continue;
 		spin_lock_irqsave(&port->port_lock, flags);
@@ -609,8 +609,8 @@ static ssize_t gbam_reset_stats(struct file *file, const char __user *buf,
 	int			i;
 	unsigned long		flags;
 
-	for (i = 0; i < n_ports; i++) {
-		port = ports[i].port;
+	for (i = 0; i < n_bam_ports; i++) {
+		port = bam_ports[i].port;
 		if (!port)
 			continue;
 
@@ -686,7 +686,7 @@ void gbam_disconnect(struct grmnet *gr, u8 port_num)
 
 	pr_debug("%s: grmnet:%p port#%d\n", __func__, gr, port_num);
 
-	if (port_num >= n_ports) {
+	if (port_num >= n_bam_ports) {
 		pr_err("%s: invalid portno#%d\n", __func__, port_num);
 		return;
 	}
@@ -696,7 +696,7 @@ void gbam_disconnect(struct grmnet *gr, u8 port_num)
 		return;
 	}
 
-	port = ports[port_num].port;
+	port = bam_ports[port_num].port;
 	d = &port->data_ch;
 
 	gbam_free_buffers(port);
@@ -724,7 +724,7 @@ int gbam_connect(struct grmnet *gr, u8 port_num)
 
 	pr_debug("%s: grmnet:%p port#%d\n", __func__, gr, port_num);
 
-	if (port_num >= n_ports) {
+	if (port_num >= n_bam_ports) {
 		pr_err("%s: invalid portno#%d\n", __func__, port_num);
 		return -ENODEV;
 	}
@@ -734,7 +734,7 @@ int gbam_connect(struct grmnet *gr, u8 port_num)
 		return -ENODEV;
 	}
 
-	port = ports[port_num].port;
+	port = bam_ports[port_num].port;
 	d = &port->data_ch;
 
 	ret = usb_ep_enable(gr->in, gr->in_desc);
@@ -777,7 +777,7 @@ int gbam_setup(unsigned int count)
 
 	pr_debug("%s: requested ports:%d\n", __func__, count);
 
-	if (!count || count > N_PORTS) {
+	if (!count || count > BAM_N_PORTS) {
 		pr_err("%s: Invalid num of ports count:%d\n",
 				__func__, count);
 		return -EINVAL;
@@ -794,16 +794,16 @@ int gbam_setup(unsigned int count)
 		ret = gbam_port_alloc(i);
 		if (ret) {
 			pr_err("%s: Unable to alloc port:%d\n", __func__, i);
-			goto free_ports;
+			goto free_bam_ports;
 		}
-		n_ports++;
+		n_bam_ports++;
 	}
 
 	gbam_debugfs_init();
 
 	return 0;
-free_ports:
-	for (i = 0; i < n_ports; i++)
+free_bam_ports:
+	for (i = 0; i < n_bam_ports; i++)
 		gbam_port_free(i);
 
 	destroy_workqueue(gbam_wq);

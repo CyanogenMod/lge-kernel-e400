@@ -14,7 +14,6 @@
 #define __U_RMNET_H
 
 #include <linux/usb/composite.h>
-#include <linux/platform_device.h>
 #include <linux/usb/cdc.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
@@ -51,30 +50,12 @@ struct grmnet {
 				int cbits);
 };
 
-#ifdef CONFIG_USB_ANDROID_RMNET_BAM
 int gbam_setup(unsigned int count);
 int gbam_connect(struct grmnet *, u8 port_num);
 void gbam_disconnect(struct grmnet *, u8 port_num);
-#else
-static inline int
-gbam_setup(unsigned int count) { return 0; }
-static inline int
-gbam_connect(struct grmnet *, u8 port_num) { return 0; }
-static inline void
-gbam_disconnect(struct grmnet *, u8 port_num) { };
-#endif
 
-#ifdef CONFIG_USB_ANDROID_RMNET_CTRL_SMD
 int gsmd_ctrl_connect(struct grmnet *gr, int port_num);
 void gsmd_ctrl_disconnect(struct grmnet *gr, u8 port_num);
 int gsmd_ctrl_setup(unsigned int count);
-#else
-static inline int
-gsmd_ctrl_connect(struct grmnet *gr, int port_num) { return 0; }
-static inline void
-gsmd_ctrl_disconnect(struct grmnet *gr, u8 port_num) { }
-static inline int
-gsmd_ctrl_setup(unsigned int count) { return 0; }
-#endif
 
 #endif /* __U_RMNET_H*/

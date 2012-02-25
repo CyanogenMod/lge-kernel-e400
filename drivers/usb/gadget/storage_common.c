@@ -153,25 +153,6 @@
 
 
 /*-------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------*/
-
-/* SCSI device types */
-#define TYPE_DISK	0x00
-#define TYPE_CDROM	0x05
-
-/* USB protocol value = the transport method */
-#define USB_PR_CBI	0x00		/* Control/Bulk/Interrupt */
-#define USB_PR_CB	0x01		/* Control/Bulk w/o interrupt */
-#define USB_PR_BULK	0x50		/* Bulk-only */
-
-/* USB subclass value = the protocol encapsulation */
-#define USB_SC_RBC	0x01		/* Reduced Block Commands (flash) */
-#define USB_SC_8020	0x02		/* SFF-8020i, MMC-2, ATAPI (CD-ROM) */
-#define USB_SC_QIC	0x03		/* QIC-157 (tape) */
-#define USB_SC_UFI	0x04		/* UFI (floppy) */
-#define USB_SC_8070	0x05		/* SFF-8070i (removable) */
-#define USB_SC_SCSI	0x06		/* Transparent SCSI */
-
 
 /* Bulk-only data structures */
 
@@ -223,34 +204,6 @@ struct interrupt_data {
 
 /* Length of a SCSI Command Data Block */
 #define MAX_COMMAND_SIZE	16
-
-/* SCSI commands that we recognize */
-#define SC_FORMAT_UNIT			0x04
-#define SC_INQUIRY			0x12
-#define SC_MODE_SELECT_6		0x15
-#define SC_MODE_SELECT_10		0x55
-#define SC_MODE_SENSE_6			0x1a
-#define SC_MODE_SENSE_10		0x5a
-#define SC_PREVENT_ALLOW_MEDIUM_REMOVAL	0x1e
-#define SC_READ_6			0x08
-#define SC_READ_10			0x28
-#define SC_READ_12			0xa8
-#define SC_READ_CAPACITY		0x25
-#define SC_READ_FORMAT_CAPACITIES	0x23
-#define SC_READ_HEADER			0x44
-#define SC_READ_TOC			0x43
-#define SC_RELEASE			0x17
-#define SC_REQUEST_SENSE		0x03
-#define SC_RESERVE			0x16
-#define SC_SEND_DIAGNOSTIC		0x1d
-#define SC_START_STOP_UNIT		0x1b
-#define SC_SYNCHRONIZE_CACHE		0x35
-#define SC_TEST_UNIT_READY		0x00
-#define SC_VERIFY			0x2f
-#define SC_WRITE_6			0x0a
-#define SC_WRITE_10			0x2a
-#define SC_WRITE_12			0xaa
-
 
 /* SCSI Sense Key/Additional Sense Code/ASC Qualifier values */
 #define SS_NO_SENSE				0
@@ -760,13 +713,14 @@ static ssize_t fsg_show_file(struct device *dev, struct device_attribute *attr,
 static ssize_t fsg_store_ro(struct device *dev, struct device_attribute *attr,
 			    const char *buf, size_t count)
 {
-	ssize_t		rc = count;
+	ssize_t		rc;
 	struct fsg_lun	*curlun = fsg_lun_from_dev(dev);
 	struct rw_semaphore	*filesem = dev_get_drvdata(dev);
-	unsigned long	ro;
+	unsigned	ro;
 
-	if (strict_strtoul(buf, 2, &ro))
-		return -EINVAL;
+	rc = kstrtouint(buf, 2, &ro);
+	if (rc)
+		return rc;
 
 	/*
 	 * Allow the write-enable status to change only while the
@@ -780,6 +734,7 @@ static ssize_t fsg_store_ro(struct device *dev, struct device_attribute *attr,
 		curlun->ro = ro;
 		curlun->initially_ro = ro;
 		LDBG(curlun, "read-only status set to %d\n", curlun->ro);
+		rc = count;
 	}
 	up_read(filesem);
 	return rc;
@@ -790,10 +745,12 @@ static ssize_t fsg_store_nofua(struct device *dev,
 			       const char *buf, size_t count)
 {
 	struct fsg_lun	*curlun = fsg_lun_from_dev(dev);
-	unsigned long	nofua;
+	unsigned	nofua;
+	int		ret;
 
-	if (strict_strtoul(buf, 2, &nofua))
-		return -EINVAL;
+	ret = kstrtouint(buf, 2, &nofua);
+	if (ret)
+		return ret;
 
 	/* Sync data when switching from async mode to sync */
 	if (!nofua && curlun->nofua)
