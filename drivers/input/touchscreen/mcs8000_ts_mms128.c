@@ -629,11 +629,13 @@ static struct miscdevice mcs8000_ts_misc_dev = {
 
 void Send_Touch(unsigned int x, unsigned int y)
 {
+	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_PRESSURE, 1);
 	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_TOUCH_MAJOR, 1);
 	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_POSITION_X, x);
 	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_POSITION_Y, y);
 	input_mt_sync(mcs8000_ts_dev.input_dev);
 	input_sync(mcs8000_ts_dev.input_dev);
+	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_PRESSURE, 0);
 	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_TOUCH_MAJOR, 0);
 	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_POSITION_X, x);
 	input_report_abs(mcs8000_ts_dev.input_dev, ABS_MT_POSITION_Y, y);
@@ -872,12 +874,6 @@ For the MIP Protocal*/
 TD1416085584 :  After sleeping on and off while sensing a touchscreen,
 Touchscreen doesn't work*/
 					if(Is_Release_Error[j]==1) {			
-						input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, j);
-						input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[j].posX);
-						input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[j].posY);
-						input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0/*g_Mtouch_info[j].strength*/ );
-						input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[j].width); 				   
-						input_mt_sync(ts->input_dev);		  
 						//input_sync(ts->input_dev);/* LGE_CHANGE_S : wonsang.yoon@lge.com [2011-12-17]  blocking*/
 						Is_Release_Error[j]=0;
 					}		
@@ -886,8 +882,8 @@ Touchscreen doesn't work*/
 					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, j);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, g_Mtouch_info[j].posX);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, g_Mtouch_info[j].posY);
-					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[j].strength);
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, g_Mtouch_info[j].width);      				
+					input_report_abs(ts->input_dev, ABS_MT_PRESSURE, g_Mtouch_info[j].strength);
+					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, g_Mtouch_info[j].width);      				
 					input_mt_sync(ts->input_dev);   
 
 #if DEBUG_PRINT
@@ -1204,6 +1200,10 @@ static int mcs8000_ts_probe(struct i2c_client *client, const struct i2c_device_i
 
 	input_set_abs_params(mcs8000_ts_input, ABS_MT_POSITION_X, ts_pdata->ts_x_min, ts_pdata->ts_x_max, 0, 0);
 	input_set_abs_params(mcs8000_ts_input, ABS_MT_POSITION_Y, ts_pdata->ts_y_min, ts_pdata->ts_y_max, 0, 0);
+        input_set_abs_params(mcs8000_ts_input, ABS_MT_PRESSURE, 0, 255, 0, 0);
+        input_set_abs_params(mcs8000_ts_input, ABS_MT_TOUCH_MINOR, 0, 15, 0, 0);
+        input_set_abs_params(mcs8000_ts_input, ABS_MT_TOUCH_MAJOR, 0, 15, 0, 0);
+        input_set_abs_params(mcs8000_ts_input, ABS_MT_TRACKING_ID, 0, 9, 0, 0);
 
 #if DEBUG_PRINT
   printk(KERN_INFO "ABS_MT_POSITION_X :  ABS_MT_POSITION_Y = [%d] : [%d] \n", ts_pdata->ts_x_max, ts_pdata->ts_y_max);
