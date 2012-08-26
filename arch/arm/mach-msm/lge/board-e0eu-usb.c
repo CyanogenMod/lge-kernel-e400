@@ -25,10 +25,10 @@ char *usb_functions_lge_all[] = {
 
 	"acm",
 	"diag",
-	"ecm",
+	"rndis",
 #ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
 	"usb_cdrom_storage",
-	"charge_only",
+	"mtp",
 #endif
 	"usb_mass_storage",
 	"adb",
@@ -54,17 +54,17 @@ char *usb_functions_lge_android_plat_adb[] = {
 #endif
 
 static char *usb_functions_ndis[] = {
-	"acm",
-	"diag",
-	"ecm",
-	"usb_mass_storage",
+	//"acm",
+	//"diag",
+	"rndis",
+	//"usb_mass_storage",
 };
 
 static char *usb_functions_ndis_adb[] = {
-	"acm",
-	"diag",
-	"ecm",
-	"usb_mass_storage",
+	//"acm",
+	//"diag",
+	"rndis",
+	//"usb_mass_storage",
 	"adb",
 };
 
@@ -76,6 +76,15 @@ char *usb_functions_lge_manufacturing[] = {
 /* Mass storage only mode */
 char *usb_functions_lge_mass_storage_only[] = {
 	"usb_mass_storage",
+};
+
+/* MTP */
+char *usb_functions_lge_mtp_only[] = {
+	"mtp",
+};
+char *usb_functions_lge_mtp_adb[] = {
+	"mtp",
+	"adb",
 };
 
 #ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_AUTORUN
@@ -111,12 +120,12 @@ struct android_usb_product usb_products[] = {
 	},
 #endif
 	{
-		.product_id = 0x61FC,
+		.product_id = 0x61DA,
 		.num_functions = ARRAY_SIZE(usb_functions_ndis),
 		.functions = usb_functions_ndis,
 	},
 	{
-		.product_id = 0x61FC,
+		.product_id = 0x61D9,
 		.num_functions = ARRAY_SIZE(usb_functions_ndis_adb),
 		.functions = usb_functions_ndis_adb,
 	},
@@ -124,6 +133,16 @@ struct android_usb_product usb_products[] = {
 		.product_id = 0x6000,
 		.num_functions = ARRAY_SIZE(usb_functions_lge_manufacturing),
 		.functions = usb_functions_lge_manufacturing,
+	},
+	{
+		.product_id = 0x61F9,
+		.num_functions = ARRAY_SIZE(usb_functions_lge_mtp_adb),
+		.functions = usb_functions_lge_mass_storage_only,
+	},
+	{
+		.product_id = 0x631C,
+		.num_functions = ARRAY_SIZE(usb_functions_lge_mtp_only),
+		.functions = usb_functions_lge_mass_storage_only,
 	},
 	{
 		.product_id = 0x61C5,
@@ -331,7 +350,7 @@ struct android_usb_platform_data android_usb_pdata = {
 	.serial_number = "LG_ANDROID_E0TRF_US_",
 #else
 	.vendor_id  = 0x1004,
-	.product_id = 0x61FC,
+	.product_id = 0x61F9,
 	.version    = 0x0100,
 	.product_name       = "LGE Android Phone",
 	.manufacturer_name  = "LG Electronics Inc.",
@@ -365,7 +384,7 @@ static struct platform_device android_usb_device = {
 	},
 };
 
-#ifndef CONFIG_LGE_USB_GADGET_DRIVER
+//#ifndef CONFIG_LGE_USB_GADGET_DRIVER
 static struct usb_ether_platform_data rndis_pdata = {
 #ifdef CONFIG_LGE_USB_GADGET_DRIVER
 	.vendorID	= 0x1004,
@@ -403,7 +422,7 @@ static int __init board_serialno_setup(char *serialno)
 }
 __setup("androidboot.serialno=", board_serialno_setup);
 
-#endif
+//#endif
 
 #if 0
 static int __init board_serialno_setup(char *serialno)
@@ -570,9 +589,9 @@ static struct platform_device *e0eu_usb_devices[] __initdata = {
 	&msm_device_otg,
 	&msm_device_gadget_peripheral,
 	&usb_mass_storage_device,
-#ifndef CONFIG_LGE_USB_GADGET_DRIVER
+//#ifndef CONFIG_LGE_USB_GADGET_DRIVER
 	&rndis_device,
-#endif	
+//#endif	
 	&usb_diag_device,
 #ifdef CONFIG_USB_ANDROID_CDC_ECM
 	&ecm_device,

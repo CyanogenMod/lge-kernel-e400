@@ -1376,7 +1376,7 @@ Touchscreen doesn't work*/
 		DMSG("%s: irq disable\n", __FUNCTION__);
 		/* touch disable */
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
-//gpio_set_value(28, 0);
+gpio_set_value(28, 0);
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
 
 		dev->power(OFF);
@@ -1393,7 +1393,7 @@ static void mcs8000_late_resume(struct early_suspend *h)
 		mcs8000_ts_on();
 		/* touch enable */
 /* LGE_CHANGE_S: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
-//gpio_set_value(28, 0);
+gpio_set_value(28, 0);
 /* LGE_CHANGE_E: E0 kevinzone.han@lge.com [2011-11-14] : It's unnecessary*/
 		
 		enable_irq(dev->num_irq);
