@@ -15,6 +15,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <mach/socinfo.h>
+#include <mach/scm.h>
 
 #include "kgsl.h"
 #include "kgsl_pwrscale.h"
@@ -30,37 +31,24 @@ struct tz_priv {
 };
 
 #define SWITCH_OFF		200
-#define TZ_UPDATE_ID		0x01404000
-#define TZ_RESET_ID		0x01403000
 #define SWITCH_OFF_RESET_TH	40
 #define SKIP_COUNTER		500
+#define TZ_RESET_ID		0x3
+#define TZ_UPDATE_ID		0x4
 
-#ifdef CONFIG_MSM_SECURE_IO
+#ifdef CONFIG_MSM_SCM
 /* Trap into the TrustZone, and call funcs there. */
 static int __secure_tz_entry(u32 cmd, u32 val)
 {
-	register u32 r0 asm("r0") = cmd;
-	register u32 r1 asm("r1") = 0x0;
-	register u32 r2 asm("r2") = val;
-
 	__iowmb();
-	asm(
-		__asmeq("%0", "r0")
-		__asmeq("%1", "r0")
-		__asmeq("%2", "r1")
-		__asmeq("%3", "r2")
-		"smc    #0      @ switch to secure world\n"
-		: "=r" (r0)
-		: "r" (r0), "r" (r1), "r" (r2)
-		);
-	return r0;
+	return scm_call_atomic1(SCM_SVC_IO, cmd, val);
 }
 #else
 static int __secure_tz_entry(u32 cmd, u32 val)
 {
 	return 0;
 }
-#endif /* CONFIG_MSM_SECURE_IO */
+#endif /* CONFIG_MSM_SCM */
 
 static ssize_t tz_governor_show(struct kgsl_device *device,
 				struct kgsl_pwrscale *pwrscale,
@@ -178,7 +166,7 @@ static int tz_init(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 	struct tz_priv *priv;
 
 	/* Trustzone is only valid for some SOCs */
-	if (!cpu_is_msm8x60())
+	if (!(cpu_is_msm8x60() || cpu_is_msm8960() || cpu_is_msm8930()))
 		return -EINVAL;
 
 	priv = pwrscale->priv = kzalloc(sizeof(struct tz_priv), GFP_KERNEL);

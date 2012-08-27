@@ -25,6 +25,9 @@
 #include "kgsl.h"
 #include "kgsl_cffdump.h"
 #include "kgsl_debugfs.h"
+#include "kgsl_log.h"
+#include "kgsl_sharedmem.h"
+#include "adreno_pm4types.h"
 
 static struct rchan	*chan;
 static struct dentry	*dir;
@@ -50,7 +53,7 @@ struct cff_op_write_reg {
 	unsigned char op;
 	uint addr;
 	uint value;
-} __attribute__((packed));
+} __packed;
 
 #define CFF_OP_POLL_REG         0x00000004
 struct cff_op_poll_reg {
@@ -58,12 +61,12 @@ struct cff_op_poll_reg {
 	uint addr;
 	uint value;
 	uint mask;
-} __attribute__((packed));
+} __packed;
 
 #define CFF_OP_WAIT_IRQ         0x00000005
 struct cff_op_wait_irq {
 	unsigned char op;
-} __attribute__((packed));
+} __packed;
 
 #define CFF_OP_RMW              0x0000000a
 
@@ -72,7 +75,7 @@ struct cff_op_write_mem {
 	unsigned char op;
 	uint addr;
 	uint value;
-} __attribute__((packed));
+} __packed;
 
 #define CFF_OP_WRITE_MEMBUF     0x0000000c
 struct cff_op_write_membuf {
@@ -80,7 +83,7 @@ struct cff_op_write_membuf {
 	uint addr;
 	ushort count;
 	uint buffer[MEMBUF_SIZE];
-} __attribute__((packed));
+} __packed;
 
 #define CFF_OP_MEMORY_BASE	0x0000000d
 struct cff_op_memory_base {
@@ -98,7 +101,7 @@ struct cff_op_hang {
 #define CFF_OP_EOF              0xffffffff
 struct cff_op_eof {
 	unsigned char op;
-} __attribute__((packed));
+} __packed;
 
 #define CFF_OP_VERIFY_MEM_FILE  0x00000007
 #define CFF_OP_WRITE_SURFACE_PARAMS 0x00000011
@@ -325,7 +328,7 @@ void kgsl_cffdump_init()
 	cpumask_t mask;
 
 	cpumask_clear(&mask);
-	cpumask_set_cpu(1, &mask);
+	cpumask_set_cpu(0, &mask);
 	sched_setaffinity(0, &mask);
 #endif
 	if (!debugfs_dir || IS_ERR(debugfs_dir)) {
@@ -360,7 +363,7 @@ void kgsl_cffdump_open(enum kgsl_deviceid device_id)
 	/*TODO: move this to where we can report correct gmemsize*/
 	unsigned int va_base;
 
-	if (cpu_is_msm8x60() || cpu_is_msm8960())
+	if (cpu_is_msm8x60() || cpu_is_msm8960() || cpu_is_msm8930())
 		va_base = 0x40000000;
 	else
 		va_base = 0x20000000;
@@ -425,7 +428,7 @@ void kgsl_cffdump_syncmem(struct kgsl_device_private *dev_priv,
 
 	src = kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr, &host_size);
 	if (src == NULL || host_size < sizebytes) {
-		KGSL_CORE_ERR(("did not find mapping for "
+		KGSL_CORE_ERR("did not find mapping for "
 			"gpuaddr: 0x%08x, m->host: 0x%p, phys: 0x%08x\n",
 			gpuaddr, memdesc->hostptr, memdesc->physaddr);
 		return;
@@ -437,8 +440,8 @@ void kgsl_cffdump_syncmem(struct kgsl_device_private *dev_priv,
 
 		mb();
 
-		kgsl_cache_range_op(memdesc->hostptr, memdesc->size,
-				    memdesc->type, KGSL_CACHE_OP_INV);
+		kgsl_cache_range_op((struct kgsl_memdesc *)memdesc,
+				KGSL_CACHE_OP_INV);
 	}
 
 	BUG_ON(physaddr > 0x66000000 && physaddr < 0x66ffffff);
@@ -523,8 +526,8 @@ static bool kgsl_cffdump_handle_type3(struct kgsl_device_private *dev_priv,
 	static uint size_stack[ADDRESS_STACK_SIZE];
 
 	switch (GET_PM4_TYPE3_OPCODE(hostaddr)) {
-	case PM4_INDIRECT_BUFFER_PFD:
-	case PM4_INDIRECT_BUFFER:
+	case CP_INDIRECT_BUFFER_PFD:
+	case CP_INDIRECT_BUFFER:
 	{
 		/* traverse indirect buffers */
 		int i;
@@ -607,11 +610,10 @@ bool kgsl_cffdump_parse_ibs(struct kgsl_device_private *dev_priv,
 
 	if (!memdesc->physaddr) {
 		KGSL_CORE_ERR("no physaddr");
-		return true;
 	} else {
 		mb();
-		kgsl_cache_range_op(memdesc->hostptr, memdesc->size,
-				    memdesc->type, KGSL_CACHE_OP_INV);
+		kgsl_cache_range_op((struct kgsl_memdesc *)memdesc,
+				KGSL_CACHE_OP_INV);
 	}
 
 #ifdef DEBUG
