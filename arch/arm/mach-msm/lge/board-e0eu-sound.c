@@ -18,7 +18,7 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(SPEAKER, 0),
 	SND(SPEAKER_IN_CALL, 7),
 	SND(SPEAKER_RING, 8),
-	SND(HEADSET_AND_SPEAKER, 8),
+	SND(STEREO_HEADSET_AND_SPEAKER, 8),
 	SND(FM_HEADSET, 10),
 	SND(FM_SPEAKER, 11),
 	SND(BT, 13),
@@ -29,7 +29,10 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(HANDSET_VR, 20),
 	SND(HEADSET_VR, 21),
 	SND(BT_VR, 23),
-	SND(HEADSET_WITHOUT_MIC, 4),
+	SND(NO_MIC_HEADSET, 4),
+	//Not so nice hack: Standard CAF userspace doesn't have a "wired headset"
+	//option, only a combo... So use that combo label for the headset endpoint
+	//SND(STEREO_HEADSET_AND_SPEAKER, 4),
 	SND(HEADSET_WITHOUT_MIC_VR, 22),
 	SND(SPEAKER_LOOPBACK, 29),
 	SND(SPEAKER_AUXMIC, 30),
