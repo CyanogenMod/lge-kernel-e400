@@ -118,8 +118,10 @@ static int acm_port_setup(struct usb_configuration *c)
 
 	if (no_acm_tty_ports)
 		ret = gserial_setup(c->cdev->gadget, no_acm_tty_ports);
+#if 0
 	if (no_acm_sdio_ports)
 		ret = gsdio_setup(c->cdev->gadget, no_acm_sdio_ports);
+#endif
 	if (no_acm_smd_ports)
 		ret = gsmd_setup(c->cdev->gadget, no_acm_smd_ports);
 
@@ -141,9 +143,11 @@ static int acm_port_connect(struct f_acm *acm)
 	case USB_GADGET_XPORT_TTY:
 		gserial_connect(&acm->port, port_num);
 		break;
+#if 0
 	case USB_GADGET_XPORT_SDIO:
 		gsdio_connect(&acm->port, port_num);
 		break;
+#endif
 	case USB_GADGET_XPORT_SMD:
 		gsmd_connect(&acm->port, port_num);
 		break;
@@ -170,9 +174,11 @@ static int acm_port_disconnect(struct f_acm *acm)
 	case USB_GADGET_XPORT_TTY:
 		gserial_disconnect(&acm->port);
 		break;
+#if 0
 	case USB_GADGET_XPORT_SDIO:
 		gsdio_disconnect(&acm->port, port_num);
 		break;
+#endif
 	case USB_GADGET_XPORT_SMD:
 		gsmd_disconnect(&acm->port, port_num);
 		break;
@@ -912,10 +918,12 @@ static int acm_init_port(int port_num, const char *name)
 		gacm_ports[port_num].client_port_num = no_acm_tty_ports;
 		no_acm_tty_ports++;
 		break;
+#if 0
 	case USB_GADGET_XPORT_SDIO:
 		gacm_ports[port_num].client_port_num = no_acm_sdio_ports;
 		no_acm_sdio_ports++;
 		break;
+#endif
 	case USB_GADGET_XPORT_SMD:
 		gacm_ports[port_num].client_port_num = no_acm_smd_ports;
 		no_acm_smd_ports++;

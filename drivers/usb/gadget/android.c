@@ -49,12 +49,12 @@
 
 #include "f_diag.c"
 #include "f_rmnet_smd.c"
-#include "f_rmnet_sdio.c"
-#include "f_rmnet_smd_sdio.c"
+//#include "f_rmnet_sdio.c"
+//#include "f_rmnet_smd_sdio.c"
 #include "f_rmnet.c"
 #include "f_mass_storage.c"
 #include "u_serial.c"
-#include "u_sdio.c"
+//#include "u_sdio.c"
 #include "u_smd.c"
 #include "u_bam.c"
 #include "u_rmnet_ctrl_smd.c"
@@ -213,6 +213,7 @@ static struct android_usb_function rmnet_smd_function = {
 	.bind_config	= rmnet_smd_function_bind_config,
 };
 
+#if 0
 /* RMNET_SDIO */
 static int rmnet_sdio_function_bind_config(struct android_usb_function *f,
 					  struct usb_configuration *c)
@@ -254,6 +255,7 @@ static struct android_usb_function rmnet_smd_sdio_function = {
 	.attributes	= rmnet_smd_sdio_attributes,
 };
 
+#endif
 /*rmnet transport string format(per port):"ctrl0,data0,ctrl1,data1..." */
 #define MAX_XPORT_STR_LEN 50
 static char rmnet_transports[MAX_XPORT_STR_LEN];
@@ -958,8 +960,10 @@ static struct android_usb_function accessory_function = {
 
 static struct android_usb_function *supported_functions[] = {
 	&rmnet_smd_function,
+#if 0
 	&rmnet_sdio_function,
 	&rmnet_smd_sdio_function,
+#endif
 	&rmnet_function,
 	&diag_function,
 	&serial_function,

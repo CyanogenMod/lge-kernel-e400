@@ -260,8 +260,10 @@ static int gport_setup(struct usb_configuration *c)
 
 	if (no_tty_ports)
 		ret = gserial_setup(c->cdev->gadget, no_tty_ports);
+#if 0
 	if (no_sdio_ports)
 		ret = gsdio_setup(c->cdev->gadget, no_sdio_ports);
+#endif
 	if (no_smd_ports)
 		ret = gsmd_setup(c->cdev->gadget, no_smd_ports);
 
@@ -282,9 +284,11 @@ static int gport_connect(struct f_gser *gser)
 	case USB_GADGET_XPORT_TTY:
 		gserial_connect(&gser->port, port_num);
 		break;
+#if 0
 	case USB_GADGET_XPORT_SDIO:
 		gsdio_connect(&gser->port, port_num);
 		break;
+#endif
 	case USB_GADGET_XPORT_SMD:
 		gsmd_connect(&gser->port, port_num);
 		break;
@@ -311,9 +315,11 @@ static int gport_disconnect(struct f_gser *gser)
 	case USB_GADGET_XPORT_TTY:
 		gserial_disconnect(&gser->port);
 		break;
+#if 0
 	case USB_GADGET_XPORT_SDIO:
 		gsdio_disconnect(&gser->port, port_num);
 		break;
+#endif
 	case USB_GADGET_XPORT_SMD:
 		gsmd_disconnect(&gser->port, port_num);
 		break;

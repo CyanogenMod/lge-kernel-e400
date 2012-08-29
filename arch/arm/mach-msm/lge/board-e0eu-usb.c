@@ -5,7 +5,6 @@
 #include <mach/msm_hsusb.h>
 #include <mach/rpc_hsusb.h>
 #include <mach/usbdiag.h>
-#include <mach/usb_gadget_fserial.h>
 
 #include <linux/usb/android_composite.h>
 #include <linux/platform_device.h>

@@ -563,13 +563,10 @@ config USB_DUMMY_HCD
 
 endchoice
 
+# Selected by UDC drivers that support high-speed operation.
 config USB_GADGET_DUALSPEED
 	bool
 	depends on USB_GADGET
-	default n
-	help
-	  Means that gadget drivers should include extra descriptors
-	  and code to handle dual-speed controllers.
 
 #
 # USB Gadget Drivers
@@ -714,6 +711,19 @@ config USB_ETH_EEM
          If you say "y" here, the Ethernet gadget driver will use the EEM
          protocol rather than ECM.  If unsure, say "n".
 
+config USB_G_NCM
+	tristate "Network Control Model (NCM) support"
+	depends on NET
+	select CRC32
+	help
+	  This driver implements USB CDC NCM subclass standard. NCM is
+	  an advanced protocol for Ethernet encapsulation, allows grouping
+	  of several ethernet frames into one USB transfer and diffferent
+	  alignment possibilities.
+
+	  Say "y" to link the driver statically, or "m" to build a
+	  dynamically linked module called "g_ncm".
+
 config USB_GADGETFS
 	tristate "Gadget Filesystem (EXPERIMENTAL)"
 	depends on EXPERIMENTAL
@@ -735,8 +745,8 @@ config USB_FUNCTIONFS
 	depends on EXPERIMENTAL
 	select USB_FUNCTIONFS_GENERIC if !(USB_FUNCTIONFS_ETH || USB_FUNCTIONFS_RNDIS)
 	help
-	  The Function Filesystem (FunctioFS) lets one create USB
-	  composite functions in user space in the same way as GadgetFS
+	  The Function Filesystem (FunctionFS) lets one create USB
+	  composite functions in user space in the same way GadgetFS
 	  lets one create USB gadgets in user space.  This allows creation
 	  of composite gadgets such that some of the functions are
 	  implemented in kernel space (for instance Ethernet, serial or
@@ -752,14 +762,14 @@ config USB_FUNCTIONFS_ETH
 	bool "Include configuration with CDC ECM (Ethernet)"
 	depends on USB_FUNCTIONFS && NET
 	help
-	  Include a configuration with CDC ECM funcion (Ethernet) and the
-	  Funcion Filesystem.
+	  Include a configuration with CDC ECM function (Ethernet) and the
+	  Function Filesystem.
 
 config USB_FUNCTIONFS_RNDIS
 	bool "Include configuration with RNDIS (Ethernet)"
 	depends on USB_FUNCTIONFS && NET
 	help
-	  Include a configuration with RNDIS funcion (Ethernet) and the Filesystem.
+	  Include a configuration with RNDIS function (Ethernet) and the Filesystem.
 
 config USB_FUNCTIONFS_GENERIC
 	bool "Include 'pure' configuration"
@@ -984,5 +994,85 @@ config USB_G_WEBCAM
 	  dynamically linked module called "g_webcam".
 
 endchoice
+
+config USB_CSW_HACK
+	boolean "USB Mass storage csw hack Feature"
+	default y
+	help
+	 This csw hack feature is for increasing the performance of the mass
+	 storage
+
+config MODEM_SUPPORT
+	boolean "modem support in generic serial function driver"
+	depends on USB_G_ANDROID
+	default y
+	help
+          This feature enables the modem functionality in the
+	  generic serial.
+	  adds interrupt endpoint support to send modem notifications
+	  to host.
+	  adds CDC descriptors to enumerate the generic serial as MODEM.
+	  adds CDC class requests to configure MODEM line settings.
+	  Say "y" to enable MODEM support in the generic serial driver.
+
+config RMNET_SMD_CTL_CHANNEL
+	string "RMNET control SMD channel name"
+	depends on USB_G_ANDROID && MSM_SMD
+	default ""
+	help
+	  Control SMD channel for transferring QMI messages
+
+config RMNET_SMD_DATA_CHANNEL
+	string "RMNET Data SMD channel name"
+	depends on USB_G_ANDROID && MSM_SMD
+	default ""
+	help
+	  Data SMD channel for transferring network data
+
+config RMNET_SDIO_CTL_CHANNEL
+       int "RMNET control SDIO channel id"
+       default 8
+       depends on MSM_SDIO_CMUX && MSM_SDIO_DMUX
+       help
+         Control SDIO channel for transferring RMNET QMI messages
+
+config RMNET_SDIO_DATA_CHANNEL
+       int "RMNET Data SDIO channel id"
+       default 8
+       depends on MSM_SDIO_CMUX && MSM_SDIO_DMUX
+       help
+         Data SDIO channel for transferring network data
+
+config RMNET_SMD_SDIO_CTL_CHANNEL
+       int "RMNET(sdio_smd) Control SDIO channel id"
+       depends on MSM_SDIO_CMUX && MSM_SDIO_DMUX
+       default 8
+       help
+         Control SDIO channel for transferring QMI messages
+
+config RMNET_SMD_SDIO_DATA_CHANNEL
+       int "RMNET(sdio_smd) Data SDIO channel id"
+       default 8
+       depends on MSM_SDIO_CMUX && MSM_SDIO_DMUX
+       help
+         Data SDIO channel for transferring network data
+
+config RMNET_SDIO_SMD_DATA_CHANNEL
+       string "RMNET(sdio_smd) Data SMD channel name"
+       depends on MSM_SDIO_CMUX && MSM_SDIO_DMUX
+       default "DATA40"
+       help
+	  Data SMD channel for transferring network data
+
+config USB_ANDROID_RMNET_CTRL_SMD
+       boolean "RmNet(BAM) control over SMD driver"
+       depends on MSM_SMD
+       help
+         Enabling this option adds rmnet control over SMD
+	 support to the android gadget. Rmnet is an
+	 alternative to CDC-ECM and Windows RNDIS.
+	 It uses QUALCOMM MSM Interface for control
+	 transfers. This option enables only control interface.
+	 Data interface used is BAM.
 
 endif # USB_GADGET
