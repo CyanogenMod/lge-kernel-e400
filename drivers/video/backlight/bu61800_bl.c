@@ -668,7 +668,7 @@ int bu61800_force_set(void)
 
 	dprintk("[bu61800_force_set] brightness= %d,current_value is 0x%x\n",brightness, current_value);
 
-	if (brightness != 0)
+        if (brightness != 0 && display_on)
 	{
 		dprintk("BACK LIGHT AFTER SETTING....\n");
 		bu61800_write(drvdata->client, drvdata->reg_addrs.bl_current, current_value);

@@ -121,6 +121,11 @@ static void msm_fb_ebi2_power_save(int on)
 		pdata->lcd_power_save(on);
 }
 
+/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+extern int Is_Backlight_Set ; 
+extern int bu61800_force_set(void);
+/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
+
 static int ilitek_qvga_disp_off(struct platform_device *pdev)
 {
 
@@ -148,11 +153,18 @@ static int ilitek_qvga_disp_off(struct platform_device *pdev)
 #if 1 
 	if(pdata->gpio)
 		gpio_set_value(pdata->gpio, 0);
+
 #endif	
 /* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 
 	msm_fb_ebi2_power_save(0);
 	display_on = FALSE;
+
+	if(Is_Backlight_Set)
+	{
+		msleep(50);
+		bu61800_force_set();    //force the BL off
+	}
 
 	return 0;
 }
@@ -589,11 +601,6 @@ static void do_lgd_init(struct platform_device *pdev)
 	EBI2_WRITE16C(DISP_CMD_PORT, 0x29);
 }
 
-
-/* LGE_CHANGE_S: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
-extern int Is_Backlight_Set ; 
-extern int bu61800_force_set(void);
-/* LGE_CHANGE_E: E0 jiwon.seo@lge.com [2011-11-22] : BL control error fix */
 
 
 static int ilitek_qvga_disp_on(struct platform_device *pdev)
